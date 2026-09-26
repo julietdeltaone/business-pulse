@@ -271,3 +271,18 @@ footer{color:var(--faint);font-size:11px;text-align:center;padding:18px;letter-s
 @media(prefers-reduced-motion:reduce){
   .kpi,.sovfill,.bandseg,.card{transition:none!important}
 }
+
+/* ---------- master data table: dense, functional, no flourishes ---------- */
+.mtwrap{overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:6px;background:#0b111c}
+table.mtable{border-collapse:collapse;font-size:11.5px;white-space:nowrap;min-width:100%}
+.mtable th{position:sticky;top:0;background:#141d2e;color:var(--ice);text-align:left;
+  padding:7px 10px;border-bottom:1px solid var(--line2);z-index:2;font-size:10px;
+  text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+.mtable td{padding:5px 10px;border-bottom:1px solid rgba(139,152,169,.08);color:var(--ink);
+  max-width:340px;overflow:hidden;text-overflow:ellipsis}
+.mtable tbody tr:nth-child(even){background:rgba(139,152,169,.045)}
+.mtable tr.excluded td{color:var(--faint)}
+.mtcontrols{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.mtcontrols input[type=search]{border:1px solid var(--line2);border-radius:6px;background:#0b111c;
+  color:var(--ink);padding:7px 12px;font-size:13px;min-width:220px}
+.mtcontrols input[type=search]:focus{outline:none;border-color:var(--ice-dim)}
