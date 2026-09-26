@@ -191,6 +191,10 @@ h3{font-size:15px;font-weight:600;margin:0 0 8px;color:var(--silver)}
 .net-wrap.focusing .edge.lit{opacity:1}
 .node .lbl-hover{opacity:0}
 .node.lit .lbl-hover,.node:hover .lbl-hover{opacity:1}
+.edge.follow{stroke:#8fa3c8;stroke-width:1.2}
+.edge.follow.mutual{stroke:#d7e2f7;stroke-width:2}
+.map-pin{cursor:pointer}
+.map-pin text{font-size:11px;font-weight:700;fill:#0A0C11;pointer-events:none}
 .pulse-ring{fill:none;stroke:var(--amber);stroke-width:1.2;opacity:.6;transform-box:fill-box;transform-origin:center;animation:ring 2.8s ease-out infinite}
 @keyframes ring{from{transform:scale(1);opacity:.55}to{transform:scale(2.6);opacity:0}}
 
