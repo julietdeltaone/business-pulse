@@ -1,5 +1,5 @@
-/* Business Pulse dashboard — dark cyber-military theme, Chart.js animated charts.
-   Renders window.PULSE_DATA (injected via data/data.js). No green anywhere. */
+/* Business Pulse dashboard — dark cyber-military HUD theme.
+   Renders window.PULSE_DATA (injected via data/data.js). No green anywhere, no emojis. */
 (function(){
 "use strict";
 var D = window.PULSE_DATA || null;
@@ -25,21 +25,24 @@ var NAV = [
   {group:"add", label:"Add", views:[
     {id:"add", label:"Competitor Intake"}]}
 ];
+var VIEW_GROUP={};
+NAV.forEach(function(g){ g.views.forEach(function(v){ VIEW_GROUP[v.id]=g.group; }); });
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 function pill(t, cls){ return '<span class="pill '+cls+'">'+esc(t)+"</span>"; }
+function fmtN(n){ return Number(n).toLocaleString("en-US"); }
 function deltaPill(n){
   if(n==null) return pill("n/a","gray");
-  if(n>0) return '<span class="delta-up">+'+n.toLocaleString("en-US")+"</span>";
-  if(n<0) return '<span class="delta-dn">'+n.toLocaleString("en-US")+"</span>";
+  if(n>0) return '<span class="delta-up">+'+fmtN(n)+"</span>";
+  if(n<0) return '<span class="delta-dn">'+fmtN(n)+"</span>";
   return '<span class="delta-0">0</span>';
 }
-function shortDate(d){ if(!d) return "—"; var p=String(d).split("-"); var m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return m[+p[1]-1]+" "+(+p[2]); }
-function shortTick(d){ var p=String(d).split("-"); return (+p[1])+"/"+(+p[2]); }
+function shortDate(d){ if(!d) return "—"; var p=String(d).slice(0,10).split("-"); var m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return m[+p[1]-1]+" "+(+p[2]); }
+function shortTick(d){ var p=String(d).slice(0,10).split("-"); return (+p[1])+"/"+(+p[2]); }
 function daysAgo(d){
   if(!d) return null;
-  var a=new Date(d+"T12:00:00"), b=new Date();
+  var a=new Date(String(d).slice(0,10)+"T12:00:00"), b=new Date();
   return Math.round((b-a)/86400000);
 }
 function siteLink(url){
@@ -49,6 +52,10 @@ function siteLink(url){
 function igLink(handle){
   if(!handle) return "";
   return '<a href="https://instagram.com/'+esc(handle)+'" target="_blank" rel="noopener">Instagram</a>';
+}
+/* "verified as of" chip — every number on the dashboard carries its provenance */
+function srcChip(dateStr, label){
+  return '<div class="src"><span class="sdot"></span>As of '+esc(dateStr?shortDate(dateStr):"—")+" · "+esc(label)+"</div>";
 }
 
 var SOURCE_COLORS={
@@ -155,27 +162,6 @@ function compName(id){ return compById[id]?compById[id].name:id; }
 
 var RUN_ORDER={baseline:0,daily:1,"daily-evening":2,"daily-midday":3};
 function runKey(r){ return r.date+" "+(RUN_ORDER[r.run]||0); }
-function latestAIRun(){
-  var rows=D.aiVisibility; if(!rows.length) return null;
-  var runs={};
-  rows.forEach(function(r){ var k=runKey(r); (runs[k]=runs[k]||{date:r.date,run:r.run,rows:[]}).rows.push(r); });
-  var keys=Object.keys(runs).sort(); var last=runs[keys[keys.length-1]];
-  var byEng={};
-  last.rows.forEach(function(r){ (byEng[r.engine]=byEng[r.engine]||[]).push(r); });
-  var engines=Object.keys(byEng).map(function(e){
-    var rs=byEng[e], reach=rs.filter(function(r){return r.jd_named!=="unreachable";});
-    var yes=reach.filter(function(r){return r.jd_named==="yes";}).length;
-    var part=reach.filter(function(r){return r.jd_named==="partial";}).length;
-    var ranks=reach.filter(function(r){return r.jd_rank!=null;}).map(function(r){return r.jd_rank;});
-    var missed=reach.filter(function(r){return r.jd_named==="no";}).map(function(r){return r.prompt;});
-    return {engine:e, namedLabel:yes+"/"+reach.length+(part?" (+"+part+" partial)":""),
-      bestRank:ranks.length?Math.min.apply(null,ranks):null, weakest:missed[0]||null,
-      score:reach.length?(yes+0.5*part)/reach.length:null};
-  });
-  var sc=engines.filter(function(e){return e.score!=null;}).map(function(e){return e.score;});
-  var pct=sc.length?Math.round(100*sc.reduce(function(a,b){return a+b;},0)/sc.length):null;
-  return {date:last.date, engines:engines, pct:pct};
-}
 function aiRuns(){
   var runs={};
   D.aiVisibility.forEach(function(r){ var k=runKey(r); (runs[k]=runs[k]||{date:r.date,run:r.run,rows:[]}).rows.push(r); });
@@ -183,6 +169,25 @@ function aiRuns(){
   keys.forEach(function(k){ var r0=runs[k].rows[0];
     runs[k].label=shortDate(runs[k].date)+(r0.run==="daily"?"":(" · "+r0.run.replace("daily-",""))); });
   return {runs:runs, keys:keys};
+}
+function latestAIRun(){
+  var rows=D.aiVisibility; if(!rows.length) return null;
+  var rr=aiRuns(), keys=rr.keys; if(!keys.length) return null;
+  var last=rr.runs[keys[keys.length-1]];
+  var byEng={};
+  last.rows.forEach(function(r){ (byEng[r.engine]=byEng[r.engine]||[]).push(r); });
+  var engines=Object.keys(byEng).map(function(e){
+    var rs=byEng[e], reach=rs.filter(function(r){return r.jd_named!=="unreachable";});
+    var yes=reach.filter(function(r){return r.jd_named==="yes";}).length;
+    var part=reach.filter(function(r){return r.jd_named==="partial";}).length;
+    var ranks=reach.filter(function(r){return r.jd_rank!=null;}).map(function(r){return r.jd_rank;});
+    return {engine:e, namedLabel:yes+"/"+reach.length+(part?" (+"+part+" partial)":""),
+      bestRank:ranks.length?Math.min.apply(null,ranks):null,
+      score:reach.length?(yes+0.5*part)/reach.length:null};
+  });
+  var sc=engines.filter(function(e){return e.score!=null;}).map(function(e){return e.score;});
+  var pct=sc.length?Math.round(100*sc.reduce(function(a,b){return a+b;},0)/sc.length):null;
+  return {date:last.date, label:last.label, engines:engines, pct:pct};
 }
 var PROMPTS=[
   "best wedding videographer St. Lawrence County NY",
@@ -194,77 +199,27 @@ var PROMPTS=[
 var PROMPT_SHORT=["Wedding video · SLC","Wedding photo · Potsdam","Drone real estate · N. Country","Cost photo+video · SLC","Family photo · Potsdam"];
 var ENGINES=["ChatGPT","Claude","Gemini","Perplexity"];
 var ENGINE_COLORS={ChatGPT:"#7dd3fc",Claude:"#f59e0b",Gemini:"#d8b98a",Perplexity:"#f87171"};
-
-/* ---------- OVERVIEW ---------- */
-function renderOverview(){
-  var el=document.getElementById("view-overview");
-  var comps=D.competitors, sweeps=D.webSweepHistory.slice().sort(function(a,b){return a.date<b.date?-1:1;});
-  var slc=comps.filter(function(c){return c.region==="slc";}).length;
-  var adjacent=comps.filter(function(c){return c.region==="adjacent";}).length;
-  var withIG=comps.filter(function(c){return c.ig_handle;}).length;
-  var withPricing=comps.filter(function(c){return c.pricing;}).length;
-  var newEntrants=[]; sweeps.forEach(function(s){ (s.new_entrants||[]).forEach(function(n){newEntrants.push({date:s.date,name:n});}); });
-  var latestSweep=sweeps[sweeps.length-1]||null;
-  var latestAI=latestAIRun();
-
-  var statCards=[
-    {k:"Competitors tracked", v:comps.length, d:"SLC + adjacent counties", num:true},
-    {k:"SLC-confirmed", v:slc, d:"St. Lawrence County", num:true},
-    {k:"Adjacent counties", v:adjacent, d:"Franklin · Jefferson · Lewis · Clinton · Essex +", num:true},
-    {k:"With verified IG", v:withIG, d:"in the follower tracker", num:true},
-    {k:"With pricing intel", v:withPricing, d:"public pricing captured", num:true},
-    {k:"AI visibility", v:latestAI?latestAI.pct:"—", d:latestAI?("prompts naming JD · "+shortDate(latestAI.date)):"", num:!!latestAI, suffix:"%"}
-  ];
-  var h='<div class="grid">'+statCards.map(function(s,i){
-    return '<div class="stat"><div class="k">'+esc(s.k)+'</div><div class="v"'+(s.num?' data-count="'+s.v+'" data-suffix="'+(s.suffix||"")+'" id="stat-'+i+'"':"")+'>'
-      +(s.num?"0":esc(String(s.v)))+'</div><div class="d">'+esc(s.d)+"</div></div>"; }).join("")+"</div>";
-
-  h+='<div class="card"><h2><span class="accent">Latest</span> changes</h2><p class="hint">What moved most recently across every routine. Full detail lives under Signals.</p><ul class="plain">';
-  newEntrants.slice(-5).reverse().forEach(function(n){
-    h+="<li>"+pill("New entrant","blue")+" <b>"+esc(n.name)+"</b> — added "+shortDate(n.date)+"</li>"; });
-  var changed=[], unreach=[];
-  if(latestSweep){ Object.keys(latestSweep.pages||{}).forEach(function(sl){
-    var p=latestSweep.pages[sl];
-    if(p.status==="changed") changed.push({slug:sl,note:p.note});
-    if(p.status==="unreachable") unreach.push({slug:sl,note:p.note});
-  });}
-  changed.forEach(function(c){ h+="<li>"+pill("Changed","amber")+" <b>"+esc(c.slug)+"</b> — "+esc(c.note||"")+"</li>"; });
-  unreach.slice(0,6).forEach(function(u){ h+="<li>"+pill("Unreachable","red")+" <b>"+esc(u.slug)+"</b> — "+esc(u.note||"")+"</li>"; });
-  if(!changed.length && !unreach.length && latestSweep) h+="<li>No page changes on the latest sweep ("+shortDate(latestSweep.date)+").</li>";
-  h+="</ul></div>";
-
-  if(latestAI){
-    h+='<div class="card"><h2>JD rank snapshot — <span class="accent">'+shortDate(latestAI.date)+'</span></h2><p class="hint">AI audit, latest run.</p><div class="tablewrap"><table class="rows"><thead><tr><th>Engine</th><th>Prompts naming JD</th><th class="num">Best rank</th><th>Weakest prompt</th></tr></thead><tbody>';
-    latestAI.engines.forEach(function(e){
-      h+="<tr><td><b>"+esc(e.engine)+"</b></td><td>"+esc(e.namedLabel)+'</td><td class="num">'+(e.bestRank==null?"—":"#"+e.bestRank)+"</td><td>"+esc(e.weakest||"—")+"</td></tr>";
-    });
-    h+="</tbody></table></div></div>";
-  }
-
-  var movers=Object.keys(D.igFollowersHistory).map(function(handle){
-    var pts=D.igFollowersHistory[handle]; var first=pts[0], last=pts[pts.length-1];
-    return {handle:handle, from:first.count, to:last.count, delta:last.count-first.count};
-  }).sort(function(a,b){return b.delta-a.delta;});
-  h+='<div class="card"><h2>IG <span class="accent">movers</span></h2><p class="hint">Follower change, first to latest snapshot.</p><div class="tablewrap"><table class="rows"><thead><tr><th>Handle</th><th class="num">Then</th><th class="num">Now</th><th class="num">Delta</th></tr></thead><tbody>';
-  movers.forEach(function(m){
-    h+="<tr><td><b>"+esc(handleName(m.handle))+'</b><br><span class="subtle">@'+esc(m.handle)+"</span></td>"
-      +'<td class="num">'+m.from.toLocaleString("en-US")+'</td><td class="num">'+m.to.toLocaleString("en-US")+'</td><td class="num">'+deltaPill(m.delta)+"</td></tr>";
+function metaDate(){ return (D&&D.meta&&D.meta.generated_at||"").slice(0,10); }
+function latestHistDate(){
+  var mx=null;
+  Object.keys(D.igFollowersHistory).forEach(function(h){
+    D.igFollowersHistory[h].forEach(function(p){ if(!mx||p.date>mx) mx=p.date; });
   });
-  h+="</tbody></table></div></div>";
-
-  el.innerHTML=h;
-  statCards.forEach(function(s,i){
-    if(s.num){ var n=document.getElementById("stat-"+i); if(n) countUp(n, s.v, s.suffix||""); }
-  });
+  return mx;
+}
+function latestOwnDate(){
+  var mx=null;
+  D.ownAccounts.forEach(function(r){ if(!mx||r.date>mx) mx=r.date; });
+  return mx;
+}
+function latestSweep(){
+  var s=D.webSweepHistory.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  return s[s.length-1]||null;
 }
 
-/* ---------- SIGNALS: change alerts ---------- */
-function renderSignals(){
-  var el=document.getElementById("view-signals");
+/* ---------- SIGNALS (shared by KPI deck + Signals view) ---------- */
+function computeSignals(){
   var signals=[];
-  var today=new Date();
-
-  // 1. New entrants (discovered in last 14 days)
   D.competitors.forEach(function(c){
     if(!c.discovered_date) return;
     var d=daysAgo(c.discovered_date);
@@ -273,8 +228,6 @@ function renderSignals(){
         html:"<b>"+esc(c.name)+"</b> joined the roster — "+esc(c.town)+". Source: "+esc(c.source_label)+"."});
     }
   });
-
-  // 2. IG movers: biggest gain and biggest loss, first to latest snapshot
   var movers=Object.keys(D.igFollowersHistory).map(function(handle){
     var pts=D.igFollowersHistory[handle]; var first=pts[0], last=pts[pts.length-1];
     return {handle:handle, delta:last.count-first.count, date:last.date};
@@ -282,14 +235,11 @@ function renderSignals(){
   if(movers.length){
     var top=movers[0], bot=movers[movers.length-1];
     if(top.delta>0) signals.push({date:top.date, cls:"blue", type:"IG surge",
-      html:"<b>"+esc(handleName(top.handle))+"</b> gained <b>+"+top.delta.toLocaleString("en-US")+"</b> followers since first snapshot."});
+      html:"<b>"+esc(handleName(top.handle))+"</b> gained <b>+"+fmtN(top.delta)+"</b> followers since first snapshot."});
     if(bot.delta<0) signals.push({date:bot.date, cls:"red", type:"IG slide",
-      html:"<b>"+esc(handleName(bot.handle))+"</b> lost <b>"+bot.delta.toLocaleString("en-US")+"</b> followers since first snapshot."});
+      html:"<b>"+esc(handleName(bot.handle))+"</b> lost <b>"+fmtN(bot.delta)+"</b> followers since first snapshot."});
   }
-
-  // 3. Latest sweep: changed / unreachable pages
-  var sweeps=D.webSweepHistory.slice().sort(function(a,b){return a.date<b.date?-1:1;});
-  var latest=sweeps[sweeps.length-1];
+  var latest=latestSweep();
   if(latest){
     Object.keys(latest.pages||{}).forEach(function(sl){
       var p=latest.pages[sl]||{};
@@ -300,30 +250,189 @@ function renderSignals(){
     if(unreachCount) signals.push({date:latest.date, cls:"red", type:"Unreachable",
       html:"<b>"+unreachCount+"</b> sweep pages unreachable on "+shortDate(latest.date)+" — see Website Sweeps."});
   }
-
-  // 4. AI visibility: engines naming JD on zero prompts in latest run
   var lastAI=latestAIRun();
   if(lastAI){
     lastAI.engines.forEach(function(e){
       if(e.score===0) signals.push({date:lastAI.date, cls:"red", type:"AI blind spot",
-        html:"<b>"+esc(e.engine)+"</b> named JD on 0 of "+esc(e.namedLabel)+" prompts in the latest audit."});
+        html:"<b>"+esc(e.engine)+"</b> named JD on 0 prompts in the latest audit."});
     });
   }
-
-  // 5. Fresh pricing intel
   var priced=D.competitors.filter(function(c){return c.pricing_url;});
-  if(priced.length) signals.push({date:"2026-09-26", cls:"tan", type:"Pricing intel",
+  if(priced.length) signals.push({date:metaDate(), cls:"tan", type:"Pricing intel",
     html:"<b>"+priced.length+"</b> competitors now have linked pricing pages — see Pricing."});
-
   signals.sort(function(a,b){ return a.date<b.date?1:a.date>b.date?-1:0; });
-
+  return signals;
+}
+function renderSignals(){
+  var el=document.getElementById("view-signals");
+  var signals=computeSignals();
   var h='<div class="card"><h2>Change <span class="accent">signals</span></h2><p class="hint">'
-    +signals.length+' active signals across roster, IG, sweeps, pricing, and AI visibility.</p><ul class="plain">';
+    +signals.length+' active signals across roster, IG, sweeps, pricing, and AI visibility.</p>'
+    +srcChip(metaDate(),"All routines")+'<ul class="plain">';
   signals.forEach(function(s){
     h+="<li>"+pill(s.type,s.cls)+" "+s.html+' <span class="subtle">'+shortDate(s.date)+"</span></li>";
   });
   h+="</ul></div>";
   el.innerHTML=h;
+}
+
+/* ---------- KPI command deck (Overview) ---------- */
+function aiPromptScores(){
+  var rr=aiRuns(), keys=rr.keys; if(!keys.length) return [];
+  var last=rr.runs[keys[keys.length-1]];
+  return PROMPTS.map(function(p,pi){
+    var rs=last.rows.filter(function(r){return r.prompt===p && r.jd_named!=="unreachable";});
+    if(!rs.length) return {short:PROMPT_SHORT[pi], pct:null};
+    var sc=rs.reduce(function(a,r){return a+(r.jd_named==="yes"?1:r.jd_named==="partial"?0.5:0);},0);
+    return {short:PROMPT_SHORT[pi], pct:Math.round(100*sc/rs.length)};
+  });
+}
+function pricingStats(){
+  var withP=D.competitors.filter(function(c){return c.pricing;});
+  var linked=D.competitors.filter(function(c){return c.pricing_url;});
+  var amounts=[];
+  withP.forEach(function(c){
+    var m=String(c.pricing).match(/\$[\d,]+/g);
+    if(m) m.forEach(function(x){ var v=parseInt(x.replace(/[$,]/g,""),10); if(v>50) amounts.push(v); });
+  });
+  amounts.sort(function(a,b){return a-b;});
+  return {count:withP.length, linked:linked.length,
+    range:amounts.length?"$"+fmtN(amounts[0])+" – $"+fmtN(amounts[amounts.length-1]):"—"};
+}
+function recencyBands(){
+  var counts={Active:0,Quiet:0,Dormant:0,Unknown:0};
+  D.competitors.forEach(function(c){
+    var d=daysAgo(c.last_post_date);
+    if(d==null) counts.Unknown++;
+    else if(d<7) counts.Active++;
+    else if(d<=30) counts.Quiet++;
+    else counts.Dormant++;
+  });
+  return counts;
+}
+function sovStats(){
+  var byAcct={};
+  D.ownAccounts.forEach(function(r){ (byAcct[r.account]=byAcct[r.account]||[]).push(r); });
+  var jdNow=0, jdFirst=0;
+  Object.keys(byAcct).forEach(function(a){
+    var pts=byAcct[a].sort(function(p,q){return p.date<q.date?-1:1;});
+    jdNow+=pts[pts.length-1].follower_count; jdFirst+=pts[0].follower_count;
+  });
+  var compNow=0;
+  Object.keys(D.igFollowersHistory).forEach(function(h){
+    var pts=D.igFollowersHistory[h]; compNow+=pts[pts.length-1].count;
+  });
+  var total=jdNow+compNow;
+  return {jd:jdNow, delta:jdNow-jdFirst, share:total?Math.round(100*jdNow/total):0, n:3+Object.keys(D.igFollowersHistory).length};
+}
+function topMovers(){
+  return Object.keys(D.igFollowersHistory).map(function(handle){
+    var pts=D.igFollowersHistory[handle].slice().sort(function(a,b){return a.date<b.date?-1:1;});
+    var last=pts[pts.length-1], cutoff=new Date(new Date(last.date+"T12:00:00").getTime()-7*86400000);
+    var ref=pts[0];
+    for(var i=pts.length-1;i>=0;i--){ if(new Date(pts[i].date+"T12:00:00")<=cutoff){ ref=pts[i]; break; } }
+    return {handle:handle, delta:last.count-ref.count, now:last.count};
+  }).sort(function(a,b){return b.delta-a.delta;});
+}
+function connHub(){
+  var deg={};
+  (D.connections||[]).forEach(function(k){
+    deg[k.a]=(deg[k.a]||0)+1; deg[k.b]=(deg[k.b]||0)+1;
+  });
+  var names=Object.keys(deg).sort(function(a,b){return deg[b]-deg[a];});
+  return {count:(D.connections||[]).length, hub:names[0]||null, hubN:names.length?deg[names[0]]:0};
+}
+function kpiTile(o){
+  return '<button class="kpi fam-'+o.fam+'" data-goto="'+o.goto+'" aria-label="'+esc(o.label)+' — open '+esc(o.gotoLabel||o.goto)+'">'
+    +'<span class="kpi-label">'+esc(o.label)+'</span>'
+    +'<span class="kpi-num"'+(o.num!=null?' data-count="'+o.num+'" data-suffix="'+(o.suffix||"")+'"':"")+'>'
+    +(o.num!=null?"0":esc(o.text||"—"))+"</span>"
+    +(o.sub?'<span class="kpi-sub">'+o.sub+"</span>":"")
+    +(o.delta?'<span class="kpi-delta '+(o.deltaCls||"")+'">'+o.delta+"</span>":"")
+    +srcChip(o.asof,o.source)
+    +'<span class="kpi-go" aria-hidden="true">›</span></button>';
+}
+function renderOverview(){
+  var el=document.getElementById("view-overview");
+  var comps=D.competitors, md=metaDate();
+  var slc=comps.filter(function(c){return c.region==="slc";}).length;
+  var adj=comps.filter(function(c){return c.region==="adjacent";}).length;
+  var unc=comps.length-slc-adj;
+  var entr7=comps.filter(function(c){var d=daysAgo(c.discovered_date);return d!=null&&d<=7;});
+  var sigs=computeSignals();
+  var sigTypes={}; sigs.forEach(function(s){sigTypes[s.type]=(sigTypes[s.type]||0)+1;});
+  var sov=sovStats();
+  var bands=recencyBands();
+  var ps=pricingStats();
+  var lai=latestAIRun();
+  var psc=aiPromptScores().filter(function(p){return p.pct!=null;});
+  var best=psc.slice().sort(function(a,b){return b.pct-a.pct;})[0];
+  var worst=psc.slice().sort(function(a,b){return a.pct-b.pct;})[0];
+  var sw=latestSweep();
+  var swChanged=0, swUnreach=0;
+  if(sw){ Object.keys(sw.pages||{}).forEach(function(sl){var st=(sw.pages[sl]||{}).status;
+    if(st==="changed")swChanged++; if(st==="unreachable")swUnreach++; }); }
+  var hub=connHub();
+  var movers=topMovers();
+  var m0=movers[0];
+
+  var tiles=[
+    kpiTile({fam:"ice",goto:"directory",gotoLabel:"Directory",label:"Competitors tracked",num:comps.length,
+      sub:slc+" SLC · "+adj+" adjacent · "+unc+" unconfirmed",asof:md,source:"Roster"}),
+    kpiTile({fam:"ice",goto:"entrants",gotoLabel:"New Entrants",label:"New entrants · 7 days",num:entr7.length,
+      sub:entr7.length?esc(entr7.slice(0,3).map(function(c){return c.name;}).join(" · "))+(entr7.length>3?" · +"+(entr7.length-3)+" more":""):"No new entrants this week",
+      asof:md,source:"Roster"}),
+    kpiTile({fam:"amber",goto:"signals",gotoLabel:"Signals",label:"Active signals",num:sigs.length,
+      sub:Object.keys(sigTypes).slice(0,3).map(function(t){return sigTypes[t]+" "+t.toLowerCase();}).join(" · ")||"All quiet",
+      asof:md,source:"All routines"}),
+    kpiTile({fam:"ice",goto:"voice",gotoLabel:"Share of Voice",label:"JD combined audience",num:sov.jd,
+      sub:sov.share+"% of "+sov.n+" tracked accounts",
+      delta:(sov.delta>=0?"+":"")+fmtN(sov.delta)+" since first snapshot",deltaCls:sov.delta>=0?"up":"dn",
+      asof:latestOwnDate(),source:"IG snapshots"}),
+    kpiTile({fam:"tan",goto:"recency",gotoLabel:"Recency",label:"Posting now · active",num:bands.Active,
+      sub:bands.Quiet+" quiet · "+bands.Dormant+" dormant · "+bands.Unknown+" unknown",
+      asof:md,source:"IG reads"}),
+    kpiTile({fam:"amber",goto:"pricing",gotoLabel:"Pricing",label:"Pricing coverage",num:Math.round(100*ps.count/comps.length),suffix:"%",
+      sub:ps.count+" of "+comps.length+" publish · "+ps.linked+" linked pages · range "+ps.range,
+      asof:md,source:"Site research"}),
+    kpiTile({fam:"ice",goto:"ai",gotoLabel:"AI Visibility",label:"AI visibility · JD named",num:lai?lai.pct:null,suffix:"%",text:lai?null:"—",
+      sub:lai?("Best: "+best.short+" "+best.pct+"% · Worst: "+worst.short+" "+worst.pct+"%"):"No audit data",
+      asof:lai?lai.date:null,source:"AI audit"}),
+    kpiTile({fam:"tan",goto:"sweep",gotoLabel:"Website Sweeps",label:"Site changes · latest sweep",num:swChanged,
+      sub:swUnreach+" unreachable · "+(sw&&sw.fetched!=null?sw.fetched+" of "+sw.of_total+" fetched":""),
+      asof:sw?sw.date:null,source:"Web sweep"}),
+    kpiTile({fam:"amber",goto:"connections",gotoLabel:"Connections",label:"Verified connections",num:hub.count,
+      sub:hub.hub?("Hub: "+hub.hub+" ("+hub.hubN+" links)"):"No connections yet",
+      asof:md,source:"Field intel"}),
+    kpiTile({fam:"ice",goto:"ig",gotoLabel:"IG Trends",label:"Top IG mover · 7 days",num:m0?m0.delta:null,text:m0?null:"—",
+      sub:m0?("@"+m0.handle+" → "+fmtN(m0.now)+" followers"+(movers[1]?" · @"+movers[1].handle+" "+(movers[1].delta>=0?"+":"")+fmtN(movers[1].delta):"")):"No snapshot data",
+      delta:m0?((m0.delta>=0?"+":"")+fmtN(m0.delta)+" followers"):"",deltaCls:m0&&m0.delta>=0?"up":"dn",
+      asof:latestHistDate(),source:"IG snapshots"})
+  ];
+
+  var h='<div class="deckhead"><h2>// Command <span class="accent">deck</span></h2>'
+    +srcChip(md,"Morning sync · all routines")+"</div>"
+    +'<div class="kpideck">'+tiles.join("")+"</div>";
+
+  h+='<div class="card"><h2>Latest <span class="accent">changes</span></h2><p class="hint">What moved most recently. Full detail lives under Signals.</p><ul class="plain">';
+  sigs.slice(0,6).forEach(function(s){
+    h+="<li>"+pill(s.type,s.cls)+" "+s.html+' <span class="subtle">'+shortDate(s.date)+"</span></li>";
+  });
+  if(!sigs.length) h+="<li>All quiet — no material changes.</li>";
+  h+="</ul></div>";
+
+  el.innerHTML=h;
+  el.querySelectorAll(".kpi-num[data-count]").forEach(function(n){
+    countUp(n, +n.dataset.count, n.dataset.suffix||"");
+  });
+  el.querySelectorAll(".kpi[data-goto]").forEach(function(b){
+    b.addEventListener("click",function(){ gotoView(b.dataset.goto); });
+  });
+}
+function gotoView(id){
+  var g=VIEW_GROUP[id]||"command";
+  showGroup(g);
+  showView(id);
 }
 
 /* ---------- RECENCY: last-post tracking with activity bands ---------- */
@@ -347,9 +456,16 @@ function renderRecency(){
   });
   var counts={Active:0,Quiet:0,Dormant:0,Unknown:0};
   rows.forEach(function(r){ counts[r.band.label]++; });
+  var tot=rows.length||1;
 
   var h='<div class="card"><h2>Posting <span class="accent">recency</span></h2><p class="hint">'
     +'Days since each competitor\u2019s last Instagram post. Bands: Active &lt; 7 days · Quiet 7–30 · Dormant &gt; 30 · Unknown = not yet collected.</p>'
+    +srcChip(metaDate(),"IG reads")
+    +'<div class="bandbar">'
+    +[["Active","blue"],["Quiet","tan"],["Dormant","red"],["Unknown","gray"]].map(function(b){
+      var w=Math.max(1.5,100*counts[b[0]]/tot);
+      return '<div class="bandseg '+b[1]+'" style="width:'+w.toFixed(1)+'%" title="'+b[0]+": "+counts[b[0]]+'"></div>';
+    }).join("")+"</div>"
     +'<div class="controls">'
     +pill(counts.Active+" Active","blue")+pill(counts.Quiet+" Quiet","tan")
     +pill(counts.Dormant+" Dormant","red")+pill(counts.Unknown+" Unknown","gray")
@@ -385,18 +501,26 @@ function renderVoice(){
   ents.forEach(function(e){ e.share=total?100*e.count/total:0; });
   ents.sort(function(a,b){return b.count-a.count;});
   var jdTotal=ents.filter(function(e){return e.jd;}).reduce(function(a,e){return a+e.count;},0);
+  var top5=ents.filter(function(e){return !e.jd;}).slice(0,5);
+  var top5Total=top5.reduce(function(a,e){return a+e.count;},0);
 
   var h='<div class="card"><h2>Share of <span class="accent">voice</span></h2><p class="hint">'
-    +'Follower share across '+ents.length+' tracked accounts (JD\u2019s 3 + '+Object.keys(D.igFollowersHistory).length+' competitors). '
-    +'JD\u2019s combined audience: <b>'+jdTotal.toLocaleString("en-US")+"</b> ("+(total?Math.round(100*jdTotal/total):0)+'% of tracked audience).</p>';
+    +'Follower share across '+ents.length+' tracked accounts (JD\u2019s 3 + '+Object.keys(D.igFollowersHistory).length+' competitors).</p>'
+    +srcChip(latestOwnDate(),"IG snapshots")
+    +'<div class="sov-duel">'
+    +'<div class="sov-side jd"><div class="sov-big" data-count="'+jdTotal+'">0</div><div class="sov-cap">JD combined audience</div></div>'
+    +'<div class="sov-vs">VS</div>'
+    +'<div class="sov-side"><div class="sov-big gray" data-count="'+top5Total+'">0</div><div class="sov-cap">Top 5 competitors combined</div></div>'
+    +"</div>";
   ents.forEach(function(e){
     var w=Math.max(2,e.share);
     h+='<div class="sovrow"><div class="sovhead"><span class="sovname">'+(e.jd?'<b class="jdmark">'+esc(e.name)+"</b>":esc(e.name))
-      +'</span><span class="sovmeta">'+esc(e.handle)+" · "+e.count.toLocaleString("en-US")+" · "+e.share.toFixed(1)+'%</span></div>'
+      +'</span><span class="sovmeta">'+esc(e.handle)+" · "+fmtN(e.count)+" · "+e.share.toFixed(1)+'%</span></div>'
       +'<div class="sovbar"><div class="sovfill'+(e.jd?" jd":"")+'" style="width:'+w.toFixed(1)+'%"></div></div></div>';
   });
   h+="</div>";
   el.innerHTML=h;
+  el.querySelectorAll(".sov-big[data-count]").forEach(function(n){ countUp(n,+n.dataset.count,""); });
 }
 
 /* ---------- IG TRENDS ---------- */
@@ -408,18 +532,20 @@ function renderIG(){
     var la=hist[a][hist[a].length-1].count, lb=hist[b][hist[b].length-1].count; return lb-la; });
   var top5=handles.slice(0,5);
 
-  var h='<div class="card"><h2>Follower <span class="accent">trends</span></h2><p class="hint">Toggle handles to compare. More snapshots accumulate with each daily sync.</p><div class="controls" id="igChecks">'
+  var h='<div class="card"><h2>Follower <span class="accent">trends</span></h2><p class="hint">Toggle handles to compare. More snapshots accumulate with each daily sync.</p>'
+    +srcChip(latestHistDate(),"IG snapshots")
+    +'<div class="controls" id="igChecks">'
     +handles.map(function(x){ return '<label class="chk'+(top5.indexOf(x)>=0?" on":"")+'"><input type="checkbox" class="vh" value="'+esc(x)+'"'+(top5.indexOf(x)>=0?" checked":"")+"> @"+esc(x)+"</label>"; }).join("")
     +'</div><div class="chartwrap"><canvas id="igCanvas"></canvas></div></div>';
 
-  h+='<div class="card"><h2>30-day <span class="accent">delta</span> table</h2><p class="hint">First to latest snapshot per handle, with latest activity notes.</p><div class="tablewrap"><table class="rows"><thead><tr><th>Competitor</th><th class="num">Followers</th><th class="num">Delta</th><th>Latest activity</th></tr></thead><tbody>';
+  h+='<div class="card"><h2>Snapshot <span class="accent">delta</span> table</h2><p class="hint">First to latest snapshot per handle, with latest activity notes.</p><div class="tablewrap"><table class="rows"><thead><tr><th>Competitor</th><th class="num">Followers</th><th class="num">Delta</th><th>Latest activity</th></tr></thead><tbody>';
   var latestAct={};
   D.igActivity.forEach(function(a){ if(!latestAct[a.handle]||latestAct[a.handle].date<a.date) latestAct[a.handle]=a; });
   handles.forEach(function(x){
     var pts=hist[x], first=pts[0], last=pts[pts.length-1], d=last.count-first.count;
     var act=latestAct[x]?latestAct[x].activity:"—";
     h+="<tr><td><b>"+esc(handleName(x))+'</b><br><span class="subtle">@'+esc(x)+"</span></td>"
-      +'<td class="num">'+last.count.toLocaleString("en-US")+'</td><td class="num">'+deltaPill(d)+"</td><td>"+esc(act)+"</td></tr>";
+      +'<td class="num">'+fmtN(last.count)+'</td><td class="num">'+deltaPill(d)+"</td><td>"+esc(act)+"</td></tr>";
   });
   h+="</tbody></table></div></div>";
   el.innerHTML=h;
@@ -452,6 +578,7 @@ var jdChart=null;
 function renderJD(){
   var el=document.getElementById("view-jd");
   var h='<div class="card"><h2>JD <span class="accent">vs</span> top competitors</h2><p class="hint">JD\u2019s three accounts (solid) against the four largest tracked competitor handles (dashed).</p>'
+    +srcChip(latestHistDate(),"IG snapshots")
     +'<div class="chartwrap tall"><canvas id="jdCanvas"></canvas></div></div>';
   h+='<div class="card"><h2>Latest <span class="accent">counts</span></h2><div class="tablewrap"><table class="rows"><thead><tr><th>Account</th><th class="num">Followers</th><th class="num">Delta</th></tr></thead><tbody>';
   var byAcct={};
@@ -461,13 +588,13 @@ function renderJD(){
   Object.keys(byAcct).sort().forEach(function(a){
     var pts=byAcct[a], last=pts[pts.length-1], d=last.y-pts[0].y;
     h+="<tr><td><b>JD · "+esc(acctLabels[a]||a)+'</b><br><span class="subtle">@'+esc(a)+"</span></td>"
-      +'<td class="num">'+last.y.toLocaleString("en-US")+'</td><td class="num">'+deltaPill(d)+"</td></tr>";
+      +'<td class="num">'+fmtN(last.y)+'</td><td class="num">'+deltaPill(d)+"</td></tr>";
   });
   ["juliakiaphotos","emilymurphy_photo","allisonleephotographyny","laurawellsphotography"].forEach(function(x){
     var pts=D.igFollowersHistory[x]; if(!pts) return;
     var last=pts[pts.length-1], d=last.count-pts[0].count;
     h+="<tr><td><b>"+esc(handleName(x))+'</b><br><span class="subtle">@'+esc(x)+"</span></td>"
-      +'<td class="num">'+last.count.toLocaleString("en-US")+'</td><td class="num">'+deltaPill(d)+"</td></tr>";
+      +'<td class="num">'+fmtN(last.count)+'</td><td class="num">'+deltaPill(d)+"</td></tr>";
   });
   h+="</tbody></table></div></div>";
   el.innerHTML=h;
@@ -527,6 +654,7 @@ function renderAI(){
   var rr=aiRuns(), runs=rr.runs, runKeys=rr.keys;
 
   var h='<div class="card"><h2>JD named — <span class="accent">% of prompts</span>, by engine</h2><p class="hint">Share of reachable prompts per run where JD was named (partial = half credit).</p>'
+    +srcChip(runKeys.length?runs[runKeys[runKeys.length-1]].date:null,"AI audit")
     +'<div class="chartwrap"><canvas id="aiCanvas"></canvas></div></div>';
 
   h+='<div class="card"><h2>Engine <span class="accent">scorecard</span></h2><p class="hint">Every run, every engine: prompts naming JD and best rank.</p><div class="tablewrap"><table class="rows"><thead><tr><th>Run</th>'
@@ -648,9 +776,11 @@ function renderPricing(){
   var el=document.getElementById("view-pricing");
   var list=D.competitors.filter(function(c){return c.pricing;})
     .sort(function(a,b){return a.name<b.name?-1:1;});
+  var ps=pricingStats();
   var h='<div class="card"><h2>Pricing <span class="accent">tracker</span></h2><p class="hint">'
-    +list.length+' of '+D.competitors.length+' competitors publish pricing. '
-    +'“View pricing” opens the verified pricing page. Intel captured from public sites and IG bio links.</p>'
+    +list.length+' of '+D.competitors.length+' competitors publish pricing ('+Math.round(100*list.length/D.competitors.length)+'%). '
+    +'“View pricing” opens the verified pricing page. Intel captured from public sites and IG bio links. Observed range: <b>'+esc(ps.range)+'</b>.</p>'
+    +srcChip(metaDate(),"Site research")
     +'<div class="tablewrap"><table class="rows"><thead><tr><th>Competitor</th><th>Location</th><th>Pricing</th><th>Source page</th></tr></thead><tbody>';
   list.forEach(function(c){
     h+="<tr><td><b>"+esc(c.name)+"</b>"+(c.ig_handle?'<br><span class="subtle">@'+esc(c.ig_handle)+"</span>":"")+"</td>"
@@ -666,6 +796,7 @@ function renderPricing(){
 function renderDirectory(){
   var el=document.getElementById("view-directory");
   var h='<div class="card"><h2>Competitor <span class="accent">directory</span></h2><p class="hint">'+D.competitors.length+' tracked competitors. Search and filter the full roster.</p>'
+    +srcChip(metaDate(),"Roster")
     +'<div class="controls"><input type="text" id="dirQ" placeholder="Search name, town, county, notes…">'
     +'<select id="dirSpec"><option value="">All specialties</option><option value="photo">Photo</option><option value="video">Video</option><option value="both">Photo + Video</option><option value="drone">Drone</option></select>'
     +'<select id="dirStatus"><option value="">Any status</option><option value="active">Active</option><option value="uncertain">Uncertain</option></select>'
@@ -738,6 +869,7 @@ function renderEntrants(){
     .sort(function(a,b){return a.discovered_date<b.discovered_date?1:-1;});
   var h='<div class="card"><h2>New <span class="accent">entrants</span></h2><p class="hint">'
     +list.length+' competitors with a recorded discovery date, newest first.</p>'
+    +srcChip(metaDate(),"Roster")
     +'<div class="tablewrap"><table class="rows"><thead><tr><th>Competitor</th><th>Location</th><th>Discovered</th><th>Source</th><th>Specialty</th></tr></thead><tbody>';
   var specName={photo:"Photo",video:"Video",both:"Photo+Video",drone:"Drone"};
   list.forEach(function(c){
@@ -749,31 +881,269 @@ function renderEntrants(){
   el.innerHTML=h;
 }
 
-/* ---------- CONNECTIONS ---------- */
+/* ---------- CONNECTIONS: animated node graph + grouped list ---------- */
 var CONN_COLORS={"second-shooter":"blue","styled-shoot":"tan","co-tagged":"amber","referral":"red"};
 var CONN_LABELS={"second-shooter":"Second shooter","styled-shoot":"Styled shoot","co-tagged":"Co-tagged","referral":"Referral"};
+var EDGE_STYLE={
+  "second-shooter":{color:"#7dd3fc",dash:[],width:2.2},
+  "co-tagged":{color:"#f59e0b",dash:[6,4],width:1.6},
+  "styled-shoot":{color:"#d8b98a",dash:[],width:1.6},
+  "referral":{color:"#f87171",dash:[],width:1.6}
+};
+var NODE_REGION_COLOR={slc:"#7dd3fc",adjacent:"#f59e0b",unconfirmed:"#94a3b8",unknown:"#d8b98a"};
+var graph={nodes:[],edges:[],raf:0,running:false,hover:null,pinned:null,W:0,H:0,bound:false};
+
+function normName(s){
+  return String(s||"").toLowerCase().replace(/[^a-z0-9 ]/g," ")
+    .replace(/\b(photography|photographer|photo|films|film|media|studio|studios|llc|co|productions|production)\b/g," ")
+    .replace(/\s+/g," ").trim();
+}
+function matchCompetitor(name){
+  var n=normName(name), best=null, bestLen=0;
+  if(!n) return null;
+  D.competitors.forEach(function(c){
+    var cn=normName(c.name);
+    if(!cn) return;
+    if(cn===n||cn.indexOf(n)===0||n.indexOf(cn)===0){
+      if(cn.length>bestLen){ best=c; bestLen=cn.length; }
+    }
+  });
+  return best;
+}
+function graphBuild(){
+  var map={}, edges=[];
+  (D.connections||[]).forEach(function(k){
+    [k.a,k.b].forEach(function(nm){
+      if(!map[nm]){
+        var comp=matchCompetitor(nm);
+        map[nm]={name:nm, comp:comp, region:comp?comp.region:"unknown", degree:0, x:0, y:0, vx:0, vy:0};
+      }
+    });
+    map[k.a].degree++; map[k.b].degree++;
+    edges.push({a:map[k.a], b:map[k.b], type:k.type, evidence:k.evidence, date:k.date});
+  });
+  return {nodes:Object.keys(map).map(function(k){return map[k];}), edges:edges};
+}
+function graphTick(){
+  var nodes=graph.nodes, edges=graph.edges, i, j, a, b, dx, dy, d, f;
+  for(i=0;i<nodes.length;i++){ a=nodes[i];
+    for(j=i+1;j<nodes.length;j++){ b=nodes[j];
+      dx=a.x-b.x; dy=a.y-b.y; d=Math.sqrt(dx*dx+dy*dy)||1;
+      f=Math.min(9000/(d*d),2.4);
+      dx/=d; dy/=d;
+      a.vx+=dx*f; a.vy+=dy*f; b.vx-=dx*f; b.vy-=dy*f;
+    }
+    a.vx+=(graph.W/2-a.x)*0.012; a.vy+=(graph.H/2-a.y)*0.012;
+  }
+  edges.forEach(function(e){
+    a=e.a; b=e.b; dx=b.x-a.x; dy=b.y-a.y; d=Math.sqrt(dx*dx+dy*dy)||1;
+    f=(d-150)*0.02; dx/=d; dy/=d;
+    a.vx+=dx*f; a.vy+=dy*f; b.vx-=dx*f; b.vy-=dy*f;
+  });
+  var max=0;
+  nodes.forEach(function(n){
+    n.vx*=0.82; n.vy*=0.82;
+    n.x+=n.vx; n.y+=n.vy;
+    n.x=Math.max(40,Math.min(graph.W-40,n.x));
+    n.y=Math.max(26,Math.min(graph.H-26,n.y));
+    max=Math.max(max,Math.abs(n.vx)+Math.abs(n.vy));
+  });
+  return max;
+}
+function trunc(s,n){ s=String(s); return s.length>n?s.slice(0,n-1)+"…":s; }
+function graphFocus(){ return graph.pinned||graph.hover; }
+function graphDim(n){
+  var f=graphFocus();
+  if(!f) return 1;
+  if(n===f) return 1;
+  for(var i=0;i<graph.edges.length;i++){var e=graph.edges[i];
+    if((e.a===f&&e.b===n)||(e.b===f&&e.a===n)) return 1;}
+  return 0.12;
+}
+function graphDraw(t){
+  var cv=document.getElementById("connCanvas");
+  if(!cv) return;
+  var ctx=cv.getContext("2d");
+  if(!ctx) return;
+  var W=graph.W, H=graph.H;
+  ctx.clearRect(0,0,W,H);
+  var hub=null, hd=-1;
+  graph.nodes.forEach(function(n){ if(n.degree>hd){hd=n.degree;hub=n;} });
+  graph.edges.forEach(function(e){
+    var st=EDGE_STYLE[e.type]||EDGE_STYLE["co-tagged"];
+    var al=Math.min(graphDim(e.a),graphDim(e.b));
+    ctx.save(); ctx.globalAlpha=Math.max(0.06,al);
+    ctx.strokeStyle=st.color; ctx.lineWidth=st.width;
+    if(st.dash&&st.dash.length) ctx.setLineDash(st.dash);
+    ctx.beginPath(); ctx.moveTo(e.a.x,e.a.y); ctx.lineTo(e.b.x,e.b.y); ctx.stroke();
+    ctx.restore();
+  });
+  graph.nodes.forEach(function(n){
+    var r=7+n.degree*2.5, al=graphDim(n), col=NODE_REGION_COLOR[n.region]||"#d8b98a";
+    var f=graphFocus();
+    ctx.save(); ctx.globalAlpha=al;
+    if(n===hub && !window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      var pr=r+7+3*Math.sin((t||0)/380);
+      ctx.globalAlpha=0.45*al; ctx.strokeStyle=col; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(n.x,n.y,pr,0,6.2832); ctx.stroke();
+      ctx.globalAlpha=al;
+    }
+    if(n===f){ ctx.shadowColor=col; ctx.shadowBlur=16; }
+    ctx.fillStyle=col;
+    ctx.beginPath(); ctx.arc(n.x,n.y,r,0,6.2832); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle="#0a0e14";
+    ctx.font="700 9px ui-monospace,Menlo,monospace";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(String(n.degree),n.x,n.y+0.5);
+    ctx.fillStyle="rgba(232,238,246,"+(0.9*al).toFixed(2)+")";
+    ctx.font="11px -apple-system,'Segoe UI',Roboto,sans-serif";
+    ctx.fillText(trunc(n.name,20),n.x,n.y+r+13);
+    ctx.restore();
+  });
+}
+function graphNodeAt(x,y){
+  var best=null,bd=1e9;
+  graph.nodes.forEach(function(n){
+    var r=7+n.degree*2.5+10;
+    var d=Math.hypot(n.x-x,n.y-y);
+    if(d<r&&d<bd){bd=d;best=n;}
+  });
+  return best;
+}
+function regionLabel(r){ return r==="slc"?"St. Lawrence Co.":r==="adjacent"?"Adjacent county":r==="unconfirmed"?"Unconfirmed":"Not on roster"; }
+function graphTip(n,x,y){
+  var tip=document.getElementById("graphTip");
+  if(!tip) return;
+  if(!n){ tip.style.display="none"; return; }
+  var links=graph.edges.filter(function(e){return e.a===n||e.b===n;}).map(function(e){
+    var o=e.a===n?e.b:e.a;
+    return '<div class="gt-link">'+pill(CONN_LABELS[e.type]||e.type,CONN_COLORS[e.type]||"gray")
+      +' <b>'+esc(o.name)+"</b>"
+      +(e.date?' <span class="subtle">'+shortDate(e.date)+"</span>":"")+"</div>";
+  }).join("");
+  tip.innerHTML='<div class="gt-name">'+esc(n.name)+"</div>"
+    +'<div class="gt-sub">'+esc(regionLabel(n.region))+" · "+n.degree+" link"+(n.degree===1?"":"s")+"</div>"+links;
+  tip.style.display="block";
+  var wrap=document.getElementById("graphWrap");
+  var ww=wrap?wrap.clientWidth:400;
+  tip.style.left=Math.min(Math.max(8,x+16),Math.max(8,ww-200))+"px";
+  tip.style.top=Math.max(8,y-12)+"px";
+}
+function graphPos(ev,cv){
+  var r=cv.getBoundingClientRect();
+  var t=ev.touches&&ev.touches[0]?ev.touches[0]:ev;
+  return {x:t.clientX-r.left, y:t.clientY-r.top};
+}
+function sizeGraph(){
+  var wrap=document.getElementById("graphWrap"), cv=document.getElementById("connCanvas");
+  if(!wrap||!cv) return;
+  var w=wrap.clientWidth, h=wrap.clientHeight, dpr=window.devicePixelRatio||1;
+  if(!w||!h) return;
+  cv.width=w*dpr; cv.height=h*dpr;
+  cv.style.width=w+"px"; cv.style.height=h+"px";
+  var ctx=cv.getContext("2d");
+  if(ctx) ctx.setTransform(dpr,0,0,dpr,0,0);
+  graph.W=w; graph.H=h;
+}
+function graphLoop(t){
+  if(!graph.running) return;
+  graphTick();
+  graphDraw(t||0);
+  graph.raf=requestAnimationFrame(graphLoop);
+}
+function startGraph(){
+  var cv=document.getElementById("connCanvas");
+  if(!cv||!cv.getContext||!cv.getContext("2d")) return;
+  if(!graph.nodes.length){
+    var b=graphBuild();
+    graph.nodes=b.nodes; graph.edges=b.edges;
+  }
+  sizeGraph();
+  var reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  graph.nodes.forEach(function(n){
+    n.x=graph.W*0.2+Math.random()*graph.W*0.6;
+    n.y=graph.H*0.2+Math.random()*graph.H*0.6;
+    n.vx=0; n.vy=0;
+  });
+  if(reduced){ for(var i=0;i<250;i++) graphTick(); }
+  graph.hover=null; graph.pinned=null;
+  graph.running=true;
+  cancelAnimationFrame(graph.raf);
+  graph.raf=requestAnimationFrame(graphLoop);
+  if(!graph.bound){
+    graph.bound=true;
+    cv.addEventListener("mousemove",function(ev){
+      var p=graphPos(ev,cv), n=graphNodeAt(p.x,p.y);
+      graph.hover=n; graphTip(n,p.x,p.y);
+      cv.style.cursor=n?"pointer":"default";
+    });
+    cv.addEventListener("mouseleave",function(){ graph.hover=null; graphTip(null); });
+    cv.addEventListener("click",function(ev){
+      var p=graphPos(ev,cv), n=graphNodeAt(p.x,p.y);
+      graph.pinned=(n&&graph.pinned!==n)?n:null;
+      if(n) graphTip(n,p.x,p.y); else graphTip(null);
+    });
+    cv.addEventListener("touchstart",function(ev){
+      var p=graphPos(ev,cv), n=graphNodeAt(p.x,p.y);
+      graph.pinned=(n&&graph.pinned!==n)?n:null;
+      graph.hover=n;
+      if(n) graphTip(n,p.x,p.y); else graphTip(null);
+    },{passive:true});
+    window.addEventListener("resize",function(){
+      if(!graph.running) return;
+      sizeGraph();
+    });
+  }
+}
+function stopGraph(){
+  graph.running=false;
+  cancelAnimationFrame(graph.raf);
+  var tip=document.getElementById("graphTip");
+  if(tip) tip.style.display="none";
+}
 function renderConnections(){
   var el=document.getElementById("view-connections");
   var conns=D.connections||[];
   var byName={};
   conns.forEach(function(k){
-    [k.a,k.b].forEach(function(n){
-      (byName[n]=byName[n]||[]).push(k);
-    });
+    [k.a,k.b].forEach(function(n){ (byName[n]=byName[n]||[]).push(k); });
   });
   var names=Object.keys(byName).sort();
+  var typeCounts={};
+  conns.forEach(function(k){ typeCounts[k.type]=(typeCounts[k.type]||0)+1; });
+
   var h='<div class="card"><h2>Collaboration <span class="accent">network</span></h2><p class="hint">'
     +conns.length+' verified connection'+(conns.length===1?"":"s")+' across '+names.length+' photographers. '
-    +'Types: second-shooter · styled-shoot · co-tagged · referral. Nothing is recorded without evidence.</p>';
+    +'Node color = region · edge style = connection type · node number = link count. '
+    +'Hover or tap a node to inspect; click to isolate its network. Nothing is recorded without evidence.</p>'
+    +srcChip(metaDate(),"Field intel");
   if(!conns.length){
     h+='<p class="hint">No verified connections yet. New ones found in the field go through Competitor Intake (or paste them to Luna) and land here after the next sync.</p>';
   }else{
+    h+='<div class="graphwrap" id="graphWrap"><canvas id="connCanvas"></canvas><div class="graphtip" id="graphTip" style="display:none"></div></div>'
+      +'<div class="graphlegend">'
+      +Object.keys(CONN_LABELS).map(function(t){
+        var st=EDGE_STYLE[t];
+        return '<span class="gleg"><span class="gline" style="border-top:'+st.width+'px '+(st.dash&&st.dash.length?"dashed":"solid")+' '+st.color+'"></span>'
+          +esc(CONN_LABELS[t])+' <span class="subtle">'+(typeCounts[t]||0)+"</span></span>";
+      }).join("")
+      +'<span class="gleg"><span class="gnode" style="background:#7dd3fc"></span>SLC</span>'
+      +'<span class="gleg"><span class="gnode" style="background:#f59e0b"></span>Adjacent</span>'
+      +'<span class="gleg"><span class="gnode" style="background:#94a3b8"></span>Unconfirmed</span>'
+      +'<span class="gleg"><span class="gnode" style="background:#d8b98a"></span>Not on roster</span>'
+      +"</div>";
+  }
+  h+="</div>";
+
+  if(conns.length){
+    h+='<div class="card"><h2>Connection <span class="accent">detail</span></h2><p class="hint">Every link, grouped by photographer, with its evidence.</p>';
     names.forEach(function(n){
       var ks=byName[n];
       h+='<div class="dir-card"><div class="name">'+esc(n)+' <span class="pill blue">'+ks.length+"</span></div>";
       ks.forEach(function(k){
         var other=k.a===n?k.b:k.a;
-        h+='<div class="rowline">'+pill(CONN_LABELS[k.type]||k.type, CONN_COLORS[k.type]||"gray")
+        h+='<div class="rowline">'+pill(CONN_LABELS[k.type]||k.type,CONN_COLORS[k.type]||"gray")
           +'<span>with <b>'+esc(other)+"</b></span>"
           +(k.date?'<span class="subtle">'+shortDate(k.date)+"</span>":"")
           +"</div>"
@@ -781,8 +1151,8 @@ function renderConnections(){
       });
       h+="</div>";
     });
+    h+="</div>";
   }
-  h+="</div>";
   el.innerHTML=h;
 }
 
@@ -791,7 +1161,7 @@ var QUEUE_KEY="pulse_intake_queue";
 function getQueue(){
   try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); }catch(e){ return []; }
 }
-function setQueue(q){ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function setQueue(q){ try{ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }catch(e){} }
 function rosterLine(e){
   var bits=["- "+(e.name||"Unnamed").trim(),
     (e.specialty||"photo").trim(),
@@ -828,6 +1198,7 @@ function renderAdd(){
   function drawQueue(){
     var q=getQueue();
     var host=document.getElementById("queueList");
+    if(!host) return;
     if(!q.length){ host.innerHTML='<p class="hint">Queue is empty.</p>'; return; }
     host.innerHTML='<h3 class="dirsec">Queued ('+q.length+')</h3>'+q.map(function(e,i){
       return '<div class="queueitem"><div><b>'+esc(e.name)+'</b> <span class="subtle">'+esc(e.town||"")+"</span><br>"
@@ -861,6 +1232,7 @@ function renderAdd(){
     var txt=q.map(rosterLine).join("\n")||"(queue is empty)";
     function done(ok){
       var b=document.getElementById("inCopy");
+      if(!b) return;
       b.textContent=ok?"Copied":"Copy failed — select manually";
       setTimeout(function(){b.textContent="Copy as text";},1800);
     }
@@ -892,23 +1264,29 @@ function renderHeader(){
   }
 }
 
-/* ---------- boot: two-tier navigation ---------- */
+/* ---------- boot: navigation + view lifecycle ---------- */
 var RENDERERS={
   overview:renderOverview, signals:renderSignals, recency:renderRecency,
   voice:renderVoice, ig:renderIG, jd:renderJD, pricing:renderPricing,
   directory:renderDirectory, entrants:renderEntrants, connections:renderConnections,
   sweep:renderSweep, ai:renderAI, aiprompts:renderAIByPrompt, add:renderAdd
 };
-var CHART_INITS={ig:initIGChart, jd:initJDChart, ai:initAIChart, aiprompts:initAIByPromptCharts};
-var chartInitDone={};
+var VIEW_START={ig:initIGChart, jd:initJDChart, ai:initAIChart, aiprompts:initAIByPromptCharts, connections:startGraph};
+var VIEW_STOP={connections:stopGraph};
+var viewStarted={}, currentView=null;
 
 function showView(id){
+  if(currentView && VIEW_STOP[currentView]){ try{ VIEW_STOP[currentView](); }catch(e){} }
   document.querySelectorAll(".view").forEach(function(v){v.classList.remove("active");});
   var v=document.getElementById("view-"+id);
   if(v) v.classList.add("active");
   document.querySelectorAll(".navview").forEach(function(b){b.classList.toggle("active",b.dataset.view===id);});
-  if(CHART_INITS[id] && !chartInitDone[id]){ chartInitDone[id]=true; CHART_INITS[id](); }
-  else if(CHART_INITS[id]){ CHART_INITS[id](); }
+  currentView=id;
+  if(VIEW_START[id]){
+    if(!viewStarted[id]){ viewStarted[id]=true; VIEW_START[id](); }
+    else if(id==="connections"){ startGraph(); }
+    else { VIEW_START[id](); }
+  }
   window.scrollTo(0,0);
 }
 function showGroup(g){
