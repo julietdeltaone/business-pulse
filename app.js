@@ -7,6 +7,7 @@ var D = window.PULSE_DATA || null;
 /* ---------- navigation: grouped information architecture ---------- */
 var NAV = [
   {group:"command", label:"Command", views:[
+    {id:"master",   label:"Master Table"},
     {id:"overview", label:"Overview"},
     {id:"signals",  label:"Signals"},
     {id:"recency",  label:"Recency"}]},
@@ -262,6 +263,69 @@ function computeSignals(){
     html:"<b>"+priced.length+"</b> competitors now have linked pricing pages — see Pricing."});
   signals.sort(function(a,b){ return a.date<b.date?1:a.date>b.date?-1:0; });
   return signals;
+}
+/* ---------- MASTER TABLE: dense denormalized data grid, default landing view ---------- */
+var MT_LINK_COLS={"Website":1,"Pricing URL":1};
+function mtCell(col, v){
+  if(v==null||v==="") return "<td></td>";
+  var s=String(v);
+  if(col==="IG Handle") return '<td><a href="https://instagram.com/'+esc(s)+'" target="_blank" rel="noopener">'+esc(s)+"</a></td>";
+  if(MT_LINK_COLS[col]){
+    var url=/^https?:\/\//i.test(s)?s:"https://"+s;
+    return '<td><a href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(s.length>42?s.slice(0,42)+"…":s)+"</a></td>";
+  }
+  if(/\$/.test(col)&&!isNaN(Number(s))) return "<td>$"+Number(s).toLocaleString("en-US")+"</td>";
+  return "<td>"+esc(s)+"</td>";
+}
+function mtRowHtml(T, r){
+  var cls=r[7]==="Excluded"?" class=\"excluded\"":"";
+  return "<tr"+cls+">"+T.columns.map(function(c,i){return mtCell(c,r[i]);}).join("")+"</tr>";
+}
+function mtCsv(T, rows){
+  function q(v){
+    if(v==null) return "";
+    var s=String(v);
+    return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  }
+  var lines=[T.columns.map(q).join(",")];
+  rows.forEach(function(r){ lines.push(r.map(q).join(",")); });
+  return lines.join("\r\n");
+}
+function renderMasterTable(){
+  var el=document.getElementById("view-master");
+  var T=D.masterTable;
+  if(!T||!T.rows){ el.innerHTML='<div class="card"><h2>Master Table</h2><p class="hint">No data.</p></div>'; return; }
+  var h='<div class="card"><h2>Master <span class="accent">data table</span></h2>'
+    +'<p class="hint">'+T.rows.length+" rows × "+T.columns.length
+    +" columns · every tracked data point, one row per competitor (excluded included) · generated "+esc(T.generated_at)+"</p>"
+    +'<div class="mtcontrols"><input id="mtSearch" type="search" placeholder="Filter rows…" autocomplete="off" aria-label="Filter rows">'
+    +'<button class="btn sm" id="mtCsv">Download CSV</button>'
+    +'<span class="hint" id="mtCount"></span></div>'
+    +'<div class="mtwrap"><table class="mtable"><thead><tr>'
+    +T.columns.map(function(c){return "<th>"+esc(c)+"</th>";}).join("")
+    +"</tr></thead><tbody id=\"mtBody\"></tbody></table></div></div>";
+  el.innerHTML=h;
+  var body=document.getElementById("mtBody");
+  var count=document.getElementById("mtCount");
+  function draw(q){
+    q=(q||"").toLowerCase();
+    var rows=q?T.rows.filter(function(r){
+      return r.some(function(v){return v!=null&&String(v).toLowerCase().indexOf(q)>=0;});
+    }):T.rows;
+    body.innerHTML=rows.map(function(r){return mtRowHtml(T,r);}).join("");
+    count.textContent=rows.length+" of "+T.rows.length+" rows";
+    return rows;
+  }
+  var shown=draw("");
+  document.getElementById("mtSearch").addEventListener("input",function(e){ shown=draw(e.target.value); });
+  document.getElementById("mtCsv").addEventListener("click",function(){
+    var blob=new Blob([mtCsv(T,shown)],{type:"text/csv;charset=utf-8"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="business-pulse-master-table-"+T.generated_at+".csv";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },400);
+  });
 }
 function renderSignals(){
   var el=document.getElementById("view-signals");
@@ -1268,6 +1332,7 @@ function renderHeader(){
 
 /* ---------- boot: navigation + view lifecycle ---------- */
 var RENDERERS={
+  master:renderMasterTable,
   overview:renderOverview, signals:renderSignals, recency:renderRecency,
   voice:renderVoice, ig:renderIG, jd:renderJD, pricing:renderPricing,
   directory:renderDirectory, entrants:renderEntrants, connections:renderConnections,
@@ -1319,7 +1384,7 @@ function boot(){
     b.addEventListener("click",function(){ showGroup(b.dataset.group); });
   });
   showGroup("command");
-  showView("overview");
+  showView("master");
 }
 if(!D){
   document.getElementById("loading").innerHTML="Pulse data not found (data/data.js missing).";
