@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Pulse — Competitor Intel Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="topbar">
+  <h1>Business Pulse</h1>
+  <div class="sub">JD Meyers Productions — competitor intelligence, all routines in one place</div>
+  <div class="gen" id="generatedAt">loading…</div>
+</div>
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-view="overview">Overview</button>
+  <button class="tab" data-view="ig">Competitor IG Trends</button>
+  <button class="tab" data-view="jd">JD vs Competitors</button>
+  <button class="tab" data-view="sweep">Website Sweeps</button>
+  <button class="tab" data-view="ai">AI Visibility</button>
+  <button class="tab" data-view="directory">Directory</button>
+</nav>
+<main>
+  <div class="loading" id="loading">Loading pulse data…</div>
+  <section class="view active" id="view-overview"></section>
+  <section class="view" id="view-ig"></section>
+  <section class="view" id="view-jd"></section>
+  <section class="view" id="view-sweep"></section>
+  <section class="view" id="view-ai"></section>
+  <section class="view" id="view-directory"></section>
+</main>
+<footer>Business Pulse · auto-synced daily after the morning digest · data: competitor sweeps, IG snapshots, AI audits</footer>
+<script src="data/data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
