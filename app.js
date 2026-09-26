@@ -1,8 +1,30 @@
-/* Business Pulse dashboard — dark theme, Chart.js animated charts.
-   Renders window.PULSE_DATA (injected via data/data.js). */
+/* Business Pulse dashboard — dark cyber-military theme, Chart.js animated charts.
+   Renders window.PULSE_DATA (injected via data/data.js). No green anywhere. */
 (function(){
 "use strict";
 var D = window.PULSE_DATA || null;
+
+/* ---------- navigation: grouped information architecture ---------- */
+var NAV = [
+  {group:"command", label:"Command", views:[
+    {id:"overview", label:"Overview"},
+    {id:"signals",  label:"Signals"},
+    {id:"recency",  label:"Recency"}]},
+  {group:"market", label:"Market", views:[
+    {id:"voice",       label:"Share of Voice"},
+    {id:"ig",          label:"Competitor IG Trends"},
+    {id:"jd",          label:"JD vs Competitors"},
+    {id:"pricing",     label:"Pricing"},
+    {id:"directory",   label:"Directory"},
+    {id:"entrants",    label:"New Entrants"},
+    {id:"connections", label:"Connections"}]},
+  {group:"intel", label:"Intel", views:[
+    {id:"sweep",     label:"Website Sweeps"},
+    {id:"ai",        label:"AI Visibility"},
+    {id:"aiprompts", label:"AI by Prompt"}]},
+  {group:"add", label:"Add", views:[
+    {id:"add", label:"Competitor Intake"}]}
+];
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
@@ -13,8 +35,27 @@ function deltaPill(n){
   if(n<0) return '<span class="delta-dn">'+n.toLocaleString("en-US")+"</span>";
   return '<span class="delta-0">0</span>';
 }
-function shortDate(d){ var p=String(d).split("-"); var m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return m[+p[1]-1]+" "+(+p[2]); }
+function shortDate(d){ if(!d) return "—"; var p=String(d).split("-"); var m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return m[+p[1]-1]+" "+(+p[2]); }
 function shortTick(d){ var p=String(d).split("-"); return (+p[1])+"/"+(+p[2]); }
+function daysAgo(d){
+  if(!d) return null;
+  var a=new Date(d+"T12:00:00"), b=new Date();
+  return Math.round((b-a)/86400000);
+}
+function siteLink(url){
+  if(!url) return "";
+  return '<a href="https://'+esc(url)+'" target="_blank" rel="noopener">Website</a>';
+}
+function igLink(handle){
+  if(!handle) return "";
+  return '<a href="https://instagram.com/'+esc(handle)+'" target="_blank" rel="noopener">Instagram</a>';
+}
+
+var SOURCE_COLORS={
+  "Web search":"blue","Instagram":"tan","Facebook":"blue","Referral":"amber",
+  "AI audit":"red","Client mention":"amber","Other":"gray"
+};
+function sourcePill(label){ return pill(label||"Other", SOURCE_COLORS[label]||"gray"); }
 
 var CHART_COLORS=["#7dd3fc","#f59e0b","#d8b98a","#f87171","#94a3b8","#38bdf8","#fbbf24","#e2e8f0"];
 var GRID="rgba(139,152,169,.12)", TICK="#8b98a9";
@@ -55,7 +96,6 @@ function baseOptions(ymin, ymax){
     }
   };
 }
-/* minimal static SVG fallback when the Chart.js CDN is unreachable */
 function svgLine(series){
   var W=760,H=300,padL=52,padR=8,padT=14,padB=30;
   var xs=[],seen={};
@@ -101,7 +141,6 @@ function makeLineChart(canvasId, series, opts){
       pointBackgroundColor:col, tension:0.28, spanGaps:true,
       borderDash:s.dashed?[7,5]:[], fill:s.fill?"origin":false};
   });
-  // gradient fill for filled datasets
   var o=baseOptions(ymin,ymax);
   if(opts.yTick) o.scales.y.ticks.callback=opts.yTick;
   var chart=new Chart(host.getContext("2d"),{type:"line",data:{labels:labels.map(shortTick),datasets:datasets},options:o});
@@ -109,9 +148,10 @@ function makeLineChart(canvasId, series, opts){
 }
 
 /* ---------- shared lookups ---------- */
-var compByHandle={};
-(D?D.competitors:[]).forEach(function(c){ if(c.ig_handle) compByHandle[c.ig_handle]=c; });
+var compByHandle={}, compById={};
+(D?D.competitors:[]).forEach(function(c){ compById[c.id]=c; if(c.ig_handle) compByHandle[c.ig_handle]=c; });
 function handleName(h){ return compByHandle[h]?compByHandle[h].name:"@"+h; }
+function compName(id){ return compById[id]?compById[id].name:id; }
 
 var RUN_ORDER={baseline:0,daily:1,"daily-evening":2,"daily-midday":3};
 function runKey(r){ return r.date+" "+(RUN_ORDER[r.run]||0); }
@@ -136,30 +176,50 @@ function latestAIRun(){
   var pct=sc.length?Math.round(100*sc.reduce(function(a,b){return a+b;},0)/sc.length):null;
   return {date:last.date, engines:engines, pct:pct};
 }
+function aiRuns(){
+  var runs={};
+  D.aiVisibility.forEach(function(r){ var k=runKey(r); (runs[k]=runs[k]||{date:r.date,run:r.run,rows:[]}).rows.push(r); });
+  var keys=Object.keys(runs).sort();
+  keys.forEach(function(k){ var r0=runs[k].rows[0];
+    runs[k].label=shortDate(runs[k].date)+(r0.run==="daily"?"":(" · "+r0.run.replace("daily-",""))); });
+  return {runs:runs, keys:keys};
+}
+var PROMPTS=[
+  "best wedding videographer St. Lawrence County NY",
+  "best wedding photographer Potsdam NY",
+  "drone photographer for real estate North Country NY",
+  "how much does wedding photography and videography cost in St. Lawrence County NY",
+  "family photographer Potsdam NY"
+];
+var PROMPT_SHORT=["Wedding video · SLC","Wedding photo · Potsdam","Drone real estate · N. Country","Cost photo+video · SLC","Family photo · Potsdam"];
+var ENGINES=["ChatGPT","Claude","Gemini","Perplexity"];
+var ENGINE_COLORS={ChatGPT:"#7dd3fc",Claude:"#f59e0b",Gemini:"#d8b98a",Perplexity:"#f87171"};
 
 /* ---------- OVERVIEW ---------- */
 function renderOverview(){
   var el=document.getElementById("view-overview");
   var comps=D.competitors, sweeps=D.webSweepHistory.slice().sort(function(a,b){return a.date<b.date?-1:1;});
   var slc=comps.filter(function(c){return c.region==="slc";}).length;
+  var adjacent=comps.filter(function(c){return c.region==="adjacent";}).length;
   var withIG=comps.filter(function(c){return c.ig_handle;}).length;
+  var withPricing=comps.filter(function(c){return c.pricing;}).length;
   var newEntrants=[]; sweeps.forEach(function(s){ (s.new_entrants||[]).forEach(function(n){newEntrants.push({date:s.date,name:n});}); });
   var latestSweep=sweeps[sweeps.length-1]||null;
   var latestAI=latestAIRun();
 
   var statCards=[
-    {k:"Competitors tracked", v:comps.length, d:"across SLC + North Country", num:true},
+    {k:"Competitors tracked", v:comps.length, d:"SLC + adjacent counties", num:true},
     {k:"SLC-confirmed", v:slc, d:"St. Lawrence County", num:true},
+    {k:"Adjacent counties", v:adjacent, d:"Franklin · Jefferson · Lewis · Clinton · Essex +", num:true},
     {k:"With verified IG", v:withIG, d:"in the follower tracker", num:true},
-    {k:"New entrants", v:newEntrants.length, d:"added since first sweep", num:true},
-    {k:"Latest web sweep", v:latestSweep?shortDate(latestSweep.date):"—", d:latestSweep?("fetched "+latestSweep.fetched+" of "+latestSweep.of_total+" pages"):"", num:false},
+    {k:"With pricing intel", v:withPricing, d:"public pricing captured", num:true},
     {k:"AI visibility", v:latestAI?latestAI.pct:"—", d:latestAI?("prompts naming JD · "+shortDate(latestAI.date)):"", num:!!latestAI, suffix:"%"}
   ];
   var h='<div class="grid">'+statCards.map(function(s,i){
     return '<div class="stat"><div class="k">'+esc(s.k)+'</div><div class="v"'+(s.num?' data-count="'+s.v+'" data-suffix="'+(s.suffix||"")+'" id="stat-'+i+'"':"")+'>'
       +(s.num?"0":esc(String(s.v)))+'</div><div class="d">'+esc(s.d)+"</div></div>"; }).join("")+"</div>";
 
-  h+='<div class="card"><h2><span class="accent">Latest</span> changes</h2><p class="hint">What moved most recently across every routine.</p><ul class="plain">';
+  h+='<div class="card"><h2><span class="accent">Latest</span> changes</h2><p class="hint">What moved most recently across every routine. Full detail lives under Signals.</p><ul class="plain">';
   newEntrants.slice(-5).reverse().forEach(function(n){
     h+="<li>"+pill("New entrant","blue")+" <b>"+esc(n.name)+"</b> — added "+shortDate(n.date)+"</li>"; });
   var changed=[], unreach=[];
@@ -196,6 +256,147 @@ function renderOverview(){
   statCards.forEach(function(s,i){
     if(s.num){ var n=document.getElementById("stat-"+i); if(n) countUp(n, s.v, s.suffix||""); }
   });
+}
+
+/* ---------- SIGNALS: change alerts ---------- */
+function renderSignals(){
+  var el=document.getElementById("view-signals");
+  var signals=[];
+  var today=new Date();
+
+  // 1. New entrants (discovered in last 14 days)
+  D.competitors.forEach(function(c){
+    if(!c.discovered_date) return;
+    var d=daysAgo(c.discovered_date);
+    if(d!=null && d<=14){
+      signals.push({date:c.discovered_date, cls:"blue", type:"New entrant",
+        html:"<b>"+esc(c.name)+"</b> joined the roster — "+esc(c.town)+". Source: "+esc(c.source_label)+"."});
+    }
+  });
+
+  // 2. IG movers: biggest gain and biggest loss, first to latest snapshot
+  var movers=Object.keys(D.igFollowersHistory).map(function(handle){
+    var pts=D.igFollowersHistory[handle]; var first=pts[0], last=pts[pts.length-1];
+    return {handle:handle, delta:last.count-first.count, date:last.date};
+  }).sort(function(a,b){return b.delta-a.delta;});
+  if(movers.length){
+    var top=movers[0], bot=movers[movers.length-1];
+    if(top.delta>0) signals.push({date:top.date, cls:"blue", type:"IG surge",
+      html:"<b>"+esc(handleName(top.handle))+"</b> gained <b>+"+top.delta.toLocaleString("en-US")+"</b> followers since first snapshot."});
+    if(bot.delta<0) signals.push({date:bot.date, cls:"red", type:"IG slide",
+      html:"<b>"+esc(handleName(bot.handle))+"</b> lost <b>"+bot.delta.toLocaleString("en-US")+"</b> followers since first snapshot."});
+  }
+
+  // 3. Latest sweep: changed / unreachable pages
+  var sweeps=D.webSweepHistory.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  var latest=sweeps[sweeps.length-1];
+  if(latest){
+    Object.keys(latest.pages||{}).forEach(function(sl){
+      var p=latest.pages[sl]||{};
+      if(p.status==="changed") signals.push({date:latest.date, cls:"amber", type:"Site changed",
+        html:"<b>"+esc(sl)+"</b> changed on the latest sweep — "+esc(p.note||"no note")+"."});
+    });
+    var unreachCount=Object.keys(latest.pages||{}).filter(function(sl){return (latest.pages[sl]||{}).status==="unreachable";}).length;
+    if(unreachCount) signals.push({date:latest.date, cls:"red", type:"Unreachable",
+      html:"<b>"+unreachCount+"</b> sweep pages unreachable on "+shortDate(latest.date)+" — see Website Sweeps."});
+  }
+
+  // 4. AI visibility: engines naming JD on zero prompts in latest run
+  var lastAI=latestAIRun();
+  if(lastAI){
+    lastAI.engines.forEach(function(e){
+      if(e.score===0) signals.push({date:lastAI.date, cls:"red", type:"AI blind spot",
+        html:"<b>"+esc(e.engine)+"</b> named JD on 0 of "+esc(e.namedLabel)+" prompts in the latest audit."});
+    });
+  }
+
+  // 5. Fresh pricing intel
+  var priced=D.competitors.filter(function(c){return c.pricing_url;});
+  if(priced.length) signals.push({date:"2026-09-26", cls:"tan", type:"Pricing intel",
+    html:"<b>"+priced.length+"</b> competitors now have linked pricing pages — see Pricing."});
+
+  signals.sort(function(a,b){ return a.date<b.date?1:a.date>b.date?-1:0; });
+
+  var h='<div class="card"><h2>Change <span class="accent">signals</span></h2><p class="hint">'
+    +signals.length+' active signals across roster, IG, sweeps, pricing, and AI visibility.</p><ul class="plain">';
+  signals.forEach(function(s){
+    h+="<li>"+pill(s.type,s.cls)+" "+s.html+' <span class="subtle">'+shortDate(s.date)+"</span></li>";
+  });
+  h+="</ul></div>";
+  el.innerHTML=h;
+}
+
+/* ---------- RECENCY: last-post tracking with activity bands ---------- */
+function bandFor(d){
+  if(d==null) return {label:"Unknown", cls:"gray"};
+  if(d<7) return {label:"Active", cls:"blue"};
+  if(d<=30) return {label:"Quiet", cls:"tan"};
+  return {label:"Dormant", cls:"red"};
+}
+function renderRecency(){
+  var el=document.getElementById("view-recency");
+  var rows=D.competitors.map(function(c){
+    var d=daysAgo(c.last_post_date);
+    return {c:c, days:d, band:bandFor(d)};
+  });
+  rows.sort(function(a,b){
+    if(a.days==null && b.days==null) return a.c.name<b.c.name?-1:1;
+    if(a.days==null) return 1;
+    if(b.days==null) return -1;
+    return a.days-b.days;
+  });
+  var counts={Active:0,Quiet:0,Dormant:0,Unknown:0};
+  rows.forEach(function(r){ counts[r.band.label]++; });
+
+  var h='<div class="card"><h2>Posting <span class="accent">recency</span></h2><p class="hint">'
+    +'Days since each competitor\u2019s last Instagram post. Bands: Active &lt; 7 days · Quiet 7–30 · Dormant &gt; 30 · Unknown = not yet collected.</p>'
+    +'<div class="controls">'
+    +pill(counts.Active+" Active","blue")+pill(counts.Quiet+" Quiet","tan")
+    +pill(counts.Dormant+" Dormant","red")+pill(counts.Unknown+" Unknown","gray")
+    +"</div>"
+    +'<div class="tablewrap"><table class="rows"><thead><tr><th>Competitor</th><th>Last post</th><th class="num">Days ago</th><th>Type</th><th>Topic</th><th>Band</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    var c=r.c;
+    h+="<tr><td><b>"+esc(c.name)+"</b>"+(c.ig_handle?'<br><span class="subtle">@'+esc(c.ig_handle)+"</span>":"")+"</td>"
+      +"<td>"+(c.last_post_date?shortDate(c.last_post_date):"—")+'</td><td class="num">'
+      +(r.days==null?"—":r.days)+"</td><td>"+esc(c.last_post_type||"—")+"</td>"
+      +"<td>"+esc(c.last_post_topic||"—")+"</td><td>"+pill(r.band.label,r.band.cls)+"</td></tr>";
+  });
+  h+="</tbody></table></div></div>";
+  el.innerHTML=h;
+}
+
+/* ---------- SHARE OF VOICE ---------- */
+function renderVoice(){
+  var el=document.getElementById("view-voice");
+  var ents=[];
+  var byAcct={};
+  D.ownAccounts.forEach(function(r){ (byAcct[r.account]=byAcct[r.account]||[]).push(r); });
+  var acctLabels={jdmeyers_:"JD · personal",jdmeyersproductions:"JD · Productions",fourierxform:"JD · FourierXForm"};
+  Object.keys(byAcct).forEach(function(a){
+    var pts=byAcct[a].sort(function(p,q){return p.date<q.date?-1:1;});
+    ents.push({name:acctLabels[a]||("JD · "+a), handle:"@"+a, count:pts[pts.length-1].follower_count, jd:true});
+  });
+  Object.keys(D.igFollowersHistory).forEach(function(handle){
+    var pts=D.igFollowersHistory[handle];
+    ents.push({name:handleName(handle), handle:"@"+handle, count:pts[pts.length-1].count, jd:false});
+  });
+  var total=ents.reduce(function(a,e){return a+e.count;},0);
+  ents.forEach(function(e){ e.share=total?100*e.count/total:0; });
+  ents.sort(function(a,b){return b.count-a.count;});
+  var jdTotal=ents.filter(function(e){return e.jd;}).reduce(function(a,e){return a+e.count;},0);
+
+  var h='<div class="card"><h2>Share of <span class="accent">voice</span></h2><p class="hint">'
+    +'Follower share across '+ents.length+' tracked accounts (JD\u2019s 3 + '+Object.keys(D.igFollowersHistory).length+' competitors). '
+    +'JD\u2019s combined audience: <b>'+jdTotal.toLocaleString("en-US")+"</b> ("+(total?Math.round(100*jdTotal/total):0)+'% of tracked audience).</p>';
+  ents.forEach(function(e){
+    var w=Math.max(2,e.share);
+    h+='<div class="sovrow"><div class="sovhead"><span class="sovname">'+(e.jd?'<b class="jdmark">'+esc(e.name)+"</b>":esc(e.name))
+      +'</span><span class="sovmeta">'+esc(e.handle)+" · "+e.count.toLocaleString("en-US")+" · "+e.share.toFixed(1)+'%</span></div>'
+      +'<div class="sovbar"><div class="sovfill'+(e.jd?" jd":"")+'" style="width:'+w.toFixed(1)+'%"></div></div></div>';
+  });
+  h+="</div>";
+  el.innerHTML=h;
 }
 
 /* ---------- IG TRENDS ---------- */
@@ -320,23 +521,10 @@ function renderSweep(){
 }
 
 /* ---------- AI VISIBILITY ---------- */
-var ENGINES=["ChatGPT","Claude","Gemini","Perplexity"];
-var ENGINE_COLORS={ChatGPT:"#7dd3fc",Claude:"#f59e0b",Gemini:"#d8b98a",Perplexity:"#f87171"};
-var PROMPT_SHORT=["Wedding video · SLC","Wedding photo · Potsdam","Drone real estate · N. Country","Cost photo+video · SLC","Family photo · Potsdam"];
 var aiChart=null;
-function aiRuns(){
-  var runs={};
-  D.aiVisibility.forEach(function(r){ var k=runKey(r); (runs[k]=runs[k]||{date:r.date,run:r.run,rows:[]}).rows.push(r); });
-  var keys=Object.keys(runs).sort();
-  keys.forEach(function(k){ var r0=runs[k].rows[0];
-    runs[k].label=shortDate(runs[k].date)+(r0.run==="daily"?"":(" · "+r0.run.replace("daily-",""))); });
-  return {runs:runs, keys:keys};
-}
 function renderAI(){
   var el=document.getElementById("view-ai");
   var rr=aiRuns(), runs=rr.runs, runKeys=rr.keys;
-  var PROMPTS=[];
-  D.aiVisibility.forEach(function(r){ if(PROMPTS.indexOf(r.prompt)<0) PROMPTS.push(r.prompt); });
 
   var h='<div class="card"><h2>JD named — <span class="accent">% of prompts</span>, by engine</h2><p class="hint">Share of reachable prompts per run where JD was named (partial = half credit).</p>'
     +'<div class="chartwrap"><canvas id="aiCanvas"></canvas></div></div>';
@@ -407,12 +595,78 @@ function initAIChart(){
     yTick:function(v){return v+"%";}});
 }
 
-/* ---------- DIRECTORY ---------- */
+/* ---------- AI BY PROMPT: per-prompt trend + rivals ---------- */
+var aipCharts=[];
+function renderAIByPrompt(){
+  var el=document.getElementById("view-aiprompts");
+  var rr=aiRuns(), runs=rr.runs, runKeys=rr.keys;
+  var lastK=runKeys[runKeys.length-1];
+  var h="";
+  PROMPTS.forEach(function(ptext,pi){
+    var pts=runKeys.map(function(k){
+      var rs=runs[k].rows.filter(function(r){return r.prompt===ptext && r.jd_named!=="unreachable";});
+      if(!rs.length) return null;
+      var sc=rs.reduce(function(a,r){return a+(r.jd_named==="yes"?1:r.jd_named==="partial"?0.5:0);},0);
+      return {x:runs[k].label, y:Math.round(100*sc/rs.length)};
+    }).filter(Boolean);
+    var rivals={}, ranks=[];
+    runs[lastK].rows.filter(function(r){return r.prompt===ptext;}).forEach(function(r){
+      (r.rivals||[]).forEach(function(rv){ rivals[rv]=(rivals[rv]||[]).concat([r.engine]); });
+      if(r.jd_named==="yes"&&r.jd_rank!=null) ranks.push(r.engine+" #"+r.jd_rank);
+    });
+    var rnames=Object.keys(rivals);
+    h+='<div class="card"><h2>P'+(pi+1)+" — "+esc(PROMPT_SHORT[pi]||ptext)+'</h2>'
+      +'<p class="hint">'+esc(ptext)+"</p>"
+      +'<div class="chartwrap" style="height:200px"><canvas id="aipCanvas-'+pi+'"></canvas></div>'
+      +'<div class="rowline">'
+      +(ranks.length?pill("JD: "+ranks.join(", "),"blue"):pill("JD not named","red"))
+      +"</div>"
+      +(rnames.length?'<p class="hint" style="margin:8px 0 0">Rivals named latest run: '+rnames.map(function(rv){return "<b>"+esc(rv)+"</b> ("+esc(rivals[rv].join(", "))+")";}).join("; ")+"</p>"
+        :'<p class="hint" style="margin:8px 0 0">No rivals named on the latest run.</p>')
+      +"</div>";
+  });
+  el.innerHTML=h||'<div class="card"><p class="hint">No AI audit data yet.</p></div>';
+  aipCharts=runKeys.map(function(){return null;});
+}
+function initAIByPromptCharts(){
+  var rr=aiRuns(), runs=rr.runs, runKeys=rr.keys;
+  PROMPTS.forEach(function(ptext,pi){
+    if(aipCharts[pi]){ aipCharts[pi].resize(); return; }
+    var pts=runKeys.map(function(k){
+      var rs=runs[k].rows.filter(function(r){return r.prompt===ptext && r.jd_named!=="unreachable";});
+      if(!rs.length) return null;
+      var sc=rs.reduce(function(a,r){return a+(r.jd_named==="yes"?1:r.jd_named==="partial"?0.5:0);},0);
+      return {x:runs[k].label, y:Math.round(100*sc/rs.length)};
+    }).filter(Boolean);
+    aipCharts[pi]=makeLineChart("aipCanvas-"+pi, [{label:"JD named %", color:"#7dd3fc", bold:true, points:pts}],
+      {min:0, max:100, padPct:0.08, yTick:function(v){return v+"%";}});
+  });
+}
+
+/* ---------- PRICING TRACKER ---------- */
+function renderPricing(){
+  var el=document.getElementById("view-pricing");
+  var list=D.competitors.filter(function(c){return c.pricing;})
+    .sort(function(a,b){return a.name<b.name?-1:1;});
+  var h='<div class="card"><h2>Pricing <span class="accent">tracker</span></h2><p class="hint">'
+    +list.length+' of '+D.competitors.length+' competitors publish pricing. '
+    +'“View pricing” opens the verified pricing page. Intel captured from public sites and IG bio links.</p>'
+    +'<div class="tablewrap"><table class="rows"><thead><tr><th>Competitor</th><th>Location</th><th>Pricing</th><th>Source page</th></tr></thead><tbody>';
+  list.forEach(function(c){
+    h+="<tr><td><b>"+esc(c.name)+"</b>"+(c.ig_handle?'<br><span class="subtle">@'+esc(c.ig_handle)+"</span>":"")+"</td>"
+      +"<td>"+esc(c.town)+"</td><td>"+esc(c.pricing)+"</td><td>"
+      +(c.pricing_url?'<a href="'+esc(c.pricing_url)+'" target="_blank" rel="noopener">View pricing</a>':"<span class=\"subtle\">—</span>")
+      +"</td></tr>";
+  });
+  h+="</tbody></table></div></div>";
+  el.innerHTML=h;
+}
+
+/* ---------- DIRECTORY: SLC / adjacent / unconfirmed subsections ---------- */
 function renderDirectory(){
   var el=document.getElementById("view-directory");
   var h='<div class="card"><h2>Competitor <span class="accent">directory</span></h2><p class="hint">'+D.competitors.length+' tracked competitors. Search and filter the full roster.</p>'
-    +'<div class="controls"><input type="text" id="dirQ" placeholder="Search name, town, notes…">'
-    +'<select id="dirRegion"><option value="">All regions</option><option value="slc">SLC-confirmed</option><option value="neighboring">Neighboring</option><option value="unconfirmed">Unconfirmed</option></select>'
+    +'<div class="controls"><input type="text" id="dirQ" placeholder="Search name, town, county, notes…">'
     +'<select id="dirSpec"><option value="">All specialties</option><option value="photo">Photo</option><option value="video">Video</option><option value="both">Photo + Video</option><option value="drone">Drone</option></select>'
     +'<select id="dirStatus"><option value="">Any status</option><option value="active">Active</option><option value="uncertain">Uncertain</option></select>'
     +'<label class="chk"><input type="checkbox" class="vh" id="dirPrice"> Has pricing</label></div>'
@@ -423,39 +677,53 @@ function renderDirectory(){
   el.innerHTML=h;
 
   var specPill={photo:["Photo","blue"],video:["Video","tan"],both:["Photo+Video","tan"],drone:["Drone","amber"]};
-  var regPill={slc:["SLC","blue"],neighboring:["Neighboring","tan"],unconfirmed:["Unconfirmed","gray"]};
+  function card(c){
+    var sp=specPill[c.specialty]||[c.specialty,"gray"];
+    var links=[];
+    if(c.website) links.push(siteLink(c.website));
+    if(c.ig_handle) links.push(igLink(c.ig_handle));
+    if(c.pricing_url) links.push('<a href="'+esc(c.pricing_url)+'" target="_blank" rel="noopener">Pricing</a>');
+    return '<div class="dir-card"><div class="name">'+esc(c.name)+'</div>'
+      +'<div class="meta">'+esc(c.town)+(c.county&&c.county!=="unknown"?' <span class="subtle">· '+esc(c.county)+" Co.</span>":"")+"</div>"
+      +'<div class="rowline">'+pill(sp[0],sp[1])
+      +pill(c.status==="active"?"Active":"Uncertain",c.status==="active"?"blue":"amber")
+      +sourcePill(c.source_label)
+      +(c.pricing?'<span class="pricing">'+esc(c.pricing)+"</span>":"")
+      +(c.may2026_web_score!=null?pill("May 2026 score: "+c.may2026_web_score,"gray"):"")+"</div>"
+      +(links.length?'<div class="rowline">'+links.join(" · ")+"</div>":"")
+      +(c.notes?'<div class="notes">'+esc(c.notes)+"</div>":"")
+      +((c.flags||[]).length?'<div class="rowline">'+c.flags.map(function(f){return pill(f,"gray");}).join("")+"</div>":"")
+      +"</div>";
+  }
+  var SECTIONS=[
+    {region:"slc", title:"St. Lawrence County", sub:"Confirmed in-county operators"},
+    {region:"adjacent", title:"Adjacent counties", sub:"Franklin · Jefferson · Lewis · Clinton · Essex · Hamilton · Herkimer"},
+    {region:"unconfirmed", title:"Location unconfirmed", sub:"Kept on the roster without guessing a county"}
+  ];
   function draw(){
     var q=document.getElementById("dirQ").value.toLowerCase(),
-        rg=document.getElementById("dirRegion").value,
         sp=document.getElementById("dirSpec").value,
         st=document.getElementById("dirStatus").value,
         pr=document.getElementById("dirPrice").checked;
-    var list=D.competitors.filter(function(c){
-      if(rg&&c.region!==rg) return false;
+    function match(c){
       if(sp&&c.specialty!==sp) return false;
       if(st&&c.status!==st) return false;
       if(pr&&!c.pricing) return false;
-      if(q){ var blob=(c.name+" "+c.town+" "+(c.notes||"")+" "+(c.ig_handle||"")).toLowerCase(); if(blob.indexOf(q)<0) return false; }
+      if(q){ var blob=(c.name+" "+c.town+" "+c.county+" "+(c.notes||"")+" "+(c.ig_handle||"")).toLowerCase(); if(blob.indexOf(q)<0) return false; }
       return true;
+    }
+    var total=0, out="";
+    SECTIONS.forEach(function(sec){
+      var list=D.competitors.filter(function(c){return c.region===sec.region && match(c);})
+        .sort(function(a,b){return a.name<b.name?-1:1;});
+      total+=list.length;
+      out+='<h3 class="dirsec">'+esc(sec.title)+' <span class="pill blue">'+list.length+"</span></h3>"
+        +'<p class="hint">'+esc(sec.sub)+"</p>"
+        +(list.length?list.map(card).join(""):'<p class="hint">No matches in this section.</p>');
     });
-    var out='<p class="hint">'+list.length+" of "+D.competitors.length+" shown</p>";
-    out+=list.map(function(c){
-      var sp2=specPill[c.specialty]||[c.specialty,"gray"], rp=regPill[c.region]||[c.region,"gray"];
-      var links=[];
-      if(c.website) links.push('<a href="https://'+esc(c.website)+'" target="_blank" rel="noopener">Website</a>');
-      if(c.ig_handle) links.push('<a href="https://instagram.com/'+esc(c.ig_handle)+'" target="_blank" rel="noopener">Instagram</a>');
-      return '<div class="dir-card"><div class="name">'+esc(c.name)+'</div><div class="meta">'+esc(c.town)+"</div>"
-        +'<div class="rowline">'+pill(sp2[0],sp2[1])+pill(rp[0],rp[1])+pill(c.status==="active"?"Active":"Uncertain",c.status==="active"?"blue":"amber")
-        +(c.pricing?'<span class="pricing">'+esc(c.pricing)+"</span>":"")
-        +(c.may2026_web_score!=null?pill("May 2026 score: "+c.may2026_web_score,"gray"):"")+"</div>"
-        +(links.length?'<div class="rowline">'+links.join(" · ")+"</div>":"")
-        +(c.notes?'<div class="notes">'+esc(c.notes)+"</div>":"")
-        +((c.flags||[]).length?'<div class="rowline">'+c.flags.map(function(f){return pill(f,"gray");}).join("")+"</div>":"")
-        +"</div>";
-    }).join("");
-    document.getElementById("dirList").innerHTML=out;
+    document.getElementById("dirList").innerHTML='<p class="hint">'+total+" of "+D.competitors.length+" shown</p>"+out;
   }
-  ["dirQ","dirRegion","dirSpec","dirStatus"].forEach(function(id){
+  ["dirQ","dirSpec","dirStatus"].forEach(function(id){
     document.getElementById(id).addEventListener(id==="dirQ"?"input":"change",draw);
   });
   var priceBox=document.getElementById("dirPrice"), priceLbl=priceBox.parentElement;
@@ -463,7 +731,150 @@ function renderDirectory(){
   draw();
 }
 
-/* ---------- header: current date + data badge ---------- */
+/* ---------- NEW ENTRANTS ---------- */
+function renderEntrants(){
+  var el=document.getElementById("view-entrants");
+  var list=D.competitors.filter(function(c){return c.discovered_date;})
+    .sort(function(a,b){return a.discovered_date<b.discovered_date?1:-1;});
+  var h='<div class="card"><h2>New <span class="accent">entrants</span></h2><p class="hint">'
+    +list.length+' competitors with a recorded discovery date, newest first.</p>'
+    +'<div class="tablewrap"><table class="rows"><thead><tr><th>Competitor</th><th>Location</th><th>Discovered</th><th>Source</th><th>Specialty</th></tr></thead><tbody>';
+  var specName={photo:"Photo",video:"Video",both:"Photo+Video",drone:"Drone"};
+  list.forEach(function(c){
+    h+="<tr><td><b>"+esc(c.name)+"</b>"+(c.ig_handle?'<br><span class="subtle">@'+esc(c.ig_handle)+"</span>":"")+"</td>"
+      +"<td>"+esc(c.town)+"</td><td>"+shortDate(c.discovered_date)+"</td>"
+      +"<td>"+sourcePill(c.source_label)+"</td><td>"+esc(specName[c.specialty]||c.specialty)+"</td></tr>";
+  });
+  h+="</tbody></table></div></div>";
+  el.innerHTML=h;
+}
+
+/* ---------- CONNECTIONS ---------- */
+var CONN_COLORS={"second-shooter":"blue","styled-shoot":"tan","co-tagged":"amber","referral":"red"};
+var CONN_LABELS={"second-shooter":"Second shooter","styled-shoot":"Styled shoot","co-tagged":"Co-tagged","referral":"Referral"};
+function renderConnections(){
+  var el=document.getElementById("view-connections");
+  var conns=D.connections||[];
+  var byName={};
+  conns.forEach(function(k){
+    [k.a,k.b].forEach(function(n){
+      (byName[n]=byName[n]||[]).push(k);
+    });
+  });
+  var names=Object.keys(byName).sort();
+  var h='<div class="card"><h2>Collaboration <span class="accent">network</span></h2><p class="hint">'
+    +conns.length+' verified connection'+(conns.length===1?"":"s")+' across '+names.length+' photographers. '
+    +'Types: second-shooter · styled-shoot · co-tagged · referral. Nothing is recorded without evidence.</p>';
+  if(!conns.length){
+    h+='<p class="hint">No verified connections yet. New ones found in the field go through Competitor Intake (or paste them to Luna) and land here after the next sync.</p>';
+  }else{
+    names.forEach(function(n){
+      var ks=byName[n];
+      h+='<div class="dir-card"><div class="name">'+esc(n)+' <span class="pill blue">'+ks.length+"</span></div>";
+      ks.forEach(function(k){
+        var other=k.a===n?k.b:k.a;
+        h+='<div class="rowline">'+pill(CONN_LABELS[k.type]||k.type, CONN_COLORS[k.type]||"gray")
+          +'<span>with <b>'+esc(other)+"</b></span>"
+          +(k.date?'<span class="subtle">'+shortDate(k.date)+"</span>":"")
+          +"</div>"
+          +(k.evidence?'<div class="notes">'+esc(k.evidence)+"</div>":"");
+      });
+      h+="</div>";
+    });
+  }
+  h+="</div>";
+  el.innerHTML=h;
+}
+
+/* ---------- ADD: competitor intake pipeline ---------- */
+var QUEUE_KEY="pulse_intake_queue";
+function getQueue(){
+  try{ return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); }catch(e){ return []; }
+}
+function setQueue(q){ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function rosterLine(e){
+  var bits=["- "+(e.name||"Unnamed").trim(),
+    (e.specialty||"photo").trim(),
+    (e.town||"TBD").trim(),
+    (e.website||"TBD").trim(),
+    e.ig?("@"+e.ig.trim().replace(/^@/,"")):"IG: TBD"];
+  var tail=[];
+  if(e.source) tail.push("source: "+e.source);
+  if(e.collab) tail.push("collaborated with: "+e.collab);
+  if(e.notes) tail.push(e.notes.trim());
+  if(tail.length) bits.push(tail.join("; "));
+  return bits.join(" | ");
+}
+function renderAdd(){
+  var el=document.getElementById("view-add");
+  var h='<div class="card"><h2>Competitor <span class="accent">intake</span></h2>'
+    +'<p class="hint">Queue a new competitor here. The queue lives in this browser only — '
+    +'nothing is published until Luna adds it to the roster on the next sync. Use “Copy as text” and paste the lines to Luna.</p>'
+    +'<div class="formgrid">'
+    +'<label class="field"><span>Name *</span><input type="text" id="inName" placeholder="e.g. Jane Doe Photography"></label>'
+    +'<label class="field"><span>Specialty</span><select id="inSpec"><option value="photo">Photo</option><option value="video">Video</option><option value="both">Photo + Video</option><option value="drone">Drone</option></select></label>'
+    +'<label class="field"><span>Town</span><input type="text" id="inTown" placeholder="e.g. Potsdam, NY"></label>'
+    +'<label class="field"><span>Website</span><input type="text" id="inWeb" placeholder="example.com"></label>'
+    +'<label class="field"><span>IG handle</span><input type="text" id="inIG" placeholder="@handle"></label>'
+    +'<label class="field"><span>Source *</span><select id="inSource"><option>Web search</option><option>Facebook</option><option>Instagram</option><option>Referral</option><option>AI audit</option><option>Client mention</option><option>Other</option></select></label>'
+    +'<label class="field full"><span>Collaborated with (names, comma-separated)</span><input type="text" id="inCollab" placeholder="e.g. Jane Smith, North Country Films"></label>'
+    +'<label class="field full"><span>Notes</span><textarea id="inNotes" rows="2" placeholder="Anything relevant: pricing seen, status, how they were found…"></textarea></label>'
+    +"</div>"
+    +'<div class="controls"><button class="btn" id="inQueue">Queue competitor</button>'
+    +'<button class="btn ghost" id="inCopy">Copy as text</button></div>'
+    +'<div id="queueList"></div></div>';
+  el.innerHTML=h;
+
+  function drawQueue(){
+    var q=getQueue();
+    var host=document.getElementById("queueList");
+    if(!q.length){ host.innerHTML='<p class="hint">Queue is empty.</p>'; return; }
+    host.innerHTML='<h3 class="dirsec">Queued ('+q.length+')</h3>'+q.map(function(e,i){
+      return '<div class="queueitem"><div><b>'+esc(e.name)+'</b> <span class="subtle">'+esc(e.town||"")+"</span><br>"
+        +sourcePill(e.source)+' <span class="subtle">queued '+esc(e.queued_at)+"</span></div>"
+        +'<button class="btn ghost sm" data-rm="'+i+'">Remove</button></div>';
+    }).join("");
+    host.querySelectorAll("[data-rm]").forEach(function(b){
+      b.addEventListener("click",function(){
+        var qq=getQueue(); qq.splice(+b.dataset.rm,1); setQueue(qq); drawQueue();
+      });
+    });
+  }
+  document.getElementById("inQueue").addEventListener("click",function(){
+    var e={
+      name:document.getElementById("inName").value.trim(),
+      specialty:document.getElementById("inSpec").value,
+      town:document.getElementById("inTown").value.trim(),
+      website:document.getElementById("inWeb").value.trim(),
+      ig:document.getElementById("inIG").value.trim(),
+      source:document.getElementById("inSource").value,
+      collab:document.getElementById("inCollab").value.trim(),
+      notes:document.getElementById("inNotes").value.trim(),
+      queued_at:new Date().toISOString().slice(0,10)
+    };
+    if(!e.name){ document.getElementById("inName").focus(); return; }
+    var q=getQueue(); q.push(e); setQueue(q); drawQueue();
+    ["inName","inTown","inWeb","inIG","inCollab","inNotes"].forEach(function(id){document.getElementById(id).value="";});
+  });
+  document.getElementById("inCopy").addEventListener("click",function(){
+    var q=getQueue();
+    var txt=q.map(rosterLine).join("\n")||"(queue is empty)";
+    function done(ok){
+      var b=document.getElementById("inCopy");
+      b.textContent=ok?"Copied":"Copy failed — select manually";
+      setTimeout(function(){b.textContent="Copy as text";},1800);
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){done(true);},function(){done(false);});
+    }else{
+      var ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta);
+      ta.select(); try{ document.execCommand("copy"); done(true);}catch(e){done(false);} document.body.removeChild(ta);
+    }
+  });
+  drawQueue();
+}
+
+/* ---------- header ---------- */
 function renderHeader(){
   var now=new Date();
   document.getElementById("todayDate").textContent=
@@ -481,28 +892,54 @@ function renderHeader(){
   }
 }
 
-/* ---------- boot ---------- */
-var chartInits={ig:initIGChart, jd:initJDChart, ai:initAIChart};
+/* ---------- boot: two-tier navigation ---------- */
+var RENDERERS={
+  overview:renderOverview, signals:renderSignals, recency:renderRecency,
+  voice:renderVoice, ig:renderIG, jd:renderJD, pricing:renderPricing,
+  directory:renderDirectory, entrants:renderEntrants, connections:renderConnections,
+  sweep:renderSweep, ai:renderAI, aiprompts:renderAIByPrompt, add:renderAdd
+};
+var CHART_INITS={ig:initIGChart, jd:initJDChart, ai:initAIChart, aiprompts:initAIByPromptCharts};
+var chartInitDone={};
+
+function showView(id){
+  document.querySelectorAll(".view").forEach(function(v){v.classList.remove("active");});
+  var v=document.getElementById("view-"+id);
+  if(v) v.classList.add("active");
+  document.querySelectorAll(".navview").forEach(function(b){b.classList.toggle("active",b.dataset.view===id);});
+  if(CHART_INITS[id] && !chartInitDone[id]){ chartInitDone[id]=true; CHART_INITS[id](); }
+  else if(CHART_INITS[id]){ CHART_INITS[id](); }
+  window.scrollTo(0,0);
+}
+function showGroup(g){
+  document.querySelectorAll(".navgroup").forEach(function(b){b.classList.toggle("active",b.dataset.group===g);});
+  var grp=NAV.filter(function(x){return x.group===g;})[0];
+  var host=document.getElementById("navViews");
+  host.innerHTML=grp.views.map(function(v){
+    return '<button class="navview" data-view="'+v.id+'">'+esc(v.label)+"</button>";
+  }).join("");
+  host.querySelectorAll(".navview").forEach(function(b){
+    b.addEventListener("click",function(){ showView(b.dataset.view); });
+  });
+  showView(grp.views[0].id);
+}
 function boot(){
   document.getElementById("loading").style.display="none";
   renderHeader();
   try{
-    renderOverview(); renderIG(); renderJD(); renderSweep(); renderAI(); renderDirectory();
+    Object.keys(RENDERERS).forEach(function(id){ RENDERERS[id](); });
   }catch(err){
     document.getElementById("view-overview").innerHTML='<div class="card"><h2>Render error</h2><p class="hint">'+esc(err.message)+"</p></div>";
-    return;
   }
-  initIGChart();
-  var tabs=document.querySelectorAll(".tab");
-  tabs.forEach(function(t){ t.addEventListener("click",function(){
-    tabs.forEach(function(x){x.classList.remove("active");});
-    t.classList.add("active");
-    document.querySelectorAll(".view").forEach(function(v){v.classList.remove("active");});
-    var v=document.getElementById("view-"+t.dataset.view);
-    v.classList.add("active");
-    if(chartInits[t.dataset.view]) chartInits[t.dataset.view]();
-    window.scrollTo(0,0);
-  });});
+  var gh=document.getElementById("navGroups");
+  gh.innerHTML=NAV.map(function(x){
+    return '<button class="navgroup" data-group="'+x.group+'">'+esc(x.label)+"</button>";
+  }).join("");
+  gh.querySelectorAll(".navgroup").forEach(function(b){
+    b.addEventListener("click",function(){ showGroup(b.dataset.group); });
+  });
+  showGroup("command");
+  showView("overview");
 }
 if(!D){
   document.getElementById("loading").innerHTML="Pulse data not found (data/data.js missing).";
