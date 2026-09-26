@@ -14,7 +14,7 @@ if(!D){
 
 var FG = D.followGraph || {edges:[], status:{}, note:""};
 var TOWNS = D.townCoords || {coords:{}, aliases:{}, unmappable:[]};
-var JD_ACCOUNTS = ["jdmeyersproductions","jdmeyers_","fourierxform"];
+var JD_ACCOUNTS = ["jdmeyersproductions"];
 
 /* ============================================================
    helpers
@@ -214,6 +214,13 @@ function nameOf(id){
   if(HUBS[id]) return HUBS[id].label;
   return id;
 }
+function collabChip(id){
+  if(id==="jd") return '<span class="chip" style="cursor:default"><span class="dot" style="background:var(--amber)"></span>JD Meyers Productions</span>';
+  if(BY_ID[id]) return chipFor(id);
+  var x=EXT[id];
+  if(x) return '<button class="chip" data-open="'+id+'">'+esc(x.name)+'</button>';
+  return '<span class="chip" style="cursor:default">'+esc(nameOf(id))+'</span>';
+}
 var SUB_LABEL = {"co-tagged":"Co-tagged on a post","second-shooter":"Second shooter","styled-shoot":"Creative collab","same business":"Same business","vouched by JD":"Vouched by JD","mutual follow":"Mutual follow"};
 
 /* ============================================================
@@ -280,6 +287,7 @@ var VIEWS = [
   {id:"network", label:"Follow graph", count:function(){ return FG.edges.length+" links"; }},
   {id:"map", label:"Map"},
   {id:"roster",  label:"Roster",  count:function(){ return C.length; }},
+  {id:"landscape", label:"Landscape"},
   {id:"market",  label:"Market lanes"},
   {id:"ai",      label:"AI visibility"},
   {sep:true},
@@ -333,64 +341,108 @@ function mixBar(m, total){
 /* ============================================================
    PULSE (home)
    ============================================================ */
+/* small shared bits for the visual pulse */
+function srcChip(t){ return '<span class="src">'+esc(t)+'</span>'; }
+function tells(t){ return '<p class="tells">'+t+'</p>'; }
+function donutSVG(segs){
+  var total=segs.reduce(function(a,s){return a+s.v;},0), R=70, CIRC=2*Math.PI*R, acc=0, g="";
+  segs.forEach(function(s){
+    var len=total?(s.v/total*CIRC):0;
+    if(len>0) g+='<circle cx="90" cy="90" r="'+R+'" fill="none" stroke="'+s.color+'" stroke-width="26" stroke-dasharray="'+len.toFixed(1)+' '+(CIRC-len).toFixed(1)+'" stroke-dashoffset="'+(-acc).toFixed(1)+'" transform="rotate(-90 90 90)"/>';
+    acc+=len;
+  });
+  g+='<text x="90" y="86" text-anchor="middle" style="font-size:30px;font-weight:700;fill:var(--silver)">'+fmt(total)+'</text><text x="90" y="106" text-anchor="middle" style="font-size:12px">tracked</text>';
+  return '<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="Competitor split donut">'+g+'</svg>';
+}
+function hbar(n, v, max, color, extra, suffix){
+  return '<div class="bar"><span class="n"'+(extra||"")+'>'+esc(n)+'</span><span class="t"><i style="width:'+Math.max(2,Math.round(v/max*100))+'%;--c:'+color+'"></i></span><span class="v">'+fmt(v)+(suffix||"")+'</span></div>';
+}
+
 RENDER.pulse = function(el){
-  var active30 = C.filter(function(c){ return c.postAge!=null && c.postAge<=30; }).length;
   var jdNow = LAST_RUN?rate(LAST_RUN.rows):null, jdThen = FIRST_RUN?rate(FIRST_RUN.rows):null;
   var blind = RIVALS.filter(function(r){ return r.status==="blind"; });
   var noPrice = C.filter(function(c){ return !c.pricing; }).length;
-  var noTrack = C.filter(function(c){ return c.momentum.k==="unknown"; }).length;
-  var home = C.filter(function(c){ return c.region==="slc"; }).length;
-  var topHub = HUB_LIST.filter(function(h){return h.seed;}).sort(function(a,b){return b.spokes.length-a.spokes.length;})[0];
-  var busiest = LANES.filter(function(l){return l.id!=="unclassified";}).map(function(l){ var s=LSTATS[l.id]; return {l:l, a:s.list.filter(function(c){return c.momentum.k==="active";}).length}; }).sort(function(a,b){return b.a-a.a;})[0];
-  var wMed = LSTATS.weddings.wMed;
+  var syncDay = D.meta&&D.meta.generated_at?shortDate(D.meta.generated_at):"";
 
   var lede = 'Watching <em>'+C.length+' businesses</em> across the North Country. '+
     (MOMCOUNT.entering?MOMCOUNT.entering+' entering, ':'')+MOMCOUNT.fading+' fading, and JD is named in <em>'+pct(jdNow)+'</em> of AI recommendations'+(jdThen!=null&&jdNow!=null&&Math.round(jdNow*100)!==Math.round(jdThen*100)?(jdNow>jdThen?', up from ':', down from ')+pct(jdThen)+' at baseline':'')+'.';
 
-  var points = [
-    {c:"var(--m-active)", h:'<b>'+active30+' competitors posted in the last 30 days.</b> '+(busiest?'The busiest lane right now is '+esc(busiest.l.label.toLowerCase())+' ('+busiest.a+' active).':'')},
-    wMed?{c:"var(--lane-weddings)", h:'<b>Wedding coverage starts around '+money(wMed)+'</b> (median of '+LSTATS.weddings.wN+' published starting prices).'}:null,
-    topHub?{c:"var(--lane-video)", h:'<b>'+esc(topHub.label)+' surfaced '+topHub.spokes.length+' competitors.</b> One Instagram account is currently your best map of the wedding scene.'}:null,
-    blind.length?{c:"var(--amber)", h:'<b>'+blind.length+' businesses AI recommends are not on your roster.</b> Those are blind spots worth a look.'}:null,
-    {c:"var(--m-quiet)", h:'<b>Research gaps:</b> '+noPrice+' have no published pricing and '+noTrack+' have no trackable activity yet.'}
-  ].filter(Boolean);
-
   var h = '<div class="reveal">';
-  h += '<div class="grid g-hero" style="margin-bottom:18px">';
-  h += '<div class="brief"><div class="date">'+NOW.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})+'</div><p class="lede">'+lede+'</p><ul class="points">'+
-       points.map(function(p){ return '<li style="--dot:'+p.c+'">'+p.h+'</li>'; }).join("")+'</ul></div>';
-  // right column: JD AI gauge + market mix
-  h += '<div class="stack">';
-  h += '<div class="panel gauge"><div class="row-between"><h2>JD in AI answers</h2><button class="linkish" data-go="ai">Details</button></div>'+
-       '<div class="big num">'+(jdNow==null?"–":Math.round(jdNow*100))+'<small>%</small></div>'+
-       '<div class="muted" style="font-size:13.5px">Share of prompts where ChatGPT, Claude, Gemini or Perplexity named JD in the latest run ('+esc(LAST_RUN?LAST_RUN.label:"none")+').</div>'+
-       '<div class="chart" id="pulseSpark"></div></div>';
-  h += '<div class="panel"><h2>Market momentum</h2><p class="hint" style="margin-bottom:12px">Every tracked business, by what it is doing right now.</p>'+
-       '<div class="mix" style="height:12px;margin-bottom:14px">'+Object.keys(MOM).map(function(k){ return MOMCOUNT[k]?'<i style="width:'+(MOMCOUNT[k]/C.length*100)+'%;background:'+MOM[k].color+'"></i>':""; }).join("")+'</div>'+
-       '<div class="chips">'+Object.keys(MOM).map(function(k){ return '<button class="chip" data-mom="'+k+'" style="--d:'+MOM[k].color+'"><span class="dot"></span>'+MOM[k].label+' '+MOMCOUNT[k]+'</button>'; }).join("")+'</div></div>';
-  h += '</div></div>';
+  h += '<div class="brief" style="margin-bottom:18px"><div class="date">'+NOW.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})+'</div><p class="lede">'+lede+'</p></div>';
 
-  // lane board
-  h += '<div class="panel" style="margin-bottom:18px"><div class="row-between"><h2>Direction by lane</h2><span class="muted" style="font-size:13px">Click a lane to open it</span></div>'+
-       '<p class="hint">A business can sit in more than one lane. Direction compares businesses entering against those fading.</p><div class="tablewrap"><table class="lanes"><thead><tr>'+
-       '<th>Lane</th><th>Tracked</th><th class="hide-sm">In St. Lawrence</th><th>Momentum</th><th>Direction</th><th class="hide-sm">Typical start</th><th>JD in AI</th></tr></thead><tbody>';
-  LANES.forEach(function(l){
-    var s=LSTATS[l.id]; if(!s.n) return;
-    var typical = l.id==="weddings"||l.id==="video" ? (s.wMed?money(s.wMed):"–") : l.id==="unclassified" ? "–" : (s.sMed?money(s.sMed)+" session":"–");
-    h += '<tr class="lane-row" data-lane="'+l.id+'" tabindex="0"><td><span class="lane-name"><span class="swatch" style="--c:'+l.color+'"></span>'+esc(l.label)+'</span></td>'+
-         '<td class="num">'+s.n+'</td><td class="num hide-sm">'+s.home+'</td><td>'+mixBar(s.mom,s.n)+'</td><td>'+(l.id==="unclassified"?'<span class="muted" style="font-size:13px">Needs research</span>':dirLabel(s))+'</td>'+
-         '<td class="num hide-sm">'+typical+'</td><td>'+(s.ai==null?'<span class="muted">not tracked</span>':'<span class="meter"><i style="width:'+Math.round(s.ai*100)+'%"></i></span><span class="num">'+pct(s.ai)+'</span>')+'</td></tr>';
+  /* --- donut: where they are --- */
+  var regN={slc:0,adjacent:0,unconfirmed:0};
+  C.forEach(function(c){ regN[c.region]=(regN[c.region]||0)+1; });
+  var segs=[
+    {label:"St. Lawrence County", v:regN.slc||0, color:"#EDEAE2"},
+    {label:"Neighboring counties", v:regN.adjacent||0, color:"#7FB2CE"},
+    {label:"Location unconfirmed", v:regN.unconfirmed||0, color:"#737C8E"}
+  ];
+  h += '<div class="grid g-2" style="margin-bottom:18px"><div class="panel"><h2>Where they are</h2>'+
+    tells('<b>What this tells you:</b> how much of the watch list sits in your home county versus the surrounding counties you also compete in.')+
+    '<div class="donut-wrap">'+donutSVG(segs)+'<div class="donut-legend">'+
+    segs.map(function(s){ return '<div class="row"><span class="sw" style="background:'+s.color+'"></span><span>'+esc(s.label)+'</span><b>'+s.v+' ('+Math.round(s.v/C.length*100)+'%)</b></div>'; }).join("")+
+    '</div></div>'+srcChip('Roster · '+syncDay)+'</div>';
+
+  /* --- recency bands --- */
+  var bands=[
+    {label:"Active \u00b7 posted \u226430 days ago", v:0, color:"var(--m-active)"},
+    {label:"Quiet \u00b7 last post 1\u20133 months ago", v:0, color:"var(--m-quiet)"},
+    {label:"Dormant \u00b7 silent 3+ months or never tracked", v:0, color:"var(--m-fading)"}
+  ];
+  C.forEach(function(c){
+    if(c.postAge!=null && c.postAge<=30) bands[0].v++;
+    else if(c.postAge!=null && c.postAge<=90) bands[1].v++;
+    else bands[2].v++;
   });
-  h += '</tbody></table></div></div>';
+  var bmax=Math.max.apply(null,bands.map(function(b){return b.v;}));
+  h += '<div class="panel"><h2>Are they posting</h2>'+
+    tells('<b>What this tells you:</b> how many competitors are actually marketing right now. A quiet rival is not taking your clients this month.')+
+    '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div></div>';
 
-  // movement + audience
-  h += '<div class="grid g-2">';
+  /* --- follower movers --- */
+  var movers=Object.keys(IGH).map(function(hh){
+    var hist=IGH[hh]; if(!hist||hist.length<2) return null;
+    var d=hist[hist.length-1].count-hist[0].count;
+    var c=C.filter(function(x){return x.ig_handle===hh;})[0];
+    return {n:c?c.name.replace(/ \(.*\)/,""):"@"+hh, d:d, id:c&&c.id};
+  }).filter(function(m){return m&&m.d!==0;}).sort(function(a,b){return Math.abs(b.d)-Math.abs(a.d);}).slice(0,8);
+  var mmax=Math.max.apply(null,movers.map(function(m){return Math.abs(m.d);}).concat([1]));
+  h += '<div class="grid g-2" style="margin-bottom:18px"><div class="panel"><h2>Biggest follower moves</h2>'+
+    tells('<b>What this tells you:</b> who is gaining or losing audience fastest. Fast growers are the ones to watch.')+
+    (movers.length?'<div class="bars">'+movers.map(function(m){
+      var pos=m.d>0;
+      return '<div class="bar"><span class="n"'+(m.id?' data-open="'+m.id+'"':'')+'>'+esc(m.n)+'</span><span class="t" style="display:flex;justify-content:'+(pos?'flex-start':'flex-end')+'"><i style="width:'+Math.max(3,Math.round(Math.abs(m.d)/mmax*100))+'%;--c:'+(pos?'var(--amber)':'var(--m-fading)')+'"></i></span><span class="v" style="color:'+(pos?'var(--amber)':'var(--m-fading)')+'">'+(pos?'+':'')+fmt(m.d)+'</span></div>';
+    }).join("")+'</div>': '<p class="muted">No movement in the tracking window.</p>')+
+    srcChip('IG snapshots · Sep 24\u201326')+'</div>';
+
+  /* --- AI by prompt --- */
+  var aiH='';
+  if(LAST_RUN){
+    aiH=PROMPTS.map(function(p){
+      var rows=ENGINES.map(function(e){
+        var r=rate(LAST_RUN.rows.filter(function(x){ return x.prompt===p && x.engine===e; }));
+        return {e:e, r:r};
+      }).filter(function(x){ return x.r!=null; });
+      if(!rows.length) return "";
+      return '<div style="margin-bottom:12px"><div style="font-size:13px;color:var(--silver-2);margin-bottom:6px">'+esc(p)+'</div><div class="bars">'+
+        rows.map(function(x){ return hbar(x.e, Math.round(x.r*100), 100, x.r>=0.5?'var(--amber)':'var(--silver-2)','', '%'); }).join("")+'</div></div>';
+    }).join("");
+  }
+  h += '<div class="panel"><h2>AI answers, by question</h2>'+
+    tells('<b>What this tells you:</b> when someone asks an AI who to hire, how often JD comes up \u2014 broken down by the exact question asked.')+
+    (aiH||'<p class="muted">No AI audit data yet.</p>')+srcChip('AI audit \u00b7 '+(LAST_RUN?LAST_RUN.label:'none'))+'</div></div>';
+
+  /* --- market momentum (already visual) --- */
+  h += '<div class="panel" style="margin-bottom:18px"><h2>Market momentum</h2>'+
+    tells('<b>What this tells you:</b> the whole watch list sorted by what each business is doing right now \u2014 entering, active, quiet, fading, or no signal yet.')+
+    '<div class="mix" style="height:12px;margin-bottom:14px">'+Object.keys(MOM).map(function(k){ return MOMCOUNT[k]?'<i style="width:'+(MOMCOUNT[k]/C.length*100)+'%;background:'+MOM[k].color+'"></i>':""; }).join("")+'</div>'+
+    '<div class="chips">'+Object.keys(MOM).map(function(k){ return '<button class="chip" data-mom="'+k+'" style="--d:'+MOM[k].color+'"><span class="dot"></span>'+MOM[k].label+' '+MOMCOUNT[k]+'</button>'; }).join("")+'</div>'+srcChip('Roster + IG activity · '+syncDay)+'</div>';
+
+  /* --- movement feed --- */
   h += '<div class="panel"><h2>Movement</h2><p class="hint">What changed most recently, newest first.</p><ul class="feed">'+movementFeed()+'</ul></div>';
-  h += '<div class="stack"><div class="panel"><h2>Instagram reach</h2><p class="hint">JD’s accounts against tracked competitors with follower counts.</p><div class="bars">'+audienceBars()+'</div></div>'+
-       '<div class="panel"><h2>Where they are</h2><p class="hint">'+home+' of '+C.length+' are based in St. Lawrence County.</p><div class="bars">'+countyBars()+'</div></div></div>';
-  h += '</div></div>';
+  h += '</div>';
   el.innerHTML = h;
-  drawSpark($("#pulseSpark"));
 };
 
 function movementFeed(){
@@ -457,10 +509,6 @@ function lineChart(series, opts){
   });
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(opts.aria||"line chart")+'">'+g+'</svg>';
 }
-function drawSpark(el){
-  if(!el || !RUNS.length) return;
-  el.innerHTML = lineChart([{name:"All engines", color:"#E7A04F", w:2.5, values:RUNS.map(function(r){return rate(r.rows);})}], {w:420,h:120,aria:"JD named rate over runs"});
-}
 
 /* ============================================================
    FOLLOW GRAPH: who follows who on Instagram (verified edges only)
@@ -493,13 +541,13 @@ var FGN = (function(){
 var NET = null;
 RENDER.network = function(el){
   var P=FGN.pairs, nodes=FGN.nodes;
-  var h='<div class="page-head"><h1>Who follows who</h1><p>Verified Instagram follow links between the roster and JD\u2019s accounts \u2014 nothing else. One line per pair; click any name for the direction. Competitor-to-competitor links are not mapped yet \u2014 they need a logged-in Instagram check.</p></div>';
+  var h='<div class="page-head"><h1>Who follows who</h1><p>Verified Instagram follow links between the roster and @jdmeyersproductions \u2014 nothing else. One line per pair; click any name for the direction. Competitor-to-competitor links are still being mapped \u2014 they need a logged-in Instagram check.</p></div>';
   h+='<div class="net-wrap" id="netWrap"><svg id="netSvg" viewBox="0 0 940 720" role="img" aria-label="Instagram follow graph"><g id="netEdges"></g><g id="netNodes"></g></svg>'+
-     '<div class="net-legend"><span><span class="ln" style="--c:#8fa3c8"></span>Follow link</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s accounts</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>'+P.length+' verified links</span></div></div>';
+     '<div class="net-legend"><span><span class="ln" style="--c:#8fa3c8"></span>Follow link</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s account</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>'+P.length+' verified links</span></div></div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a name on the graph.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
   h+='<div class="panel"><h2>Collaborations and ties</h2><p class="hint">Evidence of businesses working together \u2014 kept as a plain list, separate from the follow graph.</p><div class="tablewrap"><table class="data"><thead><tr><th>Between</th><th>Relationship</th><th>When</th><th>Evidence</th></tr></thead><tbody>';
   LINKS.slice().sort(function(a,b){ return (a.type==="jd")-(b.type==="jd") || String(b.date||"").localeCompare(String(a.date||"")); }).forEach(function(l){
-    h+='<tr data-open="'+esc(l.s==="jd"?l.t:l.s)+'"><td class="nm">'+esc(nameOf(l.s))+'<small>with '+esc(nameOf(l.t))+'</small></td><td>'+esc(SUB_LABEL[l.sub]||l.sub)+'</td><td class="num">'+(l.date?shortDate(l.date):'<span class="muted">undated</span>')+'</td><td class="muted" style="max-width:520px">'+esc(l.evidence||"")+'</td></tr>';
+    h+='<tr data-open="'+esc(l.s==="jd"?l.t:l.s)+'"><td class="nm"><div class="chips">'+collabChip(l.s)+collabChip(l.t)+'</div></td><td>'+esc(SUB_LABEL[l.sub]||l.sub)+'</td><td class="num">'+(l.date?shortDate(l.date):'<span class="muted">undated</span>')+'</td><td class="muted" style="max-width:520px">'+esc(l.evidence||"")+'</td></tr>';
   });
   h+='</tbody></table></div></div>';
   el.innerHTML=h;
@@ -531,9 +579,9 @@ function buildFollowGraph(){
   }
   function tipMove(ev){ tip.style.left=Math.min(window.innerWidth-270,ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
   function tipHide(){ tip.classList.remove("on"); }
-  function nameLink(n){
-    if(n.kind==="jd") return esc(n.label);
-    return '<button class="linkish" data-open="'+esc(n.comp.id)+'">'+esc(n.label)+'</button>';
+  function fgChip(n){
+    if(n.kind==="jd") return '<span class="chip" style="cursor:default"><span class="dot" style="background:var(--amber)"></span>'+esc(n.label)+'</span>';
+    return chipFor(n.comp.id);
   }
   function select(n){
     $$("#netNodes .node").forEach(function(g){ g.classList.remove("lit"); });
@@ -544,8 +592,8 @@ function buildFollowGraph(){
     var d=$("#fgDetail"), s='';
     s+='<p style="font-size:17px;margin:0 0 10px"><b>'+(n.kind==="jd"?esc(n.label):'<button class="linkish" data-open="'+esc(n.comp.id)+'" style="font-size:17px">'+esc(n.label)+'</button>')+'</b>'+(n.kind==="comp"&&n.comp.town?'<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>':"")+'</p>';
     s+='<div class="grid g-2">';
-    s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+')</p>'+(n.follows.length?'<p>'+n.follows.map(nameLink).join(", ")+'</p>':'<p class="muted">None verified.</p>')+'</div>';
-    s+='<div><p class="hint" style="margin:0 0 6px">Followed by ('+n.followedBy.length+')</p>'+(n.followedBy.length?'<p>'+n.followedBy.map(nameLink).join(", ")+'</p>':'<p class="muted">None verified.</p>')+'</div>';
+    s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+')</p>'+(n.follows.length?'<div class="chips">'+n.follows.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
+    s+='<div><p class="hint" style="margin:0 0 6px">Followed by ('+n.followedBy.length+')</p>'+(n.followedBy.length?'<div class="chips">'+n.followedBy.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
     s+='</div>';
     if(n.kind==="comp"&&FG.status&&FG.status[n.handle]==="unavailable_via_api")
       s+='<p class="hint" style="margin-top:10px">This account\u2019s full following list has not been mapped yet \u2014 it needs a logged-in Instagram check.</p>';
@@ -573,62 +621,44 @@ function buildFollowGraph(){
 }
 
 /* ============================================================
-   MAP: town-level pins
+   MAP: real map (Leaflet + OSM-dark tiles), town-level pins
    ============================================================ */
 RENDER.map=function(el){
   var groups={}, unmapped=[];
   C.forEach(function(c){
     var canon=TOWNS.aliases[c.town];
-    if(!canon||!TOWNS.coords[canon]){ unmapped.push(c.name); return; }
-    var g=groups[canon]||(groups[canon]={canon:canon,names:[],regions:{}});
-    g.names.push(c.name); g.regions[c.region]=(g.regions[c.region]||0)+1;
+    if(!canon||!TOWNS.coords[canon]){ unmapped.push(c.id); return; }
+    var g=groups[canon]||(groups[canon]={canon:canon,ids:[],regions:{}});
+    g.ids.push(c.id); g.regions[c.region]=(g.regions[c.region]||0)+1;
   });
   var keys=Object.keys(groups);
-  var lats=keys.map(function(k){return TOWNS.coords[k].lat;});
-  var lngs=keys.map(function(k){return TOWNS.coords[k].lng;});
-  var la0=Math.min.apply(null,lats)-.12, la1=Math.max.apply(null,lats)+.12;
-  var ln0=Math.min.apply(null,lngs)-.12, ln1=Math.max.apply(null,lngs)+.12;
-  var W=760,H=600,pad=54;
-  function X(lng){ return pad+(lng-ln0)/(ln1-ln0)*(W-pad*2); }
-  function Y(lat){ return pad+(1-(lat-la0)/(la1-la0))*(H-pad*2); }
   var RC={slc:"#EDEAE2",adjacent:"#7FB2CE",unconfirmed:"#737C8E"};
   var RL={slc:"St. Lawrence County",adjacent:"Neighboring counties",unconfirmed:"Location unconfirmed"};
-  var h='<div class="page-head"><h1>Where they are</h1><p>One pin per town \u2014 general area only, not exact addresses. Hover or tap a pin for the businesses there.</p></div>';
-  h+='<div class="net-wrap" style="height:min(70vh,640px)"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Competitor map"><g id="mapPins"></g></svg>'+
-     '<div class="net-legend"><span><span class="swatch" style="--c:#EDEAE2;border-radius:50%"></span>St. Lawrence Co.</span><span><span class="swatch" style="--c:#7FB2CE;border-radius:50%"></span>Neighboring counties</span><span><span class="swatch" style="--c:#737C8E;border-radius:50%"></span>Unconfirmed</span><span>'+keys.length+' towns</span></div></div>';
-  h+='<div class="panel" style="margin-top:18px"><h2>Towns</h2><p class="hint">'+keys.length+' towns with pins'+(unmapped.length?'; '+unmapped.length+' without a mappable town: '+unmapped.map(esc).join(", "):"")+'.</p><div class="tablewrap"><table class="data"><thead><tr><th>Town</th><th>Businesses</th><th>Names</th></tr></thead><tbody>';
-  keys.sort(function(a,b){return groups[b].names.length-groups[a].names.length||a.localeCompare(b);}).forEach(function(k){
+  var h='<div class="page-head"><h1>Where they are</h1><p>One pin per town \u2014 general area only, not exact addresses. Drag to pan, scroll or pinch to zoom, tap a pin for the businesses there.</p></div>';
+  h+='<div class="panel" style="padding:0;overflow:hidden"><div id="leafMap"></div></div>';
+  h+='<div class="panel" style="margin-top:18px"><h2>Towns</h2><p class="hint">'+keys.length+' towns with pins'+(unmapped.length?'; '+unmapped.length+' without a mappable town':'')+'.</p><div class="tablewrap"><table class="data"><thead><tr><th>Town</th><th class="num">Businesses</th><th>Names</th></tr></thead><tbody>';
+  keys.sort(function(a,b){return groups[b].ids.length-groups[a].ids.length||a.localeCompare(b);}).forEach(function(k){
     var g=groups[k];
-    h+='<tr style="cursor:default"><td class="nm">'+esc(k)+'</td><td class="num">'+g.names.length+'</td><td class="muted">'+g.names.map(esc).join("; ")+'</td></tr>';
+    h+='<tr style="cursor:default"><td class="nm">'+esc(k)+'</td><td class="num">'+g.ids.length+'</td><td><div class="chips">'+g.ids.map(chipFor).join("")+'</div></td></tr>';
   });
-  h+='</tbody></table></div></div>';
+  h+='</tbody></table></div>';
+  if(unmapped.length) h+='<p class="hint" style="margin-top:12px">No mappable town: '+unmapped.map(chipFor).join(" ")+'</p>';
+  h+='</div>';
   el.innerHTML=h;
-  var NS="http://www.w3.org/2000/svg", gP=$("#mapPins"), tip=$("#tip");
-  function tipMove(ev){ tip.style.left=Math.min(window.innerWidth-280,ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
+  if(typeof L==="undefined"){ $("#leafMap").innerHTML='<p class="muted" style="padding:26px">The map library could not load \u2014 check your connection and reload. The town list below is unaffected.</p>'; return; }
+  var map=L.map("leafMap",{scrollWheelZoom:true});
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:18,attribution:'\u00a9 <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors \u00a9 <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
+  var bounds=[];
   keys.forEach(function(k){
     var g=groups[k], co=TOWNS.coords[k];
     var reg=Object.keys(g.regions).sort(function(a,b){return g.regions[b]-g.regions[a];})[0]||"unconfirmed";
-    var gg=document.createElementNS(NS,"g");
-    gg.setAttribute("class","map-pin"); gg.setAttribute("tabindex","0"); gg.setAttribute("role","button");
-    gg.setAttribute("aria-label",k+", "+g.names.length+" businesses");
-    var c=document.createElementNS(NS,"circle");
-    c.setAttribute("cx",X(co.lng).toFixed(1)); c.setAttribute("cy",Y(co.lat).toFixed(1));
-    c.setAttribute("r",g.names.length>1?11:8); c.setAttribute("fill",RC[reg]||"#737C8E");
-    c.setAttribute("stroke","rgba(10,12,17,.85)"); c.setAttribute("stroke-width","1.5");
-    gg.appendChild(c);
-    if(g.names.length>1){
-      var t=document.createElementNS(NS,"text");
-      t.setAttribute("x",X(co.lng).toFixed(1)); t.setAttribute("y",(Y(co.lat)+4).toFixed(1));
-      t.setAttribute("text-anchor","middle"); t.textContent=g.names.length; gg.appendChild(t);
-    }
-    var html='<b>'+esc(k)+'</b>'+esc(RL[reg]||"")+'<br>'+g.names.map(esc).join("<br>");
-    gg.addEventListener("pointerenter",function(ev){ tip.innerHTML=html; tip.classList.add("on"); tipMove(ev); });
-    gg.addEventListener("pointermove",tipMove);
-    gg.addEventListener("pointerleave",function(){ tip.classList.remove("on"); });
-    gg.addEventListener("click",function(ev){ tip.innerHTML=html; tip.classList.add("on"); tipMove(ev); });
-    gg.addEventListener("keydown",function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); tip.innerHTML=html; tip.classList.add("on"); tip.style.left="50%"; tip.style.top="40%"; } });
-    gP.appendChild(gg);
+    var mk=L.circleMarker([co.lat,co.lng],{radius:g.ids.length>1?11:8,color:"#0A0C11",weight:1.5,fillColor:RC[reg]||"#737C8E",fillOpacity:.95}).addTo(map);
+    mk.bindPopup('<b>'+esc(k)+'</b> <span class="muted">'+esc(RL[reg]||"")+'</span><div class="chips">'+g.ids.map(chipFor).join("")+'</div>');
+    if(g.ids.length>1) mk.bindTooltip(String(g.ids.length),{permanent:true,direction:"center",className:"pin-count"});
+    bounds.push([co.lat,co.lng]);
   });
+  if(bounds.length) map.fitBounds(bounds,{padding:[36,36]});
+  setTimeout(function(){ map.invalidateSize(); },120);
 };
 
 /* ============================================================
@@ -678,10 +708,128 @@ function drawRoster(){
   $("#rcount").textContent = list.length+" of "+C.length+" shown"+(RF.county?" in "+RF.county+" County":"");
   $("#rtable tbody").innerHTML = list.map(function(c){
     var p = c.price.wedding?money(c.price.wedding):c.price.session?money(c.price.session)+' session':(c.price.hourly?'hourly':'<span class="muted">not public</span>');
-    return '<tr data-open="'+c.id+'"><td class="nm">'+esc(c.name)+'<small>'+esc(c.town||"")+'</small></td><td>'+laneTags(c)+'</td><td>'+momBadge(c)+'</td><td class="num">'+p+'</td>'+
+    return '<tr data-open="'+c.id+'"><td class="nm"><span class="chip roster-chip" data-open="'+c.id+'">'+esc(c.name)+'</span><small>'+esc(c.town||"")+'</small></td><td>'+laneTags(c)+'</td><td>'+momBadge(c)+'</td><td class="num">'+p+'</td>'+
       '<td class="r">'+(c.followers?fmt(c.followers):'<span class="muted">–</span>')+'</td><td class="num">'+(c.last_post_date?shortDate(c.last_post_date):'<span class="muted">–</span>')+'</td><td class="muted">'+esc(HUBS[c.hub].label)+'</td></tr>';
   }).join("") || '<tr><td colspan="7" class="empty">Nothing matches. Clear a filter to widen the list.</td></tr>';
 }
+
+/* ============================================================
+   LANDSCAPE: researcher-grade positioning views
+   ============================================================ */
+function scatterSVG(pts, jd){
+  var W=620,H=440,pl=56,pr=18,pt=18,pb=44;
+  var xs=pts.map(function(p){return p.x;}), ys=pts.map(function(p){return p.y;});
+  if(jd){ xs.push(jd.x); ys.push(jd.y); }
+  var x0=Math.log10(Math.min.apply(null,xs)*0.9), x1=Math.log10(Math.max.apply(null,xs)*1.15);
+  var y0=Math.log10(Math.min.apply(null,ys)*0.85), y1=Math.log10(Math.max.apply(null,ys)*1.2);
+  function X(v){ return pl+(Math.log10(v)-x0)/(x1-x0)*(W-pl-pr); }
+  function Y(v){ return pt+(1-(Math.log10(v)-y0)/(y1-y0))*(H-pt-pb); }
+  var g="";
+  [100,250,500,1000,2500,5000,10000].forEach(function(t){ if(t>=Math.pow(10,x0)&&t<=Math.pow(10,x1)){ g+='<line class="gridl" x1="'+X(t)+'" x2="'+X(t)+'" y1="'+pt+'" y2="'+(H-pb)+'"/><text x="'+X(t)+'" y="'+(H-pb+18)+'" text-anchor="middle">$'+fmt(t)+'</text>'; } });
+  [100,250,500,1000,2500,5000,10000,25000].forEach(function(t){ if(t>=Math.pow(10,y0)&&t<=Math.pow(10,y1)){ g+='<line class="gridl" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(t)+'" y2="'+Y(t)+'"/><text x="'+(pl-8)+'" y="'+(Y(t)+4)+'" text-anchor="end">'+fmt(t)+'</text>'; } });
+  g+='<text x="'+((W+pl-pr)/2)+'" y="'+(H-6)+'" text-anchor="middle">Wedding starting price (log scale)</text>';
+  g+='<text x="14" y="'+((H+pt-pb)/2)+'" text-anchor="middle" transform="rotate(-90 14 '+((H+pt-pb)/2)+')">Instagram followers (log scale)</text>';
+  pts.forEach(function(p){
+    g+='<circle class="scatter-dot" data-open="'+p.id+'" cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="5.5" fill="#8fa3c8" fill-opacity=".85"><title>'+esc(p.n)+': '+money(p.x)+', '+fmt(p.y)+' followers</title></circle>';
+  });
+  if(jd){
+    var jx=X(jd.x).toFixed(1), jy=Y(jd.y).toFixed(1);
+    g+='<g class="scatter-dot" data-open="jd"><path d="M'+jx+' '+(jy-9)+' L'+(+jx+9)+' '+jy+' L'+jx+' '+(+jy+9)+' L'+(+jx-9)+' '+jy+' Z" fill="var(--amber)" stroke="#0A0C11" stroke-width="1.5"><title>JD Meyers Productions: '+money(jd.x)+', '+fmt(jd.y)+' followers</title></path><text x="'+(+jx+13)+'" y="'+(+jy+4)+'" style="fill:var(--amber);font-weight:700">JD</text></g>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img" aria-label="Price versus audience positioning map">'+g+'</svg>';
+}
+
+RENDER.landscape = function(el){
+  /* ---- (a) positioning scatter ---- */
+  var pts=C.filter(function(c){ return c.price.wedding!=null && c.followers!=null; })
+    .map(function(c){ return {id:c.id, n:c.name.replace(/ \(.*\)/,""), x:c.price.wedding, y:c.followers}; });
+  var jdPt = OWN.jdmeyersproductions ? {x:1400, y:OWN.jdmeyersproductions.follower_count} : null;
+
+  /* ---- (b) 2x2 ---- */
+  var withW=C.filter(function(c){ return c.price.wedding!=null; });
+  var medW=median(withW.map(function(c){ return c.price.wedding; }))||0;
+  function isSpec(c){ return c.lanes.indexOf("weddings")>=0; }
+  var quads=[
+    {id:"ps", name:"Premium specialists", ids:withW.filter(function(c){return c.price.wedding>=medW&&isSpec(c);}).map(function(c){return c.id;})},
+    {id:"pg", name:"Premium generalists", ids:withW.filter(function(c){return c.price.wedding>=medW&&!isSpec(c);}).map(function(c){return c.id;})},
+    {id:"bs", name:"Budget specialists", ids:withW.filter(function(c){return c.price.wedding<medW&&isSpec(c);}).map(function(c){return c.id;})},
+    {id:"bg", name:"Budget generalists", ids:withW.filter(function(c){return c.price.wedding<medW&&!isSpec(c);}).map(function(c){return c.id;})}
+  ];
+
+  /* ---- (c) strategic groups ---- */
+  function tierOf(c){
+    var w=c.price.wedding, wl=c.lanes.indexOf("weddings")>=0;
+    if(wl&&w!=null&&w>=2500) return "premium";
+    if(wl&&w!=null&&w>=1000) return "mid";
+    if(wl&&w!=null&&w<1000) return "budget";
+    var t=[c.name,c.notes,c.pricing,(c.flags||[]).join(" ")].join(" ").toLowerCase();
+    if(/photobooth|booth|elope|drone|sports/.test(t)||c.lanes.indexOf("drone")>=0) return "niche";
+    return "unpriced";
+  }
+  var TIERS=[
+    {id:"premium", name:"Premium wedding specialists", sub:"Wedding-focused, starting at $2,500+", ids:[]},
+    {id:"mid", name:"Mid-market wedding", sub:"Wedding-focused, $1,000\u2013$2,499 to start", ids:[]},
+    {id:"budget", name:"Budget wedding", sub:"Wedding-focused, under $1,000 to start", ids:[]},
+    {id:"niche", name:"Niche players", sub:"Elopements, photobooths, drone, sports \u2014 a different game", ids:[]},
+    {id:"unpriced", name:"Unpriced / unclassified", sub:"No published wedding price yet", ids:[]}
+  ];
+  C.forEach(function(c){ TIERS.filter(function(t){return t.id===tierOf(c);})[0].ids.push(c.id); });
+  var counts=TIERS.map(function(t){return t.ids.length;});
+  var maxC=Math.max.apply(null,counts), minC=Math.min.apply(null,counts.filter(function(n){return n>0;}).concat([Infinity]));
+  function tierRead(t){
+    if(t.ids.length===0) return "Empty \u2014 nobody is playing here.";
+    if(t.ids.length===maxC) return "Most crowded \u2014 hardest to stand out here.";
+    if(t.ids.length===minC) return "Thinnest group \u2014 a possible blank spot.";
+    return t.ids.length+" businesses playing a similar game.";
+  }
+
+  var h='<div class="page-head"><h1>Competitive landscape</h1><p>Three classic strategy views of the same market: where everyone sits on price and audience, the four boxes that matter, and the groups playing the same game.</p></div>';
+
+  h+='<div class="panel" style="margin-bottom:18px"><h2>Positioning map</h2>'+
+    tells('<b>What this tells you:</b> everyone plotted on the two things clients weigh most \u2014 price and audience. Gaps on the map are ground nobody owns yet.')+
+    scatterSVG(pts, jdPt)+
+    '<p class="hint" style="margin-top:10px">Plotted '+pts.length+' of '+C.length+' competitors'+(jdPt?' \u2014 amber diamond is JD ($1,400 wedding start, '+fmt(jdPt.y)+' followers)':'')+'. The rest have no published wedding price or follower count.</p>'+
+    srcChip('Roster pricing + IG snapshots \u00b7 Sep 26')+'</div>';
+
+  h+='<div class="panel" style="margin-bottom:18px"><h2>The 2x2: price vs wedding focus</h2>'+
+    tells('<b>What this tells you:</b> the market forced into four boxes on the two factors that decide who you actually compete against. Tap a box for names.')+
+    '<div class="qaxis"><span style="width:110px"></span><span>Wedding specialist</span><span>Generalist</span></div>'+
+    '<div class="qrow"><span class="qrowlab">Premium<br><small>'+money(medW)+'+ to start</small></span>'+
+    [quads[0],quads[1]].map(function(q){
+      return '<div class="qcard" data-q="'+q.id+'" tabindex="0" role="button"><div class="qn">'+esc(q.name)+'</div><div class="qc">'+q.ids.length+'</div><div class="qx">businesses</div></div>';
+    }).join("")+'</div>'+
+    '<div class="qrow"><span class="qrowlab">Budget<br><small>under '+money(medW)+'</small></span>'+
+    [quads[2],quads[3]].map(function(q){
+      return '<div class="qcard" data-q="'+q.id+'" tabindex="0" role="button"><div class="qn">'+esc(q.name)+'</div><div class="qc">'+q.ids.length+'</div><div class="qx">businesses</div></div>';
+    }).join("")+'</div>'+
+    '<div id="qDetail" style="margin-top:14px"><p class="muted" style="font-size:13.5px">Tap a box to see who is in it.</p></div>'+
+    '<p class="hint" style="margin-top:10px">'+withW.length+' of '+C.length+' have a published wedding starting price; only those can sit on this grid.</p>'+
+    srcChip('Roster pricing \u00b7 Sep 26')+'</div>';
+
+  h+='<div class="panel"><h2>Strategic groups</h2>'+
+    tells('<b>What this tells you:</b> businesses playing the same game the same way. You compete hardest against your own group \u2014 JD sits in Mid-market.')+
+    TIERS.map(function(t){
+      return '<div class="tier" data-tier="'+t.id+'" tabindex="0" role="button"><div class="tr"><div><div class="tn">'+esc(t.name)+'</div><div class="muted" style="font-size:13px">'+esc(t.sub)+'</div></div><div class="qc" style="font-size:24px;font-weight:700">'+t.ids.length+'</div></div><p class="tread">'+esc(tierRead(t))+'</p></div>';
+    }).join("")+
+    '<div id="tierDetail" style="margin-top:6px"><p class="muted" style="font-size:13.5px">Tap a group to see its members.</p></div>'+
+    srcChip('Roster pricing + specialties \u00b7 Sep 26')+'</div>';
+
+  el.innerHTML=h;
+  var qd=$("#qDetail"), td=$("#tierDetail");
+  function showChips(host, ids, label){
+    host.innerHTML='<p class="hint" style="margin:0 0 8px">'+esc(label)+' ('+ids.length+')</p>'+(ids.length?'<div class="chips">'+ids.map(chipFor).join("")+'</div>':'<p class="muted">Nobody here.</p>');
+  }
+  $$("#view-landscape [data-q]").forEach(function(card){
+    function pick(){ var q=quads.filter(function(x){return x.id===card.dataset.q;})[0]; showChips(qd,q.ids,q.name); }
+    card.addEventListener("click",pick);
+    card.addEventListener("keydown",function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); pick(); } });
+  });
+  $$("#view-landscape [data-tier]").forEach(function(card){
+    function pick(){ var t=TIERS.filter(function(x){return x.id===card.dataset.tier;})[0]; showChips(td,t.ids,t.name); }
+    card.addEventListener("click",pick);
+    card.addEventListener("keydown",function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); pick(); } });
+  });
+};
 
 /* ============================================================
    MARKET LANES
