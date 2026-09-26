@@ -12,6 +12,10 @@ if(!D){
   return;
 }
 
+var FG = D.followGraph || {edges:[], status:{}, note:""};
+var TOWNS = D.townCoords || {coords:{}, aliases:{}, unmappable:[]};
+var JD_ACCOUNTS = ["jdmeyersproductions","jdmeyers_","fourierxform"];
+
 /* ============================================================
    helpers
    ============================================================ */
@@ -273,7 +277,8 @@ var OWN = (function(){ var m={}; (D.ownAccounts||[]).forEach(function(r){ if(!m[
    ============================================================ */
 var VIEWS = [
   {id:"pulse",   label:"Pulse"},
-  {id:"network", label:"Network", count:function(){ return HUB_LIST.length+" hubs"; }},
+  {id:"network", label:"Follow graph", count:function(){ return FG.edges.length+" links"; }},
+  {id:"map", label:"Map"},
   {id:"roster",  label:"Roster",  count:function(){ return C.length; }},
   {id:"market",  label:"Market lanes"},
   {id:"ai",      label:"AI visibility"},
@@ -458,232 +463,173 @@ function drawSpark(el){
 }
 
 /* ============================================================
-   NETWORK: hub and spoke
+   FOLLOW GRAPH: who follows who on Instagram (verified edges only)
    ============================================================ */
+function normHandle(h){ return String(h||"").toLowerCase().replace(/^@/,"").trim(); }
+var FGN = (function(){
+  var nodes=[], byKey={};
+  function add(n){ if(!byKey[n.key]){ byKey[n.key]=n; nodes.push(n); } return byKey[n.key]; }
+  JD_ACCOUNTS.forEach(function(u){ add({key:"jd:"+u, kind:"jd", label:"@"+u, handle:u}); });
+  C.forEach(function(c){ if(c.ig_handle) add({key:"ig:"+normHandle(c.ig_handle), kind:"comp", label:c.name.replace(/ \(.*\)/,""), comp:c, handle:normHandle(c.ig_handle)}); });
+  function keyOf(e){ var h=normHandle(e); return JD_ACCOUNTS.indexOf(h)>=0 ? "jd:"+h : "ig:"+h; }
+  var pairs={}, follows={}, followedBy={};
+  (FG.edges||[]).forEach(function(e){
+    var a=keyOf(e.from), b=keyOf(e.to);
+    if(!byKey[a]||!byKey[b]||a===b) return;
+    (follows[a]=follows[a]||[]).push(b);
+    (followedBy[b]=followedBy[b]||[]).push(a);
+    var k=[a,b].sort().join("|");
+    var p=pairs[k]||(pairs[k]={a:a,b:b,mutual:false});
+    if((follows[b]||[]).indexOf(a)>=0) p.mutual=true;
+  });
+  nodes.forEach(function(n){
+    n.follows=(follows[n.key]||[]).map(function(k){return byKey[k];});
+    n.followedBy=(followedBy[n.key]||[]).map(function(k){return byKey[k];});
+    n.deg=n.follows.length+n.followedBy.length;
+  });
+  return {nodes:nodes, byKey:byKey, pairs:Object.keys(pairs).map(function(k){return pairs[k];})};
+})();
+
 var NET = null;
 RENDER.network = function(el){
-  var seedHubs = HUB_LIST.filter(function(h){return h.seed;});
-  var h = '<div class="page-head"><h1>Who connects to whom</h1><p>Hubs are the places competitors were found: an Instagram following, a search sweep, an AI audit. Spokes run from each hub to the businesses it surfaced. Solid blue lines are real collaborations; amber dashes are ties to JD. Click anything to open it.</p></div>';
-  h += '<div class="net-wrap" id="netWrap"><svg id="netSvg" aria-label="Competitor network graph"><g id="netVp"><g id="netEdges"></g><g id="netNodes"></g></g></svg>'+
-       '<div class="net-tools"><div class="filters" id="netLens"></div><input class="search" id="netSearch" type="search" placeholder="Find a business" style="width:220px"></div>'+
-       '<div class="net-legend"><span><span class="ln" style="--c:#3A4356"></span>Found via hub</span><span><span class="ln" style="--c:var(--lane-video)"></span>Collaboration</span><span><span class="ln dash" style="--c:var(--amber)"></span>Tie to JD</span>'+
-       LANES.map(function(l){return '<span><span class="swatch" style="--c:'+l.color+';border-radius:50%"></span>'+esc(l.label)+'</span>';}).join("")+'</div>'+
-       '<div class="net-zoom"><button id="zIn" aria-label="Zoom in">+</button><button id="zOut" aria-label="Zoom out">−</button><button id="zFit" aria-label="Fit to view" style="width:auto;padding:0 10px;font-size:13px">Fit</button></div></div>';
-
-  // hub and spoke table
-  h += '<div class="panel" style="margin-top:18px"><h2>Hub and spoke</h2><p class="hint">Each hub, how many businesses it surfaced, and who they are. Dot color on each business shows its momentum.</p><div class="tablewrap"><table class="hubtable"><thead><tr><th>Hub</th><th>Spokes</th><th>Businesses surfaced</th></tr></thead><tbody>';
-  HUB_LIST.forEach(function(hb){
-    var ids = hb.spokes.slice().sort(function(a,b){ return MOM[BY_ID[a].momentum.k].rank-MOM[BY_ID[b].momentum.k].rank || BY_ID[a].name.localeCompare(BY_ID[b].name); });
-    h += '<tr><td class="hubcell"><button class="linkish" data-open="'+esc(hb.seed||hb.id)+'">'+esc(hb.label)+'</button><span class="kind">'+esc(hb.kind)+'</span>'+
-         '<button class="linkish" data-focus="'+esc(hb.seed||hb.id)+'" style="font-size:12.5px;margin-top:8px;color:var(--fog)">Show on graph</button></td>'+
-         '<td class="count num">'+ids.length+'</td><td><div class="chips">'+ids.map(chipFor).join("")+'</div></td></tr>';
-  });
-  h += '</tbody></table></div></div>';
-
-  // collaborations
-  h += '<div class="panel"><h2>Collaborations and ties</h2><p class="hint">Evidence of businesses working together. These are the relationships that tell you who refers whom.</p><div class="tablewrap"><table class="data"><thead><tr><th>Between</th><th>Relationship</th><th>When</th><th>Evidence</th></tr></thead><tbody>';
+  var P=FGN.pairs, nodes=FGN.nodes;
+  var h='<div class="page-head"><h1>Who follows who</h1><p>Verified Instagram follow links between the roster and JD\u2019s accounts \u2014 nothing else. One line per pair; click any name for the direction. Competitor-to-competitor links are not mapped yet \u2014 they need a logged-in Instagram check.</p></div>';
+  h+='<div class="net-wrap" id="netWrap"><svg id="netSvg" viewBox="0 0 940 720" role="img" aria-label="Instagram follow graph"><g id="netEdges"></g><g id="netNodes"></g></svg>'+
+     '<div class="net-legend"><span><span class="ln" style="--c:#8fa3c8"></span>Follow link</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s accounts</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>'+P.length+' verified links</span></div></div>';
+  h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a name on the graph.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
+  h+='<div class="panel"><h2>Collaborations and ties</h2><p class="hint">Evidence of businesses working together \u2014 kept as a plain list, separate from the follow graph.</p><div class="tablewrap"><table class="data"><thead><tr><th>Between</th><th>Relationship</th><th>When</th><th>Evidence</th></tr></thead><tbody>';
   LINKS.slice().sort(function(a,b){ return (a.type==="jd")-(b.type==="jd") || String(b.date||"").localeCompare(String(a.date||"")); }).forEach(function(l){
-    h += '<tr data-open="'+esc(l.s==="jd"?l.t:l.s)+'"><td class="nm">'+esc(nameOf(l.s))+'<small>with '+esc(nameOf(l.t))+'</small></td><td>'+esc(SUB_LABEL[l.sub]||l.sub)+'</td><td class="num">'+(l.date?shortDate(l.date):'<span class="muted">undated</span>')+'</td><td class="muted" style="max-width:520px">'+esc(l.evidence||"")+'</td></tr>';
+    h+='<tr data-open="'+esc(l.s==="jd"?l.t:l.s)+'"><td class="nm">'+esc(nameOf(l.s))+'<small>with '+esc(nameOf(l.t))+'</small></td><td>'+esc(SUB_LABEL[l.sub]||l.sub)+'</td><td class="num">'+(l.date?shortDate(l.date):'<span class="muted">undated</span>')+'</td><td class="muted" style="max-width:520px">'+esc(l.evidence||"")+'</td></tr>';
   });
-  h += '</tbody></table></div></div>';
-  if(seedHubs.length) h += '';
-  el.innerHTML = h;
-  NET = buildGraph();
+  h+='</tbody></table></div></div>';
+  el.innerHTML=h;
+  NET=buildFollowGraph();
 };
 
-function buildGraph(){
-  var wrap=$("#netWrap"), svg=$("#netSvg"), vp=$("#netVp"), gE=$("#netEdges"), gN=$("#netNodes");
+function buildFollowGraph(){
+  var wrap=$("#netWrap"), gE=$("#netEdges"), gN=$("#netNodes");
   var NS="http://www.w3.org/2000/svg";
-  var lens = {roster:false, collab:true, jd:true};
-  var nodes=[], edges=[], nodeById={}, W=0, H=0;
-  var view={x:0,y:0,k:1}, focus=null, hover=null, alpha=1, raf=null, drag=null;
-
-  function build(){
-    nodes=[]; edges=[]; nodeById={};
-    function add(n){ if(!nodeById[n.id]){ nodeById[n.id]=n; nodes.push(n); } return nodeById[n.id]; }
-    add({id:"jd", kind:"jd", label:"JD Meyers Productions", r:17});
-    HUB_LIST.forEach(function(hb){
-      if(hb.id==="roster" && !lens.roster) return;
-      var hubNode = hb.seed ? add({id:hb.seed, kind:"seed", label:BY_ID[hb.seed].name.replace(/ \(.*\)/,""), comp:BY_ID[hb.seed]})
-                            : add({id:hb.id, kind:"hub", label:hb.label});
-      hubNode.r = Math.min(24, 11+Math.sqrt(hb.spokes.length)*2.4);
-      hb.spokes.forEach(function(id){
-        if(id===hubNode.id) return;
-        var c=BY_ID[id]; add({id:id, kind:"comp", label:c.name.replace(/ \(.*\)/,""), comp:c});
-        edges.push({s:hubNode.id, t:id, type:"discovered", len:88});
-      });
-    });
-    // seed accounts belong to their own origin hub too
-    HUB_LIST.forEach(function(hb){ if(hb.seed){ var c=BY_ID[hb.seed], o=HUBS[c.hub]; if(o && (o.id!=="roster"||lens.roster) && nodeById[o.id]) edges.push({s:o.id,t:c.id,type:"discovered",len:110}); } });
-    LINKS.forEach(function(l){
-      if(l.type==="jd" && !lens.jd) return;
-      if((l.type==="collab"||l.type==="sister") && !lens.collab) return;
-      [l.s,l.t].forEach(function(id){
-        if(nodeById[id]) return;
-        if(BY_ID[id]) add({id:id, kind:"comp", label:BY_ID[id].name.replace(/ \(.*\)/,""), comp:BY_ID[id]});
-        else if(EXT[id]) add({id:id, kind:"ext", label:EXT[id].name});
-      });
-      edges.push({s:l.s, t:l.t, type:l.type, len:l.type==="jd"?150:55, link:l});
-    });
-    // JD sits at the center; anchor a gentle link from JD to every hub so the map orbits JD
-    nodes.forEach(function(n){ if(n.kind==="hub"||n.kind==="seed") edges.push({s:"jd", t:n.id, type:"anchor", len:n.kind==="seed"?210:270, hidden:true}); });
-    nodes.forEach(function(n){
-      if(n.kind==="comp") n.r = 5 + Math.min(7, n.comp.followers ? Math.sqrt(n.comp.followers)/9 : 0);
-      if(n.kind==="ext") n.r = 5;
-      n.deg = 0; n.big = n.kind!=="comp" && n.kind!=="ext";
-    });
-    edges.forEach(function(e){ e.a=nodeById[e.s]; e.b=nodeById[e.t]; if(!e.hidden){ e.a.deg++; e.b.deg++; } });
-    edges = edges.filter(function(e){ return e.a && e.b; });
-    // seed positions: hubs on a ring, spokes near their hub
-    var hubs = nodes.filter(function(n){ return n.kind==="hub"||n.kind==="seed"; });
-    hubs.forEach(function(n,i){ var a=i/hubs.length*Math.PI*2-Math.PI/2; n.x=Math.cos(a)*200; n.y=Math.sin(a)*170; });
-    nodes.forEach(function(n){
-      if(n.kind==="jd"){ n.x=0; n.y=0; n.fx=0; n.fy=0; }
-      else if(n.x==null){ var e=edges.filter(function(e){return e.t===n.id && e.a.x!=null;})[0]; var b=e?e.a:{x:0,y:0}; n.x=b.x*1.4+(Math.random()-.5)*80; n.y=b.y*1.4+(Math.random()-.5)*80; }
-      n.vx=0; n.vy=0;
-    });
-    draw();
-    alpha=1;
-  }
-
-  function tick(){
-    var i,j,a,b,dx,dy,d2,d,f;
-    for(i=0;i<nodes.length;i++){ a=nodes[i];
-      for(j=i+1;j<nodes.length;j++){ b=nodes[j];
-        dx=b.x-a.x; dy=b.y-a.y; d2=dx*dx+dy*dy||.01; d=Math.sqrt(d2);
-        var charge=(a.kind==="comp"&&b.kind==="comp")?1100:3400;
-        f=charge/d2*alpha; if(d<320){ a.vx-=dx/d*f; a.vy-=dy/d*f; b.vx+=dx/d*f; b.vy+=dy/d*f; }
-        var min=a.r+b.r+10+(a.big&&b.big?90:a.big||b.big?22:0); if(d<min){ f=(min-d)/d*.5; a.vx-=dx*f; a.vy-=dy*f; b.vx+=dx*f; b.vy+=dy*f; }
-      }
-    }
-    edges.forEach(function(e){
-      dx=e.b.x-e.a.x; dy=e.b.y-e.a.y; d=Math.sqrt(dx*dx+dy*dy)||.01;
-      f=(d-e.len)/d*(e.hidden?.02:.06)*alpha;
-      e.a.vx+=dx*f; e.a.vy+=dy*f; e.b.vx-=dx*f; e.b.vy-=dy*f;
-    });
-    nodes.forEach(function(n){
-      n.vx-=n.x*.004*alpha; n.vy-=n.y*.004*alpha;
-      if(n.fx!=null){ n.x=n.fx; n.y=n.fy; n.vx=n.vy=0; return; }
-      n.vx*=.62; n.vy*=.62; n.x+=n.vx; n.y+=n.vy;
-    });
-    alpha*=.985;
-  }
-  function loop(){
-    tick(); place();
-    if(alpha>.012) raf=requestAnimationFrame(loop); else { raf=null; if(!fitted){ fit(); fitted=true; } }
-  }
-  var fitted=false;
-  function heat(v){ alpha=Math.max(alpha,v||.3); if(!raf) raf=requestAnimationFrame(loop); }
-
-  function el(tag, attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
-  function colorOf(n){
-    if(n.kind==="jd") return "#E7A04F";
-    if(n.kind==="hub") return "#12151D";
-    if(n.kind==="ext") return "#2A3040";
-    return LANE[n.comp.lanes[0]].hex;
-  }
-  function draw(){
-    gE.innerHTML=""; gN.innerHTML="";
-    edges.forEach(function(e){ if(e.hidden) return; e.el=el("line",{"class":"edge "+e.type}); gE.appendChild(e.el); });
-    nodes.forEach(function(n){
-      var g=el("g",{"class":"node "+n.kind, tabindex:"0", role:"button", "aria-label":n.label});
-      if(n.kind==="jd"){ g.appendChild(el("circle",{r:n.r,"class":"pulse-ring"})); }
-      var mk = n.comp ? n.comp.momentum.k : null;
-      if(mk==="fading"||mk==="entering") g.appendChild(el("circle",{r:n.r+3.5,fill:"none",stroke:MOM[mk].hex,"stroke-width":1.5,"stroke-dasharray":mk==="fading"?"2 2":"none"}));
-      var circ = el("circle",{r:n.r, fill:colorOf(n), stroke:n.kind==="hub"?"#AAB1BF":n.kind==="seed"?"#EDEAE2":n.kind==="ext"?"#737C8E":"rgba(10,12,17,.8)", "stroke-width":n.kind==="hub"||n.kind==="seed"?2:1.2});
-      if(n.kind==="ext") circ.setAttribute("stroke-dasharray","2 2");
-      g.appendChild(circ);
-      if(n.kind==="hub"){ g.appendChild(el("circle",{r:n.r*.36,fill:"#AAB1BF"})); }
-      var always = n.kind!=="comp" || n.deg>1;
-      var t = el("text",{x:n.r+6, y:4, "class":always?"":"lbl-hover"}); t.textContent=n.label; g.appendChild(t);
-      n.el=g; gN.appendChild(g);
-      g.addEventListener("pointerenter",function(ev){ hover=n; light(); tipShow(n,ev); });
-      g.addEventListener("pointermove",function(ev){ tipMove(ev); });
-      g.addEventListener("pointerleave",function(){ hover=null; light(); tipHide(); });
-      g.addEventListener("pointerdown",function(ev){ ev.stopPropagation(); drag={n:n, moved:false, sx:ev.clientX, sy:ev.clientY}; svg.setPointerCapture(ev.pointerId); });
-      g.addEventListener("keydown",function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); openNode(n); } });
-    });
-    place(); light();
-  }
-  function place(){
-    edges.forEach(function(e){ if(!e.el) return; e.el.setAttribute("x1",e.a.x.toFixed(1)); e.el.setAttribute("y1",e.a.y.toFixed(1)); e.el.setAttribute("x2",e.b.x.toFixed(1)); e.el.setAttribute("y2",e.b.y.toFixed(1)); });
-    nodes.forEach(function(n){ n.el.setAttribute("transform","translate("+n.x.toFixed(1)+","+n.y.toFixed(1)+")"); });
-  }
-  function light(){
-    var f = hover||focus;
-    wrap.classList.toggle("focusing", !!f);
-    if(!f){ nodes.forEach(function(n){n.el.classList.remove("lit");}); edges.forEach(function(e){ if(e.el) e.el.classList.remove("lit"); }); return; }
-    var lit={}; lit[f.id]=1;
-    edges.forEach(function(e){ var on=!e.hidden && (e.s===f.id||e.t===f.id); if(on){ lit[e.s]=1; lit[e.t]=1; } if(e.el) e.el.classList.toggle("lit",on); });
-    nodes.forEach(function(n){ n.el.classList.toggle("lit", !!lit[n.id]); });
-  }
-  function applyView(){ vp.setAttribute("transform","translate("+view.x+","+view.y+") scale("+view.k+")"); }
-  function size(){ var r=wrap.getBoundingClientRect(); W=r.width; H=r.height; svg.setAttribute("viewBox","0 0 "+W+" "+H); }
-  function fit(){
-    size(); if(!nodes.length) return;
-    var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-    nodes.forEach(function(n){ x0=Math.min(x0,n.x-n.r); y0=Math.min(y0,n.y-n.r); x1=Math.max(x1,n.x+n.r+110); y1=Math.max(y1,n.y+n.r); });
-    var pad=70, k=Math.min((W-pad*2)/(x1-x0), (H-pad*2-40)/(y1-y0), 1.6);
-    view.k=k; view.x=W/2-(x0+x1)/2*k; view.y=(H-20)/2-(y0+y1)/2*k; applyView();
-  }
-  function zoomAt(f, cx, cy){ var k2=Math.max(.3,Math.min(4,view.k*f)); view.x=cx-(cx-view.x)*(k2/view.k); view.y=cy-(cy-view.y)*(k2/view.k); view.k=k2; applyView(); }
-  function toWorld(ev){ var r=svg.getBoundingClientRect(); return {x:(ev.clientX-r.left-view.x)/view.k, y:(ev.clientY-r.top-view.y)/view.k}; }
-
-  svg.addEventListener("wheel",function(ev){ ev.preventDefault(); var r=svg.getBoundingClientRect(); zoomAt(ev.deltaY<0?1.12:1/1.12, ev.clientX-r.left, ev.clientY-r.top); },{passive:false});
-  svg.addEventListener("pointerdown",function(ev){ if(drag) return; drag={pan:true, sx:ev.clientX, sy:ev.clientY, vx:view.x, vy:view.y, moved:false}; svg.classList.add("panning"); svg.setPointerCapture(ev.pointerId); });
-  svg.addEventListener("pointermove",function(ev){
-    if(!drag) return;
-    if(Math.abs(ev.clientX-drag.sx)+Math.abs(ev.clientY-drag.sy)>4) drag.moved=true;
-    if(drag.pan){ view.x=drag.vx+ev.clientX-drag.sx; view.y=drag.vy+ev.clientY-drag.sy; applyView(); }
-    else if(drag.moved){ var p=toWorld(ev); drag.n.fx=p.x; drag.n.fy=p.y; tipHide(); heat(.25); }
+  var CX=470, CY=350;
+  var nodes=FGN.nodes, byKey=FGN.byKey;
+  var jd=nodes.filter(function(n){return n.kind==="jd";});
+  var linked=nodes.filter(function(n){return n.kind==="comp"&&n.deg>0;}).sort(function(a,b){return a.label.localeCompare(b.label);});
+  var lone=nodes.filter(function(n){return n.kind==="comp"&&n.deg===0;}).sort(function(a,b){return a.label.localeCompare(b.label);});
+  jd.forEach(function(n,i){ var a=i/Math.max(1,jd.length)*Math.PI*2-Math.PI/2; n.x=CX+Math.cos(a)*64; n.y=CY+Math.sin(a)*64; n.r=11; });
+  linked.forEach(function(n,i){ var a=i/Math.max(1,linked.length)*Math.PI*2-Math.PI/2; n.x=CX+Math.cos(a)*205; n.y=CY+Math.sin(a)*205; n.r=7; });
+  lone.forEach(function(n,i){ var a=i/Math.max(1,lone.length)*Math.PI*2-Math.PI/2; n.x=CX+Math.cos(a)*325; n.y=CY+Math.sin(a)*325; n.r=5.5; });
+  function el(tag,attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+  FGN.pairs.forEach(function(p){
+    var a=byKey[p.a], b=byKey[p.b]; if(!a||!b) return;
+    gE.appendChild(el("line",{x1:a.x.toFixed(1),y1:a.y.toFixed(1),x2:b.x.toFixed(1),y2:b.y.toFixed(1),"class":"edge follow"+(p.mutual?" mutual":""),"data-a":p.a,"data-b":p.b}));
   });
-  function end(ev){
-    if(!drag) return;
-    if(drag.pan){ svg.classList.remove("panning"); if(!drag.moved){ focus=null; light(); } }
-    else if(!drag.moved){ openNode(drag.n); }
-    else if(drag.n.kind!=="jd"){ drag.n.fx=null; drag.n.fy=null; }
-    drag=null;
-  }
-  svg.addEventListener("pointerup",end); svg.addEventListener("pointercancel",end);
-  $("#zIn").onclick=function(){ zoomAt(1.25,W/2,H/2); };
-  $("#zOut").onclick=function(){ zoomAt(.8,W/2,H/2); };
-  $("#zFit").onclick=fit;
-  window.addEventListener("resize",function(){ if(wrap.offsetParent){ size(); } });
-
-  function openNode(n){ focus=n; light(); openDetail(n.id); }
-
-  // lens filters
-  var LENS=[{k:"collab",l:"Collaborations"},{k:"jd",l:"Ties to JD"},{k:"roster",l:"Include initial roster"}];
-  $("#netLens").innerHTML = LENS.map(function(o){ return '<button class="filter" data-lens="'+o.k+'" aria-pressed="'+lens[o.k]+'">'+o.l+'</button>'; }).join("");
-  $$("#netLens [data-lens]").forEach(function(b){ b.onclick=function(){ lens[b.dataset.lens]=!lens[b.dataset.lens]; b.setAttribute("aria-pressed",lens[b.dataset.lens]); fitted=false; build(); if(reduceMotion) settle(); else heat(1); }; });
-  $("#netSearch").addEventListener("input",function(){
-    var q=this.value.trim().toLowerCase(); if(!q){ focus=null; light(); return; }
-    var n=nodes.filter(function(n){ return n.label.toLowerCase().indexOf(q)>=0; })[0];
-    focus=n||null; light();
-  });
-
-  // tooltip
   var tip=$("#tip");
   function tipShow(n,ev){
-    var s="";
-    if(n.comp){ var c=n.comp; s='<b>'+esc(c.name)+'</b>'+esc(c.town||"")+'<br>'+MOM[c.momentum.k].label+(c.followers?", "+fmt(c.followers)+" followers":""); }
-    else if(n.kind==="hub"){ s='<b>'+esc(n.label)+'</b>'+HUBS[n.id].spokes.length+' businesses surfaced'; }
-    else if(n.kind==="ext"){ s='<b>'+esc(n.label)+'</b>Not on the roster. Appears in a collaboration.'; }
-    else s='<b>JD Meyers Productions</b>You';
+    var s='<b>'+esc(n.kind==="jd"?n.label+" (JD's account)":n.label)+'</b>';
+    if(n.kind==="comp") s+=esc(n.comp.town||"")+'<br>'+n.follows.length+' follows, '+n.followedBy.length+' followers (verified links)';
+    else s+='JD Meyers Productions account<br>'+n.follows.length+' follows, '+n.followedBy.length+' followers (verified links)';
     tip.innerHTML=s; tip.classList.add("on"); tipMove(ev);
   }
-  function tipMove(ev){ tip.style.left=Math.min(window.innerWidth-270, ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
+  function tipMove(ev){ tip.style.left=Math.min(window.innerWidth-270,ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
   function tipHide(){ tip.classList.remove("on"); }
-
-  function settle(){ for(var i=0;i<420;i++) tick(); alpha=0; place(); fit(); fitted=true; }
-  size(); build();
-  if(reduceMotion) settle(); else { place(); fit(); heat(1); }
-
+  function nameLink(n){
+    if(n.kind==="jd") return esc(n.label);
+    return '<button class="linkish" data-open="'+esc(n.comp.id)+'">'+esc(n.label)+'</button>';
+  }
+  function select(n){
+    $$("#netNodes .node").forEach(function(g){ g.classList.remove("lit"); });
+    n.el.classList.add("lit"); wrap.classList.add("focusing");
+    $$("#netEdges .edge").forEach(function(e){
+      e.classList.toggle("lit", e.getAttribute("data-a")===n.key||e.getAttribute("data-b")===n.key);
+    });
+    var d=$("#fgDetail"), s='';
+    s+='<p style="font-size:17px;margin:0 0 10px"><b>'+(n.kind==="jd"?esc(n.label):'<button class="linkish" data-open="'+esc(n.comp.id)+'" style="font-size:17px">'+esc(n.label)+'</button>')+'</b>'+(n.kind==="comp"&&n.comp.town?'<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>':"")+'</p>';
+    s+='<div class="grid g-2">';
+    s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+')</p>'+(n.follows.length?'<p>'+n.follows.map(nameLink).join(", ")+'</p>':'<p class="muted">None verified.</p>')+'</div>';
+    s+='<div><p class="hint" style="margin:0 0 6px">Followed by ('+n.followedBy.length+')</p>'+(n.followedBy.length?'<p>'+n.followedBy.map(nameLink).join(", ")+'</p>':'<p class="muted">None verified.</p>')+'</div>';
+    s+='</div>';
+    if(n.kind==="comp"&&FG.status&&FG.status[n.handle]==="unavailable_via_api")
+      s+='<p class="hint" style="margin-top:10px">This account\u2019s full following list has not been mapped yet \u2014 it needs a logged-in Instagram check.</p>';
+    d.innerHTML=s;
+  }
+  nodes.forEach(function(n){
+    var g=el("g",{"class":"node "+n.kind,tabindex:"0",role:"button","aria-label":n.kind==="jd"?n.label+" (JD's account)":n.label});
+    g.appendChild(el("circle",{r:n.r,fill:n.kind==="jd"?"var(--amber)":"#8fa3c8",stroke:"rgba(10,12,17,.8)","stroke-width":1.2}));
+    var t=el("text",{x:n.r+6,y:4,"class":n.deg>0||n.kind==="jd"?"":"lbl-hover"}); t.textContent=n.label; g.appendChild(t);
+    n.el=g; gN.appendChild(g);
+    g.setAttribute("transform","translate("+n.x.toFixed(1)+","+n.y.toFixed(1)+")");
+    g.addEventListener("pointerenter",function(ev){ tipShow(n,ev); });
+    g.addEventListener("pointermove",tipMove);
+    g.addEventListener("pointerleave",tipHide);
+    g.addEventListener("click",function(){ select(n); });
+    g.addEventListener("keydown",function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); select(n); } });
+  });
   return {
-    wake:function(){ size(); if(!fitted) fit(); },
-    focus:function(id){ var n=nodeById[id]; if(!n && HUBS[id] && HUBS[id].id==="roster"){ lens.roster=true; $('[data-lens="roster"]').setAttribute("aria-pressed","true"); build(); settle(); n=nodeById[id]; } focus=n||null; light(); wrap.scrollIntoView({behavior:reduceMotion?"auto":"smooth", block:"center"}); }
+    wake:function(){},
+    focus:function(id){
+      var c=BY_ID[id], n=c&&c.ig_handle?byKey["ig:"+normHandle(c.ig_handle)]:null;
+      if(!n) return; select(n); wrap.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"center"});
+    }
   };
 }
+
+/* ============================================================
+   MAP: town-level pins
+   ============================================================ */
+RENDER.map=function(el){
+  var groups={}, unmapped=[];
+  C.forEach(function(c){
+    var canon=TOWNS.aliases[c.town];
+    if(!canon||!TOWNS.coords[canon]){ unmapped.push(c.name); return; }
+    var g=groups[canon]||(groups[canon]={canon:canon,names:[],regions:{}});
+    g.names.push(c.name); g.regions[c.region]=(g.regions[c.region]||0)+1;
+  });
+  var keys=Object.keys(groups);
+  var lats=keys.map(function(k){return TOWNS.coords[k].lat;});
+  var lngs=keys.map(function(k){return TOWNS.coords[k].lng;});
+  var la0=Math.min.apply(null,lats)-.12, la1=Math.max.apply(null,lats)+.12;
+  var ln0=Math.min.apply(null,lngs)-.12, ln1=Math.max.apply(null,lngs)+.12;
+  var W=760,H=600,pad=54;
+  function X(lng){ return pad+(lng-ln0)/(ln1-ln0)*(W-pad*2); }
+  function Y(lat){ return pad+(1-(lat-la0)/(la1-la0))*(H-pad*2); }
+  var RC={slc:"#EDEAE2",adjacent:"#7FB2CE",unconfirmed:"#737C8E"};
+  var RL={slc:"St. Lawrence County",adjacent:"Neighboring counties",unconfirmed:"Location unconfirmed"};
+  var h='<div class="page-head"><h1>Where they are</h1><p>One pin per town \u2014 general area only, not exact addresses. Hover or tap a pin for the businesses there.</p></div>';
+  h+='<div class="net-wrap" style="height:min(70vh,640px)"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Competitor map"><g id="mapPins"></g></svg>'+
+     '<div class="net-legend"><span><span class="swatch" style="--c:#EDEAE2;border-radius:50%"></span>St. Lawrence Co.</span><span><span class="swatch" style="--c:#7FB2CE;border-radius:50%"></span>Neighboring counties</span><span><span class="swatch" style="--c:#737C8E;border-radius:50%"></span>Unconfirmed</span><span>'+keys.length+' towns</span></div></div>';
+  h+='<div class="panel" style="margin-top:18px"><h2>Towns</h2><p class="hint">'+keys.length+' towns with pins'+(unmapped.length?'; '+unmapped.length+' without a mappable town: '+unmapped.map(esc).join(", "):"")+'.</p><div class="tablewrap"><table class="data"><thead><tr><th>Town</th><th>Businesses</th><th>Names</th></tr></thead><tbody>';
+  keys.sort(function(a,b){return groups[b].names.length-groups[a].names.length||a.localeCompare(b);}).forEach(function(k){
+    var g=groups[k];
+    h+='<tr style="cursor:default"><td class="nm">'+esc(k)+'</td><td class="num">'+g.names.length+'</td><td class="muted">'+g.names.map(esc).join("; ")+'</td></tr>';
+  });
+  h+='</tbody></table></div></div>';
+  el.innerHTML=h;
+  var NS="http://www.w3.org/2000/svg", gP=$("#mapPins"), tip=$("#tip");
+  function tipMove(ev){ tip.style.left=Math.min(window.innerWidth-280,ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
+  keys.forEach(function(k){
+    var g=groups[k], co=TOWNS.coords[k];
+    var reg=Object.keys(g.regions).sort(function(a,b){return g.regions[b]-g.regions[a];})[0]||"unconfirmed";
+    var gg=document.createElementNS(NS,"g");
+    gg.setAttribute("class","map-pin"); gg.setAttribute("tabindex","0"); gg.setAttribute("role","button");
+    gg.setAttribute("aria-label",k+", "+g.names.length+" businesses");
+    var c=document.createElementNS(NS,"circle");
+    c.setAttribute("cx",X(co.lng).toFixed(1)); c.setAttribute("cy",Y(co.lat).toFixed(1));
+    c.setAttribute("r",g.names.length>1?11:8); c.setAttribute("fill",RC[reg]||"#737C8E");
+    c.setAttribute("stroke","rgba(10,12,17,.85)"); c.setAttribute("stroke-width","1.5");
+    gg.appendChild(c);
+    if(g.names.length>1){
+      var t=document.createElementNS(NS,"text");
+      t.setAttribute("x",X(co.lng).toFixed(1)); t.setAttribute("y",(Y(co.lat)+4).toFixed(1));
+      t.setAttribute("text-anchor","middle"); t.textContent=g.names.length; gg.appendChild(t);
+    }
+    var html='<b>'+esc(k)+'</b>'+esc(RL[reg]||"")+'<br>'+g.names.map(esc).join("<br>");
+    gg.addEventListener("pointerenter",function(ev){ tip.innerHTML=html; tip.classList.add("on"); tipMove(ev); });
+    gg.addEventListener("pointermove",tipMove);
+    gg.addEventListener("pointerleave",function(){ tip.classList.remove("on"); });
+    gg.addEventListener("click",function(ev){ tip.innerHTML=html; tip.classList.add("on"); tipMove(ev); });
+    gg.addEventListener("keydown",function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); tip.innerHTML=html; tip.classList.add("on"); tip.style.left="50%"; tip.style.top="40%"; } });
+    gP.appendChild(gg);
+  });
+};
 
 /* ============================================================
    ROSTER
