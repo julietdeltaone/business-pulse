@@ -2,48 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Business Pulse — Competitor Intel Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Business Pulse | JD Meyers Productions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-<header class="topbar">
-  <div class="brandrow">
-    <div class="mark">BP</div>
-    <div>
-      <h1>Business Pulse</h1>
-      <div class="sub">JD Meyers Productions &middot; competitor intelligence</div>
-    </div>
-  </div>
-  <div class="daterow">
-    <div class="today" id="todayDate">&nbsp;</div>
-    <div class="badge" id="dataBadge">syncing data&hellip;</div>
-  </div>
-</header>
-<nav class="navwrap" aria-label="Dashboard sections">
-  <div class="navgroups" id="navGroups" role="tablist" aria-label="Section groups"></div>
-  <div class="navviews" id="navViews" role="tablist" aria-label="Views"></div>
-</nav>
-<main>
-  <div class="loading" id="loading"><div class="spin"></div>Loading pulse data&hellip;</div>
-  <section class="view" id="view-master"></section>
-  <section class="view" id="view-overview"></section>
-  <section class="view" id="view-signals"></section>
-  <section class="view" id="view-recency"></section>
-  <section class="view" id="view-voice"></section>
-  <section class="view" id="view-ig"></section>
-  <section class="view" id="view-jd"></section>
-  <section class="view" id="view-pricing"></section>
-  <section class="view" id="view-directory"></section>
-  <section class="view" id="view-entrants"></section>
-  <section class="view" id="view-connections"></section>
-  <section class="view" id="view-sweep"></section>
-  <section class="view" id="view-ai"></section>
-  <section class="view" id="view-aiprompts"></section>
-  <section class="view" id="view-add"></section>
-</main>
-<footer>Business Pulse &middot; auto-synced every morning after the digest (~7:54 AM ET) &middot; sources: competitor sweeps, IG snapshots, AI audits</footer>
+<div class="shell">
+  <aside class="rail">
+    <a class="brand" href="#/pulse">
+      <span class="brand-mark" aria-hidden="true"><i></i></span>
+      <span class="brand-text"><b>Business Pulse</b><small>JD Meyers Productions</small></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot" id="freshness"></div>
+  </aside>
+  <main class="main" id="main">
+    <section class="view" id="view-pulse"></section>
+    <section class="view" id="view-network"></section>
+    <section class="view" id="view-roster"></section>
+    <section class="view" id="view-market"></section>
+    <section class="view" id="view-ai"></section>
+    <section class="view" id="view-sweeps"></section>
+    <section class="view" id="view-intake"></section>
+  </main>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-hidden="true" tabindex="-1">
+  <button class="drawer-close" id="drawerClose" aria-label="Close details">Close</button>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+<div class="tip" id="tip" role="tooltip"></div>
 <script src="data/data.js"></script>
 <script src="app.js"></script>
 </body>
