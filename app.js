@@ -1068,6 +1068,8 @@ function startGraph(){
   });
   if(reduced){ for(var i=0;i<250;i++) graphTick(); }
   graph.hover=null; graph.pinned=null;
+  graphDraw(0);
+  if(reduced) return;
   graph.running=true;
   cancelAnimationFrame(graph.raf);
   graph.raf=requestAnimationFrame(graphLoop);
