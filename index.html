@@ -21,22 +21,26 @@
     <div class="badge" id="dataBadge">syncing data&hellip;</div>
   </div>
 </header>
-<nav class="tabs" id="tabs">
-  <button class="tab active" data-view="overview">Overview</button>
-  <button class="tab" data-view="ig">Competitor IG Trends</button>
-  <button class="tab" data-view="jd">JD vs Competitors</button>
-  <button class="tab" data-view="sweep">Website Sweeps</button>
-  <button class="tab" data-view="ai">AI Visibility</button>
-  <button class="tab" data-view="directory">Directory</button>
+<nav class="navwrap" aria-label="Dashboard sections">
+  <div class="navgroups" id="navGroups" role="tablist" aria-label="Section groups"></div>
+  <div class="navviews" id="navViews" role="tablist" aria-label="Views"></div>
 </nav>
 <main>
   <div class="loading" id="loading"><div class="spin"></div>Loading pulse data&hellip;</div>
-  <section class="view active" id="view-overview"></section>
+  <section class="view" id="view-overview"></section>
+  <section class="view" id="view-signals"></section>
+  <section class="view" id="view-recency"></section>
+  <section class="view" id="view-voice"></section>
   <section class="view" id="view-ig"></section>
   <section class="view" id="view-jd"></section>
+  <section class="view" id="view-pricing"></section>
+  <section class="view" id="view-directory"></section>
+  <section class="view" id="view-entrants"></section>
+  <section class="view" id="view-connections"></section>
   <section class="view" id="view-sweep"></section>
   <section class="view" id="view-ai"></section>
-  <section class="view" id="view-directory"></section>
+  <section class="view" id="view-aiprompts"></section>
+  <section class="view" id="view-add"></section>
 </main>
 <footer>Business Pulse &middot; auto-synced every morning after the digest (~7:54 AM ET) &middot; sources: competitor sweeps, IG snapshots, AI audits</footer>
 <script src="data/data.js"></script>
