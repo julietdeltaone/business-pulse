@@ -390,3 +390,13 @@ svg text{fill:var(--silver-2);font-family:var(--sans)}
 .node .hit{cursor:pointer}
 #netSvg:focus{outline:none}
 #netSvg:focus-visible{outline:1px solid var(--line-2);outline-offset:-1px}
+
+/* ---------- follow graph: flow layout, nothing under overlays ---------- */
+[hidden]{display:none!important}
+.net-wrap{display:flex;flex-direction:column}
+.net-tools{position:relative;left:auto;top:auto;right:auto;margin:14px 16px 0;pointer-events:auto;justify-content:space-between;align-items:center;z-index:5}
+.net-canvas{position:relative;flex:1 1 auto;min-height:280px;margin:12px 16px 0;overflow:hidden}
+#netSvg{position:absolute;inset:0}
+.net-crumb{left:12px;top:12px}
+.net-zoom{top:auto;bottom:12px;right:12px}
+.net-legend{position:static;margin:12px 16px;max-width:none}
