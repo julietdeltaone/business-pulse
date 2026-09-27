@@ -372,3 +372,21 @@ svg text{fill:var(--silver-2);font-family:var(--sans)}
 .pin-count{background:rgba(10,12,17,.85)!important;border:1px solid var(--line-2)!important;color:var(--silver)!important;border-radius:999px!important;font-weight:700;font-size:12px!important;padding:1px 7px!important;box-shadow:none!important}
 .pin-count::before{display:none!important}
 @media (max-width: 860px){ .qrow,.qaxis{grid-template-columns:64px 1fr 1fr} }
+
+/* ---------- follow graph: hub-and-spoke controls ---------- */
+.net-search{position:relative;flex:1 1 220px;max-width:340px;min-width:180px}
+.net-search .search{width:100%}
+#netResults{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--ink);border:1px solid var(--line-2);border-radius:var(--r-m);overflow:hidden;z-index:6;box-shadow:0 12px 32px rgba(0,0,0,.5)}
+#netResults button{display:block;width:100%;text-align:left;padding:10px 14px;background:none;border:0;color:var(--silver);font-size:13.5px;cursor:pointer}
+#netResults button:hover{background:rgba(255,255,255,.06)}
+.seg{display:flex;gap:6px;align-items:center;background:rgba(10,12,17,.72);border:1px solid var(--line);border-radius:var(--r-m);padding:6px}
+.deg{display:flex;align-items:center;gap:8px;background:rgba(10,12,17,.72);border:1px solid var(--line);border-radius:var(--r-m);padding:6px 12px;font-size:12.5px;color:var(--silver-2);white-space:nowrap}
+.deg input[type=range]{width:110px;accent-color:var(--amber)}
+.deg b{color:var(--silver);min-width:20px;text-align:right;font-variant-numeric:tabular-nums}
+.net-crumb{position:absolute;left:16px;top:66px;display:flex;gap:10px;align-items:center;background:rgba(10,12,17,.85);border:1px solid var(--line-2);padding:7px 14px;border-radius:var(--r-m);font-size:13.5px;color:var(--silver);z-index:4}
+.net-crumb button{background:none;border:0;color:var(--amber);cursor:pointer;font-size:13.5px;padding:0}
+.net-crumb button:hover{text-decoration:underline}
+.fedge{transition:opacity .18s}
+.node .hit{cursor:pointer}
+#netSvg:focus{outline:none}
+#netSvg:focus-visible{outline:1px solid var(--line-2);outline-offset:-1px}
