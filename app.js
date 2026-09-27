@@ -547,13 +547,13 @@ RENDER.network = function(el){
   var maxDeg=nodes.reduce(function(m,n){ return Math.max(m,n.deg); },0);
   var h='<div class="page-head"><h1>Who follows who</h1><p>'+FG.edges.length+' verified Instagram follow links across '+biz+' businesses ('+jdE+' touch @jdmeyersproductions). Wedges point from follower to followed \u2014 the wide end is the follower. Click any business to make it the hub: its connections fan out around it. Drag to pan, scroll or pinch to zoom.</p></div>';
   h+='<div class="net-wrap" id="netWrap">'
-    +'<svg id="netSvg" tabindex="0" role="img" aria-label="Instagram follow graph"><g id="viewport"><g id="netEdges"></g><g id="netNodes"></g></g></svg>'
     +'<div class="net-tools"><div class="net-search"><input class="search" id="netSearch" type="search" placeholder="Find a business\u2026" autocomplete="off" aria-label="Find a business"><div id="netResults" hidden></div></div>'
     +'<div class="seg" role="group" aria-label="Link type"><button class="filter" data-m="all" aria-pressed="true">All links</button><button class="filter" data-m="mutual" aria-pressed="false">Mutual</button><button class="filter" data-m="oneway" aria-pressed="false">One-way</button></div>'
     +'<label class="deg"><span>Min links</span><input type="range" id="netDeg" min="0" max="'+maxDeg+'" value="1" aria-label="Minimum connections"><b id="netDegV">1</b></label></div>'
+    +'<div class="net-canvas"><svg id="netSvg" tabindex="0" role="img" aria-label="Instagram follow graph"><g id="viewport"><g id="netEdges"></g><g id="netNodes"></g></g></svg>'
     +'<div class="net-crumb" id="netCrumb" hidden><button id="netBack">\u2039 All businesses</button><span id="netCrumbName"></span></div>'
     +'<div class="net-zoom"><button id="netZoomIn" aria-label="Zoom in">+</button><button id="netZoomOut" aria-label="Zoom out">\u2212</button><button id="netReset" aria-label="Reset view">\u27f2</button></div>'
-    +'<div class="net-legend"><span><svg width="22" height="10" aria-hidden="true"><path d="M1,1.5 L21,4.6 L21,5.4 L1,8.5 Z" fill="#8fa3c8"/></svg>Follows (wide end = follower)</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s account</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>Bigger dot = more links</span></div></div>';
+    +'</div><div class="net-legend"><span><svg width="22" height="10" aria-hidden="true"><path d="M1,1.5 L21,4.6 L21,5.4 L1,8.5 Z" fill="#8fa3c8"/></svg>Follows (wide end = follower)</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s account</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>Bigger dot = more links</span></div></div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a business on the graph.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
   h+='<div class="panel"><h2>Collaborations and ties</h2><p class="hint">Evidence of businesses working together \u2014 kept as a plain list, separate from the follow graph.</p><div class="tablewrap"><table class="data"><thead><tr><th>Between</th><th>Relationship</th><th>When</th><th>Evidence</th></tr></thead><tbody>';
   LINKS.slice().sort(function(a,b){ return (a.type==="jd")-(b.type==="jd") || String(b.date||"").localeCompare(String(a.date||"")); }).forEach(function(l){
@@ -781,7 +781,7 @@ function buildFollowGraph(){
   svg.addEventListener("keydown",function(e){ if(e.key==="Escape") backToAll(); });
   $("#netZoomIn").addEventListener("click",function(){ zoomBy(1.35); });
   $("#netZoomOut").addEventListener("click",function(){ zoomBy(1/1.35); });
-  $("#netReset").addEventListener("click",function(){ backToAll(); fitView(true); });
+  $("#netReset").addEventListener("click",backToAll);
   $("#netBack").addEventListener("click",backToAll);
 
   /* ---------- labels: semantic zoom ---------- */
@@ -889,7 +889,7 @@ function buildFollowGraph(){
     edgeObjs.forEach(function(eo){ eo.paths.forEach(function(o){ o.elm.classList.remove("lit"); }); });
     $("#netCrumb").hidden=true;
     var targets={}; nodes.forEach(function(m){ targets[m.key]=[m.hx,m.hy]; });
-    animateNodes(targets,450);
+    animateNodes(targets,450,function(){ fitView(true); });
     renderDetail(null); updateLabels();
   }
 
