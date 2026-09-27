@@ -540,11 +540,21 @@ var FGN = (function(){
 
 var NET = null;
 RENDER.network = function(el){
-  var P=FGN.pairs, nodes=FGN.nodes;
-  var h='<div class="page-head"><h1>Who follows who</h1><p>Verified Instagram follow links between the roster and @jdmeyersproductions \u2014 nothing else. One line per pair; click any name for the direction. Competitor-to-competitor links are still being mapped \u2014 they need a logged-in Instagram check.</p></div>';
-  h+='<div class="net-wrap" id="netWrap"><svg id="netSvg" viewBox="0 0 940 720" role="img" aria-label="Instagram follow graph"><g id="netEdges"></g><g id="netNodes"></g></svg>'+
-     '<div class="net-legend"><span><span class="ln" style="--c:#8fa3c8"></span>Follow link</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s account</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>'+P.length+' verified links</span></div></div>';
-  h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a name on the graph.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
+  var nodes=FGN.nodes;
+  var jdE=0;
+  (FG.edges||[]).forEach(function(e){ var a=normHandle(e.from), b=normHandle(e.to); if(a==="jdmeyersproductions"||b==="jdmeyersproductions") jdE++; });
+  var biz=nodes.filter(function(n){ return n.kind==="comp"&&n.deg>0; }).length;
+  var maxDeg=nodes.reduce(function(m,n){ return Math.max(m,n.deg); },0);
+  var h='<div class="page-head"><h1>Who follows who</h1><p>'+FG.edges.length+' verified Instagram follow links across '+biz+' businesses ('+jdE+' touch @jdmeyersproductions). Wedges point from follower to followed \u2014 the wide end is the follower. Click any business to make it the hub: its connections fan out around it. Drag to pan, scroll or pinch to zoom.</p></div>';
+  h+='<div class="net-wrap" id="netWrap">'
+    +'<svg id="netSvg" tabindex="0" role="img" aria-label="Instagram follow graph"><g id="viewport"><g id="netEdges"></g><g id="netNodes"></g></g></svg>'
+    +'<div class="net-tools"><div class="net-search"><input class="search" id="netSearch" type="search" placeholder="Find a business\u2026" autocomplete="off" aria-label="Find a business"><div id="netResults" hidden></div></div>'
+    +'<div class="seg" role="group" aria-label="Link type"><button class="filter" data-m="all" aria-pressed="true">All links</button><button class="filter" data-m="mutual" aria-pressed="false">Mutual</button><button class="filter" data-m="oneway" aria-pressed="false">One-way</button></div>'
+    +'<label class="deg"><span>Min links</span><input type="range" id="netDeg" min="0" max="'+maxDeg+'" value="1" aria-label="Minimum connections"><b id="netDegV">1</b></label></div>'
+    +'<div class="net-crumb" id="netCrumb" hidden><button id="netBack">\u2039 All businesses</button><span id="netCrumbName"></span></div>'
+    +'<div class="net-zoom"><button id="netZoomIn" aria-label="Zoom in">+</button><button id="netZoomOut" aria-label="Zoom out">\u2212</button><button id="netReset" aria-label="Reset view">\u27f2</button></div>'
+    +'<div class="net-legend"><span><svg width="22" height="10" aria-hidden="true"><path d="M1,1.5 L21,4.6 L21,5.4 L1,8.5 Z" fill="#8fa3c8"/></svg>Follows (wide end = follower)</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s account</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>Bigger dot = more links</span></div></div>';
+  h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a business on the graph.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
   h+='<div class="panel"><h2>Collaborations and ties</h2><p class="hint">Evidence of businesses working together \u2014 kept as a plain list, separate from the follow graph.</p><div class="tablewrap"><table class="data"><thead><tr><th>Between</th><th>Relationship</th><th>When</th><th>Evidence</th></tr></thead><tbody>';
   LINKS.slice().sort(function(a,b){ return (a.type==="jd")-(b.type==="jd") || String(b.date||"").localeCompare(String(a.date||"")); }).forEach(function(l){
     h+='<tr data-open="'+esc(l.s==="jd"?l.t:l.s)+'"><td class="nm"><div class="chips">'+collabChip(l.s)+collabChip(l.t)+'</div></td><td>'+esc(SUB_LABEL[l.sub]||l.sub)+'</td><td class="num">'+(l.date?shortDate(l.date):'<span class="muted">undated</span>')+'</td><td class="muted" style="max-width:520px">'+esc(l.evidence||"")+'</td></tr>';
@@ -555,42 +565,261 @@ RENDER.network = function(el){
 };
 
 function buildFollowGraph(){
-  var wrap=$("#netWrap"), gE=$("#netEdges"), gN=$("#netNodes");
+  var wrap=$("#netWrap"), svg=$("#netSvg"), vp=$("#viewport"),
+      gE=$("#netEdges"), gN=$("#netNodes");
   var NS="http://www.w3.org/2000/svg";
-  var CX=470, CY=350;
   var nodes=FGN.nodes, byKey=FGN.byKey;
-  var jd=nodes.filter(function(n){return n.kind==="jd";});
-  var linked=nodes.filter(function(n){return n.kind==="comp"&&n.deg>0;}).sort(function(a,b){return a.label.localeCompare(b.label);});
-  var lone=nodes.filter(function(n){return n.kind==="comp"&&n.deg===0;}).sort(function(a,b){return a.label.localeCompare(b.label);});
-  jd.forEach(function(n,i){ var a=i/Math.max(1,jd.length)*Math.PI*2-Math.PI/2; n.x=CX+Math.cos(a)*64; n.y=CY+Math.sin(a)*64; n.r=11; });
-  linked.forEach(function(n,i){ var a=i/Math.max(1,linked.length)*Math.PI*2-Math.PI/2; n.x=CX+Math.cos(a)*205; n.y=CY+Math.sin(a)*205; n.r=7; });
-  lone.forEach(function(n,i){ var a=i/Math.max(1,lone.length)*Math.PI*2-Math.PI/2; n.x=CX+Math.cos(a)*325; n.y=CY+Math.sin(a)*325; n.r=5.5; });
+  var W=940, H=700, f1=function(v){ return v.toFixed(1); };
+  var i, j, t, a, b, dx, dy, d, f;
+
   function el(tag,attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
-  FGN.pairs.forEach(function(p){
-    var a=byKey[p.a], b=byKey[p.b]; if(!a||!b) return;
-    gE.appendChild(el("line",{x1:a.x.toFixed(1),y1:a.y.toFixed(1),x2:b.x.toFixed(1),y2:b.y.toFixed(1),"class":"edge follow"+(p.mutual?" mutual":""),"data-a":p.a,"data-b":p.b}));
+
+  /* ---------- seeded force-directed layout ---------- */
+  var seed=987654321;
+  function rnd(){ seed|=0; seed=seed+0x6D2B79F5|0; var t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }
+  nodes.forEach(function(n){
+    n.r=n.kind==="jd"?13:5.5+Math.sqrt(n.deg)*2.1;
+    var ang=rnd()*Math.PI*2, rr=60+rnd()*230;
+    n.x=W/2+Math.cos(ang)*rr; n.y=H/2+Math.sin(ang)*rr*0.8;
   });
+  var jd0=null;
+  nodes.forEach(function(n){ if(n.kind==="jd") jd0=n; });
+  var K=200;
+  function tick(){
+    for(i=0;i<nodes.length;i++){ nodes[i].dx=0; nodes[i].dy=0; }
+    for(i=0;i<nodes.length;i++){ a=nodes[i];
+      for(j=i+1;j<nodes.length;j++){ b=nodes[j];
+        dx=a.x-b.x; dy=a.y-b.y; d=dx*dx+dy*dy+60;
+        f=Math.min(K*K/d,5);
+        a.dx+=dx*f; a.dy+=dy*f; b.dx-=dx*f; b.dy-=dy*f;
+      }
+    }
+    FGN.pairs.forEach(function(p){
+      a=byKey[p.a]; b=byKey[p.b]; if(!a||!b) return;
+      dx=b.x-a.x; dy=b.y-a.y; d=Math.sqrt(dx*dx+dy*dy)+0.01;
+      f=d/K*0.03;
+      a.dx+=dx*f; a.dy+=dy*f; b.dx-=dx*f; b.dy-=dy*f;
+    });
+    for(i=0;i<nodes.length;i++){ a=nodes[i];
+      a.dx+=(W/2-a.x)*0.02; a.dy+=(H/2-a.y)*0.02;
+      if(a===jd0){ a.dx+=(W/2-a.x)*0.25; a.dy+=(H/2-a.y)*0.25; }
+      var m=Math.sqrt(a.dx*a.dx+a.dy*a.dy);
+      if(m>24){ a.dx*=24/m; a.dy*=24/m; }
+      a.x+=a.dx; a.y+=a.dy;
+      if(a.x<34) a.x=34; if(a.x>W-34) a.x=W-34;
+      if(a.y<34) a.y=34; if(a.y>H-34) a.y=H-34;
+    }
+  }
+  for(t=0;t<480;t++) tick();
+  nodes.forEach(function(n){ n.hx=n.x; n.hy=n.y; });
+  var topDeg=nodes.map(function(n){ return n.deg; }).sort(function(x,y){ return y-x; })[4]||0;
+
+  /* ---------- edges: tapered wedges (one-way), offset arcs (mutual) ---------- */
+  var followsMap={};
+  nodes.forEach(function(n){ followsMap[n.key]={}; n.follows.forEach(function(m){ followsMap[n.key][m.key]=1; }); });
+  var edgeObjs=FGN.pairs.map(function(p){
+    var A=byKey[p.a], B=byKey[p.b];
+    var ab=followsMap[p.a][p.b], ba=followsMap[p.b][p.a];
+    var mut=!!(ab&&ba);
+    return { p:p, mut:mut, dirs: mut?[[A,B],[B,A]]:(ab?[[A,B]]:[[B,A]]), paths:[] };
+  });
+  function trimEnds(x1,y1,x2,y2,t1,t2){
+    var dx=x2-x1, dy=y2-y1, d=Math.sqrt(dx*dx+dy*dy)||1;
+    return [x1+dx/d*t1, y1+dy/d*t1, x2-dx/d*t2, y2-dy/d*t2];
+  }
+  function wedgeD(x1,y1,x2,y2,w1,w2){
+    var dx=x2-x1, dy=y2-y1, d=Math.sqrt(dx*dx+dy*dy)||1, nx=-dy/d, ny=dx/d;
+    return "M"+f1(x1+nx*w1/2)+","+f1(y1+ny*w1/2)+"L"+f1(x2+nx*w2/2)+","+f1(y2+ny*w2/2)
+         +"L"+f1(x2-nx*w2/2)+","+f1(y2-ny*w2/2)+"L"+f1(x1-nx*w1/2)+","+f1(y1-ny*w1/2)+"Z";
+  }
+  function arcD(x1,y1,x2,y2,bend){
+    var mx=(x1+x2)/2, my=(y1+y2)/2, dx=x2-x1, dy=y2-y1, d=Math.sqrt(dx*dx+dy*dy)||1;
+    return "M"+f1(x1)+","+f1(y1)+"Q"+f1(mx-dy/d*bend)+","+f1(my+dx/d*bend)+" "+f1(x2)+","+f1(y2);
+  }
+  edgeObjs.forEach(function(eo){
+    eo.dirs.forEach(function(dr,k){
+      var o={ dir:dr, kind: eo.mut?"mut":"one", bend: eo.mut?16:0 };
+      var attrs={"class":"edge fedge "+o.kind, "data-a":eo.p.a, "data-b":eo.p.b};
+      if(eo.mut){ attrs.fill="none"; attrs.stroke="#d7e2f7"; attrs["stroke-width"]=1.7; attrs["stroke-opacity"]=.5; }
+      else { attrs.fill="#8fa3c8"; attrs["fill-opacity"]=.3; attrs.stroke="none"; }
+      o.elm=el("path",attrs);
+      gE.appendChild(o.elm);
+      eo.paths.push(o);
+    });
+  });
+
+  /* ---------- nodes ---------- */
   var tip=$("#tip");
   function tipShow(n,ev){
-    var s='<b>'+esc(n.kind==="jd"?n.label+" (JD's account)":n.label)+'</b>';
-    if(n.kind==="comp") s+=esc(n.comp.town||"")+'<br>'+n.follows.length+' follows, '+n.followedBy.length+' followers (verified links)';
-    else s+='JD Meyers Productions account<br>'+n.follows.length+' follows, '+n.followedBy.length+' followers (verified links)';
+    var s='<b>'+esc(n.kind==="jd"?n.label+" (JD\u2019s account)":n.label)+'</b>';
+    if(n.kind==="comp") s+='<br>'+esc(n.comp.town||"")+'<br>'+n.follows.length+' follows, '+n.followedBy.length+' followed by (verified)';
+    else s+='<br>JD Meyers Productions<br>'+n.follows.length+' follows, '+n.followedBy.length+' followed by (verified)';
     tip.innerHTML=s; tip.classList.add("on"); tipMove(ev);
   }
-  function tipMove(ev){ tip.style.left=Math.min(window.innerWidth-270,ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
+  function tipMove(ev){ if(!ev||ev.clientX==null) return; tip.style.left=Math.min(window.innerWidth-280,ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
   function tipHide(){ tip.classList.remove("on"); }
+  nodes.forEach(function(n){
+    var g=el("g",{"class":"node "+n.kind, tabindex:"0", role:"button",
+      "aria-label":n.kind==="jd"?n.label+" (JD\u2019s account)":n.label});
+    g.appendChild(el("circle",{r:f1(n.r), fill:n.kind==="jd"?"var(--amber)":"#8fa3c8", stroke:"rgba(8,10,14,.85)", "stroke-width":1.4}));
+    g.appendChild(el("circle",{r:22, "class":"hit", fill:"rgba(0,0,0,0)"}));
+    var tx=el("text",{x:f1(n.r+7), y:4}); tx.textContent=n.label;
+    g.appendChild(tx);
+    n.el=g; n.txt=tx; gN.appendChild(g);
+    g.addEventListener("pointerenter",function(e){ tipShow(n,e); if(!egoOn) focusOn(n); });
+    g.addEventListener("pointermove",tipMove);
+    g.addEventListener("pointerleave",function(){ tipHide(); if(!egoOn) clearFocus(); });
+    g.addEventListener("click",function(e){ e.stopPropagation(); select(n); });
+    g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); select(n); } });
+  });
+  function drawNodes(){ nodes.forEach(function(n){ n.el.setAttribute("transform","translate("+f1(n.x)+","+f1(n.y)+")"); }); }
+  function visNode(n){ return n.el.style.display!=="none"; }
+  function edgeVisible(eo){
+    if(eo.mut ? edgeMode==="oneway" : edgeMode==="mutual") return false;
+    return visNode(byKey[eo.p.a])&&visNode(byKey[eo.p.b]);
+  }
+  function drawEdges(){
+    edgeObjs.forEach(function(eo){
+      var vis=edgeVisible(eo);
+      eo.paths.forEach(function(o){
+        o.elm.style.display=vis?"":"none";
+        if(!vis) return;
+        var F=o.dir[0], T=o.dir[1];
+        if(o.kind==="mut"){
+          var q=trimEnds(F.x,F.y,T.x,T.y,F.r+3,T.r+3);
+          o.elm.setAttribute("d",arcD(q[0],q[1],q[2],q[3],o.bend));
+        }else{
+          var q2=trimEnds(F.x,F.y,T.x,T.y,F.r+2,T.r+5);
+          o.elm.setAttribute("d",wedgeD(q2[0],q2[1],q2[2],q2[3],4.4,0.9));
+        }
+      });
+    });
+  }
+
+  /* ---------- camera: pan / zoom / pinch ---------- */
+  var cam={x:0,y:0,k:1}, camAnim=null, moving=false, moveT=null;
+  function svgSize(){ var r=svg.getBoundingClientRect(); return {w:Math.max(50,r.width), h:Math.max(50,r.height)}; }
+  function applyCam(){
+    vp.setAttribute("transform","translate("+f1(cam.x)+","+f1(cam.y)+") scale("+cam.k.toFixed(3)+")");
+    updateLabels();
+  }
+  function cameraMoved(){
+    moving=true; applyCam();
+    clearTimeout(moveT); moveT=setTimeout(function(){ moving=false; applyCam(); },140);
+  }
+  function animateCam(tx,ty,tk,dur,done){
+    if(camAnim) cancelAnimationFrame(camAnim);
+    var s0={x:cam.x,y:cam.y,k:cam.k}, t0=performance.now();
+    dur=reduceMotion?0:(dur||400);
+    if(!dur){ cam.x=tx; cam.y=ty; cam.k=tk; applyCam(); if(done) done(); return; }
+    (function fr(now){
+      var p=Math.min(1,(now-t0)/dur), e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+      cam.x=s0.x+(tx-s0.x)*e; cam.y=s0.y+(ty-s0.y)*e; cam.k=s0.k+(tk-s0.k)*e;
+      applyCam();
+      if(p<1) camAnim=requestAnimationFrame(fr);
+      else { camAnim=null; applyCam(); if(done) done(); }
+    })(t0);
+  }
+  function fitView(anim){
+    var vis=nodes.filter(visNode);
+    if(!vis.length) return;
+    var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    vis.forEach(function(n){ x0=Math.min(x0,n.x-n.r); y0=Math.min(y0,n.y-n.r); x1=Math.max(x1,n.x+n.r); y1=Math.max(y1,n.y+n.r); });
+    var s=svgSize(), bw=Math.max(80,x1-x0), bh=Math.max(80,y1-y0);
+    var k=Math.min(s.w/bw,s.h/bh,1.5)*0.94;
+    var tx=s.w/2-(x0+x1)/2*k, ty=s.h/2-(y0+y1)/2*k;
+    if(anim) animateCam(tx,ty,k,450); else { cam.x=tx; cam.y=ty; cam.k=k; applyCam(); }
+  }
+  function zoomBy(f2){
+    var s=svgSize();
+    var k2=Math.min(4,Math.max(0.3,cam.k*f2)), r=cam.k?k2/cam.k:1;
+    animateCam(s.w/2-(s.w/2-cam.x)*r, s.h/2-(s.h/2-cam.y)*r, k2, 220);
+  }
+  var pts={}, panStart=null;
+  function pdist(){ var k=Object.keys(pts); var A=pts[k[0]], B=pts[k[1]]; return Math.hypot(A.x-B.x,A.y-B.y); }
+  function pmid(){ var k=Object.keys(pts); var A=pts[k[0]], B=pts[k[1]]; return {x:(A.x+B.x)/2, y:(A.y+B.y)/2}; }
+  svg.addEventListener("pointerdown",function(e){
+    if(e.target.closest&&e.target.closest(".node")) return;
+    try{ svg.setPointerCapture(e.pointerId); }catch(_){}
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(pts);
+    if(ids.length===1){ panStart={x:cam.x,y:cam.y,px:e.clientX,py:e.clientY,moved:false}; svg.classList.add("panning"); }
+    else if(ids.length===2&&panStart){ var m=pmid(); panStart.pinch={d0:Math.max(20,pdist()),k0:cam.k,mx0:m.x,my0:m.y,cx0:cam.x,cy0:cam.y}; }
+    var rs=$("#netResults"); if(rs) rs.hidden=true;
+  });
+  svg.addEventListener("pointermove",function(e){
+    if(!pts[e.pointerId]||!panStart) return;
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(pts);
+    if(ids.length===2&&panStart.pinch){
+      var P=panStart.pinch, dd=Math.max(20,pdist()), md=pmid();
+      var k2=Math.min(4,Math.max(0.3,P.k0*dd/P.d0));
+      cam.k=k2; cam.x=P.cx0+(md.x-P.mx0); cam.y=P.cy0+(md.y-P.my0);
+      panStart.moved=true; cameraMoved();
+    }else if(ids.length===1){
+      var dx=e.clientX-panStart.px, dy=e.clientY-panStart.py;
+      if(Math.abs(dx)+Math.abs(dy)>4) panStart.moved=true;
+      cam.x=panStart.x+dx; cam.y=panStart.y+dy;
+      cameraMoved();
+    }
+  });
+  function endPt(e){
+    var wasPan=panStart&&panStart.moved, onBg=e.target===svg;
+    delete pts[e.pointerId];
+    if(!Object.keys(pts).length){ svg.classList.remove("panning"); panStart=null; }
+    if(!wasPan&&onBg&&egoOn) backToAll();
+  }
+  svg.addEventListener("pointerup",endPt);
+  svg.addEventListener("pointercancel",endPt);
+  svg.addEventListener("wheel",function(e){
+    e.preventDefault();
+    var r=svg.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+    var k2=Math.min(4,Math.max(0.3,cam.k*Math.exp(-e.deltaY*0.0012))), z=k2/cam.k;
+    cam.x=mx-(mx-cam.x)*z; cam.y=my-(my-cam.y)*z; cam.k=k2;
+    cameraMoved();
+  },{passive:false});
+  svg.addEventListener("keydown",function(e){ if(e.key==="Escape") backToAll(); });
+  $("#netZoomIn").addEventListener("click",function(){ zoomBy(1.35); });
+  $("#netZoomOut").addEventListener("click",function(){ zoomBy(1/1.35); });
+  $("#netReset").addEventListener("click",function(){ backToAll(); fitView(true); });
+  $("#netBack").addEventListener("click",backToAll);
+
+  /* ---------- labels: semantic zoom ---------- */
+  var SEL=null, egoOn=false;
+  function nbrMap(n){ var o={}; n.follows.forEach(function(m){ o[m.key]=m; }); n.followedBy.forEach(function(m){ o[m.key]=m; }); return o; }
+  function updateLabels(){
+    nodes.forEach(function(n){
+      var show=visNode(n)&&(n===SEL||(SEL&&nbrMap(SEL)[n.key])||n.kind==="jd"||n.deg>=topDeg||cam.k>=0.95);
+      if(moving) show=(n===SEL);
+      n.txt.style.opacity=show?"1":"0";
+    });
+  }
+
+  /* ---------- hover focus (dim, don't hide) ---------- */
+  function focusOn(n){
+    var nb=nbrMap(n);
+    wrap.classList.add("focusing");
+    nodes.forEach(function(m){ m.el.classList.toggle("lit",m===n||!!nb[m.key]); });
+    edgeObjs.forEach(function(eo){
+      var inc=eo.p.a===n.key||eo.p.b===n.key;
+      eo.paths.forEach(function(o){ o.elm.classList.toggle("lit",inc); });
+    });
+  }
+  function clearFocus(){
+    wrap.classList.remove("focusing");
+    nodes.forEach(function(m){ m.el.classList.remove("lit"); });
+    edgeObjs.forEach(function(eo){ eo.paths.forEach(function(o){ o.elm.classList.remove("lit"); }); });
+  }
+
+  /* ---------- detail panel ---------- */
   function fgChip(n){
     if(n.kind==="jd") return '<span class="chip" style="cursor:default"><span class="dot" style="background:var(--amber)"></span>'+esc(n.label)+'</span>';
     return chipFor(n.comp.id);
   }
-  function select(n){
-    $$("#netNodes .node").forEach(function(g){ g.classList.remove("lit"); });
-    n.el.classList.add("lit"); wrap.classList.add("focusing");
-    $$("#netEdges .edge").forEach(function(e){
-      e.classList.toggle("lit", e.getAttribute("data-a")===n.key||e.getAttribute("data-b")===n.key);
-    });
-    var d=$("#fgDetail"), s='';
-    s+='<p style="font-size:17px;margin:0 0 10px"><b>'+(n.kind==="jd"?esc(n.label):'<button class="linkish" data-open="'+esc(n.comp.id)+'" style="font-size:17px">'+esc(n.label)+'</button>')+'</b>'+(n.kind==="comp"&&n.comp.town?'<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>':"")+'</p>';
+  function renderDetail(n){
+    var d=$("#fgDetail");
+    if(!n){ d.innerHTML='<p class="muted">No one selected yet.</p>'; return; }
+    var s='<p style="font-size:17px;margin:0 0 10px"><b>'+(n.kind==="jd"?esc(n.label):'<button class="linkish" data-open="'+esc(n.comp.id)+'" style="font-size:17px">'+esc(n.label)+'</button>')+'</b>'+(n.kind==="comp"&&n.comp.town?'<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>':"")+'</p>';
     s+='<div class="grid g-2">';
     s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+')</p>'+(n.follows.length?'<div class="chips">'+n.follows.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
     s+='<div><p class="hint" style="margin:0 0 6px">Followed by ('+n.followedBy.length+')</p>'+(n.followedBy.length?'<div class="chips">'+n.followedBy.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
@@ -599,23 +828,124 @@ function buildFollowGraph(){
       s+='<p class="hint" style="margin-top:10px">This account\u2019s full following list has not been mapped yet \u2014 it needs a logged-in Instagram check.</p>';
     d.innerHTML=s;
   }
-  nodes.forEach(function(n){
-    var g=el("g",{"class":"node "+n.kind,tabindex:"0",role:"button","aria-label":n.kind==="jd"?n.label+" (JD's account)":n.label});
-    g.appendChild(el("circle",{r:n.r,fill:n.kind==="jd"?"var(--amber)":"#8fa3c8",stroke:"rgba(10,12,17,.8)","stroke-width":1.2}));
-    var t=el("text",{x:n.r+6,y:4,"class":n.deg>0||n.kind==="jd"?"":"lbl-hover"}); t.textContent=n.label; g.appendChild(t);
-    n.el=g; gN.appendChild(g);
-    g.setAttribute("transform","translate("+n.x.toFixed(1)+","+n.y.toFixed(1)+")");
-    g.addEventListener("pointerenter",function(ev){ tipShow(n,ev); });
-    g.addEventListener("pointermove",tipMove);
-    g.addEventListener("pointerleave",tipHide);
-    g.addEventListener("click",function(){ select(n); });
-    g.addEventListener("keydown",function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); select(n); } });
+
+  /* ---------- ego hub-and-spoke ---------- */
+  var nodeAnim=null;
+  function animateNodes(targets,dur,done){
+    if(nodeAnim) cancelAnimationFrame(nodeAnim);
+    var from={}; nodes.forEach(function(m){ from[m.key]=[m.x,m.y]; });
+    dur=reduceMotion?0:dur;
+    if(!dur){
+      nodes.forEach(function(m){ var b=targets[m.key]; if(b){ m.x=b[0]; m.y=b[1]; } });
+      drawNodes(); drawEdges(); updateLabels(); if(done) done(); return;
+    }
+    var t0=performance.now();
+    (function fr(now){
+      var p=Math.min(1,(now-t0)/dur), e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+      nodes.forEach(function(m){ var A=from[m.key], B=targets[m.key]||A; m.x=A[0]+(B[0]-A[0])*e; m.y=A[1]+(B[1]-A[1])*e; });
+      drawNodes(); drawEdges();
+      if(p<1) nodeAnim=requestAnimationFrame(fr);
+      else { nodeAnim=null; updateLabels(); if(done) done(); }
+    })(t0);
+  }
+  function pulseAt(n){
+    var c=el("circle",{r:f1(n.r+5),cx:f1(n.x),cy:f1(n.y),"class":"pulse-ring",fill:"none",stroke:"var(--amber)","stroke-width":1.5});
+    vp.appendChild(c);
+    setTimeout(function(){ if(c.parentNode) c.parentNode.removeChild(c); },3000);
+  }
+  function select(n){
+    clearFocus();
+    var nb=nbrMap(n);
+    var ring1=Object.keys(nb).map(function(k){ return nb[k]; }).filter(visNode).sort(function(x,y){ return y.deg-x.deg; });
+    var seen={}; seen[n.key]=1; ring1.forEach(function(m){ seen[m.key]=1; });
+    var ring2=[];
+    ring1.forEach(function(m){
+      var q=nbrMap(m);
+      Object.keys(q).forEach(function(k){ if(!seen[k]&&visNode(q[k])){ seen[k]=1; ring2.push(q[k]); } });
+    });
+    ring2.sort(function(x,y){ return y.deg-x.deg; }).slice(0,44);
+    SEL=n; egoOn=true;
+    var s=svgSize(), cx=(s.w/2-cam.x)/cam.k, cy=(s.h/2-cam.y)/cam.k;
+    var R1=Math.min(300,Math.max(190,ring1.length*10)), R2=R1+240;
+    var targets={}; targets[n.key]=[cx,cy];
+    ring1.forEach(function(m,idx){ var ang=-Math.PI/2+idx/Math.max(1,ring1.length)*Math.PI*2; targets[m.key]=[cx+Math.cos(ang)*R1,cy+Math.sin(ang)*R1]; });
+    ring2.forEach(function(m,idx){ var ang=-Math.PI/2+idx/Math.max(1,ring2.length)*Math.PI*2+0.25; targets[m.key]=[cx+Math.cos(ang)*R2,cy+Math.sin(ang)*R2]; });
+    wrap.classList.add("focusing");
+    nodes.forEach(function(m){ m.el.classList.toggle("lit",!!seen[m.key]); });
+    edgeObjs.forEach(function(eo){
+      var inc=eo.p.a===n.key||eo.p.b===n.key;
+      eo.paths.forEach(function(o){ o.elm.classList.toggle("lit",inc); });
+    });
+    var crumb=$("#netCrumb"); crumb.hidden=false; $("#netCrumbName").textContent=n.label;
+    animateNodes(targets,450,function(){ pulseAt(n); });
+    renderDetail(n); updateLabels();
+    if(window.innerWidth<720) setTimeout(function(){ var d=$("#fgDetail"); if(d) d.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"nearest"}); },500);
+  }
+  function backToAll(){
+    if(!egoOn&&!SEL){ fitView(true); return; }
+    SEL=null; egoOn=false;
+    wrap.classList.remove("focusing");
+    nodes.forEach(function(m){ m.el.classList.remove("lit"); });
+    edgeObjs.forEach(function(eo){ eo.paths.forEach(function(o){ o.elm.classList.remove("lit"); }); });
+    $("#netCrumb").hidden=true;
+    var targets={}; nodes.forEach(function(m){ targets[m.key]=[m.hx,m.hy]; });
+    animateNodes(targets,450);
+    renderDetail(null); updateLabels();
+  }
+
+  /* ---------- search ---------- */
+  var sIn=$("#netSearch"), sRes=$("#netResults");
+  sIn.addEventListener("input",function(){
+    var q=sIn.value.trim().toLowerCase();
+    if(q.length<2){ sRes.hidden=true; return; }
+    var ms=nodes.filter(function(n){
+      return n.kind==="comp"&&visNode(n)&&(((n.label||"").toLowerCase().indexOf(q)>=0)||(n.handle||"").indexOf(q)>=0);
+    }).sort(function(x,y){ return y.deg-x.deg; }).slice(0,6);
+    if(!ms.length){ sRes.hidden=true; return; }
+    sRes.innerHTML=ms.map(function(m){ return '<button type="button">'+esc(m.label)+' <span class="muted">@'+esc(m.handle)+'</span></button>'; }).join("");
+    sRes.hidden=false;
+    Array.prototype.forEach.call(sRes.querySelectorAll("button"),function(b,bi){
+      b.addEventListener("click",function(){ sRes.hidden=true; sIn.value=ms[bi].label; select(ms[bi]); });
+    });
   });
+  sIn.addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ var b=sRes.querySelector("button"); if(b) b.click(); }
+    if(e.key==="Escape"){ sRes.hidden=true; sIn.blur(); }
+  });
+
+  /* ---------- filters ---------- */
+  var edgeMode="all";
+  Array.prototype.forEach.call(wrap.querySelectorAll(".seg .filter"),function(b){
+    b.addEventListener("click",function(){
+      Array.prototype.forEach.call(wrap.querySelectorAll(".seg .filter"),function(x){ x.setAttribute("aria-pressed","false"); });
+      b.setAttribute("aria-pressed","true");
+      edgeMode=b.getAttribute("data-m");
+      drawEdges();
+    });
+  });
+  var degIn=$("#netDeg"), degV=$("#netDegV");
+  function applyDeg(){
+    var v=+degIn.value; degV.textContent=v;
+    nodes.forEach(function(n){ n.el.style.display=(n.kind==="jd"||n.deg>=v)?"":"none"; });
+    if(SEL&&SEL.kind!=="jd"&&SEL.deg<v) backToAll();
+    else { drawEdges(); updateLabels(); }
+  }
+  degIn.addEventListener("input",applyDeg);
+
+  /* ---------- init ---------- */
+  drawNodes();
+  applyDeg();
+  drawEdges();
+  fitView(false);
+  applyCam();
+  if(window.innerWidth<720&&jd0) select(jd0);
   return {
     wake:function(){},
     focus:function(id){
       var c=BY_ID[id], n=c&&c.ig_handle?byKey["ig:"+normHandle(c.ig_handle)]:null;
-      if(!n) return; select(n); wrap.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"center"});
+      if(!n) return;
+      select(n);
+      wrap.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"center"});
     }
   };
 }
