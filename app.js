@@ -885,7 +885,7 @@ NET_TABS_RENDER.momentum = function(p){
     var mx=rows[0].v;
     h+='<div class="panel"><h2>Rising \u2014 most new links in the last 30 days</h2>'
       +'<p class="hint">Every new follow link found by recent sweeps, counted in either direction. Higher means more of the market is connecting to them right now.</p><div class="bars">'
-      +rows.map(function(r){ return hbar(r.n?r.n.label:"@"+r.h, r.v, mx, "var(--amber)", ' data-tip="'+esc((r.n?r.n.label:"@"+r.h)+" gained "+r.v+" new follow link"+(r.v===1?"":"s")+" in the last 30 days. A climbing count means the market is paying them attention right now.")+'"'); }).join("")
+      +rows.map(function(r){ var tip=esc((r.n?r.n.label:"@"+r.h)+" gained "+r.v+" new follow link"+(r.v===1?"":"s")+" in the last 30 days. A climbing count means the market is paying them attention right now."); return '<div data-tip="'+tip+'" style="min-width:0">'+hbar(r.n?r.n.label:"@"+r.h, r.v, mx, "var(--amber)")+'</div>'; }).join("")
       +'</div>'+srcChip('Follow-graph sweeps')+'</div>';
   }
   h+='<div class="panel"><h2>Timeline</h2><p class="hint">What the sweeps found, newest first. \u201cMutual\u201d means the two now follow each other.</p><ul class="feed">'
@@ -984,12 +984,12 @@ NET_TABS_RENDER.gaps = function(p){
     "Every business in the network in one sortable table, ranked by opportunity score.",
     "Sort by Opportunity for your outreach list, or by Competitor links to find the most networked businesses you are missing.");
   h+='<div class="tablewrap"><table class="data" id="gapTable"><thead><tr>'
-    +'<th data-sk="name" class="sortable" data-tip="Business name. Tap to sort A to Z.">Business</th>'
-    +'<th data-sk="followsJD" class="sortable" data-tip="They follow @jdmeyersproductions but you do not follow them back. These are your warmest leads \u2014 they already like you.">Follows you</th>'
-    +'<th data-sk="jdFollows" class="sortable" data-tip="You follow them but they do not follow back. Normal for bigger accounts; not a priority.">You follow</th>'
-    +'<th data-sk="mutual" class="sortable" data-tip="You follow each other \u2014 usually a real working relationship. Nothing to win here.">Mutual</th>'
-    +'<th data-sk="compLinks" class="sortable num" data-tip="How many verified follow links they have with other competitors. High means they are well plugged into the market.">Competitor links</th>'
-    +'<th data-sk="score" class="sortable num" data-tip="Opportunity score: who is most worth your outreach right now. Tap to sort.">Opportunity</th>'
+    +'<th data-sk="name" class="sortable" data-tip-below data-tip="Business name. Tap to sort A to Z.">Business</th>'
+    +'<th data-sk="followsJD" class="sortable" data-tip-below data-tip="They follow @jdmeyersproductions but you do not follow them back. These are your warmest leads \u2014 they already like you.">Follows you</th>'
+    +'<th data-sk="jdFollows" class="sortable" data-tip-below data-tip="You follow them but they do not follow back. Normal for bigger accounts; not a priority.">You follow</th>'
+    +'<th data-sk="mutual" class="sortable" data-tip-below data-tip="You follow each other \u2014 usually a real working relationship. Nothing to win here.">Mutual</th>'
+    +'<th data-sk="compLinks" class="sortable num" data-tip-below data-tip="How many verified follow links they have with other competitors. High means they are well plugged into the market.">Competitor links</th>'
+    +'<th data-sk="score" class="sortable num" data-tip-below data-tip="Opportunity score: who is most worth your outreach right now. Tap to sort.">Opportunity</th>'
     +'<th></th></tr></thead><tbody></tbody></table></div>';
   h+='<p class="hint" style="margin-top:10px"><b>Opportunity score</b> \u2014 businesses that follow many competitors but not you score highest; a follow-back you owe scores next; mutuals score zero because the relationship already exists. Tap a column header to re-sort.</p>';
   p.innerHTML=h;
@@ -1699,10 +1699,10 @@ function scatterSVG(pts, jd){
   var qx=X(median(xs)).toFixed(1), qy=Y(median(ys)).toFixed(1);
   g+='<line class="qmed" x1="'+qx+'" x2="'+qx+'" y1="'+pt+'" y2="'+(H-pb)+'"><title>Median wedding starting price</title></line>';
   g+='<line class="qmed" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+qy+'" y2="'+qy+'"><title>Median Instagram audience</title></line>';
-  g+='<text class="qlab" x="'+(W-pr-6)+'" y="'+(pt+14)+'" text-anchor="end">Pricier \u00b7 bigger crowd</text>';
-  g+='<text class="qlab" x="'+(pl+6)+'" y="'+(pt+14)+'" text-anchor="start">Cheaper \u00b7 bigger crowd</text>';
-  g+='<text class="qlab" x="'+(W-pr-6)+'" y="'+(H-pb-8)+'" text-anchor="end">Pricier \u00b7 smaller crowd</text>';
-  g+='<text class="qlab" x="'+(pl+6)+'" y="'+(H-pb-8)+'" text-anchor="start">Cheaper \u00b7 smaller crowd</text>';
+  g+='<text class="qlab" x="'+(W-pr-6)+'" y="'+(pt+26)+'" text-anchor="end">Pricier \u00b7 bigger crowd</text>';
+  g+='<text class="qlab" x="'+(pl+6)+'" y="'+(pt+26)+'" text-anchor="start">Cheaper \u00b7 bigger crowd</text>';
+  g+='<text class="qlab" x="'+(W-pr-6)+'" y="'+(H-pb-20)+'" text-anchor="end">Pricier \u00b7 smaller crowd</text>';
+  g+='<text class="qlab" x="'+(pl+6)+'" y="'+(H-pb-20)+'" text-anchor="start">Cheaper \u00b7 smaller crowd</text>';
   g+='<text x="'+((W+pl-pr)/2)+'" y="'+(H-6)+'" text-anchor="middle">Wedding starting price (log scale)</text>';
   g+='<text x="14" y="'+((H+pt-pb)/2)+'" text-anchor="middle" transform="rotate(-90 14 '+((H+pt-pb)/2)+')">Instagram followers (log scale)</text>';
   pts.forEach(function(p){
