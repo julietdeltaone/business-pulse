@@ -28,6 +28,12 @@
   --sans:"Hanken Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
   --r-s:6px; --r-m:10px; --r-l:16px;
   --rail:236px;
+
+  /* relationship color language — used everywhere, same meaning every time */
+  --rel-mutual:#E7A04F;   /* amber: mutual follows, JD, inner circle */
+  --rel-fan:#7FB2CE;      /* blue: they follow you / you don't follow back */
+  --rel-following:#B8C0D1;/* silver: you follow them / they don't follow back */
+  --rel-none:#6B7488;     /* gray: no direct link */
 }
 *{box-sizing:border-box}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -491,3 +497,50 @@ th.sortable.sorted::after{content:" \25be";font-size:10px}
 table.data th{color:var(--silver-2)}
 .chip{background:rgba(14,17,25,.9)}
 .net-canvas{background:#04050A}
+
+/* ---------- global hover explanations ---------- */
+[data-tip]{position:relative}
+[data-tip]:hover::after,[data-tip]:focus-visible::after{
+  content:attr(data-tip);position:absolute;z-index:80;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);
+  background:#151B28;border:1px solid var(--line-2);color:var(--silver);
+  font-size:12.5px;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;
+  padding:9px 12px;border-radius:9px;width:max-content;max-width:270px;white-space:normal;
+  box-shadow:0 10px 28px rgba(0,0,0,.55);pointer-events:none}
+[data-tip]:hover::before,[data-tip]:focus-visible::before{
+  content:"";position:absolute;z-index:80;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:var(--line-2);pointer-events:none}
+.tip-inline{border-bottom:1px dotted var(--fog);cursor:help}
+
+/* ---------- compare: true head-to-head duel ---------- */
+.duel{margin:6px 0 4px}
+.duel-head{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-bottom:14px}
+.duel-side{display:flex;align-items:center;gap:10px;min-width:0}
+.duel-side.b{justify-content:flex-end;text-align:right}
+.duel-side .who{font-family:var(--serif);font-size:21px;color:var(--silver);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.duel-side .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.duel-vs{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--ink);background:var(--amber);border-radius:999px;padding:6px 14px;white-space:nowrap}
+.duel-row{display:grid;grid-template-columns:1fr 172px 1fr;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+.duel-lab{text-align:center;font-size:13px;font-weight:700;color:var(--silver-2);cursor:help}
+.duel-cell{display:flex;align-items:center;gap:10px;min-width:0}
+.duel-cell.a{justify-content:flex-end}
+.duel-cell .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;min-width:44px}
+.duel-cell.a .v{text-align:right}
+.duel-track{flex:1;height:10px;background:#141926;border:1px solid var(--line);border-radius:999px;overflow:hidden;min-width:40px}
+.duel-cell.a .duel-track{display:flex;justify-content:flex-end}
+.duel-fill{display:block;height:100%;border-radius:999px;background:var(--silver-2);opacity:.55}
+.duel-fill.win{background:var(--amber);opacity:1;box-shadow:0 0 10px rgba(231,160,79,.45)}
+.duel-note{text-align:center;margin-top:12px}
+
+/* ---------- landscape: compact chart ---------- */
+.chart-narrow{max-width:780px}
+.scatter-dot{cursor:pointer;transition:filter .15s}
+.scatter-dot:hover{filter:brightness(1.5)}
+.qlab{font-size:10.5px;fill:var(--fog);text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+.qmed{stroke:var(--line-2);stroke-dasharray:5 5;stroke-width:1}
+
+/* ---------- map legend ---------- */
+.map-legend{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin-top:12px;font-size:13px;color:var(--silver-2)}
+.map-legend .sw{width:13px;height:13px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:-1px;border:1.5px solid #0A0C11}
+.map-legend .sz{display:inline-flex;align-items:center;margin-right:7px}
+.leaflet-tooltip.town-tip{background:#151B28;border:1px solid var(--line-2);color:var(--silver);border-radius:8px;font-family:var(--sans);font-size:12.5px;box-shadow:0 8px 22px rgba(0,0,0,.5)}
+.leaflet-tooltip.town-tip::before{display:none}
