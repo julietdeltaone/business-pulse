@@ -545,14 +545,20 @@ RENDER.network = function(el){
   (FG.edges||[]).forEach(function(e){ var a=normHandle(e.from), b=normHandle(e.to); if(a==="jdmeyersproductions"||b==="jdmeyersproductions") jdE++; });
   var biz=nodes.filter(function(n){ return n.kind==="comp"&&n.deg>0; }).length;
   var maxDeg=nodes.reduce(function(m,n){ return Math.max(m,n.deg); },0);
-  var h='<div class="page-head"><h1>Who follows who</h1><p>'+FG.edges.length+' verified Instagram follow links across '+biz+' businesses ('+jdE+' touch @jdmeyersproductions). Wedges point from follower to followed \u2014 the wide end is the follower. Click any business to make it the hub: its connections fan out around it. Drag to pan, scroll or pinch to zoom.</p></div>';
+  var h='<div class="page-head"><h1>Who follows who</h1><p>'+FG.edges.length+' verified Instagram follow links across '+biz+' businesses ('+jdE+' touch @jdmeyersproductions). Wedges point from follower to followed \u2014 the wide end is the follower. Click any business to make it the hub: its connections fan out around it. Drag to pan, scroll or pinch to zoom.</p><p class="freshline" id="netFresh"></p></div>';
   h+='<div class="net-wrap" id="netWrap">'
     +'<div class="net-tools"><div class="net-search"><input class="search" id="netSearch" type="search" placeholder="Find a business\u2026" autocomplete="off" aria-label="Find a business"><div id="netResults" hidden></div></div>'
     +'<div class="seg" role="group" aria-label="Link type"><button class="filter" data-m="all" aria-pressed="true">All links</button><button class="filter" data-m="mutual" aria-pressed="false">Mutual</button><button class="filter" data-m="oneway" aria-pressed="false">One-way</button></div>'
+    +'<button class="tbtn" id="netHubs" aria-pressed="false" title="Highlight the most-connected businesses">Hubs</button>'
+    +'<button class="tbtn" id="netDirBtn" title="Open the business directory">Directory</button>'
     +'<label class="deg"><span>Min links</span><input type="range" id="netDeg" min="0" max="'+maxDeg+'" value="1" aria-label="Minimum connections"><b id="netDegV">1</b></label></div>'
     +'<div class="net-canvas"><svg id="netSvg" tabindex="0" role="img" aria-label="Instagram follow graph"><g id="viewport"><g id="netEdges"></g><g id="netNodes"></g></g></svg>'
+    +'<div class="net-path" id="netPath" hidden></div>'
     +'<div class="net-crumb" id="netCrumb" hidden><button id="netBack">\u2039 All businesses</button><span id="netCrumbName"></span></div>'
     +'<div class="net-zoom"><button id="netZoomIn" aria-label="Zoom in">+</button><button id="netZoomOut" aria-label="Zoom out">\u2212</button><button id="netReset" aria-label="Reset view">\u27f2</button></div>'
+    +'<div class="net-dir" id="netDir" hidden><div class="dhead"><h3>Business directory</h3><button class="tbtn" id="netDirClose" title="Close directory">\u00d7</button></div>'
+    +'<input class="search" id="netDirQ" type="search" placeholder="Search name or handle\u2026" autocomplete="off" aria-label="Search directory">'
+    +'<p class="hint" id="netDirCount"></p><div class="tablewrap"><table class="data" id="netDirTable"><thead><tr><th>Business</th><th class="num">Follows</th><th class="num">Followed by</th><th class="num">Links</th><th></th></tr></thead><tbody></tbody></table></div></div>'
     +'</div><div class="net-legend"><span><svg width="22" height="10" aria-hidden="true"><path d="M1,1.5 L21,4.6 L21,5.4 L1,8.5 Z" fill="#8fa3c8"/></svg>Follows (wide end = follower)</span><span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual</span><span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>JD\u2019s account</span><span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor</span><span>Bigger dot = more links</span></div></div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a business on the graph.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
   h+='<div class="panel"><h2>Collaborations and ties</h2><p class="hint">Evidence of businesses working together \u2014 kept as a plain list, separate from the follow graph.</p><div class="tablewrap"><table class="data"><thead><tr><th>Between</th><th>Relationship</th><th>When</th><th>Evidence</th></tr></thead><tbody>';
@@ -814,7 +820,7 @@ function buildFollowGraph(){
   /* ---------- detail panel ---------- */
   function fgChip(n){
     if(n.kind==="jd") return '<span class="chip" style="cursor:default"><span class="dot" style="background:var(--amber)"></span>'+esc(n.label)+'</span>';
-    return chipFor(n.comp.id);
+    return '<button class="chip net-hop" data-nk="'+esc(n.key)+'"><span class="dot"></span>'+esc(n.label)+'</button>';
   }
   function renderDetail(n){
     var d=$("#fgDetail");
@@ -824,9 +830,15 @@ function buildFollowGraph(){
     s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+')</p>'+(n.follows.length?'<div class="chips">'+n.follows.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
     s+='<div><p class="hint" style="margin:0 0 6px">Followed by ('+n.followedBy.length+')</p>'+(n.followedBy.length?'<div class="chips">'+n.followedBy.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
     s+='</div>';
+    if(n.kind==="comp") s+='<p style="margin:12px 0 0"><button class="tbtn" data-trace="'+esc(n.key)+'">Trace path to @jdmeyersproductions</button></p><p class="hint" style="margin:6px 0 0">Tap any name above to hop to that business.</p>';
     if(n.kind==="comp"&&FG.status&&FG.status[n.handle]==="unavailable_via_api")
       s+='<p class="hint" style="margin-top:10px">This account\u2019s full following list has not been mapped yet \u2014 it needs a logged-in Instagram check.</p>';
     d.innerHTML=s;
+    Array.prototype.forEach.call(d.querySelectorAll("[data-nk]"),function(b){
+      b.addEventListener("click",function(){ var m=byKey[b.getAttribute("data-nk")]; if(m) select(m); });
+    });
+    var tr=d.querySelector("[data-trace]");
+    if(tr) tr.addEventListener("click",function(){ tracePath(byKey[tr.getAttribute("data-trace")]); });
   }
 
   /* ---------- ego hub-and-spoke ---------- */
@@ -854,7 +866,7 @@ function buildFollowGraph(){
     setTimeout(function(){ if(c.parentNode) c.parentNode.removeChild(c); },3000);
   }
   function select(n){
-    clearFocus();
+    clearFocus(); clearPath();
     var nb=nbrMap(n);
     var ring1=Object.keys(nb).map(function(k){ return nb[k]; }).filter(visNode).sort(function(x,y){ return y.deg-x.deg; });
     var seen={}; seen[n.key]=1; ring1.forEach(function(m){ seen[m.key]=1; });
@@ -863,7 +875,7 @@ function buildFollowGraph(){
       var q=nbrMap(m);
       Object.keys(q).forEach(function(k){ if(!seen[k]&&visNode(q[k])){ seen[k]=1; ring2.push(q[k]); } });
     });
-    ring2.sort(function(x,y){ return y.deg-x.deg; }).slice(0,44);
+    ring2=ring2.sort(function(x,y){ return y.deg-x.deg; }).slice(0,44);
     SEL=n; egoOn=true;
     var s=svgSize(), cx=(s.w/2-cam.x)/cam.k, cy=(s.h/2-cam.y)/cam.k;
     var R1=Math.min(300,Math.max(190,ring1.length*10)), R2=R1+240;
@@ -882,6 +894,7 @@ function buildFollowGraph(){
     if(window.innerWidth<720) setTimeout(function(){ var d=$("#fgDetail"); if(d) d.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"nearest"}); },500);
   }
   function backToAll(){
+    clearPath();
     if(!egoOn&&!SEL){ fitView(true); return; }
     SEL=null; egoOn=false;
     wrap.classList.remove("focusing");
@@ -892,6 +905,130 @@ function buildFollowGraph(){
     animateNodes(targets,450,function(){ fitView(true); });
     renderDetail(null); updateLabels();
   }
+
+  /* ---------- explorer tools (lessons from the North Country page) ---------- */
+  var JDKEY="jd:jdmeyersproductions";
+
+  /* shortest verified path to JD's account, lit amber in the overview */
+  var pathKeys=null;
+  function clearPath(){
+    pathKeys=null;
+    nodes.forEach(function(m){ m.el.classList.remove("onpath"); });
+    edgeObjs.forEach(function(eo){ eo.paths.forEach(function(o){ o.elm.classList.remove("onpath"); }); });
+    var bar=$("#netPath"); if(bar) bar.hidden=true;
+  }
+  function tracePath(from){
+    clearPath(); backToAll();
+    var target=byKey[JDKEY];
+    var bar=$("#netPath");
+    function barMsg(html){
+      bar.hidden=false;
+      bar.innerHTML=html+'<button class="tbtn" id="netPathX" title="Clear path">\u00d7</button>';
+      $("#netPathX").addEventListener("click",clearPath);
+    }
+    if(!from||!target){ return; }
+    var prev={}, q=[from.key]; prev[from.key]=from.key;
+    for(var h=0;h<q.length;h++){
+      var u=q[h], nu=byKey[u];
+      if(u===JDKEY) break;
+      var adj={};
+      nu.follows.forEach(function(m){ adj[m.key]=1; });
+      nu.followedBy.forEach(function(m){ adj[m.key]=1; });
+      Object.keys(adj).forEach(function(v){ if(!(v in prev)){ prev[v]=u; q.push(v); } });
+    }
+    if(!(JDKEY in prev)){
+      barMsg('<span>No verified follow path connects '+esc(from.label)+' to @jdmeyersproductions.</span>');
+      return;
+    }
+    var chain=[], c=JDKEY;
+    while(c!==from.key){ chain.unshift(c); c=prev[c]; }
+    chain.unshift(from.key);
+    pathKeys={};
+    chain.forEach(function(k){ pathKeys[k]=1; });
+    nodes.forEach(function(m){ if(pathKeys[m.key]) m.el.classList.add("onpath"); });
+    edgeObjs.forEach(function(eo){
+      if(pathKeys[eo.p.a]&&pathKeys[eo.p.b]) eo.paths.forEach(function(o){ o.elm.classList.add("onpath"); });
+    });
+    var hops=chain.length-1;
+    barMsg('<span><b>'+hops+' hop'+(hops===1?"":"s")+'</b> to @jdmeyersproductions: '+chain.map(function(k){ return esc(byKey[k].label); }).join(" \u2192 ")+'</span>');
+    updateLabels();
+  }
+
+  /* hubs: spotlight the most-connected businesses */
+  var hubBtn=$("#netHubs");
+  nodes.filter(function(n){ return n.kind==="comp"; })
+    .sort(function(a,b){ return b.deg-a.deg; }).slice(0,8)
+    .forEach(function(n){ n.el.setAttribute("data-hub","1"); });
+  hubBtn.addEventListener("click",function(){
+    var on=hubBtn.getAttribute("aria-pressed")==="true";
+    hubBtn.setAttribute("aria-pressed",String(!on));
+    wrap.classList.toggle("hubs-on",!on);
+  });
+
+  /* directory drawer */
+  var dirBtn=$("#netDirBtn"), dirEl=$("#netDir"), dirQ=$("#netDirQ"),
+      dirCount=$("#netDirCount"), dirBody=$("#netDirTable tbody"), dirFilter="";
+  function paintDir(){
+    var withDeg=nodes.filter(function(n){ return n.deg>0; });
+    var rows=withDeg.filter(function(n){
+      if(!dirFilter) return true;
+      var q=dirFilter;
+      return (n.label||"").toLowerCase().indexOf(q)>=0||(n.handle||"").indexOf(q)>=0;
+    }).sort(function(a,b){ return ((b.kind==="jd")-(a.kind==="jd")) || b.deg-a.deg; });
+    dirCount.textContent=rows.length+" of "+withDeg.length+" shown";
+    dirBody.innerHTML=rows.map(function(n){
+      return '<tr><td class="nm">'+(n.kind==="jd"
+          ? '<span class="chip" style="cursor:default"><span class="dot" style="background:var(--amber)"></span>'+esc(n.label)+'</span>'
+          : esc(n.label)+'<br><span class="muted">@'+esc(n.handle)+'</span>')+'</td>'
+        +'<td class="num">'+n.follows.length+'</td><td class="num">'+n.followedBy.length+'</td><td class="num"><b>'+n.deg+'</b></td>'
+        +'<td><button class="tbtn" data-locate="'+esc(n.key)+'">Locate</button></td></tr>';
+    }).join("")||'<tr><td colspan="5" class="empty">No matches.</td></tr>';
+    Array.prototype.forEach.call(dirBody.querySelectorAll("[data-locate]"),function(b){
+      b.addEventListener("click",function(){
+        var m=byKey[b.getAttribute("data-locate")];
+        setDir(false);
+        if(m) select(m);
+      });
+    });
+  }
+  function setDir(v){
+    dirEl.hidden=!v;
+    dirBtn.setAttribute("aria-pressed",String(v));
+    if(v){ paintDir(); dirQ.focus(); }
+  }
+  dirBtn.addEventListener("click",function(){ setDir(dirEl.hidden); });
+  $("#netDirClose").addEventListener("click",function(){ setDir(false); });
+  dirQ.addEventListener("input",function(){ dirFilter=dirQ.value.trim().toLowerCase(); paintDir(); });
+
+  /* freshness: when the follow data was updated + when the next sweep runs */
+  function fmtET(d){
+    return d.toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  }
+  function etWallToInstant(y,mo,d,h,mi){
+    var guess=Date.UTC(y,mo-1,d,h,mi);
+    function off(ms){
+      var pp=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour12:false,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date(ms));
+      var q={}; pp.forEach(function(x){ q[x.type]=x.value; });
+      return Date.UTC(+q.year,+q.month-1,+q.day,(+q.hour)%24,+q.minute)-ms;
+    }
+    return new Date(guess-off(guess-off(guess)));
+  }
+  function nextSweep(){
+    /* sweeps run every 6h at :36 ET — 00:36, 06:36, 12:36, 18:36 */
+    var now=new Date();
+    var pp=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour12:false,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).formatToParts(now);
+    var o={}; pp.forEach(function(x){ o[x.type]=x.value; });
+    var mins=((+o.hour)%24)*60+(+o.minute);
+    var grid=[36,396,756,1116], nx=null, doff=0, i;
+    for(i=0;i<grid.length;i++){ if(grid[i]>mins){ nx=grid[i]; break; } }
+    if(nx==null){ nx=grid[0]; doff=1; }
+    return etWallToInstant(+o.year,+o.month,+o.day+doff,Math.floor(nx/60),nx%60);
+  }
+  (function(){
+    var gen=FG.generated_at?new Date(FG.generated_at):null;
+    var upd=gen&&!isNaN(gen)?fmtET(gen):(FG.generated||"unknown date");
+    $("#netFresh").innerHTML='Follow data updated <b>'+esc(upd)+'</b> ET &nbsp;\u00b7&nbsp; Next sweep <b>'+esc(fmtET(nextSweep()))+'</b> ET';
+  })();
 
   /* ---------- search ---------- */
   var sIn=$("#netSearch"), sRes=$("#netResults");
@@ -1408,6 +1545,10 @@ document.addEventListener("click",function(ev){
 document.addEventListener("keydown",function(ev){
   if(ev.key==="Escape" && drawer.classList.contains("on")) closeDetail();
   if(ev.key==="Enter" && ev.target.matches("tr.lane-row")) ev.target.click();
+  if(ev.key==="/" && !ev.target.matches("input,textarea") && $("#view-network").classList.contains("on")){
+    var si=$("#netSearch");
+    if(si){ ev.preventDefault(); si.focus(); }
+  }
 });
 scrim.addEventListener("click",closeDetail);
 $("#drawerClose").addEventListener("click",closeDetail);
