@@ -343,6 +343,7 @@ table.data td.r{text-align:right;font-variant-numeric:tabular-nums}
 svg text{fill:var(--silver-2);font-family:var(--sans)}
 .gridl{stroke:var(--line);stroke-width:1}
 #leafMap{height:min(70vh,620px);min-height:420px;background:#0A0C11;z-index:1}
+.osm-dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.92) saturate(.65)}
 .leaflet-container{font-family:var(--sans)}
 .leaflet-popup-content-wrapper{background:var(--plate-2);color:var(--silver);border:1px solid var(--line-2);border-radius:10px}
 .leaflet-popup-content{margin:12px 14px;font-size:13.5px}
