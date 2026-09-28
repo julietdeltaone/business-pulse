@@ -782,9 +782,9 @@ NET_TABS_RENDER.opps = function(p){
   } else {
     h+='<div class="ocards">'+rows.map(function(r){
       var n=r.n;
-      return '<div class="ocard"><div class="oc-top">'+netChip(n)
+      return '<div class="ocard" data-tip="Why this business: '+esc(r.why)+' Suggested move: '+esc(r.move)+'"><div class="oc-top">'+netChip(n)
         +(igURL(n)?'<a class="tbtn" href="'+igURL(n)+'" target="_blank" rel="noopener">Instagram \u2197</a>':"")
-        +'<span class="oscore" title="Opportunity score: higher means more worth your time">'+r.score+'</span></div>'
+        +'<span class="oscore" data-tip="Opportunity score out of 14. Higher means more worth your time: they follow lots of competitors, or they follow you and you have not followed back.">'+r.score+'</span></div>'
         +'<p class="owhy">'+esc(r.why)+'</p>'
         +'<p class="oact"><b>Move:</b> '+esc(r.move)+'</p></div>';
     }).join("")+'</div>';
@@ -794,7 +794,7 @@ NET_TABS_RENDER.opps = function(p){
     h+='<div class="panel" style="margin-top:18px"><h2>New relationships forming</h2>'
       +'<p class="hint">Competitor pairs that started following each other in the last 30 days. A new mutual follow is usually a working relationship forming \u2014 worth knowing before you pitch either of them.</p>'
       +'<div class="chips">'+rm.map(function(m){
-        return '<span class="chip" style="cursor:default">'+esc(m.a.label)+' <span class="muted">\u21c4</span> '+esc(m.b.label)+'</span>';
+        return '<span class="chip" style="cursor:default" data-tip="'+esc(m.a.label+" and "+m.b.label+" started following each other in the last 30 days \u2014 a new mutual, usually a working relationship forming.")+'">'+esc(m.a.label)+' <span class="muted">\u21c4</span> '+esc(m.b.label)+'</span>';
       }).join("")+'</div></div>';
   }
   p.innerHTML=h;
@@ -808,14 +808,14 @@ NET_TABS_RENDER.you = function(p){
     "The outer rings are your growth surface. The second ring already likes you \u2014 follow them back. The outer ring does not know you exist yet.");
   var W=920,H=920,cx=460,cy=460;
   var rings=[
-    {key:"mutual",    label:"Mutual",        sub:"you follow each other",  color:"#E7A04F", r:140},
-    {key:"fans",      label:"Follow you",    sub:"you don't follow back",  color:"#8FD0F5", r:235},
-    {key:"following", label:"You follow",    sub:"they don't follow back", color:"#D595AE", r:330},
-    {key:"network",   label:"No link to you",sub:"in the network",         color:"#8fa3c8", r:425}
+    {key:"mutual",    label:"Mutual",        sub:"you follow each other",  color:"var(--rel-mutual)",    r:140, tip:"Mutual \u2014 you follow each other. The inner circle: real working relationships."},
+    {key:"fans",      label:"Follow you",    sub:"you don't follow back",  color:"var(--rel-fan)",       r:235, tip:"Follow you \u2014 they follow @jdmeyersproductions but you do not follow back. Your warmest leads."},
+    {key:"following", label:"You follow",    sub:"they don't follow back", color:"var(--rel-following)",r:330, tip:"You follow \u2014 you watch them, they do not follow back. Normal for bigger accounts."},
+    {key:"network",   label:"No link to you",sub:"in the network",         color:"var(--rel-none)",      r:425, tip:"No link to you \u2014 in the competitor network but with no direct follow either way. Your growth surface."}
   ];
   var s='<div class="youpos"><svg class="you-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Your position in the follow network">';
   rings.forEach(function(rg){
-    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+rg.r+'" fill="none" stroke="'+rg.color+'" stroke-opacity=".32" stroke-width="1.5"/>';
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+rg.r+'" fill="none" stroke="'+rg.color+'" stroke-opacity=".32" stroke-width="1.5"><title>'+esc(rg.tip)+'</title></circle>';
     s+='<text x="'+(cx+8)+'" y="'+(cy-rg.r+18)+'" class="yrlab" fill="'+rg.color+'">'+rg.label+' \u00b7 '+R[rg.key].length+' \u2014 '+rg.sub+'</text>';
   });
   s+='<g class="ynode" data-nk="'+JDKEY+'"><circle cx="'+cx+'" cy="'+cy+'" r="30" fill="var(--amber)"/><text x="'+cx+'" y="'+(cy+52)+'" class="yname you">YOU</text><title>JD Meyers Productions (@jdmeyersproductions)</title></g>';
@@ -825,7 +825,7 @@ NET_TABS_RENDER.you = function(p){
       var ang=-Math.PI/2 + (n? i/n*Math.PI*2 : 0);
       var x=cx+Math.cos(ang)*rg.r, y=cy+Math.sin(ang)*rg.r;
       var rr=7+Math.min(9,Math.sqrt(m.deg)*1.7);
-      s+='<g class="ynode" data-nk="'+m.key+'"><circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+rr.toFixed(1)+'" fill="'+rg.color+'"><title>'+esc(m.label)+' \u2014 '+m.deg+' links</title></circle>';
+      s+='<g class="ynode" data-nk="'+m.key+'"><circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+rr.toFixed(1)+'" fill="'+rg.color+'"><title>'+esc(m.label)+' \u2014 '+rg.label.toLowerCase()+' ('+rg.sub+'), '+m.deg+' total links. Tap for details.</title></circle>';
       if(rg.key!=="network"||i<10) s+='<text x="'+(x+rr+6).toFixed(1)+'" y="'+(y+4).toFixed(1)+'" class="yname">'+esc(m.label)+'</text>';
       s+='</g>';
     });
@@ -856,7 +856,7 @@ NET_TABS_RENDER.clusters = function(p){
     var hasJD=g.some(function(n){ return n.key===JDKEY; });
     var others=g.filter(function(n){ return n.key!==JDKEY; }).sort(function(a,b){ return b.deg-a.deg; });
     var anchor=others.slice(0,3).map(function(n){ return n.label; }).join(", ");
-    return '<div class="ccard'+(hasJD?" in":"")+'"><div class="cc-top"><b>Circle '+(i+1)+'</b>'
+    return '<div class="ccard'+(hasJD?" in":"")+'" data-tip="'+(hasJD?"You are inside this circle \u2014 these businesses follow each other and you are part of the ring.":"You are outside this circle \u2014 a referral ring you are locked out of. One introduction from anyone inside brings you in.")+'"><div class="cc-top"><b>Circle '+(i+1)+'</b>'
       +'<span class="muted">'+g.length+' businesses</span>'
       +(hasJD?'<span class="jdbadge">You are in this circle</span>':'<span class="missbadge">You are not in this circle</span>')
       +'</div>'
@@ -885,7 +885,7 @@ NET_TABS_RENDER.momentum = function(p){
     var mx=rows[0].v;
     h+='<div class="panel"><h2>Rising \u2014 most new links in the last 30 days</h2>'
       +'<p class="hint">Every new follow link found by recent sweeps, counted in either direction. Higher means more of the market is connecting to them right now.</p><div class="bars">'
-      +rows.map(function(r){ return hbar(r.n?r.n.label:"@"+r.h, r.v, mx, "var(--amber)"); }).join("")
+      +rows.map(function(r){ return hbar(r.n?r.n.label:"@"+r.h, r.v, mx, "var(--amber)", ' data-tip="'+esc((r.n?r.n.label:"@"+r.h)+" gained "+r.v+" new follow link"+(r.v===1?"":"s")+" in the last 30 days. A climbing count means the market is paying them attention right now.")+'"'); }).join("")
       +'</div>'+srcChip('Follow-graph sweeps')+'</div>';
   }
   h+='<div class="panel"><h2>Timeline</h2><p class="hint">What the sweeps found, newest first. \u201cMutual\u201d means the two now follow each other.</p><ul class="feed">'
@@ -894,9 +894,9 @@ NET_TABS_RENDER.momentum = function(p){
       var chips=edges.map(function(e){
         var A=nodeForHandle(e.from), B=nodeForHandle(e.to);
         var mut=A&&B&&isMutualNow(A.key,B.key);
-        return '<span class="echip'+(mut?" mut":"")+'">'+esc(A?A.label:"@"+e.from)+' \u2192 '+esc(B?B.label:"@"+e.to)+(mut?' \u00b7 mutual':"")+'</span>';
+        return '<span class="echip'+(mut?" mut":"")+'" data-tip="'+esc((A?A.label:"@"+e.from)+" started following "+(B?B.label:"@"+e.to)+(mut?". They now follow each other \u2014 a mutual, usually a working relationship forming.":" \u2014 a one-way follow."))+'">'+esc(A?A.label:"@"+e.from)+' \u2192 '+esc(B?B.label:"@"+e.to)+(mut?' \u00b7 mutual':"")+'</span>';
       }).join("");
-      return '<li><div class="when">'+shortDate(ev.date)+'</div><div class="what"><span class="kind" style="--k:var(--amber)">'+ev.new_count+' new link'+(ev.new_count===1?"":"s")+'</span>'
+      return '<li><div class="when">'+shortDate(ev.date)+'</div><div class="what"><span class="kind" style="--k:var(--amber)" data-tip="New verified follow links found by this sweep.">'+ev.new_count+' new link'+(ev.new_count===1?"":"s")+'</span>'
         +'<div style="margin:4px 0">'+esc(ev.note||"")+'</div>'
         +(chips?'<div class="echips">'+chips+'</div>':"")
         +'</div></li>';
@@ -906,25 +906,43 @@ NET_TABS_RENDER.momentum = function(p){
 
 /* ---------- 5. Compare ---------- */
 function compareHTML(A,B){
-  function stat(v,l,what){
-    return '<div class="statcard"><b>'+v+'</b><span>'+l+'</span><i>'+what+'</i></div>';
+  function mutCount(n){ return n.follows.filter(function(m){ return n.followedBy.indexOf(m)>=0; }).length; }
+  var rows=[
+    {k:"deg",  label:"Total links", tip:"Every verified follow in either direction. Bigger means more plugged into the market."},
+    {k:"fol",  label:"Follows",     tip:"Businesses they pay attention to \u2014 whose work and announcements they watch."},
+    {k:"fby",  label:"Followed by",tip:"Businesses paying attention to them \u2014 a rough read on their standing in the market."},
+    {k:"mut",  label:"Mutuals",    tip:"Two-way follows \u2014 usually real working relationships, not just watching."}
+  ];
+  function val(n,k){
+    return k==="deg"?n.deg : k==="fol"?n.follows.length : k==="fby"?n.followedBy.length : mutCount(n);
   }
-  function col(n){
-    var mut=n.follows.filter(function(m){ return n.followedBy.indexOf(m)>=0; }).length;
-    return '<div class="cmp-col"><h3>'+netChip(n)+'</h3><div class="statcards">'
-      +stat(n.deg,'Total links','Every verified follow in either direction. Bigger means more plugged into the market.')
-      +stat(n.follows.length,'Follows','Businesses they pay attention to.')
-      +stat(n.followedBy.length,'Followed by','Businesses paying attention to them.')
-      +stat(mut,'Mutuals','Two-way follows \u2014 usually real working relationships, not just watching.')
-      +'</div></div>';
-  }
+  function sideDot(n){ return n.key===JDKEY?"var(--rel-mutual)":"var(--rel-fan)"; }
+  var s='<div class="panel duel">'
+    +'<div class="duel-head">'
+    +'<div class="duel-side a"><span class="dot" style="background:'+sideDot(A)+'"></span><span class="who">'+esc(netName(A))+'</span></div>'
+    +'<span class="duel-vs">VS</span>'
+    +'<div class="duel-side b"><span class="who">'+esc(netName(B))+'</span><span class="dot" style="background:'+sideDot(B)+'"></span></div>'
+    +'</div>';
+  rows.forEach(function(r){
+    var va=val(A,r.k), vb=val(B,r.k), mx=Math.max(va,vb,1);
+    var wa=va>=vb&&va>0, wb=vb>=va&&vb>0;
+    function cell(v,mx,win,side){
+      var pct=Math.max(v>0?4:0,Math.round(v/mx*100));
+      var bar='<span class="duel-track"><span class="duel-fill'+(win?" win":"")+'" style="width:'+pct+'%"></span></span>';
+      var num='<span class="v" style="color:'+(win?"var(--amber)":"var(--silver-2)")+'">'+v+'</span>';
+      return '<div class="duel-cell '+side+'">'+(side==="a"?num+bar:bar+num)+'</div>';
+    }
+    s+='<div class="duel-row">'+cell(va,mx,wa,"a")
+      +'<div class="duel-lab" data-tip="'+esc(r.tip)+'">'+esc(r.label)+'</div>'
+      +cell(vb,mx,wb,"b")+'</div>';
+  });
+  s+='<p class="hint duel-note">Amber bar wins the row. Hover any metric name for what it means.</p></div>';
   var an=neighbors(A), bn=neighbors(B);
   var bset={}; bn.forEach(function(m){ bset[m.key]=1; });
   var aset={}; an.forEach(function(m){ aset[m.key]=1; });
   var shared=an.filter(function(m){ return bset[m.key]&&m.key!==A.key&&m.key!==B.key; }).sort(function(x,y){ return y.deg-x.deg; });
   var onlyB=bn.filter(function(m){ return !aset[m.key]&&m.key!==A.key; }).sort(function(x,y){ return y.deg-x.deg; });
   var onlyA=an.filter(function(m){ return !bset[m.key]&&m.key!==B.key; }).sort(function(x,y){ return y.deg-x.deg; });
-  var s='<div class="cmp-cols">'+col(A)+col(B)+'</div>';
   s+='<div class="panel" style="margin-top:18px"><h2>Shared connections ('+shared.length+')</h2>'
     +'<p class="hint">Businesses connected to both. '+(A.key===JDKEY?'Each one is a warm introduction to '+esc(netName(B))+' waiting to happen \u2014 \u201cyou both know X\u201d beats a cold message every time.':'Each one knows both sides \u2014 useful if you ever need an introduction.')+'</p>'
     +'<div class="chips">'+(shared.length?shared.map(netChip).join(""):'<span class="muted">None.</span>')+'</div></div>';
@@ -966,17 +984,17 @@ NET_TABS_RENDER.gaps = function(p){
     "Every business in the network in one sortable table, ranked by opportunity score.",
     "Sort by Opportunity for your outreach list, or by Competitor links to find the most networked businesses you are missing.");
   h+='<div class="tablewrap"><table class="data" id="gapTable"><thead><tr>'
-    +'<th data-sk="name" class="sortable">Business</th>'
-    +'<th data-sk="followsJD" class="sortable">Follows you</th>'
-    +'<th data-sk="jdFollows" class="sortable">You follow</th>'
-    +'<th data-sk="mutual" class="sortable">Mutual</th>'
-    +'<th data-sk="compLinks" class="sortable num">Competitor links</th>'
-    +'<th data-sk="score" class="sortable num">Opportunity</th>'
+    +'<th data-sk="name" class="sortable" data-tip="Business name. Tap to sort A to Z.">Business</th>'
+    +'<th data-sk="followsJD" class="sortable" data-tip="They follow @jdmeyersproductions but you do not follow them back. These are your warmest leads \u2014 they already like you.">Follows you</th>'
+    +'<th data-sk="jdFollows" class="sortable" data-tip="You follow them but they do not follow back. Normal for bigger accounts; not a priority.">You follow</th>'
+    +'<th data-sk="mutual" class="sortable" data-tip="You follow each other \u2014 usually a real working relationship. Nothing to win here.">Mutual</th>'
+    +'<th data-sk="compLinks" class="sortable num" data-tip="How many verified follow links they have with other competitors. High means they are well plugged into the market.">Competitor links</th>'
+    +'<th data-sk="score" class="sortable num" data-tip="Opportunity score: who is most worth your outreach right now. Tap to sort.">Opportunity</th>'
     +'<th></th></tr></thead><tbody></tbody></table></div>';
   h+='<p class="hint" style="margin-top:10px"><b>Opportunity score</b> \u2014 businesses that follow many competitors but not you score highest; a follow-back you owe scores next; mutuals score zero because the relationship already exists. Tap a column header to re-sort.</p>';
   p.innerHTML=h;
   var tb=p.querySelector("#gapTable tbody");
-  function yn(v){ return v?'<b style="color:var(--amber)">Yes</b>':'<span class="muted">No</span>'; }
+  function yn(v,c){ return v?'<b style="color:'+c+'">Yes</b>':'<span class="muted">No</span>'; }
   function draw(){
     var rows=oppRows().slice();
     var k=GAP_SORT.k, d=GAP_SORT.d;
@@ -988,7 +1006,7 @@ NET_TABS_RENDER.gaps = function(p){
     });
     tb.innerHTML=rows.map(function(r){
       return '<tr><td class="nm">'+netChip(r.n)+'</td>'
-        +'<td>'+yn(r.followsJD)+'</td><td>'+yn(r.jdFollows)+'</td><td>'+yn(r.mutual)+'</td>'
+        +'<td>'+yn(r.followsJD,"var(--rel-fan)")+'</td><td>'+yn(r.jdFollows,"var(--rel-following)")+'</td><td>'+yn(r.mutual,"var(--rel-mutual)")+'</td>'
         +'<td class="num">'+r.compLinks+'</td>'
         +'<td class="num"><b>'+(r.score||'<span class="muted">0</span>')+'</b></td>'
         +'<td>'+(igURL(r.n)?'<a class="tbtn" href="'+igURL(r.n)+'" target="_blank" rel="noopener">IG \u2197</a>':"")+'</td></tr>';
@@ -1031,10 +1049,10 @@ NET_TABS_RENDER.explore = function(p){
     +'<input class="search" id="netDirQ" type="search" placeholder="Search name or handle\u2026" autocomplete="off" aria-label="Search directory">'
     +'<p class="hint" id="netDirCount"></p><div class="tablewrap"><table class="data" id="netDirTable"><thead><tr><th>Business</th><th class="num">Follows</th><th class="num">Followed by</th><th class="num">Links</th><th></th></tr></thead><tbody></tbody></table></div></div>'
     +'</div><div class="net-legend">'
-    +'<span><svg width="22" height="10" aria-hidden="true"><path d="M1,1.5 L21,4.6 L21,5.4 L1,8.5 Z" fill="#8fa3c8"/></svg>A follows B \u2014 the wide end is the follower</span>'
-    +'<span><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual follow \u2014 they follow each other (usually a working relationship)</span>'
-    +'<span><span class="swatch" style="--c:var(--amber);border-radius:50%"></span>You (@jdmeyersproductions)</span>'
-    +'<span><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor \u2014 bigger dot means more links</span>'
+    +'<span data-tip="A one-way follow: the wide end of the wedge sits at the follower."><svg width="22" height="10" aria-hidden="true"><path d="M1,1.5 L21,4.6 L21,5.4 L1,8.5 Z" fill="#8fa3c8"/></svg>A follows B \u2014 the wide end is the follower</span>'
+    +'<span data-tip="They follow each other \u2014 usually a real working relationship, not just watching."><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual follow \u2014 they follow each other (usually a working relationship)</span>'
+    +'<span data-tip="This amber dot is you: @jdmeyersproductions."><span class="swatch" style="--c:var(--rel-mutual);border-radius:50%"></span>You (@jdmeyersproductions)</span>'
+    +'<span data-tip="Every other dot is a competitor. Bigger dot = more verified follow links."><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor \u2014 bigger dot means more links</span>'
     +'</div></div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a business on the map. \u201cFollows\u201d is who they pay attention to; \u201cFollowed by\u201d is who pays attention to them. Tap any name to hop to that business.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
   h+='<div class="panel"><h2>Collaborations and ties</h2><p class="hint">Evidence of businesses working together \u2014 kept as a plain list, separate from the follow graph. A collaboration here plus a mutual follow above is a strong relationship.</p><div class="tablewrap"><table class="data"><thead><tr><th>Between</th><th>Relationship</th><th>When</th><th>Evidence</th></tr></thead><tbody>';
@@ -1577,8 +1595,14 @@ RENDER.map=function(el){
   var keys=Object.keys(groups);
   var RC={slc:"#EDEAE2",adjacent:"#7FB2CE",unconfirmed:"#737C8E"};
   var RL={slc:"St. Lawrence County",adjacent:"Neighboring counties",unconfirmed:"Location unconfirmed"};
-  var h='<div class="page-head"><h1>Where they are</h1><p>One pin per town \u2014 general area only, not exact addresses. Drag to pan, scroll or pinch to zoom, tap a pin for the businesses there.</p></div>';
+  var h='<div class="page-head"><h1>Where they are</h1><p>One pin per town \u2014 general area only, not exact addresses. Pin size shows how many businesses are in that town; pin color shows the region. Drag to pan, scroll or pinch to zoom, tap a pin for the businesses there.</p></div>';
   h+='<div class="panel" style="padding:0;overflow:hidden"><div id="leafMap"></div></div>';
+  h+='<div class="map-legend" aria-label="Map legend">'
+    +'<span data-tip="St. Lawrence County \u2014 your home turf. Most of the market, and your shortest drive."><span class="sw" style="background:#EDEAE2"></span>St. Lawrence County</span>'
+    +'<span data-tip="Counties around St. Lawrence \u2014 reachable, but you are competing with locals there."><span class="sw" style="background:#7FB2CE"></span>Neighboring counties</span>'
+    +'<span data-tip="No town on file for these businesses yet \u2014 they are listed under Towns below."><span class="sw" style="background:#737C8E"></span>Location unconfirmed</span>'
+    +'<span data-tip="Bigger pin = more businesses in that town. The number on the pin is the business count."><span class="sz"><span class="sw" style="width:9px;height:9px;background:var(--fog)"></span><span class="sw" style="width:15px;height:15px;background:var(--fog)"></span><span class="sw" style="width:22px;height:22px;background:var(--fog)"></span></span>Pin size = business count</span>'
+    +'</div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Towns</h2><p class="hint">'+keys.length+' towns with pins'+(unmapped.length?'; '+unmapped.length+' without a mappable town':'')+'.</p><div class="tablewrap"><table class="data"><thead><tr><th>Town</th><th class="num">Businesses</th><th>Names</th></tr></thead><tbody>';
   keys.sort(function(a,b){return groups[b].ids.length-groups[a].ids.length||a.localeCompare(b);}).forEach(function(k){
     var g=groups[k];
@@ -1595,9 +1619,11 @@ RENDER.map=function(el){
   keys.forEach(function(k){
     var g=groups[k], co=TOWNS.coords[k];
     var reg=Object.keys(g.regions).sort(function(a,b){return g.regions[b]-g.regions[a];})[0]||"unconfirmed";
-    var mk=L.circleMarker([co.lat,co.lng],{radius:g.ids.length>1?11:8,color:"#0A0C11",weight:1.5,fillColor:RC[reg]||"#737C8E",fillOpacity:.95}).addTo(map);
+    var rad=Math.min(34,Math.round(9+Math.sqrt(g.ids.length-1)*6.5));
+    var mk=L.circleMarker([co.lat,co.lng],{radius:rad,color:"#0A0C11",weight:1.5,fillColor:RC[reg]||"#737C8E",fillOpacity:.95}).addTo(map);
     mk.bindPopup('<b>'+esc(k)+'</b> <span class="muted">'+esc(RL[reg]||"")+'</span><div class="chips">'+g.ids.map(chipFor).join("")+'</div>');
     if(g.ids.length>1) mk.bindTooltip(String(g.ids.length),{permanent:true,direction:"center",className:"pin-count"});
+    else mk.bindTooltip('<b>'+esc(k)+'</b><br>1 business \u00b7 '+esc(RL[reg]||""),{direction:"top",offset:[0,-rad],className:"town-tip",sticky:true});
     bounds.push([co.lat,co.lng]);
   });
   if(bounds.length) map.fitBounds(bounds,{padding:[36,36]});
@@ -1660,7 +1686,7 @@ function drawRoster(){
    LANDSCAPE: researcher-grade positioning views
    ============================================================ */
 function scatterSVG(pts, jd){
-  var W=620,H=440,pl=56,pr=18,pt=18,pb=44;
+  var W=620,H=360,pl=56,pr=18,pt=30,pb=44;
   var xs=pts.map(function(p){return p.x;}), ys=pts.map(function(p){return p.y;});
   if(jd){ xs.push(jd.x); ys.push(jd.y); }
   var x0=Math.log10(Math.min.apply(null,xs)*0.9), x1=Math.log10(Math.max.apply(null,xs)*1.15);
@@ -1669,15 +1695,22 @@ function scatterSVG(pts, jd){
   function Y(v){ return pt+(1-(Math.log10(v)-y0)/(y1-y0))*(H-pt-pb); }
   var g="";
   [100,250,500,1000,2500,5000,10000].forEach(function(t){ if(t>=Math.pow(10,x0)&&t<=Math.pow(10,x1)){ g+='<line class="gridl" x1="'+X(t)+'" x2="'+X(t)+'" y1="'+pt+'" y2="'+(H-pb)+'"/><text x="'+X(t)+'" y="'+(H-pb+18)+'" text-anchor="middle">$'+fmt(t)+'</text>'; } });
-  [100,250,500,1000,2500,5000,10000,25000].forEach(function(t){ if(t>=Math.pow(10,y0)&&t<=Math.pow(10,y1)){ g+='<line class="gridl" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(t)+'" y2="'+Y(t)+'"/><text x="'+(pl-8)+'" y="'+(Y(t)+4)+'" text-anchor="end">'+fmt(t)+'</text>'; } });
+  [100,250,500,1000,2500,5000,25000].forEach(function(t){ if(t>=Math.pow(10,y0)&&t<=Math.pow(10,y1)){ g+='<line class="gridl" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(t)+'" y2="'+Y(t)+'"/><text x="'+(pl-8)+'" y="'+(Y(t)+4)+'" text-anchor="end">'+fmt(t)+'</text>'; } });
+  var qx=X(median(xs)).toFixed(1), qy=Y(median(ys)).toFixed(1);
+  g+='<line class="qmed" x1="'+qx+'" x2="'+qx+'" y1="'+pt+'" y2="'+(H-pb)+'"><title>Median wedding starting price</title></line>';
+  g+='<line class="qmed" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+qy+'" y2="'+qy+'"><title>Median Instagram audience</title></line>';
+  g+='<text class="qlab" x="'+(W-pr-6)+'" y="'+(pt+14)+'" text-anchor="end">Pricier \u00b7 bigger crowd</text>';
+  g+='<text class="qlab" x="'+(pl+6)+'" y="'+(pt+14)+'" text-anchor="start">Cheaper \u00b7 bigger crowd</text>';
+  g+='<text class="qlab" x="'+(W-pr-6)+'" y="'+(H-pb-8)+'" text-anchor="end">Pricier \u00b7 smaller crowd</text>';
+  g+='<text class="qlab" x="'+(pl+6)+'" y="'+(H-pb-8)+'" text-anchor="start">Cheaper \u00b7 smaller crowd</text>';
   g+='<text x="'+((W+pl-pr)/2)+'" y="'+(H-6)+'" text-anchor="middle">Wedding starting price (log scale)</text>';
   g+='<text x="14" y="'+((H+pt-pb)/2)+'" text-anchor="middle" transform="rotate(-90 14 '+((H+pt-pb)/2)+')">Instagram followers (log scale)</text>';
   pts.forEach(function(p){
-    g+='<circle class="scatter-dot" data-open="'+p.id+'" cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="5.5" fill="#8fa3c8" fill-opacity=".85"><title>'+esc(p.n)+': '+money(p.x)+', '+fmt(p.y)+' followers</title></circle>';
+    g+='<circle class="scatter-dot" data-open="'+p.id+'" cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="6.5" fill="#8fa3c8" fill-opacity=".85" stroke="#0A0C11" stroke-width="1"><title>'+esc(p.n)+'\nWedding starts at '+money(p.x)+' \u00b7 '+fmt(p.y)+' followers\nTap to open their profile</title></circle>';
   });
   if(jd){
     var jx=X(jd.x).toFixed(1), jy=Y(jd.y).toFixed(1);
-    g+='<g class="scatter-dot" data-open="jd"><path d="M'+jx+' '+(jy-9)+' L'+(+jx+9)+' '+jy+' L'+jx+' '+(+jy+9)+' L'+(+jx-9)+' '+jy+' Z" fill="var(--amber)" stroke="#0A0C11" stroke-width="1.5"><title>JD Meyers Productions: '+money(jd.x)+', '+fmt(jd.y)+' followers</title></path><text x="'+(+jx+13)+'" y="'+(+jy+4)+'" style="fill:var(--amber);font-weight:700">JD</text></g>';
+    g+='<g class="scatter-dot" data-open="jd"><path d="M'+jx+' '+(jy-9)+' L'+(+jx+9)+' '+jy+' L'+jx+' '+(+jy+9)+' L'+(+jx-9)+' '+jy+' Z" fill="var(--amber)" stroke="#0A0C11" stroke-width="1.5"><title>JD Meyers Productions (you)\nWedding starts at '+money(jd.x)+' \u00b7 '+fmt(jd.y)+' followers\nTap to open your profile</title></path><text x="'+(+jx+13)+'" y="'+(+jy+4)+'" style="fill:var(--amber);font-weight:700">JD</text></g>';
   }
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" role="img" aria-label="Price versus audience positioning map">'+g+'</svg>';
 }
@@ -1730,20 +1763,22 @@ RENDER.landscape = function(el){
 
   h+='<div class="panel" style="margin-bottom:18px"><h2>Positioning map</h2>'+
     tells('<b>What this tells you:</b> everyone plotted on the two things clients weigh most \u2014 price and audience. Gaps on the map are ground nobody owns yet.')+
-    scatterSVG(pts, jdPt)+
-    '<p class="hint" style="margin-top:10px">Plotted '+pts.length+' of '+C.length+' competitors'+(jdPt?' \u2014 amber diamond is JD ($1,400 wedding start, '+fmt(jdPt.y)+' followers)':'')+'. The rest have no published wedding price or follower count.</p>'+
-    srcChip('Roster pricing + IG snapshots \u00b7 Sep 26')+'</div>';
+    '<div class="chart-narrow">'+scatterSVG(pts, jdPt)+'</div>'+
+    '<p class="hint" style="margin-top:10px">Plotted '+pts.length+' of '+C.length+' competitors'+(jdPt?' \u2014 amber diamond is JD ($1,400 wedding start, '+fmt(jdPt.y)+' followers)':'')+'. Dashed lines mark the medians; the labels name each corner of the market. Hover any dot for the numbers, tap it to open the profile.</p>';
+  var unplotted=C.filter(function(c){ return !(c.price.wedding!=null && c.followers!=null); });
+  if(unplotted.length) h+='<p class="hint" style="margin:6px 0 8px">Not plotted \u2014 no published wedding price or follower count yet ('+unplotted.length+'):</p><div class="chips" style="margin-bottom:6px">'+unplotted.map(function(c){ return chipFor(c.id); }).join("")+'</div>';
+  h+=srcChip('Roster pricing + IG snapshots \u00b7 Sep 26')+'</div>';
 
   h+='<div class="panel" style="margin-bottom:18px"><h2>The 2x2: price vs wedding focus</h2>'+
     tells('<b>What this tells you:</b> the market forced into four boxes on the two factors that decide who you actually compete against. Tap a box for names.')+
     '<div class="qaxis"><span style="width:110px"></span><span>Wedding specialist</span><span>Generalist</span></div>'+
     '<div class="qrow"><span class="qrowlab">Premium<br><small>'+money(medW)+'+ to start</small></span>'+
     [quads[0],quads[1]].map(function(q){
-      return '<div class="qcard" data-q="'+q.id+'" tabindex="0" role="button"><div class="qn">'+esc(q.name)+'</div><div class="qc">'+q.ids.length+'</div><div class="qx">businesses</div></div>';
+      return '<div class="qcard" data-q="'+q.id+'" tabindex="0" role="button" data-tip="'+esc(q.name)+': '+q.ids.length+' businesses charge '+money(medW)+'+ and are '+(q.id==="ps"?"wedding specialists":"not wedding-focused")+'. Tap to see who is in this box."><div class="qn">'+esc(q.name)+'</div><div class="qc">'+q.ids.length+'</div><div class="qx">businesses</div></div>';
     }).join("")+'</div>'+
     '<div class="qrow"><span class="qrowlab">Budget<br><small>under '+money(medW)+'</small></span>'+
     [quads[2],quads[3]].map(function(q){
-      return '<div class="qcard" data-q="'+q.id+'" tabindex="0" role="button"><div class="qn">'+esc(q.name)+'</div><div class="qc">'+q.ids.length+'</div><div class="qx">businesses</div></div>';
+      return '<div class="qcard" data-q="'+q.id+'" tabindex="0" role="button" data-tip="'+esc(q.name)+': '+q.ids.length+' businesses charge under '+money(medW)+' and are '+(q.id==="bs"?"wedding specialists":"not wedding-focused")+'. Tap to see who is in this box."><div class="qn">'+esc(q.name)+'</div><div class="qc">'+q.ids.length+'</div><div class="qx">businesses</div></div>';
     }).join("")+'</div>'+
     '<div id="qDetail" style="margin-top:14px"><p class="muted" style="font-size:13.5px">Tap a box to see who is in it.</p></div>'+
     '<p class="hint" style="margin-top:10px">'+withW.length+' of '+C.length+' have a published wedding starting price; only those can sit on this grid.</p>'+
@@ -1752,7 +1787,7 @@ RENDER.landscape = function(el){
   h+='<div class="panel"><h2>Strategic groups</h2>'+
     tells('<b>What this tells you:</b> businesses playing the same game the same way. You compete hardest against your own group \u2014 JD sits in Mid-market.')+
     TIERS.map(function(t){
-      return '<div class="tier" data-tier="'+t.id+'" tabindex="0" role="button"><div class="tr"><div><div class="tn">'+esc(t.name)+'</div><div class="muted" style="font-size:13px">'+esc(t.sub)+'</div></div><div class="qc" style="font-size:24px;font-weight:700">'+t.ids.length+'</div></div><p class="tread">'+esc(tierRead(t))+'</p></div>';
+      return '<div class="tier" data-tier="'+t.id+'" tabindex="0" role="button" data-tip="'+esc(t.name)+' \u2014 '+esc(t.sub)+'. '+t.ids.length+' in this group. Tap to see the members."><div class="tr"><div><div class="tn">'+esc(t.name)+'</div><div class="muted" style="font-size:13px">'+esc(t.sub)+'</div></div><div class="qc" style="font-size:24px;font-weight:700">'+t.ids.length+'</div></div><p class="tread">'+esc(tierRead(t))+'</p></div>';
     }).join("")+
     '<div id="tierDetail" style="margin-top:6px"><p class="muted" style="font-size:13.5px">Tap a group to see its members.</p></div>'+
     srcChip('Roster pricing + specialties \u00b7 Sep 26')+'</div>';
