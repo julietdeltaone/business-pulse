@@ -520,6 +520,11 @@ table.data th{color:var(--silver-2)}
 [data-tip-below]:hover::before,[data-tip-below]:focus-visible::before{
   content:"";position:absolute;z-index:80;left:50%;top:calc(100% + 4px);bottom:auto;transform:translateX(-50%);
   border:6px solid transparent;border-top-color:transparent;border-bottom-color:var(--line-2);pointer-events:none}
+/* sortable table headers: the th[aria-sort] sort-indicator rule outranks the
+   tooltip for ::after content, so re-assert the tooltip here at higher specificity */
+table.data th[data-tip]:hover::after,table.data th[data-tip-below]:hover::after,
+table.data th[data-tip]:focus-visible::after,table.data th[data-tip-below]:focus-visible::after{
+  content:attr(data-tip);display:block;margin:0;border:1px solid var(--line-2)}
 .tip-inline{border-bottom:1px dotted var(--fog);cursor:help}
 
 /* ---------- compare: true head-to-head duel ---------- */
