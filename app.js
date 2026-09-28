@@ -1590,7 +1590,7 @@ RENDER.map=function(el){
   el.innerHTML=h;
   if(typeof L==="undefined"){ $("#leafMap").innerHTML='<p class="muted" style="padding:26px">The map library could not load \u2014 check your connection and reload. The town list below is unaffected.</p>'; return; }
   var map=L.map("leafMap",{scrollWheelZoom:true});
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:18,attribution:'\u00a9 <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors \u00a9 <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,className:"osm-dark-tiles",attribution:'\u00a9 <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
   var bounds=[];
   keys.forEach(function(k){
     var g=groups[k], co=TOWNS.coords[k];
