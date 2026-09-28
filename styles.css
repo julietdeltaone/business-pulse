@@ -400,3 +400,22 @@ svg text{fill:var(--silver-2);font-family:var(--sans)}
 .net-crumb{left:12px;top:12px}
 .net-zoom{top:auto;bottom:12px;right:12px}
 .net-legend{position:static;margin:12px 16px;max-width:none}
+
+/* ---------- follow graph: explorer upgrades (lessons from the North Country page) ---------- */
+.page-head .freshline{margin-top:10px;font-size:13px;color:var(--fog)}
+.page-head .freshline b{color:var(--silver-2);font-weight:600}
+.tbtn{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;border:1px solid var(--line-2);background:transparent;color:var(--silver-2);font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tbtn:hover{color:var(--silver);border-color:var(--fog)}
+.tbtn[aria-pressed="true"]{background:var(--silver);color:var(--ink);border-color:var(--silver)}
+.net-path{position:absolute;left:50%;transform:translateX(-50%);top:12px;z-index:6;display:flex;gap:12px;align-items:center;max-width:calc(100% - 24px);background:rgba(10,12,17,.93);border:1px solid var(--amber);border-radius:var(--r-m);padding:8px 12px;font-size:13px;color:var(--silver);box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.net-path b{color:var(--amber)}
+.net-dir{position:absolute;top:0;right:0;bottom:0;width:min(440px,94%);z-index:8;display:flex;flex-direction:column;gap:10px;background:var(--plate);border-left:1px solid var(--line-2);padding:16px;box-shadow:-24px 0 48px rgba(0,0,0,.45);overflow:hidden}
+.net-dir .dhead{display:flex;justify-content:space-between;align-items:center}
+.net-dir .dhead h3{margin:0;font-size:16px;color:var(--silver)}
+.net-dir .search{width:100%}
+.net-dir .tablewrap{flex:1;overflow-y:auto;min-height:0;margin:0}
+.net-dir table.data td{padding:9px 8px}
+.net-wrap.hubs-on .node[data-hub="1"] circle:first-of-type{stroke:var(--amber);stroke-width:2.5}
+.net-wrap.hubs-on .node:not([data-hub="1"]):not(.jd) circle:first-of-type{opacity:.35}
+.node.onpath circle:first-of-type{stroke:var(--amber);stroke-width:2.5}
+.net-wrap .edge.onpath{stroke:var(--amber)!important;stroke-opacity:.9!important;fill:var(--amber)!important;fill-opacity:.5!important}
