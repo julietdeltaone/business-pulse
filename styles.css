@@ -285,8 +285,16 @@ table.data td.r{text-align:right;font-variant-numeric:tabular-nums}
 .strip{position:relative;height:120px;margin:10px 4px 30px}
 .strip svg{width:100%;height:100%;overflow:visible}
 .strip .axis text{fill:var(--fog);font-size:11px}
-.strip .dotp{cursor:pointer;transition:r .15s}
+.strip .dotp{cursor:pointer;transition:r .15s;animation:pop .45s ease both}
 .strip .dotp:hover{stroke:var(--silver);stroke-width:2}
+@keyframes pop{from{opacity:0}}
+.mix i{transform-origin:left;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+/* cost tiles: full-width "What it costs" panel */
+.cost-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 4px}
+.cost-tile{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:16px 18px;text-align:left;cursor:pointer;transition:transform .18s ease,border-color .18s ease,background .18s ease;color:inherit;font:inherit;width:100%}
+.cost-tile:hover{transform:translateY(-2px);border-color:#3A4356;background:rgba(255,255,255,.05)}
+.cost-tile b{display:block;font-family:var(--serif);font-weight:400;font-size:32px;color:var(--silver);line-height:1.1}
+.cost-tile span{font-size:12.5px;color:var(--fog)}
 
 /* ---------- AI ---------- */
 .chart svg{width:100%;height:auto;display:block;overflow:visible}
@@ -362,6 +370,8 @@ table.data td.r{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none !important;transition:none !important}
 }
+
+@media (max-width:640px){.cost-grid{grid-template-columns:1fr}}
 
 /* ---------- responsive ---------- */
 @media (max-width: 1080px){
