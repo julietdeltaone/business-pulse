@@ -381,6 +381,23 @@ function chipFor(id){
   if(c) return '<button class="chip" data-open="'+esc(id)+'" style="--d:'+MOM[c.momentum.k].color+'"><span class="dot"></span>'+esc(c.name.replace(/ \(.*\)/,""))+'</button>';
   return '<button class="chip" data-open="'+esc(id)+'"><span class="dot"></span>'+esc(nameOf(id))+'</button>';
 }
+/* name lists: one quiet row per business — dot + name, metadata right-aligned */
+function shortTown(t){ return String(t||"").split(" (")[0]; }
+function nameRow(c, meta){
+  var m=MOM[c.momentum.k];
+  return '<div class="namerow" data-open="'+c.id+'" role="button" tabindex="0" aria-label="'+esc(c.name)+'"><span class="dot" style="background:'+m.color+'"></span><span class="nm">'+esc(c.name.replace(/ \(.*\)/,""))+'</span>'+(meta?'<span class="meta">'+esc(meta)+'</span>':'')+'</div>';
+}
+function nameGroups(list, opts){
+  opts=opts||{};
+  var groups={}; list.forEach(function(c){ (groups[c.momentum.k]=groups[c.momentum.k]||[]).push(c); });
+  var keys=Object.keys(MOM).filter(function(k){ return groups[k]&&groups[k].length; });
+  function rows(items){ return items.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).map(function(c){ return nameRow(c, opts.meta?opts.meta(c):null); }).join(""); }
+  if(opts.bareIfSingle && keys.length<2) return '<div class="nlist tight"><div class="namerows">'+rows(list)+'</div></div>';
+  return '<div class="nlist'+(opts.tight?' tight':'')+'">'+keys.map(function(k){
+    var items=groups[k], closed=!!opts.collapseUnknown && k==="unknown";
+    return '<div class="ngroup'+(closed?' closed':'')+'"><button class="ghead" data-ngroup aria-expanded="'+(!closed)+'"><span class="dot" style="background:'+MOM[k].color+'"></span>'+MOM[k].label+'<span class="cnt">· '+items.length+'</span><svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 L6 8 L9.5 4.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></button><div class="namerows">'+rows(items)+'</div></div>';
+  }).join("")+'</div>';
+}
 function arrow(dir){
   if(dir>0) return '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 10 L11 3 M6 3 H11 V8" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
   if(dir<0) return '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 4 L11 11 M11 6 V11 H6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>';
@@ -401,7 +418,7 @@ function mixBar(m, total){
    PULSE (home)
    ============================================================ */
 /* small shared bits for the visual pulse */
-function srcChip(t){ return '<span class="src">'+esc(t)+'</span>'; }
+function srcChip(t){ if(PUB) t=t.replace(/Roster/g,"Directory"); return '<span class="src">'+esc(t)+'</span>'; }
 function tells(t){ return '<p class="tells">'+t+'</p>'; }
 function donutSVG(segs){
   var total=segs.reduce(function(a,s){return a+s.v;},0), R=70, CIRC=2*Math.PI*R, acc=0, g="";
@@ -1700,11 +1717,11 @@ RENDER.map=function(el){
     +'</div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Towns</h2><p class="hint">'+keys.length+' towns with pins'+(unmapped.length?'; '+unmapped.length+' without a mappable town':'')+'.</p><div class="tablewrap"><table class="data"><thead><tr><th>Town</th><th class="num">Businesses</th><th>Names</th></tr></thead><tbody>';
   keys.sort(function(a,b){return groups[b].ids.length-groups[a].ids.length||a.localeCompare(b);}).forEach(function(k){
-    var g=groups[k];
-    h+='<tr style="cursor:default"><td class="nm">'+esc(k)+'</td><td class="num">'+g.ids.length+'</td><td><div class="chips">'+g.ids.map(chipFor).join("")+'</div></td></tr>';
+    var g=groups[k], clist=g.ids.map(function(id){return BY_ID[id];}).filter(Boolean);
+    h+='<tr style="cursor:default"><td class="nm">'+esc(k)+'</td><td class="num">'+g.ids.length+'</td><td>'+nameGroups(clist,{tight:true,bareIfSingle:true})+'</td></tr>';
   });
   h+='</tbody></table></div>';
-  if(unmapped.length) h+='<p class="hint" style="margin-top:12px">No mappable town: '+unmapped.map(chipFor).join(" ")+'</p>';
+  if(unmapped.length) h+='<div style="margin-top:12px"><p class="hint">No mappable town</p>'+nameGroups(unmapped.map(function(id){return BY_ID[id];}).filter(Boolean),{tight:true,bareIfSingle:true})+'</div>';
   h+='</div>';
   el.innerHTML=h;
   if(typeof L==="undefined"){ $("#leafMap").innerHTML='<p class="muted" style="padding:26px">The map library could not load \u2014 check your connection and reload. The town list below is unaffected.</p>'; return; }
@@ -1716,7 +1733,7 @@ RENDER.map=function(el){
     var reg=Object.keys(g.regions).sort(function(a,b){return g.regions[b]-g.regions[a];})[0]||"unconfirmed";
     var rad=Math.min(34,Math.round(9+Math.sqrt(g.ids.length-1)*6.5));
     var mk=L.circleMarker([co.lat,co.lng],{radius:rad,color:"#0A0C11",weight:1.5,fillColor:RC[reg]||"#737C8E",fillOpacity:.95}).addTo(map);
-    mk.bindPopup('<b>'+esc(k)+'</b> <span class="muted">'+esc(RL[reg]||"")+'</span><div class="chips">'+g.ids.map(chipFor).join("")+'</div>');
+    mk.bindPopup('<b>'+esc(k)+'</b> <span class="muted">'+esc(RL[reg]||"")+'</span><div class="nlist pop">'+g.ids.map(function(id){var c=BY_ID[id];return c?nameRow(c):"";}).join("")+'</div>');
     if(g.ids.length>1) mk.bindTooltip(String(g.ids.length),{permanent:true,direction:"center",className:"pin-count"});
     else mk.bindTooltip('<b>'+esc(k)+'</b><br>1 business \u00b7 '+esc(RL[reg]||""),{direction:"top",offset:[0,-rad],className:"town-tip",sticky:true});
     bounds.push([co.lat,co.lng]);
@@ -1735,10 +1752,12 @@ RENDER.roster = function(el){
   h+='<div class="filters"><span class="lbl">Lane</span>'+LANES.map(function(l){return '<button class="filter" data-f="lane" data-v="'+l.id+'"><span class="sw" style="--c:'+l.color+'"></span>'+esc(l.label)+'</button>';}).join("")+'</div>';
   h+='<div class="filters"><span class="lbl">Momentum</span>'+Object.keys(MOM).map(function(k){return '<button class="filter" data-f="mom" data-v="'+k+'"><span class="sw" style="--c:'+MOM[k].color+'"></span>'+MOM[k].label+'</button>';}).join("")+'</div>';
   h+='<div class="filters"><span class="lbl">Region</span>'+Object.keys(REGION).map(function(k){return '<button class="filter" data-f="region" data-v="'+k+'">'+REGION[k]+'</button>';}).join("")+'</div>';
+  var cols=[["name","Business"],["lanes","Lanes"],["momentum","Momentum"],["price","Starting price"],["followers","Followers"],["post","Last post"]];
+  if(!PUB) cols.push(["hub","Found via"]);
   h+='<p class="hint" id="rcount" style="margin:16px 0 4px"></p><div class="tablewrap"><table class="data" id="rtable"><thead><tr>'+
-     [["name","Business"],["lanes","Lanes"],["momentum","Momentum"],["price","Starting price"],["followers","Followers"],["post","Last post"],["hub","Found via"]].map(function(c){return '<th data-sort="'+c[0]+'">'+c[1]+'</th>';}).join("")+
+     cols.map(function(c){return '<th data-sort="'+c[0]+'">'+c[1]+'</th>';}).join("")+
      '</tr></thead><tbody></tbody></table></div></div>';
-  h+='<div class="panel"><h2>Ruled out</h2><p class="hint">Businesses checked and excluded from the roster, with the reason. Kept so they are not re-added by mistake.</p><div class="tablewrap"><table class="data" style="cursor:default"><tbody>'+
+  if(!PUB) h+='<div class="panel"><h2>Ruled out</h2><p class="hint">Businesses checked and excluded from the roster, with the reason. Kept so they are not re-added by mistake.</p><div class="tablewrap"><table class="data" style="cursor:default"><tbody>'+
      (D.excluded||[]).map(function(x){return '<tr style="cursor:default"><td class="nm">'+esc(x.name)+'</td><td class="muted">'+esc(x.reason)+'</td></tr>';}).join("")+'</tbody></table></div></div>';
   el.innerHTML=h;
   $("#rq").addEventListener("input",function(){ RF.q=this.value.toLowerCase(); drawRoster(); });
@@ -1772,9 +1791,9 @@ function drawRoster(){
   $("#rcount").textContent = list.length+" of "+C.length+" shown"+(RF.county?" in "+RF.county+" County":"");
   $("#rtable tbody").innerHTML = list.map(function(c){
     var p = c.price.wedding?money(c.price.wedding):c.price.session?money(c.price.session)+' session':(c.price.hourly?'hourly':'<span class="muted">not public</span>');
-    return '<tr data-open="'+c.id+'"><td class="nm"><span class="chip roster-chip" data-open="'+c.id+'">'+esc(c.name)+'</span><small>'+esc(c.town||"")+'</small></td><td>'+laneTags(c)+'</td><td>'+momBadge(c)+'</td><td class="num">'+p+'</td>'+
-      '<td class="r">'+(c.followers?fmt(c.followers):'<span class="muted">–</span>')+'</td><td class="num">'+(c.last_post_date?shortDate(c.last_post_date):'<span class="muted">–</span>')+'</td><td class="muted">'+esc(HUBS[c.hub].label)+'</td></tr>';
-  }).join("") || '<tr><td colspan="7" class="empty">Nothing matches. Clear a filter to widen the list.</td></tr>';
+    return '<tr data-open="'+c.id+'"><td class="nm">'+esc(c.name)+'<small>'+esc(c.town||"")+'</small></td><td>'+laneTags(c)+'</td><td>'+momBadge(c)+'</td><td class="num">'+p+'</td>'+
+      '<td class="r">'+(c.followers?fmt(c.followers):'<span class="muted">–</span>')+'</td><td class="num">'+(c.last_post_date?shortDate(c.last_post_date):'<span class="muted">–</span>')+'</td>'+(!PUB?'<td class="muted">'+esc(HUBS[c.hub].label)+'</td>':'')+'</tr>';
+  }).join("") || '<tr><td colspan="'+(PUB?6:7)+'" class="empty">Nothing matches. Clear a filter to widen the list.</td></tr>';
 }
 
 /* ============================================================
@@ -1861,7 +1880,7 @@ RENDER.landscape = function(el){
     '<div class="chart-narrow">'+scatterSVG(pts, jdPt)+'</div>'+
     '<p class="hint" style="margin-top:10px">Plotted '+pts.length+' of '+C.length+' businesses'+(jdPt?' \u2014 amber diamond is JD ($1,400 wedding start, '+fmt(jdPt.y)+' followers)':'')+'. Dashed lines mark the medians; the labels name each corner of the market. Hover any dot for the numbers, tap it to open the profile.</p>';
   var unplotted=C.filter(function(c){ return !(c.price.wedding!=null && c.followers!=null); });
-  if(unplotted.length) h+='<p class="hint" style="margin:6px 0 8px">Not plotted \u2014 no published wedding price or follower count yet ('+unplotted.length+'):</p><div class="chips" style="margin-bottom:6px">'+unplotted.map(function(c){ return chipFor(c.id); }).join("")+'</div>';
+  if(unplotted.length) h+='<p class="hint" style="margin:6px 0 8px">Not plotted \u2014 no published wedding price or follower count yet ('+unplotted.length+'):</p>'+nameGroups(unplotted,{tight:true,bareIfSingle:true,collapseUnknown:true});
   h+=srcChip('Roster pricing + IG snapshots \u00b7 Sep 26')+'</div>';
 
   h+='<div class="panel" style="margin-bottom:18px"><h2>The 2x2: price vs wedding focus</h2>'+
@@ -1920,7 +1939,7 @@ RENDER.market = function(el){
        '<div class="stats"><div><b class="num">'+s.n+'</b>tracked</div><div><b class="num">'+s.home+'</b>in St. Lawrence</div>'+
        (s.wMed&&(l.id==="weddings"||l.id==="video")?'<div><b class="num">'+money(s.wMed)+'</b>median wedding start</div>':'')+(s.sMed&&l.id!=="video"&&l.id!=="drone"?'<div><b class="num">'+money(s.sMed)+'</b>median session start</div>':'')+
        (s.ai!=null && !PUB?'<div><b class="num" style="color:var(--amber)">'+pct(s.ai)+'</b>JD in AI answers</div>':'')+'</div>'+
-       mixBar(s.mom,s.n)+'<div class="chips" style="margin-top:14px">'+sorted.map(function(c){return chipFor(c.id);}).join("")+'</div></div>';
+       mixBar(s.mom,s.n)+nameGroups(sorted,{meta:function(c){return shortTown(c.town);},collapseUnknown:true})+'</div>';
   });
   h+='</div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Wedding starting prices</h2><p class="hint">Each dot is a published starting price. The amber line is the median. Hover for the name, click to open.</p><div class="strip" id="stripW"></div>'+
@@ -1997,12 +2016,12 @@ RENDER.sweeps = function(el){
     h+='<li><div class="d">'+shortDate(s.date)+'</div><h3>'+esc(s.run_label)+'</h3>'+
       (s.of_total?'<div class="progress"><i style="width:'+(s.fetched/s.of_total*100)+'%"></i></div><div class="muted" style="font-size:13px">'+s.fetched+' of '+s.of_total+' sites reached'+(changed.length?', '+changed.length+' changed':'')+(unreach.length?', '+unreach.length+' unreachable':'')+'</div>':'')+
       (s.summary?'<p style="color:var(--silver-2);font-size:14px;margin:10px 0 0;max-width:70ch">'+esc(s.summary)+'</p>':'')+
-      ((s.new_entrants||[]).length?'<div style="margin-top:10px"><span class="muted" style="font-size:12.5px">New entrants</span><div class="chips" style="margin-top:6px">'+s.new_entrants.map(function(n){ var c=findComp(n); return c?chipFor(c.id):'<span class="tag">'+esc(n)+'</span>'; }).join("")+'</div></div>':'')+
+      ((s.new_entrants||[]).length?'<div style="margin-top:10px"><span class="muted" style="font-size:12.5px">New entrants</span>'+nameGroups(s.new_entrants.map(function(n){return findComp(n);}).filter(Boolean),{tight:true,bareIfSingle:true})+'</div>':'')+
       ((s.roster_corrections||[]).length?'<ul class="inner">'+s.roster_corrections.map(function(t){return '<li>'+esc(t)+'</li>';}).join("")+'</ul>':'')+'</li>';
   });
   h+='</ul></div><div class="stack"><div class="panel"><h2>Needs a manual check</h2><p class="hint">Websites that failed on the latest attempt. Repeated failures usually mean a moved or closed site.</p>'+
      (watch.length?'<div class="conn" style="display:flex;flex-direction:column;gap:12px">'+watch.map(function(c){ return '<div><button class="linkish" data-open="'+c.id+'">'+esc(c.name)+'</button><div class="muted" style="font-size:13px">'+esc(c.sweep.note||"unreachable")+'</div></div>'; }).join("")+'</div>':'<p class="empty">All sites reached.</p>')+
-     '</div><div class="panel"><h2>Not monitored</h2><p class="hint">'+C.filter(function(c){return !c.website;}).length+' businesses have no website on file, so sweeps cannot watch them.</p><div class="chips">'+C.filter(function(c){return !c.website;}).map(function(c){return chipFor(c.id);}).join("")+'</div></div></div></div>';
+     '</div><div class="panel"><h2>Not monitored</h2><p class="hint">'+C.filter(function(c){return !c.website;}).length+' businesses have no website on file, so sweeps cannot watch them.</p>'+nameGroups(C.filter(function(c){return !c.website;}),{tight:true,bareIfSingle:true,collapseUnknown:true})+'</div></div></div>';
   el.innerHTML=h;
 };
 
@@ -2142,8 +2161,9 @@ function followChart(hist){
    global wiring
    ============================================================ */
 document.addEventListener("click",function(ev){
-  var t=ev.target.closest("[data-open],[data-go],[data-focus],[data-lane],[data-mom],[data-county]");
+  var t=ev.target.closest("[data-open],[data-go],[data-focus],[data-lane],[data-mom],[data-county],[data-ngroup]");
   if(!t || t.closest(".net-wrap svg")) return;
+  if(t.hasAttribute("data-ngroup")){ var ng=t.closest(".ngroup"); if(ng){ ng.classList.toggle("closed"); t.setAttribute("aria-expanded",String(!ng.classList.contains("closed"))); } return; }
   if(t.hasAttribute("data-open")){ ev.preventDefault(); openDetail(t.getAttribute("data-open")); return; }
   if(t.hasAttribute("data-go")){ closeDetail(); go(t.getAttribute("data-go")); return; }
   if(t.hasAttribute("data-focus")){ var id=t.getAttribute("data-focus"); closeDetail(); go("network"); setTimeout(function(){ if(NET) NET.focus(id); },60); return; }
@@ -2154,6 +2174,7 @@ document.addEventListener("click",function(ev){
 document.addEventListener("keydown",function(ev){
   if(ev.key==="Escape" && drawer.classList.contains("on")) closeDetail();
   if(ev.key==="Enter" && ev.target.matches("tr.lane-row")) ev.target.click();
+  if(ev.key==="Enter" && ev.target.matches(".namerow")){ openDetail(ev.target.getAttribute("data-open")); }
   if(ev.key==="/" && !ev.target.matches("input,textarea") && $("#view-network").classList.contains("on")){
     var si=$("#netSearch");
     if(si){ ev.preventDefault(); si.focus(); }
