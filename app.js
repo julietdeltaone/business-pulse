@@ -44,6 +44,19 @@ function ago(s){ var n=daysSince(s); if(n==null) return "no data"; if(n<=0) retu
 function url(u){ if(!u) return null; return /^https?:\/\//.test(u)?u:"https://"+u; }
 function uniq(a){ return a.filter(function(x,i){ return a.indexOf(x)===i; }); }
 function median(a){ if(!a.length) return null; var s=a.slice().sort(function(x,y){return x-y;}); var m=Math.floor(s.length/2); return s.length%2?s[m]:Math.round((s[m-1]+s[m])/2); }
+/* count-up animation for big stat numbers: <b class="num" data-count="2450" data-fmt="money"> */
+function countUps(root){
+  $$(".num[data-count]", root||document).forEach(function(el){
+    var target=+el.getAttribute("data-count");
+    var f=el.getAttribute("data-fmt")==="money"?money:fmt;
+    if(reduceMotion || !isFinite(target)){ el.textContent=f(target); return; }
+    el.textContent=f(0);
+    var t0=null, dur=900;
+    function step(t){ if(t0==null) t0=t; var p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3);
+      el.textContent=f(Math.round(target*e)); if(p<1) requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  });
+}
 function norm(s){
   return String(s||"").toLowerCase().replace(/[’']/g,"").replace(/\([^)]*\)/g," ").replace(/&/g," ")
     .replace(/\b(photography|photographer|photos?|llc|studios?|productions?|media|services?|videography|video|films?|and|the|portrait|co)\b/g," ")
@@ -134,7 +147,7 @@ if(PUB){
   if(jdHist.length) IGH["jdmeyersproductions"] = jdHist;
   D.competitors.push({id:JD_PUB_ID, name:"JD Meyers Productions", specialty:"both", town:"Potsdam, NY (SLC)",
     region:"slc", county:"St. Lawrence", website:"jdmeyersjr.com", ig_handle:"jdmeyersproductions",
-    pricing:"", pricing_url:"", notes:"", status:"active", flags:[], source:"directory", source_label:"Directory",
+    pricing:"Wedding $1,400 starting", pricing_url:"https://jdmeyersjr.com", notes:"", status:"active", flags:[], source:"directory", source_label:"Directory",
     lanes:["weddings","portraits","video","drone"]}); /* explicit: photo/video weddings, portraits, FAA Part 107 drone */
 }
 var C = (D.competitors||[]).map(function(c){
@@ -479,7 +492,22 @@ RENDER.pulse = function(el){
   var h = '<div class="reveal">';
   h += heroWatch(C.length, pct(jdNow));
 
-  /* --- where they are (admin) / what it costs (public) --- */
+  /* --- what it costs (public, full width) --- */
+  var wPrices=C.filter(function(c){return c.price.wedding;}).map(function(c){return c.price.wedding;});
+  var sPrices=C.filter(function(c){return c.price.session;}).map(function(c){return c.price.session;});
+  if(PUB){
+    h += '<div class="panel" style="margin-bottom:18px"><h2>What it costs</h2>'+
+      '<div class="cost-grid">'+
+      '<button class="cost-tile" data-go="market"><b class="num" data-count="'+(median(wPrices)||0)+'" data-fmt="money">'+money(median(wPrices))+'</b><span>median wedding start</span></button>'+
+      '<button class="cost-tile" data-go="market"><b class="num" data-count="'+(median(sPrices)||0)+'" data-fmt="money">'+money(median(sPrices))+'</b><span>median session start</span></button>'+
+      '<button class="cost-tile" data-go="market"><b class="num" data-count="'+(wPrices.length+sPrices.length)+'">'+(wPrices.length+sPrices.length)+'</b><span>published prices</span></button>'+
+      '</div>'+
+      '<div class="strip" id="pulseStripW"></div>'+
+      '<p class="hint">Each dot is one business\u2019s published wedding starting price \u2014 hover for the name, click to open the profile. Tap a tile for the full Market lanes breakdown.</p>'+
+      srcChip('Directory pricing \u00b7 '+syncDay)+'</div>';
+  }
+
+  /* --- where they are (admin) --- */
   var regN={slc:0,adjacent:0,unconfirmed:0};
   C.forEach(function(c){ regN[c.region]=(regN[c.region]||0)+1; });
   var segs=[
@@ -488,20 +516,12 @@ RENDER.pulse = function(el){
     {label:"Location unconfirmed", v:regN.unconfirmed||0, color:"#737C8E"}
   ];
   h += '<div class="grid g-2" style="margin-bottom:18px">';
-  if(PUB){
-    var wPrices=C.filter(function(c){return c.price.wedding;}).map(function(c){return c.price.wedding;});
-    var sPrices=C.filter(function(c){return c.price.session;}).map(function(c){return c.price.session;});
-    h += '<div class="panel"><h2>What it costs</h2><div class="stats">'+
-      (wPrices.length?'<div><b class="num">'+money(median(wPrices))+'</b>median wedding start</div>':'')+
-      (sPrices.length?'<div><b class="num">'+money(median(sPrices))+'</b>median session start</div>':'')+
-      '<div><b class="num">'+(wPrices.length+sPrices.length)+'</b>published prices</div>'+
-      '</div><p class="hint">Starting prices published by North Country photo and video businesses. The full breakdown is on Market lanes.</p>'+srcChip('Directory pricing · '+syncDay)+'</div>';
-  } else {
+  if(!PUB){
     h += '<div class="panel"><h2>Where they are</h2>'+
       tells('<b>What this tells you:</b> how much of the watch list sits in your home county versus the surrounding counties you also compete in.')+
       '<div class="donut-wrap">'+donutSVG(segs)+'<div class="donut-legend">'+
       segs.map(function(s){ return '<div class="row"><span class="sw" style="background:'+s.color+'"></span><span>'+esc(s.label)+'</span><b>'+s.v+' ('+Math.round(s.v/C.length*100)+'%)</b></div>'; }).join("")+
-      '</div></div>'+srcChip('Roster · '+syncDay)+'</div>';
+      '</div></div>'+srcChip('Roster \u00b7 '+syncDay)+'</div>';
   }
 
   /* --- recency bands --- */
@@ -518,7 +538,7 @@ RENDER.pulse = function(el){
   var bmax=Math.max.apply(null,bands.map(function(b){return b.v;}));
   h += '<div class="panel"><h2>'+(PUB?'Who\u2019s active right now':'Are they posting')+'</h2>'+
     (PUB?'':tells('<b>What this tells you:</b> how many businesses are actually marketing right now. A quiet rival is not taking your clients this month.'))+
-    '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div></div>';
+    '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div>'+(PUB?'':'</div>');
 
   /* --- follower movers --- */
   var movers=Object.keys(IGH).map(function(hh){
@@ -528,7 +548,8 @@ RENDER.pulse = function(el){
     return {n:c?c.name.replace(/ \(.*\)/,""):"@"+hh, d:d, id:c&&c.id};
   }).filter(function(m){return m&&m.d!==0;}).sort(function(a,b){return Math.abs(b.d)-Math.abs(a.d);}).slice(0,8);
   var mmax=Math.max.apply(null,movers.map(function(m){return Math.abs(m.d);}).concat([1]));
-  h += '<div class="grid g-2" style="margin-bottom:18px"><div class="panel"><h2>'+(PUB?'Gaining attention':'Biggest follower moves')+'</h2>'+
+  if(!PUB) h += '<div class="grid g-2" style="margin-bottom:18px">';
+  h += '<div class="panel"><h2>'+(PUB?'Gaining attention':'Biggest follower moves')+'</h2>'+
     (PUB?'':tells('<b>What this tells you:</b> who is gaining or losing audience fastest. Fast growers are the ones to watch.'))+
     (movers.length?'<div class="bars">'+movers.map(function(m){
       var pos=m.d>0;
@@ -566,6 +587,8 @@ RENDER.pulse = function(el){
   h += '<div class="panel"><h2>Movement</h2><p class="hint">What changed most recently, newest first.</p><ul class="feed">'+movementFeed()+'</ul></div>';
   h += '</div>';
   el.innerHTML = h;
+  if(PUB) priceStrip($("#pulseStripW"), C.filter(function(c){return c.price.wedding;}).map(function(c){return {c:c,v:c.price.wedding};}));
+  countUps(el);
 };
 
 function movementFeed(){
@@ -1947,17 +1970,18 @@ RENDER.market = function(el){
     var sorted = s.list.slice().sort(function(a,b){ return MOM[a.momentum.k].rank-MOM[b.momentum.k].rank || a.name.localeCompare(b.name); });
     h+='<div class="panel lanecard" id="lane-'+l.id+'" style="--c:'+l.color+'"><div class="row-between"><h2>'+esc(l.label)+'</h2>'+(l.id==="unclassified"?'':dirLabel(s))+'</div>'+
        (l.id==="unclassified"?'<p class="hint" style="margin-top:6px">No service information yet. Classifying these (a website visit or an IG check) is the fastest way to sharpen the picture.</p>':'')+
-       '<div class="stats"><div><b class="num">'+s.n+'</b>tracked</div><div><b class="num">'+s.home+'</b>in St. Lawrence</div>'+
-       (s.wMed&&(l.id==="weddings"||l.id==="video")?'<div><b class="num">'+money(s.wMed)+'</b>median wedding start</div>':'')+(s.sMed&&l.id!=="video"&&l.id!=="drone"?'<div><b class="num">'+money(s.sMed)+'</b>median session start</div>':'')+
+       '<div class="stats"><div><b class="num" data-count="'+s.n+'">'+s.n+'</b>tracked</div><div><b class="num" data-count="'+s.home+'">'+s.home+'</b>in St. Lawrence</div>'+
+       (s.wMed&&(l.id==="weddings"||l.id==="video")?'<div><b class="num" data-count="'+s.wMed+'" data-fmt="money">'+money(s.wMed)+'</b>median wedding start</div>':'')+(s.sMed&&l.id!=="video"&&l.id!=="drone"?'<div><b class="num" data-count="'+s.sMed+'" data-fmt="money">'+money(s.sMed)+'</b>median session start</div>':'')+
        (s.ai!=null && !PUB?'<div><b class="num" style="color:var(--amber)">'+pct(s.ai)+'</b>JD in AI answers</div>':'')+'</div>'+
        mixBar(s.mom,s.n)+nameGroups(sorted,{meta:function(c){return shortTown(c.town);},collapseUnknown:true})+'</div>';
   });
   h+='</div>';
-  h+='<div class="panel" style="margin-top:18px"><h2>Wedding starting prices</h2><p class="hint">Each dot is a published starting price. The amber line is the median. Hover for the name, click to open.</p><div class="strip" id="stripW"></div>'+
-     '<h2 style="margin-top:10px">Portrait and session starting prices</h2><p class="hint">Minis, family, senior and couples sessions.</p><div class="strip" id="stripS"></div></div>';
+  h+='<div class="grid g-2" style="margin-top:18px"><div class="panel"><h2>Wedding starting prices</h2><p class="hint">Each dot is a published starting price. The amber line is the median. Hover for the name, click to open.</p><div class="strip" id="stripW"></div></div>'+
+     '<div class="panel"><h2>Session starting prices</h2><p class="hint">Minis, family, senior and couples sessions.</p><div class="strip" id="stripS"></div></div></div>';
   el.innerHTML=h;
   priceStrip($("#stripW"), C.filter(function(c){return c.price.wedding;}).map(function(c){return {c:c,v:c.price.wedding};}));
   priceStrip($("#stripS"), C.filter(function(c){return c.price.session;}).map(function(c){return {c:c,v:c.price.session};}));
+  countUps(el);
 };
 function priceStrip(el, pts){
   if(!pts.length){ el.innerHTML='<p class="empty">No published prices yet.</p>'; return; }
@@ -1969,10 +1993,10 @@ function priceStrip(el, pts){
   var med=median(pts.map(function(p){return p.v;}));
   g+='<line x1="'+X(med)+'" x2="'+X(med)+'" y1="4" y2="'+(H-24)+'" stroke="#E7A04F" stroke-width="2"/><text x="'+(X(med)+6)+'" y="14" fill="#E7A04F" font-size="12">median '+money(med)+'</text>';
   var used={};
-  pts.sort(function(a,b){return a.v-b.v;}).forEach(function(p){
+  pts.sort(function(a,b){return a.v-b.v;}).forEach(function(p,i){
     var bucket=Math.round(X(p.v)/14); used[bucket]=(used[bucket]||0)+1; var row=used[bucket]-1;
     var y=(H-24)/2+ (row%2?1:-1)*Math.ceil(row/2)*15;
-    g+='<circle class="dotp" data-open="'+p.c.id+'" cx="'+X(p.v)+'" cy="'+y+'" r="6.5" fill="'+LANE[p.c.lanes[0]].hex+'" stroke="#0A0C11" stroke-width="1.5"><title>'+esc(p.c.name+": "+money(p.v))+'</title></circle>';
+    g+='<circle class="dotp" data-open="'+p.c.id+'" cx="'+X(p.v)+'" cy="'+y+'" r="6.5" fill="'+LANE[p.c.lanes[0]].hex+'" stroke="#0A0C11" stroke-width="1.5" style="animation-delay:'+(reduceMotion?0:Math.min(i*14,700))+'ms"><title>'+esc(p.c.name+": "+money(p.v))+'</title></circle>';
   });
   el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="Price distribution">'+g+'</svg>';
 }
