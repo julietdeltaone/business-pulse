@@ -585,3 +585,19 @@ table.data th[data-tip]:focus-visible::after,table.data th[data-tip-below]:focus
 .map-legend .sz{display:inline-flex;align-items:center;margin-right:7px}
 .leaflet-tooltip.town-tip{background:#151B28;border:1px solid var(--line-2);color:var(--silver);border-radius:8px;font-family:var(--sans);font-size:12.5px;box-shadow:0 8px 22px rgba(0,0,0,.5)}
 .leaflet-tooltip.town-tip::before{display:none}
+
+/* ---------- admin gate ---------- */
+.admin-btn{margin-top:10px;width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--line-2);background:transparent;color:var(--fog);font-size:12.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.admin-btn:hover{border-color:var(--silver-2);color:var(--silver)}
+.admin-btn::before{content:"";width:10px;height:12px;border:1.6px solid currentColor;border-radius:2.5px;position:relative;box-shadow:0 -3px 0 -1.5px currentColor inset}
+.admin-btn.on{border-color:var(--amber);color:var(--amber)}
+.admin-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,7,11,.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px}
+.admin-modal{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line-2);border-radius:var(--r);padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.admin-modal h2{margin:0 0 6px;font-size:19px}
+.admin-modal .muted{font-size:13.5px;line-height:1.5}
+.admin-modal .field{display:block;margin:14px 0 4px}
+.admin-modal .field span{display:block;font-size:12.5px;color:var(--fog);margin-bottom:5px}
+.admin-modal input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--ink);color:var(--silver);font-size:15px;box-sizing:border-box}
+.admin-modal input:focus{outline:none;border-color:var(--amber)}
+.admin-err{color:var(--m-fading);font-size:13px;margin:8px 0 0}
+.admin-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
