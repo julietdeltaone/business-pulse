@@ -303,9 +303,15 @@ function dirRow(b,i){
   return '<div class="row'+(b.you?" you":"")+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
     '<span class="dot" style="background:'+(b.you?"#e8b34b":recencyDot(b))+'"></span>'+
     '<div class="nm"><b>'+esc(b.name)+(b.you?'<span class="youbadge">You</span>':"")+'</b>'+
-    '<span>'+esc(b.townShort)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+'</span></div>'+
+    '<span>'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+'</span></div>'+
     '<div class="meta"><b>'+fmt(f)+'</b><span>'+(b.hasPrice?money(b.price.wedding||b.price.session):"price n/a")+
     ' · <span class="pct '+pcls+'">'+pctStr(ch)+'</span></span></div></div>';
+}
+/* explicit county labeling: adjacent-county businesses are named as such everywhere */
+function locTag(b){
+  if(b.region==="adjacent"&&b.county) return ' <span class="adj">· '+esc(b.county)+' Co (adjacent)</span>';
+  if(b.region==="unconfirmed"||(b.flags||[]).indexOf("location-unverified")>=0) return ' <span class="unv">· location unverified</span>';
+  return "";
 }
 function renderDir(){
   var list=filtered().slice().sort(function(a,b){return (b.you?1:0)-(a.you?1:0)||((b.followers||0)-(a.followers||0));});
@@ -502,7 +508,7 @@ function profileHTML(b){
   var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
   var h='<div class="sec"><div class="prof-head"><div class="prof-ava'+(b.you?" you":"")+'">'+esc(ini)+'</div>'+
     '<div><h2>'+esc(b.name)+(b.you?'<span class="youbadge">You</span>':"")+'</h2>'+
-    '<div class="sub">'+esc(b.town)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+' · '+(REG_LABEL[b.region]||"")+'</div></div></div>';
+    '<div class="sub">'+esc(b.town)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+(b.region==="slc"?" · St. Lawrence Co":"")+'</div></div></div>';
 
   /* You vs market median — always visible */
   var medF=C.map(function(x){return x.followers;}).filter(function(v){return v!=null;}).sort(function(a,c){return a-c;});
@@ -624,7 +630,10 @@ C.slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);}).slice(0
   .forEach(function(b){ topIds[b.id]=1; });
 function labelFor(b){
   var f=followersAt(b,S.di);
+  var loc=b.townShort+((b.region==="adjacent"&&b.county)?" · "+b.county+" Co (adjacent)":
+    ((b.region==="unconfirmed"||(b.flags||[]).indexOf("location-unverified")>=0)?" · location unverified":""));
   return "<b>"+esc(b.name)+"</b>"+(b.you?' <span style="color:#e8b34b">(you)</span>':"")+
+    '<br><span style="color:#9aa3b2;font-weight:400">'+esc(loc)+"</span>"+
     (f!=null?'<br><span style="color:#9aa3b2;font-weight:400">'+fmt(f)+" followers</span>":"");
 }
 function rowEl(id){ return $('#leftbody .row[data-open="'+id+'"]'); }
