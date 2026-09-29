@@ -61,8 +61,8 @@ var TC=D.townCoords||{aliases:{},coords:{}};
 function townCanon(t){ var a=TC.aliases||{}; return a[t]||t; }
 function townLatLng(town){
   var c=(TC.coords||{})[townCanon(town)];
-  if(c) return {lat:c.lat,lng:c.lng};
-  return {lat:44.6699,lng:-74.9813}; /* Potsdam fallback */
+  if(c) return {lat:c.lat,lng:c.lng,real:true};
+  return null; /* no fake pinpoint: unmapped towns get no map pin */
 }
 function jitter(id,lat,lng){ return {lat:lat,lng:lng}; } /* replaced by town spiral below */
 
@@ -79,8 +79,8 @@ var C=(D.competitors||[]).map(function(c){
   e.postAge=daysSince(c.last_post_date);
   e.hasPrice=e.price.wedding!=null||e.price.session!=null;
   var tc=townLatLng(e.town);
-  e.lat=tc.lat; e.lng=tc.lng; /* spiral placement below */
-  e._geo=!!(TC.coords||{})[townCanon(e.town)]; /* false = Potsdam fallback, never heat-mapped */
+  e._geo=!!tc; /* false = no real coordinates: no map pin, no heat contribution */
+  e.lat=tc?tc.lat:null; e.lng=tc?tc.lng:null; /* spiral placement below */
   e.townShort=(e.town||"").split(",")[0];
   return e;
 });
@@ -92,6 +92,7 @@ var BY_ID={}; C.forEach(function(c){BY_ID[c.id]=c;});
   Object.keys(groups).forEach(function(k){
     var g=groups[k].sort(function(a,b){return (b.followers||0)-(a.followers||0);});
     var cl=townLatLng(g[0].town);
+    if(!cl){ g.forEach(function(b){ b.lat=null; b.lng=null; }); return; } /* unmapped town: no pins */
     g.forEach(function(b,i){
       if(i===0){ b.lat=cl.lat; b.lng=cl.lng; return; }
       var a=i*2.39996, r=0.011*Math.sqrt(i);
@@ -670,10 +671,11 @@ function renderPins(){
   if(!map) return;
   pinLayer.clearLayers(); pinById={};
   var list=filtered(), selId=S.sel;
+  var geoList=list.filter(function(b){return b._geo&&b.lat!=null;}); /* unmapped: no pin, still in directory/bubbles */
   var newIds={};
   list.forEach(function(b){ var first=b.followHist.length?b.followHist[0].date:null;
     if(first&&first>=DATES[Math.max(0,S.di-1)]) newIds[b.id]=1; });
-  list.forEach(function(b){
+  geoList.forEach(function(b){
     var f=followersAt(b,S.di);
     var r=f!=null?Math.max(9,Math.min(26,6+Math.sqrt(f)/6)):9;
     var hollow=f==null||!b.hasPrice;
@@ -708,10 +710,10 @@ function renderPins(){
   refreshLabels();
   refreshHeat();
   if(!map._fitDone){ map._fitDone=true;
-    var pts=list.map(function(b){return [b.lat,b.lng];});
+    var pts=geoList.map(function(b){return [b.lat,b.lng];});
     if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.12)); }
 }
-function flyTo(b){ if(map) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); }
+function flyTo(b){ if(map&&b.lat!=null) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); }
 
 /* ---------- bubble field (canvas) ---------- */
 var cv=$("#bubbles"), ctx=cv.getContext("2d"), bub=[], bubAnim=null, hovId=null;
