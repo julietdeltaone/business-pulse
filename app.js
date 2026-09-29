@@ -611,7 +611,7 @@ function recColor(ds){
   var r=Math.round(232-142*t), g=Math.round(196-112*t), b=Math.round(118-42*t);
   return "rgb("+r+","+g+","+b+")";
 }
-function truncW(s,n){ s=s||""; if(s.length<=n) return s; var t=s.slice(0,n), i=t.lastIndexOf(" "); return (i>12?t.slice(0,i):t)+"\u2026"; }
+function truncW(s,n){ s=s||""; if(s.length<=n) return s; var t=s.slice(0,n), i=t.lastIndexOf(" "); return (i<0?t:t.slice(0,i))+"\u2026"; }
 function activityRail(syncDay){
   var items=C.filter(function(c){return c.last_post_date;})
     .sort(function(a,b){return a.last_post_date<b.last_post_date?1:a.last_post_date>b.last_post_date?-1:0;}).slice(0,15);
