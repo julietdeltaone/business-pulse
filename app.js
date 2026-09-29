@@ -64,9 +64,7 @@ function townLatLng(town){
   if(c) return {lat:c.lat,lng:c.lng};
   return {lat:44.6699,lng:-74.9813}; /* Potsdam fallback */
 }
-function jitter(id,lat,lng){ var h=hashN(id);
-  var a=(h%360)*Math.PI/180, r=0.028+((h>>9)%40)/40*0.03;
-  return {lat:lat+Math.sin(a)*r, lng:lng+Math.cos(a)*r*1.35}; }
+function jitter(id,lat,lng){ return {lat:lat,lng:lng}; } /* replaced by town spiral below */
 
 /* ---------- enrich roster ---------- */
 var IGH=D.igFollowersHistory||{};
@@ -80,12 +78,26 @@ var C=(D.competitors||[]).map(function(c){
     e.followers=fm?+fm[1].replace(/,/g,""):null; e.followHist=[]; }
   e.postAge=daysSince(c.last_post_date);
   e.hasPrice=e.price.wedding!=null||e.price.session!=null;
-  var ll=jitter(e.id,townLatLng(e.town).lat,townLatLng(e.town).lng);
-  e.lat=ll.lat; e.lng=ll.lng;
+  var tc=townLatLng(e.town);
+  e.lat=tc.lat; e.lng=tc.lng; /* spiral placement below */
   e.townShort=(e.town||"").split(",")[0];
   return e;
 });
 var BY_ID={}; C.forEach(function(c){BY_ID[c.id]=c;});
+/* ordered golden-angle spiral per town so same-town pins read as a cluster, not noise */
+(function(){
+  var groups={};
+  C.forEach(function(b){ var k=townCanon(b.town); (groups[k]=groups[k]||[]).push(b); });
+  Object.keys(groups).forEach(function(k){
+    var g=groups[k].sort(function(a,b){return (b.followers||0)-(a.followers||0);});
+    var cl=townLatLng(g[0].town);
+    g.forEach(function(b,i){
+      if(i===0){ b.lat=cl.lat; b.lng=cl.lng; return; }
+      var a=i*2.39996, r=0.011*Math.sqrt(i);
+      b.lat=cl.lat+Math.sin(a)*r; b.lng=cl.lng+Math.cos(a)*r*1.35;
+    });
+  });
+})();
 
 /* ---------- snapshot dates ---------- */
 var DATES=[]; (function(){ var s={};
@@ -442,8 +454,8 @@ var map=null, pinLayer=null, pinById={};
 function initMap(){
   map=L.map("map",{zoomControl:false,attributionControl:true}).setView([44.55,-74.9],9);
   map.attributionControl.setPrefix(false);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    {maxZoom:18,attribution:"© OpenStreetMap © CARTO"}).addTo(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {maxZoom:19,className:"osm-dark-tiles",attribution:"© OpenStreetMap contributors"}).addTo(map);
   pinLayer=L.layerGroup().addTo(map);
   renderPins();
 }
