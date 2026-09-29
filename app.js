@@ -617,9 +617,9 @@ function activityRail(syncDay){
     .sort(function(a,b){return a.last_post_date<b.last_post_date?1:a.last_post_date>b.last_post_date?-1:0;}).slice(0,15);
   return '<aside class="panel activity-rail"><h2>Recently posting</h2>'+
     (items.length?'<ul class="activity-feed">'+items.map(function(c){
-      return '<li><button class="activity-item" data-open="'+c.id+'"><span class="dot" style="background:'+recColor(c.last_post_date)+'"></span>'+
+      return '<li><button class="activity-item" data-open="'+c.id+'"'+(c.last_post_topic?' title="'+esc(c.last_post_topic)+'"':'')+'><span class="dot" style="background:'+recColor(c.last_post_date)+'"></span>'+
         '<span class="a-main"><span class="a-name">'+esc(c.name.replace(/ \(.*\)/,""))+'</span>'+
-        (c.last_post_topic?'<span class="a-topic">'+esc(truncW(c.last_post_topic,30))+'</span>':'')+'</span>'+
+        (c.last_post_topic?'<span class="a-topic">'+esc(truncW(c.last_post_topic,24))+'</span>':'')+'</span>'+
         '<span class="a-when">'+esc(ago(c.last_post_date))+'</span></button></li>';
     }).join("")+'</ul>':'<p class="muted">No recent posts tracked.</p>')+
     srcChip('Instagram activity \u00b7 '+(syncDay||''))+'</aside>';
