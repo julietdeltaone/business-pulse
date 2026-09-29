@@ -151,6 +151,25 @@ h3{font-size:15px;font-weight:600;margin:0 0 8px;color:var(--silver)}
 .chip:hover{border-color:var(--silver-2);color:var(--silver)}
 .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--d,var(--fog))}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+
+/* ---------- name lists: one row per business ---------- */
+.nlist{margin-top:14px;border-top:1px solid rgba(255,255,255,.06)}
+.nlist.tight{margin-top:0;border-top:0}
+.ngroup + .ngroup{margin-top:16px}
+.ghead{display:flex;align-items:center;gap:8px;width:100%;padding:11px 4px 9px;background:none;border:0;cursor:pointer;color:var(--silver-2);font-size:12px;font-weight:600;letter-spacing:.02em;text-align:left}
+.ghead .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.ghead .cnt{color:var(--fog);font-weight:400;font-variant-numeric:tabular-nums}
+.ghead .chev{margin-left:auto;color:var(--fog);transition:transform .15s;flex:none}
+.ngroup.closed .namerows{display:none}
+.ngroup.closed .ghead .chev{transform:rotate(-90deg)}
+.namerow{display:flex;align-items:center;gap:10px;min-height:38px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;border-radius:6px}
+.namerow:hover{background:rgba(255,255,255,.03)}
+.namerow:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+.namerow .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.namerow .nm{font-size:14px;font-weight:500;color:rgba(255,255,255,.92);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.namerow .meta{margin-left:auto;padding-left:12px;font-size:12px;font-weight:400;color:rgba(255,255,255,.55);white-space:nowrap;font-variant-numeric:tabular-nums}
+.nlist.pop{margin:8px -4px 0;max-height:264px;overflow-y:auto}
+.nlist.pop .namerow{min-height:34px;padding:6px 10px}
 .tag{display:inline-block;padding:2px 8px;border-radius:5px;font-size:12px;background:rgba(255,255,255,.05);color:var(--silver-2);margin:0 4px 4px 0}
 .tag.lane{background:color-mix(in srgb,var(--c) 16%, transparent);color:var(--c)}
 .mom{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500}
@@ -248,8 +267,9 @@ table.data th[aria-sort="descending"]::after{border-top-color:var(--silver-2);ve
 table.data td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 table.data tbody tr{cursor:pointer;transition:background .12s}
 table.data tbody tr:hover{background:rgba(255,255,255,.03)}
-table.data td.nm{font-weight:600;color:var(--silver);min-width:190px}
-table.data td.nm small{display:block;font-weight:400;color:var(--fog);font-size:12.5px;margin-top:2px}
+table.data td.nm{font-weight:500;color:rgba(255,255,255,.92);min-width:190px;letter-spacing:-.01em}
+table.data td.nm small{display:block;font-weight:400;color:var(--fog);font-size:12px;margin-top:2px}
+table.data td.num,table.data th.num{font-variant-numeric:tabular-nums}
 table.data td.r{text-align:right;font-variant-numeric:tabular-nums}
 .search{width:min(360px,100%);padding:10px 14px;border-radius:var(--r-m);border:1px solid var(--line-2);background:var(--ink);color:var(--silver)}
 .search::placeholder{color:var(--fog)}
@@ -381,6 +401,7 @@ svg text{fill:var(--silver-2);font-family:var(--sans)}
 .leaflet-popup-content b{color:var(--silver)}
 .leaflet-popup-tip{background:var(--plate-2);border:1px solid var(--line-2)}
 .leaflet-popup-content .chips{margin-top:8px;max-width:260px}
+.leaflet-popup-content .nlist.pop{min-width:230px}
 .qgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .qcard{background:var(--plate-2);border:1px solid var(--line);border-radius:var(--r-m);padding:16px 18px;cursor:pointer}
 .qcard:hover{border-color:var(--line-2)}
