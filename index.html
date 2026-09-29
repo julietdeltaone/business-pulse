@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=4bf07b65">
+<link rel="stylesheet" href="styles.css?v=d6202f27">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -43,12 +43,16 @@
     </select>
   </div>
   <div class="top-actions">
+    <div class="modetoggle" role="tablist" aria-label="Dataset">
+      <button data-mode="businesses" class="on" role="tab" aria-selected="true">Businesses</button>
+      <button data-mode="venues" role="tab" aria-selected="false">Venues</button>
+    </div>
     <div class="viewtoggle" role="tablist" aria-label="Background view">
       <button data-view="map" class="on" role="tab" aria-selected="true">Map</button>
       <button data-view="rankings" role="tab" aria-selected="false">Rankings</button>
     </div>
     <span id="datelabel" title="Data as of this date"></span>
-    <span id="buildtag" title="Deployed build">build 1e03c0ad &middot; Sep 29 23:09 UTC</span>
+    <span id="buildtag" title="Deployed build">build f61ec2ac &middot; Sep 29 23:22 UTC</span>
     <button id="adminBtn" class="ghostbtn">Admin</button>
   </div>
 </header>
@@ -80,8 +84,9 @@
 
 <script src="data/data.js?v=36acbd6f"></script>
 <script src="data/website-intel.js?v=8b116b0d"></script>
+<script src="data/venues.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=1e03c0ad"></script>
+<script src="app.js?v=f61ec2ac"></script>
 </body>
 </html>
