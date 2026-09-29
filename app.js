@@ -479,7 +479,7 @@ RENDER.pulse = function(el){
   var h = '<div class="reveal">';
   h += heroWatch(C.length, pct(jdNow));
 
-  /* --- donut: where they are --- */
+  /* --- where they are (admin) / what it costs (public) --- */
   var regN={slc:0,adjacent:0,unconfirmed:0};
   C.forEach(function(c){ regN[c.region]=(regN[c.region]||0)+1; });
   var segs=[
@@ -487,11 +487,22 @@ RENDER.pulse = function(el){
     {label:"Neighboring counties", v:regN.adjacent||0, color:"#7FB2CE"},
     {label:"Location unconfirmed", v:regN.unconfirmed||0, color:"#737C8E"}
   ];
-  h += '<div class="grid g-2" style="margin-bottom:18px"><div class="panel"><h2>Where they are</h2>'+
-    tells('<b>What this tells you:</b> '+(PUB?'how the market splits between the home county and the surrounding counties.':'how much of the watch list sits in your home county versus the surrounding counties you also compete in.'))+
-    '<div class="donut-wrap">'+donutSVG(segs)+'<div class="donut-legend">'+
-    segs.map(function(s){ return '<div class="row"><span class="sw" style="background:'+s.color+'"></span><span>'+esc(s.label)+'</span><b>'+s.v+' ('+Math.round(s.v/C.length*100)+'%)</b></div>'; }).join("")+
-    '</div></div>'+srcChip('Roster · '+syncDay)+'</div>';
+  h += '<div class="grid g-2" style="margin-bottom:18px">';
+  if(PUB){
+    var wPrices=C.filter(function(c){return c.price.wedding;}).map(function(c){return c.price.wedding;});
+    var sPrices=C.filter(function(c){return c.price.session;}).map(function(c){return c.price.session;});
+    h += '<div class="panel"><h2>What it costs</h2><div class="stats">'+
+      (wPrices.length?'<div><b class="num">'+money(median(wPrices))+'</b>median wedding start</div>':'')+
+      (sPrices.length?'<div><b class="num">'+money(median(sPrices))+'</b>median session start</div>':'')+
+      '<div><b class="num">'+(wPrices.length+sPrices.length)+'</b>published prices</div>'+
+      '</div><p class="hint">Starting prices published by North Country photo and video businesses. The full breakdown is on Market lanes.</p>'+srcChip('Directory pricing · '+syncDay)+'</div>';
+  } else {
+    h += '<div class="panel"><h2>Where they are</h2>'+
+      tells('<b>What this tells you:</b> how much of the watch list sits in your home county versus the surrounding counties you also compete in.')+
+      '<div class="donut-wrap">'+donutSVG(segs)+'<div class="donut-legend">'+
+      segs.map(function(s){ return '<div class="row"><span class="sw" style="background:'+s.color+'"></span><span>'+esc(s.label)+'</span><b>'+s.v+' ('+Math.round(s.v/C.length*100)+'%)</b></div>'; }).join("")+
+      '</div></div>'+srcChip('Roster · '+syncDay)+'</div>';
+  }
 
   /* --- recency bands --- */
   var bands=[
@@ -505,8 +516,8 @@ RENDER.pulse = function(el){
     else bands[2].v++;
   });
   var bmax=Math.max.apply(null,bands.map(function(b){return b.v;}));
-  h += '<div class="panel"><h2>Are they posting</h2>'+
-    tells('<b>What this tells you:</b> how many businesses are actually marketing right now. A quiet rival is not taking '+(PUB?'clients':'your clients')+' this month.')+
+  h += '<div class="panel"><h2>'+(PUB?'Who\u2019s active right now':'Are they posting')+'</h2>'+
+    (PUB?'':tells('<b>What this tells you:</b> how many businesses are actually marketing right now. A quiet rival is not taking your clients this month.'))+
     '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div></div>';
 
   /* --- follower movers --- */
@@ -517,8 +528,8 @@ RENDER.pulse = function(el){
     return {n:c?c.name.replace(/ \(.*\)/,""):"@"+hh, d:d, id:c&&c.id};
   }).filter(function(m){return m&&m.d!==0;}).sort(function(a,b){return Math.abs(b.d)-Math.abs(a.d);}).slice(0,8);
   var mmax=Math.max.apply(null,movers.map(function(m){return Math.abs(m.d);}).concat([1]));
-  h += '<div class="grid g-2" style="margin-bottom:18px"><div class="panel"><h2>Biggest follower moves</h2>'+
-    tells('<b>What this tells you:</b> who is gaining or losing audience fastest. Fast growers are the ones to watch.')+
+  h += '<div class="grid g-2" style="margin-bottom:18px"><div class="panel"><h2>'+(PUB?'Gaining attention':'Biggest follower moves')+'</h2>'+
+    (PUB?'':tells('<b>What this tells you:</b> who is gaining or losing audience fastest. Fast growers are the ones to watch.'))+
     (movers.length?'<div class="bars">'+movers.map(function(m){
       var pos=m.d>0;
       return '<div class="bar"><span class="n"'+(m.id?' data-open="'+m.id+'"':'')+'>'+esc(m.n)+'</span><span class="t" style="display:flex;justify-content:'+(pos?'flex-start':'flex-end')+'"><i style="width:'+Math.max(3,Math.round(Math.abs(m.d)/mmax*100))+'%;--c:'+(pos?'var(--amber)':'var(--m-fading)')+'"></i></span><span class="v" style="color:'+(pos?'var(--amber)':'var(--m-fading)')+'">'+(pos?'+':'')+fmt(m.d)+'</span></div>';
@@ -547,7 +558,7 @@ RENDER.pulse = function(el){
 
   /* --- market momentum (already visual) --- */
   h += '<div class="panel" style="margin-bottom:18px"><h2>Market momentum</h2>'+
-    tells('<b>What this tells you:</b> the whole '+(PUB?'market':'watch list')+' sorted by what each business is doing right now \u2014 entering, active, quiet, fading, or no signal yet.')+
+    (PUB?'':tells('<b>What this tells you:</b> the whole watch list sorted by what each business is doing right now \u2014 entering, active, quiet, fading, or no signal yet.'))+
     '<div class="mix" style="height:12px;margin-bottom:14px">'+Object.keys(MOM).map(function(k){ return MOMCOUNT[k]?'<i style="width:'+(MOMCOUNT[k]/C.length*100)+'%;background:'+MOM[k].color+'"></i>':""; }).join("")+'</div>'+
     '<div class="chips">'+Object.keys(MOM).map(function(k){ return '<button class="chip" data-mom="'+k+'" style="--d:'+MOM[k].color+'"><span class="dot"></span>'+MOM[k].label+' '+MOMCOUNT[k]+'</button>'; }).join("")+'</div>'+srcChip('Roster + IG activity · '+syncDay)+'</div>';
 
@@ -565,7 +576,7 @@ function movementFeed(){
     var ids=byDay[d], newc=ids.filter(function(id){ return BY_ID[id].momentum.k==="entering"; });
     if(newc.length) ev.push({d:d, k:"New to market", c:"var(--m-entering)", h:'<b>'+newc.length+(newc.length>1?' new businesses':' new business')+'</b> started taking work locally.', chips:newc});
     var rest=ids.filter(function(id){ return newc.indexOf(id)<0; });
-    if(rest.length) ev.push({d:d, k:"Added to watch", c:"var(--lane-video)", h:'<b>'+rest.length+' businesses</b> added to the roster.', chips:rest});
+    if(rest.length && !PUB) ev.push({d:d, k:"Added to watch", c:"var(--lane-video)", h:'<b>'+rest.length+' businesses</b> added to the roster.', chips:rest});
   });
   C.filter(function(c){ return c.postAge!=null && c.postAge<=10; }).forEach(function(c){
     ev.push({d:c.last_post_date, k:"Posted", c:"var(--m-active)", h:'<b>'+esc(c.name)+'</b>'+(c.last_post_topic?': '+esc(c.last_post_topic):''), open:c.id});
@@ -575,7 +586,7 @@ function movementFeed(){
     var c=C.filter(function(x){return x.ig_handle===r.handle;})[0];
     ev.push({d:r.date, k:"Instagram", c:"var(--lane-portraits)", h:'<b>'+esc(c?c.name:"@"+r.handle)+'</b>: '+esc(r.activity), open:c&&c.id});
   });
-  SWEEPS.forEach(function(s){ var rc=s.roster_corrections||[]; if(rc.length) ev.push({d:s.date, k:"Corrections", c:"var(--m-quiet)", h:'<b>'+rc.length+' roster '+(rc.length>1?'corrections':'correction')+'</b>: '+rc.map(esc).join("; ")+'.'}); });
+  if(!PUB) SWEEPS.forEach(function(s){ var rc=s.roster_corrections||[]; if(rc.length) ev.push({d:s.date, k:"Corrections", c:"var(--m-quiet)", h:'<b>'+rc.length+' roster '+(rc.length>1?'corrections':'correction')+'</b>: '+rc.map(esc).join("; ")+'.'}); });
   C.filter(function(c){ return c.momentum.k==="fading" && c.sweep && /closed/i.test(c.sweep.note||""); }).forEach(function(c){
     ev.push({d:c.sweep.date, k:"Closed", c:"var(--m-fading)", h:'<b>'+esc(c.name)+'</b>: '+esc(c.sweep.note), open:c.id});
   });
@@ -583,7 +594,7 @@ function movementFeed(){
   return ev.slice(0,12).map(function(e){
     return '<li><div class="when">'+shortDate(e.d)+'</div><div class="what"><span class="kind" style="--k:'+e.c+'">'+e.k+'</span>'+
       (e.open?'<button class="linkish" data-open="'+esc(e.open)+'" style="text-decoration:none;color:inherit;text-align:left">'+e.h+'</button>':e.h)+
-      (e.chips?'<div class="chips">'+e.chips.slice(0,14).map(chipFor).join("")+(e.chips.length>14?'<span class="muted" style="font-size:12.5px;align-self:center">+'+(e.chips.length-14)+' more</span>':'')+'</div>':'')+
+      (e.chips?'<div class="nlist tight" style="margin-top:8px">'+e.chips.slice(0,14).map(function(id){ var c=BY_ID[id]; return c?nameRow(c):""; }).join("")+(e.chips.length>14?'<div class="muted" style="font-size:12.5px;padding:8px 12px">+'+(e.chips.length-14)+' more</div>':'')+'</div>':'')+
       '</div></li>';
   }).join("") || '<li class="empty">No movement recorded yet.</li>';
 }
