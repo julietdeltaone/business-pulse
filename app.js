@@ -1986,6 +1986,9 @@ RENDER.market = function(el){
   var h='<div class="page-head"><h1>The market, lane by lane</h1><p>'+(PUB
     ?'How each type of work is shaping up: who is in it, which way it is moving, and where prices sit.'
     :'How each type of work is shaping up: who is in it, which way it is moving, where prices sit, and how often AI points people to JD.')+'</p></div>';
+  h+='<div class="panel" style="margin-bottom:18px"><h2>Who charges what</h2><p class="hint">Every published starting price in one table. Click a column header to sort; click a row to open the profile.</p>'+
+     '<div class="tablewrap"><table class="data" id="priceTable"><thead><tr><th data-ps="name">Business</th><th data-ps="wedding" class="num">Wedding start</th><th data-ps="session" class="num">Session start</th><th>Prices on</th></tr></thead><tbody></tbody></table></div>'+
+     '<p class="hint" id="priceCount" style="margin:8px 0 0"></p></div>';
   h+='<div class="grid g-2">';
   LANES.forEach(function(l){
     var s=LSTATS[l.id]; if(!s.n) return;
@@ -1998,9 +2001,6 @@ RENDER.market = function(el){
        mixBar(s.mom,s.n)+nameGroups(sorted,{meta:function(c){return shortTown(c.town);},collapseUnknown:true})+'</div>';
   });
   h+='</div>';
-  h+='<div class="panel" style="margin-top:18px"><h2>Who charges what</h2><p class="hint">Every published starting price in one table. Click a column header to sort; click a row to open the profile.</p>'+
-     '<div class="tablewrap"><table class="data" id="priceTable"><thead><tr><th data-ps="name">Business</th><th data-ps="wedding" class="num">Wedding start</th><th data-ps="session" class="num">Session start</th><th>Prices on</th></tr></thead><tbody></tbody></table></div>'+
-     '<p class="hint" id="priceCount" style="margin:8px 0 0"></p></div>';
   h+='<div class="grid g-2" style="margin-top:18px"><div class="panel"><h2>Wedding starting prices</h2><p class="hint">Each dot is a published starting price. The amber line is the median. Hover for the name, click to open.</p><div class="strip" id="stripW"></div></div>'+
      '<div class="panel"><h2>Session starting prices</h2><p class="hint">Minis, family, senior and couples sessions.</p><div class="strip" id="stripS"></div></div></div>';
   el.innerHTML=h;
