@@ -536,7 +536,7 @@ RENDER.pulse = function(el){
 
   /* --- recency bands --- */
   var bands=[
-    {label:"Active \u00b7 last 30 days", v:0, color:"var(--m-active)"},
+    {label:"Active \u00b7 \u226430 days", v:0, color:"var(--m-active)"},
     {label:"Quiet \u00b7 1\u20133 months", v:0, color:"var(--m-quiet)"},
     {label:"Dormant \u00b7 3+ months", v:0, color:"var(--m-fading)"}
   ];
@@ -563,7 +563,7 @@ RENDER.pulse = function(el){
     (PUB?'':tells('<b>What this tells you:</b> who is gaining or losing audience fastest. Fast growers are the ones to watch.'))+
     (movers.length?'<div class="bars">'+movers.map(function(m){
       var pos=m.d>0;
-      return '<div class="bar"><span class="n"'+(m.id?' data-open="'+m.id+'"':'')+'>'+esc(m.n)+'</span><span class="t" style="display:flex;justify-content:'+(pos?'flex-start':'flex-end')+'"><i style="width:'+Math.max(3,Math.round(Math.abs(m.d)/mmax*100))+'%;--c:'+(pos?'var(--amber)':'var(--m-fading)')+'"></i></span><span class="v" style="color:'+(pos?'var(--amber)':'var(--m-fading)')+'">'+(pos?'+':'')+fmt(m.d)+'</span></div>';
+      return '<div class="bar"><span class="n"'+(m.id?' data-open="'+m.id+'"':'')+' title="'+esc(m.n)+'">'+esc(truncW(m.n,20))+'</span><span class="t" style="display:flex;justify-content:'+(pos?'flex-start':'flex-end')+'"><i style="width:'+Math.max(3,Math.round(Math.abs(m.d)/mmax*100))+'%;--c:'+(pos?'var(--amber)':'var(--m-fading)')+'"></i></span><span class="v" style="color:'+(pos?'var(--amber)':'var(--m-fading)')+'">'+(pos?'+':'')+fmt(m.d)+'</span></div>';
     }).join("")+'</div>': '<p class="muted">No movement in the tracking window.</p>')+
     srcChip('IG snapshots · Sep 24\u201326')+'</div>'+(PUB?'</div>':'');
 
