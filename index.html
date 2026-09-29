@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Business Pulse | JD Meyers Productions</title>
+<title>Business Pulse · North Country photo market</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -11,33 +11,71 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
-<div class="shell">
-  <aside class="rail">
-    <a class="brand" href="#/pulse">
-      <span class="brand-mark" aria-hidden="true"><i></i></span>
-      <span class="brand-text"><b>Business Pulse</b><small>JD Meyers Productions</small></span>
-    </a>
-    <nav class="nav" id="nav" aria-label="Sections"></nav>
-    <div class="rail-foot" id="freshness"></div>
-  </aside>
-  <main class="main" id="main">
-    <section class="view" id="view-pulse"></section>
-    <section class="view" id="view-network"></section>
-    <section class="view" id="view-map"></section>
-    <section class="view" id="view-roster"></section>
-    <section class="view" id="view-landscape"></section>
-    <section class="view" id="view-market"></section>
-    <section class="view" id="view-ai"></section>
-    <section class="view" id="view-sweeps"></section>
-    <section class="view" id="view-intake"></section>
-  </main>
-</div>
-<div class="scrim" id="scrim" hidden></div>
-<aside class="drawer" id="drawer" aria-hidden="true" tabindex="-1">
-  <button class="drawer-close" id="drawerClose" aria-label="Close details">Close</button>
-  <div class="drawer-body" id="drawerBody"></div>
+<div id="map" aria-hidden="true"></div>
+<canvas id="bubbles" hidden></canvas>
+
+<header id="topbar" class="glass">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">◈</span>
+    <div class="brand-text"><h1>Business Pulse</h1><small>North Country photo market</small></div>
+  </div>
+  <div class="filters" role="search">
+    <input id="fq" type="search" placeholder="Search businesses…" autocomplete="off" aria-label="Search businesses">
+    <select id="flane" aria-label="Filter by lane">
+      <option value="">All lanes</option>
+      <option value="photo">Photo</option>
+      <option value="video">Video</option>
+      <option value="both">Photo + Video</option>
+      <option value="drone">Drone</option>
+    </select>
+    <select id="fmom" aria-label="Filter by momentum">
+      <option value="">Any momentum</option>
+      <option value="gaining">Gaining</option>
+      <option value="active">Active</option>
+      <option value="quiet">Quiet</option>
+      <option value="dormant">Dormant</option>
+    </select>
+    <select id="freg" aria-label="Filter by region">
+      <option value="">All regions</option>
+      <option value="slc">St. Lawrence Co</option>
+      <option value="adjacent">Nearby counties</option>
+      <option value="unconfirmed">Unconfirmed</option>
+    </select>
+  </div>
+  <div class="top-actions">
+    <div class="viewtoggle" role="tablist" aria-label="Background view">
+      <button data-view="map" class="on" role="tab" aria-selected="true">Map</button>
+      <button data-view="bubbles" role="tab" aria-selected="false">Bubbles</button>
+    </div>
+    <span id="datelabel" title="Data as of this date"></span>
+    <button id="adminBtn" class="ghostbtn">Admin</button>
+  </div>
+</header>
+
+<aside id="left" class="glass panel" aria-label="Market panel">
+  <button id="sheetgrab" aria-label="Expand or collapse panel"><span></span></button>
+  <nav class="tabs" role="tablist" aria-label="Panel sections">
+    <button data-tab="today" class="on" role="tab" aria-selected="true">Today</button>
+    <button data-tab="dir" role="tab" aria-selected="false">Directory</button>
+    <button data-tab="market" role="tab" aria-selected="false">Market</button>
+  </nav>
+  <div id="leftbody"></div>
 </aside>
-<div class="tip" id="tip" role="tooltip"></div>
+
+<aside id="right" class="glass panel" aria-label="Detail panel">
+  <button id="rightclose" aria-label="Close detail panel">×</button>
+  <div id="rightbody"></div>
+</aside>
+
+<footer id="scrub" class="glass" aria-label="Time scrubber">
+  <button id="playbtn" aria-label="Replay daily snapshots">▶</button>
+  <input id="time" type="range" min="0" max="0" step="1" value="0" aria-label="Scrub through daily snapshots">
+  <span id="timelabel"></span>
+  <span id="freshnote"></span>
+</footer>
+
+<div id="toast" role="status"></div>
+
 <script src="data/data.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="app.js"></script>
