@@ -85,7 +85,7 @@ h3{font-size:15px;font-weight:600;margin:0 0 8px;color:var(--silver)}
 .panel + .panel{margin-top:18px}
 .grid > .panel + .panel{margin-top:0}
 /* pulse: side-by-side activity + movers — let long names wrap instead of clipping mid-word */
-.pulse-duo .bar{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 54px}
+.pulse-duo .bar{grid-template-columns:minmax(118px,1.5fr) minmax(0,1fr) 54px}
 .pulse-duo .bar .n{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
 .grid{display:grid;gap:18px}
 .g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
