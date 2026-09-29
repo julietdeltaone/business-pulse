@@ -457,7 +457,29 @@ function initMap(){
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     {maxZoom:19,className:"osm-dark-tiles",attribution:"© OpenStreetMap contributors"}).addTo(map);
   pinLayer=L.layerGroup().addTo(map);
+  map.on("zoomend",refreshLabels);
   renderPins();
+}
+/* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
+var topIds={};
+C.slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);}).slice(0,12)
+  .forEach(function(b){ topIds[b.id]=1; });
+function labelFor(b){
+  var f=followersAt(b,S.di);
+  return "<b>"+esc(b.name)+"</b>"+(b.you?' <span style="color:#e8b34b">(you)</span>':"")+
+    (f!=null?'<br><span style="color:#9aa3b2;font-weight:400">'+fmt(f)+" followers</span>":"");
+}
+function refreshLabels(){
+  if(!map) return;
+  var showAll=map.getZoom()>=13;
+  Object.keys(pinById).forEach(function(id){
+    var m=pinById[id], b=BY_ID[id]; if(!b||!m) return;
+    var show=showAll||!!topIds[id]||S.sel===id;
+    if(m._lbl===show) return; m._lbl=show;
+    m.unbindTooltip();
+    m.bindTooltip(labelFor(b),{permanent:show,direction:"top",offset:[0,-13],
+      opacity:.97,className:"mklabel"+(b.you?" you":"")});
+  });
 }
 function postedOn(b,di){ /* did this business post on/around the scrub date? */
   if(!b.last_post_date) return false;
@@ -474,7 +496,7 @@ function renderPins(){
     if(first&&first>=DATES[Math.max(0,S.di-1)]) newIds[b.id]=1; });
   list.forEach(function(b){
     var f=followersAt(b,S.di);
-    var r=f!=null?Math.max(7,Math.min(22,5+Math.sqrt(f)/7)):7;
+    var r=f!=null?Math.max(9,Math.min(26,6+Math.sqrt(f)/6)):9;
     var hollow=f==null||!b.hasPrice;
     var cls="mkpin"+(hollow?" hollow":"")+(b.id===selId?" sel":"")+(b.you?" you":"")+
       (postedOn(b,S.di)?" live":"")+((selId&&b.id!==selId)?" dim":"");
@@ -484,14 +506,13 @@ function renderPins(){
     var m=L.marker([b.lat,b.lng],{icon:L.divIcon({className:"",html:html,iconSize:[r*2,r*2],iconAnchor:[r,r]}),
       title:b.name, keyboard:false});
     m.on("click",function(){ select(b.id,{fly:false}); });
-    m.bindTooltip(esc(b.name)+(b.you?" (you)":""),{direction:"top",offset:[0,-r-2],opacity:.92,
-      className:"",sticky:false});
     m.addTo(pinLayer); pinById[b.id]=m;
     if(newIds[b.id]){ /* fade-in for new entrants */
       var el=m.getElement(); if(el){ var d=el.firstChild;
         setTimeout(function(){ d.style.transition="opacity .8s"; d.style.opacity="1"; },60); }
     }
   });
+  refreshLabels();
   if(!map._fitDone){ map._fitDone=true;
     var pts=list.map(function(b){return [b.lat,b.lng];});
     if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.12)); }
@@ -499,7 +520,8 @@ function renderPins(){
 function flyTo(b){ if(map) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); }
 
 /* ---------- bubble field (canvas) ---------- */
-var cv=$("#bubbles"), ctx=cv.getContext("2d"), bub=[], bubAnim=null;
+var cv=$("#bubbles"), ctx=cv.getContext("2d"), bub=[], bubAnim=null, hovId=null;
+var bubLab={}, bubYT=0, bubYB=0;
 function sizeCanvas(){ var dpr=Math.min(2,window.devicePixelRatio||1);
   cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
 function layoutBubbles(){
@@ -507,21 +529,25 @@ function layoutBubbles(){
   var fs=list.filter(function(b){return followersAt(b,S.di)!=null;}).map(function(b){return followersAt(b,S.di);});
   var mn=Math.min.apply(null,fs.concat([10])), mx=Math.max.apply(null,fs.concat([100]));
   var lx=function(f){return (Math.log10(Math.max(1,f))-Math.log10(mn))/(Math.log10(mx)-Math.log10(mn)||1);};
-  var W=innerWidth,H=innerHeight, padL=400,padR=380,padT=96,padB=110;
-  if(W<900){padL=16;padR=16;}
+  var W=innerWidth,H=innerHeight,pad=28,padT=104,padB=112;
+  var yT=padT+20, yB=H-padB-20; bubYT=yT; bubYB=yB;
+  function yForAge(age){ age=age==null?120:Math.min(120,age); return yB-(yB-yT)*(1-age/120); }
   var groups={};
   list.forEach(function(b){ (groups[b.specialty]=groups[b.specialty]||[]).push(b); });
   var keys=Object.keys(groups), cx={};
-  keys.forEach(function(k,i){ cx[k]=padL+(W-padL-padR)*(keys.length>1?(i+0.5)/keys.length:0.5); });
+  var laneW=(W-pad*2)/Math.max(1,keys.length);
+  keys.forEach(function(k,i){ cx[k]=pad+laneW*(i+0.5); });
   bub=list.map(function(b){
     var f=followersAt(b,S.di);
-    var x=cx[b.specialty]+(hashN(b.id+"x")%1000/1000-0.5)*(W-padL-padR)/Math.max(1,keys.length)*0.7;
-    var yT=padT+30, yB=H-padB-30;
-    var age=b.postAge==null?120:Math.min(120,b.postAge);
-    var y=yB-(yB-yT)*(1-age/120);
-    y+=(hashN(b.id+"y")%1000/1000-0.5)*46;
-    var r=f!=null?10+Math.sqrt(lx(f))*30:9;
-    return {b:b,x:x,y:y,r:r,tx:x,ty:y,tr:r,hollow:f==null||!b.hasPrice,alpha:1};
+    var x=cx[b.specialty]+(hashN(b.id+"x")%1000/1000-0.5)*laneW*0.62;
+    var y=yForAge(b.postAge)+(hashN(b.id+"y")%1000/1000-0.5)*40;
+    var r=f!=null?9+Math.sqrt(lx(f))*26:9;
+    return {b:b,x:x,y:y,r:r,tx:x,ty:y,tr:r,hollow:f==null||!b.hasPrice};
+  });
+  bubLab={};
+  keys.forEach(function(k){
+    groups[k].slice().sort(function(a,b2){return (followersAt(b2,S.di)||0)-(followersAt(a,S.di)||0);})
+      .slice(0,3).forEach(function(b){ bubLab[b.id]=1; });
   });
 }
 function drawBubbles(){
@@ -529,33 +555,50 @@ function drawBubbles(){
   var W=innerWidth,H=innerHeight;
   ctx.clearRect(0,0,W,H);
   /* lane cluster labels */
-  ctx.font="600 11px Hanken Grotesk"; ctx.fillStyle="rgba(154,163,178,.8)"; ctx.textAlign="center";
+  ctx.font="600 11px Hanken Grotesk"; ctx.textAlign="center";
   var seen={};
   bub.forEach(function(p){ if(seen[p.b.specialty])return; seen[p.b.specialty]=1;
-    ctx.fillText((LANE_LABEL[p.b.specialty]||"").toUpperCase(),p.tx,60); });
-  /* y-axis: posting recency */
-  ctx.textAlign="right"; ctx.fillStyle="rgba(107,116,132,.9)";
-  [["Posting now",96],["A month ago",0.25],["3+ months quiet",0.06]].forEach(function(row){
-    var y=96+(H-96-110)*(1-row[1]);
-    ctx.fillText(row[0],W-(W<900?24:392),y+3);
-    ctx.strokeStyle="rgba(255,255,255,.06)"; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle="rgba(154,163,178,.85)";
+    ctx.fillText((LANE_LABEL[p.b.specialty]||"").toUpperCase(),p.tx,88); });
+  /* y-axis: posting recency (positions match the bubble layout math) */
+  ctx.textAlign="left";
+  [["Posting now",0],["A month ago",30],["3+ months quiet",100]].forEach(function(row){
+    var y=bubYB-(bubYB-bubYT)*(1-Math.min(120,row[1])/120);
+    ctx.fillStyle="rgba(107,116,132,.95)";
+    ctx.fillText(row[0],28,y+3);
+    ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(20,y); ctx.lineTo(W-20,y); ctx.stroke();
   });
+  /* bubbles + decluttered labels */
+  var placed=[];
+  function canLabel(x,y){ for(var i=0;i<placed.length;i++){ var q=placed[i];
+    if(Math.abs(q[0]-x)<76&&Math.abs(q[1]-y)<22) return false; } return true; }
   bub.forEach(function(p){
-    var b=p.b, sel=S.sel===b.id, dim=S.sel&&!sel;
+    var b=p.b, sel=S.sel===b.id, hov=hovId===b.id, dim=S.sel&&!sel;
     ctx.globalAlpha=dim?0.15:1;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7);
-    if(p.hollow){ ctx.setLineDash([5,4]); ctx.strokeStyle=sel?"#e8b34b":"rgba(255,255,255,.45)";
-      ctx.lineWidth=sel?2.5:1.5; ctx.stroke(); ctx.setLineDash([]); }
-    else{ ctx.fillStyle=LANE_COLOR[b.specialty]||"#999"; ctx.globalAlpha=(dim?0.15:0.82);
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    if(p.hollow){ ctx.setLineDash([5,4]); ctx.strokeStyle=sel||hov?"#e8b34b":"rgba(255,255,255,.45)";
+      ctx.lineWidth=sel||hov?2.5:1.5; ctx.stroke(); ctx.setLineDash([]); }
+    else{ ctx.fillStyle=LANE_COLOR[b.specialty]||"#999"; ctx.globalAlpha=(dim?0.15:0.85);
       ctx.fill(); ctx.globalAlpha=dim?0.15:1;
-      ctx.lineWidth=sel?3:1.2; ctx.strokeStyle=sel?"#e8b34b":"rgba(0,0,0,.4)"; ctx.stroke(); }
-    if(b.you){ ctx.beginPath(); ctx.arc(p.x,p.y,p.r+6,0,7);
+      ctx.lineWidth=sel||hov?3:1.2; ctx.strokeStyle=sel||hov?"#e8b34b":"rgba(0,0,0,.4)"; ctx.stroke(); }
+    if(b.you){ ctx.beginPath(); ctx.arc(p.x,p.y,p.r+6,0,Math.PI*2);
       ctx.strokeStyle="rgba(232,179,75,.7)"; ctx.lineWidth=2; ctx.stroke(); }
-    if(sel){ ctx.beginPath(); ctx.arc(p.x,p.y,p.r+9,0,7);
-      ctx.strokeStyle="rgba(232,179,75,.35)"; ctx.lineWidth=2; ctx.stroke(); }
+    if(sel||hov){ ctx.beginPath(); ctx.arc(p.x,p.y,p.r+9,0,Math.PI*2);
+      ctx.strokeStyle="rgba(232,179,75,.4)"; ctx.lineWidth=2; ctx.stroke(); }
     ctx.globalAlpha=1;
-    if(p.r>16||sel){ ctx.fillStyle="rgba(236,233,226,.92)"; ctx.font="600 10px Hanken Grotesk";
-      ctx.textAlign="center"; ctx.fillText(b.name.length>18?b.name.slice(0,17)+"…":b.name,p.x,p.y+3); }
+    if((bubLab[b.id]||sel||hov)&&canLabel(p.x,p.y-p.r-10)){
+      placed.push([p.x,p.y-p.r-10]);
+      var nm=b.name.length>22?b.name.slice(0,21)+"…":b.name;
+      ctx.font="600 11px Hanken Grotesk"; ctx.textAlign="center";
+      var tw=ctx.measureText(nm).width, lx0=p.x-tw/2-7, ly0=p.y-p.r-27;
+      ctx.fillStyle="rgba(10,14,20,.88)";
+      ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(lx0,ly0,tw+14,18,6); else ctx.rect(lx0,ly0,tw+14,18);
+      ctx.fill();
+      ctx.fillStyle=sel||hov?"#e8b34b":"rgba(236,233,226,.95)";
+      ctx.fillText(nm,p.x,p.y-p.r-13.5);
+    }
   });
 }
 function tickBubbles(){
@@ -579,6 +622,13 @@ cv.addEventListener("click",function(e){
     if(d<p.r+6&&d<bd){bd=d;best=p.b;} });
   if(best) select(best.id,{fly:false});
 });
+cv.addEventListener("mousemove",function(e){
+  var mx=e.clientX,my=e.clientY,best=null,bd=1e9;
+  bub.forEach(function(p){ var d=Math.hypot(p.x-mx,p.y-my);
+    if(d<p.r+8&&d<bd){bd=d;best=p.b.id;} });
+  if(best!==hovId){ hovId=best; cv.style.cursor=best?"pointer":"default"; drawBubbles(); }
+});
+cv.addEventListener("mouseleave",function(){ if(hovId){ hovId=null; drawBubbles(); } });
 
 /* ---------- selection: highlight everywhere + fly ---------- */
 function select(id,opts){
@@ -586,8 +636,7 @@ function select(id,opts){
   S.sel=id;
   var b=BY_ID[id];
   renderPins(); renderRight();
-  if(S.view==="bubbles") drawBubbles();
-  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
+  if(S.view==="bubbles") drawBubbles();  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
   var row=$('#leftbody .row[data-open="'+id+'"]'); if(row) row.classList.add("sel");
   if(b&&opts.fly!==false&&S.view==="map") flyTo(b);
   if(b&&window.innerWidth<=900){ $("#right").classList.add("open"); }
