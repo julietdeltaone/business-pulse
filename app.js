@@ -474,9 +474,19 @@ function refreshLabels(){
   if(!map) return;
   var z=map.getZoom(), wantPills=z>=11, pills=pinMode==="pills";
   if(wantPills!==pills){ pinMode=wantPills?"pills":"dots"; renderPins(); return; }
+  /* permanent labels: selected first, then top businesses, skipping any that would overlap */
+  var showMap={}, placed=[];
+  var cands=[];
+  if(S.sel&&BY_ID[S.sel]) cands.push(BY_ID[S.sel]);
+  Object.keys(topIds).forEach(function(id){ if(id!==S.sel&&BY_ID[id]) cands.push(BY_ID[id]); });
+  cands.forEach(function(b){
+    var pt=map.latLngToContainerPoint([b.lat,b.lng]);
+    var clash=placed.some(function(q){ return Math.abs(q.x-pt.x)<78&&Math.abs(q.y-pt.y)<42; });
+    if(!clash){ showMap[b.id]=true; placed.push(pt); }
+  });
   Object.keys(pinById).forEach(function(id){
     var m=pinById[id], b=BY_ID[id]; if(!b||!m) return;
-    var show=pills?false:(z>=13||!!topIds[id]||S.sel===id);
+    var show=pills?false:!!showMap[id];
     if(m._lbl===show) return; m._lbl=show;
     m.unbindTooltip();
     m.bindTooltip(labelFor(b),{permanent:show,direction:"top",offset:pills?[0,-16]:[0,-13],
@@ -547,8 +557,9 @@ function layoutBubbles(){
   var mn=Math.min.apply(null,fs.concat([10])), mx=Math.max.apply(null,fs.concat([100]));
   var lmn=Math.log10(Math.max(1,mn)), lmx=Math.log10(Math.max(1,mx));
   if(lmx-lmn<1) lmx=lmn+1;
-  var W=innerWidth,H=innerHeight,padL=64,padR=40,padT=118,padB=112;
-  if(W<900){padL=58;padR=16;}
+  var W=innerWidth,H=innerHeight;
+  var wide=W>900;
+  var padL=wide?404:58, padR=wide?380:16, padT=118, padB=112;
   var yT=padT, yB=H-padB; bubYT=yT; bubYB=yB;
   bubX={padL:padL,padR:padR,lmn:lmn,lmx:lmx};
   function yForAge(age){ age=age==null?120:Math.min(120,age); return yB-(yB-yT)*(1-age/120); }
@@ -556,7 +567,7 @@ function layoutBubbles(){
     return padL+(l-lmn)/(lmx-lmn)*(W-padL-padR); }
   bub=list.map(function(b){
     var f=followersAt(b,S.di);
-    var x=(f==null?padL-26:xForF(f))+(hashN(b.id+"x")%1000/1000-0.5)*26;
+    var x=(f==null?padL+14:xForF(f))+(hashN(b.id+"x")%1000/1000-0.5)*26;
     var y=yForAge(b.postAge)+(hashN(b.id+"y")%1000/1000-0.5)*30;
     var l=f==null?0:(Math.log10(Math.max(1,f))-lmn)/(lmx-lmn);
     var r=f!=null?9+Math.sqrt(l)*24:9;
@@ -588,13 +599,13 @@ function drawBubbles(){
   [["Posting now",0],["A month ago",30],["3+ months quiet",100]].forEach(function(row){
     var y=bubYB-(bubYB-bubYT)*(1-Math.min(120,row[1])/120);
     ctx.fillStyle="rgba(107,116,132,.95)";
-    ctx.fillText(row[0],padL-36,y+3);
+    ctx.fillText(row[0],padL+8,y+3);
     ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(padL-44,y); ctx.lineTo(W-padR+16,y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR+16,y); ctx.stroke();
   });
   /* lane legend */
   (function(){
-    var lanes=Object.keys(LANE_COLOR), lx=padL-36, ly=96;
+    var lanes=Object.keys(LANE_COLOR), lx=padL+8, ly=96;
     ctx.textAlign="left"; ctx.font="600 10px Hanken Grotesk";
     lanes.forEach(function(k){
       ctx.fillStyle=LANE_COLOR[k];
