@@ -575,9 +575,9 @@ var map=null, pinLayer=null, pinById={};
 function initMap(){
   map=L.map("map",{zoomControl:false,attributionControl:true}).setView([44.55,-74.9],9);
   map.attributionControl.setPrefix(false);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    {maxZoom:19,subdomains:"abcd",opacity:0.92,
-     attribution:"© OpenStreetMap contributors © CARTO"}).addTo(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {maxZoom:19,opacity:0.9,
+     attribution:"© OpenStreetMap contributors"}).addTo(map);
   pinLayer=L.layerGroup().addTo(map);
   map.on("zoomend",refreshLabels);
   map.on("click",function(e){ /* click-away on empty map deselects */
@@ -697,6 +697,7 @@ function layoutBubbles(){
     var f=followersAt(b,S.di);
     var x=(f==null?padL+14:xForF(f))+(hashN(b.id+"x")%1000/1000-0.5)*26;
     var y=yForAge(b.postAge)+(hashN(b.id+"y")%1000/1000-0.5)*30;
+    if(f==null) y=Math.min(y,bubYB-40); /* keep no-data marks clear of the x-axis labels */
     var l=f==null?0:(Math.log10(Math.max(1,f))-lmn)/(lmx-lmn);
     var r=f!=null?9+Math.sqrt(l)*24:9;
     return {b:b,x:x,y:y,r:r,tx:x,ty:y,tr:r,hollow:f==null};
