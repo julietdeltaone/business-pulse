@@ -68,6 +68,7 @@ function jitter(id,lat,lng){ return {lat:lat,lng:lng}; } /* replaced by town spi
 
 /* ---------- enrich roster ---------- */
 var IGH=D.igFollowersHistory||{};
+var WI=(window.PULSE_WEBSITE_INTEL||{}).intel||{}; /* pilot website sweep, Sep 2026 */
 var C=(D.competitors||[]).map(function(c){
   var e=Object.assign({},c);
   e.price=priceFloors(c.pricing);
@@ -522,15 +523,37 @@ function profileHTML(b){
   if(b.ig_handle) h+='<span class="chip">@'+esc(b.ig_handle)+'</span>';
   if(b.website) h+='<a class="chip extlink" href="'+esc(/^https?:/.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a>';
   h+='</div>';
-  h+='<dl class="kv">'+
-    '<dt>Followers</dt><dd><b>'+fmt(f)+'</b>'+(rF?' <span style="color:var(--dim)">#'+rF.rank+' of '+rF.of+'</span>':"")+'</dd>'+
-    '<dt>vs median</dt><dd>'+(f!=null&&mF!=null?(f>=mF?'<b style="color:var(--green)">'+pctStr((f-mF)/mF*100)+' above</b>':'<b style="color:var(--red)">'+pctStr((f-mF)/mF*100)+' below</b>'):"—")+'</dd>'+
-    '<dt>Wedding from</dt><dd><b>'+money(b.price.wedding)+'</b>'+(rW?' <span style="color:var(--dim)">#'+rW+' of '+wArr.length+'</span>':"")+'</dd>'+
-    '<dt>Session from</dt><dd><b>'+money(b.price.session)+'</b></dd>'+
-    '<dt>Last post</dt><dd><b>'+dstr(b.last_post_date)+'</b>'+(b.postAge!=null?' <span style="color:var(--dim)">('+b.postAge+'d ago)</span>':"")+'</dd>'+
-    (b.last_post_type?'<dt>Format</dt><dd>'+esc(b.last_post_type)+'</dd>':"")+
-    (b.last_post_topic?'<dt>Topic</dt><dd>'+esc(b.last_post_topic)+'</dd>':"")+
-  '</dl>';
+  /* Instagram section — only rendered when there's actually IG data (no more dash rows) */
+  var hasIG=!!(b.ig_handle&&(b.followHist.length||f!=null||b.postAge!=null));
+  var igRows="";
+  if(hasIG){
+    if(f!=null) igRows+='<dt>Followers</dt><dd><b>'+fmt(f)+'</b>'+(rF?' <span style="color:var(--dim)">#'+rF.rank+' of '+rF.of+'</span>':"")+'</dd>';
+    if(f!=null&&mF!=null) igRows+='<dt>vs median</dt><dd>'+(f>=mF?'<b style="color:var(--green)">'+pctStr((f-mF)/mF*100)+' above</b>':'<b style="color:var(--red)">'+pctStr((f-mF)/mF*100)+' below</b>')+'</dd>';
+    if(b.last_post_date) igRows+='<dt>Last post</dt><dd><b>'+dstr(b.last_post_date)+'</b>'+(b.postAge!=null?' <span style="color:var(--dim)">('+b.postAge+'d ago)</span>':"")+'</dd>';
+    if(b.last_post_type) igRows+='<dt>Format</dt><dd>'+esc(b.last_post_type)+'</dd>';
+    if(b.last_post_topic) igRows+='<dt>Topic</dt><dd>'+esc(b.last_post_topic)+'</dd>';
+  }
+  if(igRows) h+='<h3>Instagram</h3><dl class="kv">'+igRows+'</dl>';
+  /* Pricing — from the earlier web sweep */
+  var priceRows="";
+  if(b.price.wedding!=null) priceRows+='<dt>Wedding from</dt><dd><b>'+money(b.price.wedding)+'</b>'+(rW?' <span style="color:var(--dim)">#'+rW+' of '+wArr.length+'</span>':"")+'</dd>';
+  if(b.price.session!=null) priceRows+='<dt>Session from</dt><dd><b>'+money(b.price.session)+'</b></dd>';
+  if(priceRows) h+='<h3>Pricing</h3><dl class="kv">'+priceRows+'</dl>';
+  /* Website intel — pilot sweep, Sep 2026 */
+  var wi=WI[b.id], wrows="";
+  if(wi&&!wi.unreachable){
+    if(wi.services&&wi.services.length) wrows+='<dt>Services</dt><dd>'+wi.services.map(function(s){return '<span class="chip">'+esc(s)+'</span>';}).join(" ")+'</dd>';
+    var yrs=wi.years_in_business!=null?wi.years_in_business+" yrs":(wi.since?"since "+wi.since:null);
+    if(yrs) wrows+='<dt>In business</dt><dd><b>'+esc(yrs)+'</b></dd>';
+    if(wi.coverage&&wi.coverage.length) wrows+='<dt>Coverage</dt><dd>'+esc(wi.coverage.join(" · "))+'</dd>';
+    if(wi.platform) wrows+='<dt>Site built on</dt><dd>'+esc(wi.platform)+'</dd>';
+  }
+  if(wrows){
+    h+='<h3>Website</h3><dl class="kv">'+wrows+'</dl>';
+    if(wi.site_note) h+='<div class="sub">'+esc(wi.site_note)+'</div>';
+    h+='<div class="sub" style="opacity:.65">Checked '+esc(wi.fetched||"Sep 2026")+'</div>';
+  }
+  if(!igRows&&!priceRows&&!wrows) h+='<div class="sub">No public stats tracked yet.</div>';
 
   if(ADMIN){
     h+='<h3>Trend</h3>';
