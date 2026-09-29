@@ -46,7 +46,7 @@ function uniq(a){ return a.filter(function(x,i){ return a.indexOf(x)===i; }); }
 function median(a){ if(!a.length) return null; var s=a.slice().sort(function(x,y){return x-y;}); var m=Math.floor(s.length/2); return s.length%2?s[m]:Math.round((s[m-1]+s[m])/2); }
 /* count-up animation for big stat numbers: <b class="num" data-count="2450" data-fmt="money"> */
 function countUps(root){
-  $$(".num[data-count]", root||document).forEach(function(el){
+  $$("[data-count]", root||document).forEach(function(el){
     var target=+el.getAttribute("data-count");
     var f=el.getAttribute("data-fmt")==="money"?money:fmt;
     if(reduceMotion || !isFinite(target)){ el.textContent=f(target); return; }
@@ -489,21 +489,27 @@ RENDER.pulse = function(el){
   var noPrice = C.filter(function(c){ return !c.pricing; }).length;
   var syncDay = D.meta&&D.meta.generated_at?shortDate(D.meta.generated_at):"";
 
-  var h = '<div class="reveal">';
+  var h = '<div class="reveal"><div class="pulse-layout"><div class="pulse-main">';
   h += heroWatch(C.length, pct(jdNow));
 
   /* --- what it costs (public, full width) --- */
   var wPrices=C.filter(function(c){return c.price.wedding;}).map(function(c){return c.price.wedding;});
   var sPrices=C.filter(function(c){return c.price.session;}).map(function(c){return c.price.session;});
   if(PUB){
+    var priced=C.filter(function(c){return c.price.wedding||c.price.session;});
+    var onWeb=priced.filter(function(c){return c.pricing_url;}).length;
+    var noWeb=C.filter(function(c){return !c.website;});
+    var noWebPriced=noWeb.filter(function(c){return c.price.wedding||c.price.session;}).length;
     h += '<div class="panel" style="margin-bottom:18px"><h2>What it costs</h2>'+
       '<div class="cost-grid">'+
       '<button class="cost-tile" data-go="market"><b class="num" data-count="'+(median(wPrices)||0)+'" data-fmt="money">'+money(median(wPrices))+'</b><span>median wedding start</span></button>'+
       '<button class="cost-tile" data-go="market"><b class="num" data-count="'+(median(sPrices)||0)+'" data-fmt="money">'+money(median(sPrices))+'</b><span>median session start</span></button>'+
-      '<button class="cost-tile" data-go="market"><b class="num" data-count="'+(wPrices.length+sPrices.length)+'">'+(wPrices.length+sPrices.length)+'</b><span>published prices</span></button>'+
+      '<button class="cost-tile" data-go="market"><b class="num" data-count="'+priced.length+'">'+priced.length+'</b><span>of '+C.length+' publish prices</span></button>'+
       '</div>'+
+      '<div class="tbar"><i style="width:'+(onWeb/C.length*100)+'%;background:#7FB2CE"></i><i style="width:'+((priced.length-onWeb)/C.length*100)+'%;background:#E7A04F"></i><i style="width:'+((C.length-priced.length)/C.length*100)+'%;background:#2A3347"></i></div>'+
+      '<div class="tlegend"><span><i class="sw" style="background:#7FB2CE"></i>'+onWeb+' link a price page</span><span><i class="sw" style="background:#E7A04F"></i>'+(priced.length-onWeb)+' publish with no page linked</span><span><i class="sw" style="background:#2A3347"></i>'+(C.length-priced.length)+' publish nothing</span></div>'+
       '<div class="strip" id="pulseStripW"></div>'+
-      '<p class="hint">Each dot is one business\u2019s published wedding starting price \u2014 hover for the name, click to open the profile. Tap a tile for the full Market lanes breakdown.</p>'+
+      '<p class="hint">'+noWeb.length+' businesses have no website at all \u2014 '+noWebPriced+' of them still publish prices on Instagram. Each dot is one business\u2019s published wedding starting price \u2014 hover for the name, click to open the profile. Tap a tile for the full Market lanes breakdown.</p>'+
       srcChip('Directory pricing \u00b7 '+syncDay)+'</div>';
   }
 
@@ -585,11 +591,27 @@ RENDER.pulse = function(el){
 
   /* --- movement feed --- */
   h += '<div class="panel"><h2>Movement</h2><p class="hint">What changed most recently, newest first.</p><ul class="feed">'+movementFeed()+'</ul></div>';
-  h += '</div>';
+  h += '</div>'; /* close pulse-main */
+  h += activityRail(syncDay);
+  h += '</div></div>'; /* close pulse-layout + reveal */
   el.innerHTML = h;
   if(PUB) priceStrip($("#pulseStripW"), C.filter(function(c){return c.price.wedding;}).map(function(c){return {c:c,v:c.price.wedding};}));
   countUps(el);
 };
+
+/* right-rail activity feed: who's posting, newest first */
+function activityRail(syncDay){
+  var items=C.filter(function(c){return c.last_post_date;})
+    .sort(function(a,b){return a.last_post_date<b.last_post_date?1:a.last_post_date>b.last_post_date?-1:0;}).slice(0,15);
+  return '<aside class="panel activity-rail"><h2>Recently posting</h2>'+
+    (items.length?'<ul class="activity-feed">'+items.map(function(c){
+      return '<li><button class="activity-item" data-open="'+c.id+'"><span class="dot" style="background:'+MOM[c.momentum.k].color+'"></span>'+
+        '<span class="a-main"><span class="a-name">'+esc(c.name.replace(/ \(.*\)/,""))+'</span>'+
+        (c.last_post_topic?'<span class="a-topic">'+esc(c.last_post_topic)+'</span>':'')+'</span>'+
+        '<span class="a-when">'+esc(ago(c.last_post_date))+'</span></button></li>';
+    }).join("")+'</ul>':'<p class="muted">No recent posts tracked.</p>')+
+    srcChip('Instagram activity \u00b7 '+(syncDay||''))+'</aside>';
+}
 
 function movementFeed(){
   var ev=[];
@@ -1976,11 +1998,36 @@ RENDER.market = function(el){
        mixBar(s.mom,s.n)+nameGroups(sorted,{meta:function(c){return shortTown(c.town);},collapseUnknown:true})+'</div>';
   });
   h+='</div>';
+  h+='<div class="panel" style="margin-top:18px"><h2>Who charges what</h2><p class="hint">Every published starting price in one table. Click a column header to sort; click a row to open the profile.</p>'+
+     '<div class="tablewrap"><table class="data" id="priceTable"><thead><tr><th data-ps="name">Business</th><th data-ps="wedding" class="num">Wedding start</th><th data-ps="session" class="num">Session start</th><th>Prices on</th></tr></thead><tbody></tbody></table></div>'+
+     '<p class="hint" id="priceCount" style="margin:8px 0 0"></p></div>';
   h+='<div class="grid g-2" style="margin-top:18px"><div class="panel"><h2>Wedding starting prices</h2><p class="hint">Each dot is a published starting price. The amber line is the median. Hover for the name, click to open.</p><div class="strip" id="stripW"></div></div>'+
      '<div class="panel"><h2>Session starting prices</h2><p class="hint">Minis, family, senior and couples sessions.</p><div class="strip" id="stripS"></div></div></div>';
   el.innerHTML=h;
   priceStrip($("#stripW"), C.filter(function(c){return c.price.wedding;}).map(function(c){return {c:c,v:c.price.wedding};}));
   priceStrip($("#stripS"), C.filter(function(c){return c.price.session;}).map(function(c){return {c:c,v:c.price.session};}));
+  var PS={k:"wedding",dir:1};
+  window.drawPriceTable=function(){
+    var rows=C.filter(function(c){return c.price.wedding||c.price.session;});
+    rows.sort(function(a,b){
+      var x,y;
+      if(PS.k==="name"){ x=a.name.toLowerCase(); y=b.name.toLowerCase(); return (x<y?-1:x>y?1:0)*PS.dir; }
+      x=a.price[PS.k]; y=b.price[PS.k];
+      if(x==null&&y==null) return a.name.localeCompare(b.name);
+      if(x==null) return 1; if(y==null) return -1;
+      return (x-y)*PS.dir || a.name.localeCompare(b.name);
+    });
+    $$("#priceTable th[data-ps]").forEach(function(th){ if(th.dataset.ps===PS.k) th.setAttribute("aria-sort",PS.dir>0?"ascending":"descending"); else th.removeAttribute("aria-sort"); });
+    $("#priceCount").textContent=rows.length+" of "+C.length+" publish a starting price";
+    $("#priceTable tbody").innerHTML=rows.map(function(c){
+      return '<tr data-open="'+c.id+'" tabindex="0"><td class="nm">'+esc(c.name)+'<small>'+esc(shortTown(c.town)||"")+'</small></td>'+
+        '<td class="num r">'+(c.price.wedding?money(c.price.wedding):'<span class="muted">–</span>')+'</td>'+
+        '<td class="num r">'+(c.price.session?money(c.price.session):'<span class="muted">–</span>')+'</td>'+
+        '<td class="muted" style="font-size:13px">'+(c.pricing_url?"Website":"Instagram")+'</td></tr>';
+    }).join("");
+  };
+  $$("#priceTable th[data-ps]").forEach(function(th){ th.addEventListener("click",function(){ var k=th.dataset.ps; if(PS.k===k) PS.dir*=-1; else {PS.k=k; PS.dir=1;} drawPriceTable(); }); });
+  drawPriceTable();
   countUps(el);
 };
 function priceStrip(el, pts){
@@ -2208,7 +2255,7 @@ document.addEventListener("click",function(ev){
 });
 document.addEventListener("keydown",function(ev){
   if(ev.key==="Escape" && drawer.classList.contains("on")) closeDetail();
-  if(ev.key==="Enter" && ev.target.matches("tr.lane-row")) ev.target.click();
+  if(ev.key==="Enter" && ev.target.matches("tr[data-open]")) ev.target.click();
   if(ev.key==="Enter" && ev.target.matches(".namerow")){ openDetail(ev.target.getAttribute("data-open")); }
   if(ev.key==="/" && !ev.target.matches("input,textarea") && $("#view-network").classList.contains("on")){
     var si=$("#netSearch");
