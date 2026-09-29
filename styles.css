@@ -43,7 +43,6 @@ button{font-family:var(--sans)}
 #map .leaflet-control-zoom{display:none}
 #map .leaflet-control-attribution{background:rgba(0,0,0,.35);color:#5a6372;font-size:10px}
 #map .leaflet-control-attribution a{color:#7a8494}
-.osm-dark-tiles{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.92) saturate(.65)}
 #bubbles{position:fixed;inset:0;z-index:1;pointer-events:auto}
 #bubbles[hidden]{display:none}
 
@@ -172,7 +171,23 @@ button{font-family:var(--sans)}
 .lb-row:hover .lb-nm{color:var(--amber)}
 .lb-nm{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lb-bar{grid-column:1/-1;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
-.lb-bar i{display:block;height:100%;background:var(--green);border-radius:3px}
+.lb-bar i{display:block;height:100%;background:#6db3f2;border-radius:3px}
+/* week's highlights */
+.hl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.hl-card{background:rgba(255,255,255,.045);border:1px solid var(--line-soft);border-radius:11px;
+  padding:10px 11px;cursor:pointer;transition:border-color .18s ease,transform .18s ease;animation:rise .4s ease both}
+.hl-card:hover{border-color:rgba(232,179,75,.55);transform:translateY(-1px)}
+.hl-card.you{border-color:rgba(232,179,75,.6);background:rgba(232,179,75,.07)}
+.hl-k{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:#9aa3b2;margin-bottom:3px}
+.hl-n{font-weight:700;font-size:13.5px;margin-bottom:2px}
+.hl-card.you .hl-n{color:#e8b34b}
+.hl-w{font-size:11.5px;color:#9aa3b2;line-height:1.45}
+/* AI search tab */
+.ai-prow{padding:8px 2px;border-bottom:1px solid var(--line-soft);animation:rise .35s ease both}
+.ai-prow .nm b{display:block;font-size:12.5px;font-weight:600}
+.ai-prow .nm span{font-size:11px;color:#9aa3b2}
+.ai-pbar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:6px}
+.ai-pbar i{display:block;height:100%;background:#6db3f2;border-radius:3px}
 .lb-v{font-size:12.5px;font-weight:700;color:var(--green)}
 
 /* donut */
