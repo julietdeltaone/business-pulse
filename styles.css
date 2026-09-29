@@ -90,6 +90,31 @@ h3{font-size:15px;font-weight:600;margin:0 0 8px;color:var(--silver)}
 .stack{display:flex;flex-direction:column;gap:18px}
 .row-between{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
 
+/* ---------- ones-to-watch hero ---------- */
+.hero-watch{position:relative;padding:28px 28px 24px;border-radius:var(--r-l);border:1px solid var(--line-2);margin-bottom:18px;overflow:hidden;
+  background:radial-gradient(700px 320px at 100% 0%, rgba(231,160,79,.10), transparent 70%), var(--plate)}
+.hero-watch .kicker{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
+.hero-watch h1{font-family:var(--serif);font-weight:400;font-size:clamp(30px,3.4vw,44px);line-height:1.02;margin:0 0 6px;letter-spacing:-.3px}
+.hero-watch .sub{color:var(--fog);font-size:13.5px;margin:0 0 20px}
+.watch-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.watch-card{position:relative;text-align:left;background:var(--plate-2);border:1px solid var(--line);border-radius:var(--r-m);
+  padding:16px 14px 14px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:border-color .15s, transform .15s}
+.watch-card:hover{border-color:var(--line-2);transform:translateY(-2px)}
+.w-rank{position:absolute;top:8px;right:12px;font-family:var(--serif);font-size:24px;color:var(--fog);opacity:.6}
+.w-flag{align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c);
+  border:1px solid var(--c);border-radius:999px;padding:2px 8px}
+.w-name{font-weight:700;font-size:15px;line-height:1.25;padding-right:22px}
+.w-meta{color:var(--fog);font-size:12px}
+.w-delta{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.w-reasons{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.w-reasons span{font-size:12px;color:var(--silver-2);padding-left:12px;position:relative;line-height:1.4}
+.w-reasons span::before{content:"";position:absolute;left:0;top:.55em;width:5px;height:5px;border-radius:50%;background:var(--fog)}
+@media (max-width:1080px){ .watch-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:860px){
+  .watch-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;margin:0 -4px;padding-left:4px;padding-right:4px}
+  .watch-card{min-width:236px;scroll-snap-align:start}
+}
+
 /* ---------- briefing hero ---------- */
 .brief{position:relative;padding:34px 36px;border-radius:var(--r-l);border:1px solid var(--line-2);background:
   radial-gradient(600px 300px at 100% 0%, rgba(231,160,79,.10), transparent 70%), var(--plate);overflow:hidden}
