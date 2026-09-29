@@ -191,8 +191,66 @@ function todayChanges(){
   return out;
 }
 
+/* ---------- week's highlights: top businesses + why ---------- */
+function weekHighlights(){
+  var di=S.di, d0=Math.max(0,di-7), list=filtered(), cards=[];
+  function norm(h){ return String(h||"").replace(/^@/,"").toLowerCase(); }
+  /* activity per handle over the last 7 days */
+  var actBy={};
+  (D.igActivity||[]).forEach(function(r){
+    if(/quiet|no new/i.test(r.activity||"")) return;
+    var age=(new Date(DATES[di]+"T12:00:00")-new Date((r.date||"")+"T12:00:00"))/864e5;
+    if(isNaN(age)||age<0||age>7) return;
+    var h=norm(r.handle); if(!h) return;
+    (actBy[h]=actBy[h]||[]).push(r);
+  });
+  var byHandle={};
+  list.forEach(function(b){ var h=norm(b.ig_handle); if(h) byHandle[h]=b; });
+  /* fastest growing */
+  var growers=list.map(function(b){ return {b:b,ch:pctChange(b,d0,di)}; })
+    .filter(function(x){ return x.ch!=null&&x.ch>=3; })
+    .sort(function(a,c){ return c.ch-a.ch; });
+  if(growers.length){
+    var g=growers[0], from=followersAt(g.b,d0), to=followersAt(g.b,di);
+    cards.push({k:"Fastest growing",b:g.b,
+      why:"+"+g.ch.toFixed(1)+"% followers this week"+(from!=null&&to!=null?" · "+fmt(from)+" → "+fmt(to):"")});
+  }
+  /* most active */
+  var act=list.map(function(b){ var h=norm(b.ig_handle);
+      return {b:b,n:h&&actBy[h]?actBy[h].length:0}; })
+    .filter(function(x){ return x.n>0; }).sort(function(a,c){ return c.n-a.n; });
+  if(act.length){
+    cards.push({k:"Most active",b:act[0].b,
+      why:act[0].n+(act[0].n===1?" post":" posts")+" in the last 7 days"});
+  }
+  /* biggest audience */
+  var big=list.filter(function(b){ return followersAt(b,di)!=null; })
+    .sort(function(a,c){ return followersAt(c,di)-followersAt(a,di); });
+  if(big.length){
+    cards.push({k:"Biggest audience",b:big[0],
+      why:fmt(followersAt(big[0],di))+" followers — largest audience tracked"});
+  }
+  /* your week */
+  var you=list.filter(function(b){ return b.you; })[0];
+  if(you){
+    var ych=pctChange(you,d0,di), yfrom=followersAt(you,d0), yto=followersAt(you,di);
+    var yh=norm(you.ig_handle), yn=yh&&actBy[yh]?actBy[yh].length:0;
+    var parts=[];
+    if(ych!=null) parts.push((ych>=0?"+":"")+ych.toFixed(1)+"% ("+fmt(yfrom)+" → "+fmt(yto)+")");
+    parts.push(yn+(yn===1?" post":" posts")+" in 7 days");
+    cards.push({k:"Your week",b:you,you:true,why:parts.join(" · ")});
+  }
+  if(!cards.length) return "";
+  return '<div class="sec"><h3>Week\'s highlights</h3><div class="sub">Top of the market · last 7 days</div>'+
+    '<div class="hl-grid">'+cards.map(function(c){
+      return '<div class="hl-card'+(c.you?" you":"")+'" data-open="'+c.b.id+'">'+
+        '<div class="hl-k">'+esc(c.k)+'</div><div class="hl-n">'+esc(c.b.name)+'</div>'+
+        '<div class="hl-w">'+esc(c.why)+'</div></div>';
+    }).join("")+"</div></div>";
+}
+
 function renderToday(){
-  var ch=todayChanges(), h="";
+  var ch=todayChanges(), h=weekHighlights();
   h+='<div class="sec"><h3>What changed</h3><div class="sub">Since '+esc(dstr(ch.prev))+' · '+esc(dstr(ch.date))+'</div>';
   function rows(list,fn){ return '<div class="stagger">'+list.slice(0,8).map(fn).join("")+"</div>"; }
   if(ch.jumps.length){
@@ -253,6 +311,69 @@ function renderDir(){
   var h='<div class="sec"><h3>Directory</h3><div class="sub">'+list.length+' of '+C.length+' businesses</div>';
   if(!list.length) return h+'<div class="empty-note">No businesses match these filters.</div></div>';
   h+='<div class="stagger">'+list.map(dirRow).join("")+"</div></div>";
+  return h;
+}
+
+/* ---------- AI search visibility ---------- */
+function renderAI(){
+  var rows=(D.aiVisibility||[]).filter(function(r){ return r.jd_named!=="unreachable"; });
+  var h='<div class="sec"><h3>AI Search</h3><div class="sub">Are the AI assistants recommending you?</div>';
+  if(!rows.length)
+    return h+'<div class="empty-note">No AI visibility data yet — the daily audit feeds this tab.</div></div>';
+  var dates=rows.map(function(r){return r.date;}).sort();
+  var cov=dates[0]+" → "+dates[dates.length-1];
+  var named=rows.filter(function(r){return r.jd_named==="yes"||r.jd_named==="partial";}).length;
+  var rate=Math.round(named/rows.length*100);
+  var ranked=rows.filter(function(r){return r.jd_rank!=null;});
+  var avgRank=ranked.length?(ranked.reduce(function(s,r){return s+r.jd_rank;},0)/ranked.length):null;
+  h+='<div class="statgrid">'+
+    '<div class="stat"><div class="v">'+rate+'%</div><div class="l">Mention rate</div></div>'+
+    '<div class="stat"><div class="v">'+(avgRank!=null?"#"+avgRank.toFixed(1):"—")+'</div><div class="l">Avg rank when named</div></div>'+
+    '<div class="stat"><div class="v">'+rows.length+'</div><div class="l">Checks run</div></div>'+
+  '</div>';
+  h+='<div class="sub" style="margin:10px 0 0">'+esc(cov)+' · '+
+    new Set(rows.map(function(r){return r.engine;})).size+' engines · '+
+    new Set(rows.map(function(r){return r.prompt;})).size+' prompts</div>';
+  /* per-engine bars */
+  var eng={};
+  rows.forEach(function(r){
+    (eng[r.engine]=eng[r.engine]||{n:0,hit:0});
+    eng[r.engine].n++; if(r.jd_named==="yes"||r.jd_named==="partial") eng[r.engine].hit++;
+  });
+  h+='<div class="sec"><h3>By assistant</h3><div class="stagger">'+
+    Object.keys(eng).sort().map(function(e){
+      var p=Math.round(eng[e].hit/eng[e].n*100);
+      return '<div class="lb-row"><span class="lb-nm">'+esc(e)+'</span>'+
+        '<span class="lb-v">'+p+'%</span>'+
+        '<span class="lb-bar"><i style="width:'+Math.max(4,p)+'%"></i></span></div>';
+    }).join("")+"</div></div>";
+  /* per-prompt rows */
+  var pr={};
+  rows.forEach(function(r){
+    (pr[r.prompt]=pr[r.prompt]||{n:0,hit:0,best:null});
+    pr[r.prompt].n++; if(r.jd_named==="yes"||r.jd_named==="partial") pr[r.prompt].hit++;
+    if(r.jd_rank!=null&&(pr[r.prompt].best==null||r.jd_rank<pr[r.prompt].best)) pr[r.prompt].best=r.jd_rank;
+  });
+  h+='<div class="sec"><h3>By search prompt</h3><div class="stagger">'+
+    Object.keys(pr).map(function(p){
+      var r=Math.round(pr[p].hit/pr[p].n*100);
+      return '<div class="ai-prow"><div class="nm"><b>'+esc(p)+'</b>'+
+        '<span>'+r+'% mentioned'+(pr[p].best!=null?' · best rank #'+pr[p].best:" · never ranked")+'</span></div>'+
+        '<div class="ai-pbar"><i style="width:'+Math.max(3,r)+'%"></i></div></div>';
+    }).join("")+"</div></div>";
+  /* rivals named most */
+  var rc={};
+  rows.forEach(function(r){ (r.rivals||[]).forEach(function(n){ rc[n]=(rc[n]||0)+1; }); });
+  var topR=Object.keys(rc).sort(function(a,b){return rc[b]-rc[a];}).slice(0,6);
+  if(topR.length){
+    h+='<div class="sec"><h3>Rivals the AIs name most</h3><div class="stagger">'+
+      topR.map(function(n){
+        return '<div class="lb-row"><span class="lb-nm">'+esc(n)+'</span>'+
+          '<span class="lb-v">'+rc[n]+'×</span>'+
+          '<span class="lb-bar"><i style="width:'+Math.max(4,rc[n]/rc[topR[0]]*100)+'%"></i></span></div>';
+      }).join("")+"</div></div>";
+  }
+  h+="</div>";
   return h;
 }
 
@@ -454,10 +575,16 @@ var map=null, pinLayer=null, pinById={};
 function initMap(){
   map=L.map("map",{zoomControl:false,attributionControl:true}).setView([44.55,-74.9],9);
   map.attributionControl.setPrefix(false);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {maxZoom:19,className:"osm-dark-tiles",attribution:"© OpenStreetMap contributors"}).addTo(map);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    {maxZoom:19,subdomains:"abcd",opacity:0.92,
+     attribution:"© OpenStreetMap contributors © CARTO"}).addTo(map);
   pinLayer=L.layerGroup().addTo(map);
   map.on("zoomend",refreshLabels);
+  map.on("click",function(e){ /* click-away on empty map deselects */
+    var t=e.originalEvent&&e.originalEvent.target;
+    if(t&&t.closest&&t.closest(".leaflet-marker-icon")) return;
+    clearSel();
+  });
   renderPins();
 }
 /* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
@@ -548,7 +675,7 @@ function flyTo(b){ if(map) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{d
 /* ---------- bubble field (canvas) ---------- */
 var cv=$("#bubbles"), ctx=cv.getContext("2d"), bub=[], bubAnim=null, hovId=null;
 var bubLab={}, bubYT=0, bubYB=0;
-var bubX={padL:64,padR:40,lmn:1,lmx:3};
+var bubX={padL:64,padR:40,lmn:1,lmx:3}, bubHeadY=100;
 function sizeCanvas(){ var dpr=Math.min(2,window.devicePixelRatio||1);
   cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
 function layoutBubbles(){
@@ -559,7 +686,8 @@ function layoutBubbles(){
   if(lmx-lmn<1) lmx=lmn+1;
   var W=innerWidth,H=innerHeight;
   var wide=W>900;
-  var padL=wide?404:58, padR=wide?380:16, padT=118, padB=126;
+  var padL=wide?404:58, padR=wide?380:16, padT=wide?172:176, padB=126;
+  bubHeadY=wide?100:132;
   var yT=padT, yB=H-padB; bubYT=yT; bubYB=yB;
   bubX={padL:padL,padR:padR,lmn:lmn,lmx:lmx};
   function yForAge(age){ age=age==null?120:Math.min(120,age); return yB-(yB-yT)*(1-age/120); }
@@ -603,11 +731,17 @@ function drawBubbles(){
     ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR+16,y); ctx.stroke();
   });
-  /* lane legend */
+  /* title + how-to-read + lane legend */
   (function(){
-    var lanes=Object.keys(LANE_COLOR), lx=padL+8, ly=96;
-    ctx.textAlign="left"; ctx.font="600 10px Hanken Grotesk";
-    lanes.forEach(function(k){
+    var lx=padL+8, hy=bubHeadY;
+    ctx.textAlign="left";
+    ctx.fillStyle="rgba(236,233,226,.95)"; ctx.font="700 16px Hanken Grotesk";
+    ctx.fillText("Size vs. activity",lx,hy);
+    ctx.fillStyle="rgba(154,163,178,.9)"; ctx.font="500 11px Hanken Grotesk";
+    ctx.fillText("Bigger = more followers · higher = posted more recently · click a bubble for detail",lx,hy+18);
+    var ly=hy+42;
+    ctx.font="600 10px Hanken Grotesk";
+    Object.keys(LANE_COLOR).forEach(function(k){
       ctx.fillStyle=LANE_COLOR[k];
       ctx.beginPath(); ctx.arc(lx,ly-3,5,0,Math.PI*2); ctx.fill();
       ctx.fillStyle="rgba(154,163,178,.9)";
@@ -676,6 +810,7 @@ cv.addEventListener("click",function(e){
   bub.forEach(function(p){ var d=Math.hypot(p.x-mx,p.y-my);
     if(d<p.r+6&&d<bd){bd=d;best=p.b;} });
   if(best) select(best.id,{fly:false});
+  else clearSel(); /* click empty canvas space to deselect */
 });
 cv.addEventListener("mousemove",function(e){
   var mx=e.clientX,my=e.clientY,best=null,bd=1e9;
@@ -686,6 +821,13 @@ cv.addEventListener("mousemove",function(e){
 cv.addEventListener("mouseleave",function(){ if(hovId){ hovId=null; drawBubbles(); } });
 
 /* ---------- selection: highlight everywhere + fly ---------- */
+function clearSel(){
+  if(!S.sel) return;
+  S.sel=null;
+  renderPins(); renderRight();
+  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
+  if(S.view==="bubbles") drawBubbles();
+}
 function select(id,opts){
   opts=opts||{};
   S.sel=id;
@@ -700,7 +842,7 @@ function select(id,opts){
 /* ---------- left body ---------- */
 function renderLeft(){
   var el=$("#leftbody");
-  el.innerHTML=S.tab==="today"?renderToday():S.tab==="dir"?renderDir():renderMarket();
+  el.innerHTML=S.tab==="today"?renderToday():S.tab==="dir"?renderDir():S.tab==="ai"?renderAI():renderMarket();
   $$("[data-count]",el).forEach(function(n){
     var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
     if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
