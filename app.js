@@ -559,7 +559,7 @@ function layoutBubbles(){
   if(lmx-lmn<1) lmx=lmn+1;
   var W=innerWidth,H=innerHeight;
   var wide=W>900;
-  var padL=wide?404:58, padR=wide?380:16, padT=118, padB=112;
+  var padL=wide?404:58, padR=wide?380:16, padT=118, padB=126;
   var yT=padT, yB=H-padB; bubYT=yT; bubYB=yB;
   bubX={padL:padL,padR:padR,lmn:lmn,lmx:lmx};
   function yForAge(age){ age=age==null?120:Math.min(120,age); return yB-(yB-yT)*(1-age/120); }
@@ -592,7 +592,7 @@ function drawBubbles(){
     ctx.strokeStyle="rgba(255,255,255,.06)"; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(x,bubYT-8); ctx.lineTo(x,bubYB+8); ctx.stroke();
     ctx.fillStyle="rgba(107,116,132,.95)";
-    ctx.fillText(fmtAxisF(f)+" followers",x,bubYB+22);
+    ctx.fillText(fmtAxisF(f)+" followers",Math.max(x,padL+56),bubYB+22);
   }
   /* y-axis: posting recency */
   ctx.textAlign="left";
@@ -617,10 +617,7 @@ function drawBubbles(){
     ctx.fillStyle="rgba(107,116,132,.9)";
     ctx.fillText("○ no follower data",lx+4,ly);
   })();
-  /* bubbles + decluttered labels */
-  var placed=[];
-  function canLabel(x,y){ for(var i=0;i<placed.length;i++){ var q=placed[i];
-    if(Math.abs(q[0]-x)<76&&Math.abs(q[1]-y)<22) return false; } return true; }
+  /* bubbles */
   bub.forEach(function(p){
     var b=p.b, sel=S.sel===b.id, hov=hovId===b.id, dim=S.sel&&!sel;
     ctx.globalAlpha=dim?0.15:1;
@@ -635,18 +632,28 @@ function drawBubbles(){
     if(sel||hov){ ctx.beginPath(); ctx.arc(p.x,p.y,p.r+9,0,Math.PI*2);
       ctx.strokeStyle="rgba(232,179,75,.4)"; ctx.lineWidth=2; ctx.stroke(); }
     ctx.globalAlpha=1;
-    if((bubLab[b.id]||sel||hov)&&canLabel(p.x,p.y-p.r-10)){
-      placed.push([p.x,p.y-p.r-10]);
-      var nm=b.name.length>22?b.name.slice(0,21)+"…":b.name;
-      ctx.font="600 11px Hanken Grotesk"; ctx.textAlign="center";
-      var tw=ctx.measureText(nm).width, lx0=p.x-tw/2-7, ly0=p.y-p.r-27;
-      ctx.fillStyle="rgba(10,14,20,.88)";
-      ctx.beginPath();
-      if(ctx.roundRect) ctx.roundRect(lx0,ly0,tw+14,18,6); else ctx.rect(lx0,ly0,tw+14,18);
-      ctx.fill();
-      ctx.fillStyle=sel||hov?"#e8b34b":"rgba(236,233,226,.95)";
-      ctx.fillText(nm,p.x,p.y-p.r-13.5);
-    }
+  });
+  /* labels: biggest bubbles first, width-aware declutter, flip below near the top bar */
+  var labCands=bub.filter(function(p){ return bubLab[p.b.id]||S.sel===p.b.id||hovId===p.b.id; })
+    .sort(function(a,b){ return b.r-a.r; });
+  var placed=[];
+  ctx.font="600 11px Hanken Grotesk"; ctx.textAlign="center";
+  labCands.forEach(function(p){
+    var b=p.b, sel=S.sel===b.id, hov=hovId===b.id;
+    var nm=b.name.length>22?b.name.slice(0,21)+"…":b.name;
+    var tw=ctx.measureText(nm).width;
+    var below=(p.y-p.r-30)<104;
+    var ly=below?p.y+p.r+12:p.y-p.r-12;
+    var clash=placed.some(function(q){ return Math.abs(q.x-p.x)<(q.w+tw)/2+12&&Math.abs(q.y-ly)<22; });
+    if(clash) return;
+    placed.push({x:p.x,y:ly,w:tw});
+    var lx0=p.x-tw/2-7, ly0=below?ly+8:ly-26;
+    ctx.fillStyle="rgba(10,14,20,.88)";
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(lx0,ly0,tw+14,18,6); else ctx.rect(lx0,ly0,tw+14,18);
+    ctx.fill();
+    ctx.fillStyle=sel||hov?"#e8b34b":"rgba(236,233,226,.95)";
+    ctx.fillText(nm,p.x,ly0+13);
   });
 }
 function tickBubbles(){
