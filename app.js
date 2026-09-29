@@ -134,12 +134,13 @@ if(PUB){
   if(jdHist.length) IGH["jdmeyersproductions"] = jdHist;
   D.competitors.push({id:JD_PUB_ID, name:"JD Meyers Productions", specialty:"both", town:"Potsdam, NY (SLC)",
     region:"slc", county:"St. Lawrence", website:"jdmeyersjr.com", ig_handle:"jdmeyersproductions",
-    pricing:"", pricing_url:"", notes:"", status:"active", flags:[], source:"directory", source_label:"Directory"});
+    pricing:"", pricing_url:"", notes:"", status:"active", flags:[], source:"directory", source_label:"Directory",
+    lanes:["weddings","portraits","video","drone"]}); /* explicit: photo/video weddings, portraits, FAA Part 107 drone */
 }
 var C = (D.competitors||[]).map(function(c){
   var e = Object.assign({}, c);
   e.price = priceFloors(c.pricing);
-  e.lanes = classifyLanes(c, e.price);
+  e.lanes = c.lanes || classifyLanes(c, e.price);
   e.key = norm(c.name);
   var h = c.ig_handle && IGH[c.ig_handle];
   if(h && h.length){ e.followers = h[h.length-1].count; e.followHist = h; }
