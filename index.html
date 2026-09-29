@@ -7,11 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=d6202f27">
+<link rel="stylesheet" href="styles.css?v=34ab2c3f">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
 <div id="map" aria-hidden="true"></div>
+<button id="covtoggle" class="glass" title="Show 25-mile coverage circles for every business and venue">Coverage</button>
 <section id="rankings" hidden aria-label="Rankings"></section>
 
 <header id="topbar" class="glass">
@@ -52,7 +53,7 @@
       <button data-view="rankings" role="tab" aria-selected="false">Rankings</button>
     </div>
     <span id="datelabel" title="Data as of this date"></span>
-    <span id="buildtag" title="Deployed build">build 076e993a &middot; Sep 29 23:26 UTC</span>
+    <span id="buildtag" title="Deployed build">build bd6064af &middot; Sep 29 23:59 UTC</span>
     <button id="adminBtn" class="ghostbtn">Admin</button>
   </div>
 </header>
@@ -85,8 +86,9 @@
 <script src="data/data.js?v=36acbd6f"></script>
 <script src="data/website-intel.js?v=8b116b0d"></script>
 <script src="data/venues.js"></script>
+<script src="data/details-enrichment.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=076e993a"></script>
+<script src="app.js?v=bd6064af"></script>
 </body>
 </html>
