@@ -358,17 +358,48 @@ function hbar(n, v, max, color, extra, suffix){
   return '<div class="bar"><span class="n"'+(extra||"")+'>'+esc(n)+'</span><span class="t"><i style="width:'+Math.max(2,Math.round(v/max*100))+'%;--c:'+color+'"></i></span><span class="v">'+fmt(v)+(suffix||"")+'</span></div>';
 }
 
+/* --- ones-to-watch hero: top 5 movers of the trailing week --- */
+function heroWatch(bizCount, jdAiPct){
+  var W = D.waves || {window:null, top:[]};
+  var win = W.window && W.window.label ? W.window.label : "";
+  var dateLine = NOW.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  var DIR = {
+    up:    {c:"var(--m-entering)", t:"Surging"},
+    down:  {c:"var(--m-fading)",   t:"Slipping"},
+    new:   {c:"var(--amber)",      t:"New"},
+    active:{c:"var(--silver-2)",   t:"Active"}
+  };
+  var cards = (W.top||[]).map(function(t,i){
+    var d = DIR[t.direction] || DIR.active;
+    var moveLine = "";
+    if(t.direction==="new") moveLine = '<span class="w-delta" style="color:'+d.c+'">New to the watch list</span>';
+    else if(t.follower_delta) moveLine = '<span class="w-delta" style="color:'+d.c+'">'+(t.follower_delta>0?"+":"")+fmt(t.follower_delta)+' followers</span>';
+    var meta = [t.town, t.followers!=null?fmt(t.followers)+" followers":null].filter(function(x){return x;}).join(" · ");
+    return '<button class="watch-card" data-open="'+esc(t.id)+'">'+
+      '<span class="w-rank">'+(i+1)+'</span>'+
+      '<span class="w-flag" style="--c:'+d.c+'">'+d.t+'</span>'+
+      '<span class="w-name">'+esc(t.name)+'</span>'+
+      (meta?'<span class="w-meta">'+esc(meta)+'</span>':"")+
+      moveLine+
+      '<span class="w-reasons">'+(t.reasons||[]).map(function(r){ return '<span>'+esc(r)+'</span>'; }).join("")+'</span>'+
+    '</button>';
+  }).join("");
+  return '<div class="hero-watch">'+
+    '<div class="kicker">Ones to watch</div>'+
+    '<h1>Top movers this week</h1>'+
+    '<p class="sub">'+esc(dateLine)+(win?' · trailing week '+esc(win):"")+' · '+fmt(bizCount)+' businesses tracked'+(jdAiPct?' · JD named in '+esc(jdAiPct)+' of AI answers':"")+'</p>'+
+    (cards?'<div class="watch-grid">'+cards+'</div>':'<p class="muted">No movement signals this week.</p>')+
+  '</div>';
+}
+
 RENDER.pulse = function(el){
   var jdNow = LAST_RUN?rate(LAST_RUN.rows):null, jdThen = FIRST_RUN?rate(FIRST_RUN.rows):null;
   var blind = RIVALS.filter(function(r){ return r.status==="blind"; });
   var noPrice = C.filter(function(c){ return !c.pricing; }).length;
   var syncDay = D.meta&&D.meta.generated_at?shortDate(D.meta.generated_at):"";
 
-  var lede = 'Watching <em>'+C.length+' businesses</em> across the North Country. '+
-    (MOMCOUNT.entering?MOMCOUNT.entering+' entering, ':'')+MOMCOUNT.fading+' fading, and JD is named in <em>'+pct(jdNow)+'</em> of AI recommendations'+(jdThen!=null&&jdNow!=null&&Math.round(jdNow*100)!==Math.round(jdThen*100)?(jdNow>jdThen?', up from ':', down from ')+pct(jdThen)+' at baseline':'')+'.';
-
   var h = '<div class="reveal">';
-  h += '<div class="brief" style="margin-bottom:18px"><div class="date">'+NOW.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})+'</div><p class="lede">'+lede+'</p></div>';
+  h += heroWatch(C.length, pct(jdNow));
 
   /* --- donut: where they are --- */
   var regN={slc:0,adjacent:0,unconfirmed:0};
