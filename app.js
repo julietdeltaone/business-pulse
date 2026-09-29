@@ -135,7 +135,7 @@ var MOM_LABEL={gaining:"Gaining",slipping:"Slipping",active:"Active",quiet:"Quie
 var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unconfirmed"};
 
 /* ---------- state ---------- */
-var S={ view:"map", tab:"today", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
+var S={ view:"map", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
         sel:null, playing:false };
 
 /* ---------- filtering ---------- */
@@ -590,12 +590,11 @@ function initMap(){
   if(L.heatLayer){
     heatLayer=L.heatLayer([],{minOpacity:0.3,maxZoom:12,radius:40,blur:30,
       gradient:{0:"rgba(0,0,0,0)",0.35:"rgba(146,106,32,0.55)",0.65:"#e8b34b",1:"#ffe6a8"}}).addTo(map);
-    if(heatLayer._canvas){ heatLayer._canvas.style.transition="opacity .3s ease"; heatLayer._canvas.style.opacity=heatOpacity(); }
+    if(heatLayer._canvas){ heatLayer._canvas.style.transition="opacity .3s ease"; }
   }
   pinLayer=L.layerGroup().addTo(map);
   map.on("zoomend",refreshLabels);
-  map.on("zoom",function(){ if(heatLayer&&heatLayer._canvas) heatLayer._canvas.style.opacity=heatOpacity(); });
-  map.on("zoomend",function(){ if(heatLayer) heatLayer.setOptions({radius:map.getZoom()<=8?52:40}); });
+  map.on("zoom",refreshHeat); map.on("zoomend",refreshHeat); map.on("moveend",refreshHeat);
   map.on("click",function(e){ /* click-away on empty map deselects */
     var t=e.originalEvent&&e.originalEvent.target;
     if(t&&t.closest&&t.closest(".leaflet-marker-icon")) return;
@@ -613,17 +612,21 @@ function heatWeight(b){
   if(b.postAge!=null&&b.postAge<=30) w=Math.min(1,w+0.2);
   return w;
 }
-function heatOpacity(){
-  if(!map) return 0;
-  var z=map.getZoom();
-  return Math.max(0,Math.min(1,(11-z)/2))*0.9; /* full at z<=9, gone by z>=11 */
-}
+/* zoomed out: everyone contributes. Zooming in: the cutoff ramps up, so only the
+   biggest business in the current view keeps radiating. All the way in: one hot spot. */
 function refreshHeat(){
-  if(!heatLayer) return;
-  var pts=[];
-  filtered().forEach(function(b){ if(b._geo) pts.push([b.lat,b.lng,heatWeight(b)]); });
+  if(!heatLayer||!map) return;
+  var z=map.getZoom(), bounds=map.getBounds();
+  var t=Math.max(0,Math.min(1,(z-9)/3.5)); /* 0 at z<=9, 1 at z>=12.5 */
+  var vis=filtered().filter(function(b){ return b._geo&&bounds.contains([b.lat,b.lng]); });
+  var maxW=0;
+  vis.forEach(function(b){ maxW=Math.max(maxW,heatWeight(b)); });
+  var cutoff=maxW*t*0.92, pts=[];
+  vis.forEach(function(b){ var w=heatWeight(b); if(w>0&&w>=cutoff) pts.push([b.lat,b.lng,w]); });
   heatLayer.setLatLngs(pts);
-  if(heatLayer._canvas) heatLayer._canvas.style.opacity=heatOpacity();
+  heatLayer.setOptions({radius:Math.max(20,Math.round(58-z*2.6))});
+  var op=z<=10?0.9:Math.max(0.5,0.9-(z-10)*0.1);
+  if(heatLayer._canvas) heatLayer._canvas.style.opacity=op;
 }
 /* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
 var topIds={}, pinMode="dots";
@@ -671,7 +674,7 @@ function renderPins(){
   if(!map) return;
   pinLayer.clearLayers(); pinById={};
   var list=filtered(), selId=S.sel;
-  var geoList=list.filter(function(b){return b._geo&&b.lat!=null;}); /* unmapped: no pin, still in directory/bubbles */
+  var geoList=list.filter(function(b){return b._geo&&b.lat!=null;}); /* unmapped: no pin, still in directory/rankings */
   var newIds={};
   list.forEach(function(b){ var first=b.followHist.length?b.followHist[0].date:null;
     if(first&&first>=DATES[Math.max(0,S.di-1)]) newIds[b.id]=1; });
@@ -715,166 +718,55 @@ function renderPins(){
 }
 function flyTo(b){ if(map&&b.lat!=null) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); }
 
-/* ---------- bubble field (canvas) ---------- */
-var cv=$("#bubbles"), ctx=cv.getContext("2d"), bub=[], bubAnim=null, hovId=null;
-var bubLab={}, bubYT=0, bubYB=0;
-var bubX={padL:64,padR:40,lmn:1,lmx:3}, bubHeadY=100;
-function sizeCanvas(){ var dpr=Math.min(2,window.devicePixelRatio||1);
-  cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
-function layoutBubbles(){
-  var list=filtered();
-  var fs=list.map(function(b){return followersAt(b,S.di);}).filter(function(f){return f!=null;});
-  var mn=Math.min.apply(null,fs.concat([10])), mx=Math.max.apply(null,fs.concat([100]));
-  var lmn=Math.log10(Math.max(1,mn)), lmx=Math.log10(Math.max(1,mx));
-  if(lmx-lmn<1) lmx=lmn+1;
-  var W=innerWidth,H=innerHeight;
-  var wide=W>900;
-  /* measure the real chrome so the plot always fits the visible screen */
-  var topClear=76, botClear=126;
-  if(!wide){
-    var tb=document.getElementById("topbar");
-    if(tb) topClear=Math.ceil(tb.getBoundingClientRect().bottom)+8;
-    var sc=document.getElementById("scrub");
-    if(sc) botClear=Math.ceil(H-sc.getBoundingClientRect().top)+12;
-  }
-  var padL=wide?404:58, padR=wide?380:16, padT=wide?172:topClear+52, padB=wide?126:botClear;
-  bubHeadY=wide?100:topClear+8;
-  var yT=padT, yB=H-padB; bubYT=yT; bubYB=yB;
-  bubX={padL:padL,padR:padR,lmn:lmn,lmx:lmx};
-  function yForAge(age){ age=age==null?120:Math.min(120,age); return yB-(yB-yT)*(1-age/120); }
-  function xForF(f){ var l=Math.log10(Math.max(1,f));
-    return padL+(l-lmn)/(lmx-lmn)*(W-padL-padR); }
-  bub=list.map(function(b){
-    var f=followersAt(b,S.di);
-    var x=(f==null?padL+14:xForF(f))+(hashN(b.id+"x")%1000/1000-0.5)*26;
-    var y=yForAge(b.postAge)+(hashN(b.id+"y")%1000/1000-0.5)*30;
-    if(f==null) y=Math.min(y,bubYB-40); /* keep no-data marks clear of the x-axis labels */
-    var l=f==null?0:(Math.log10(Math.max(1,f))-lmn)/(lmx-lmn);
-    var r=f!=null?9+Math.sqrt(l)*24:9;
-    return {b:b,x:x,y:y,r:r,tx:x,ty:y,tr:r,hollow:f==null};
-  });
-  bubLab={};
-  list.slice().sort(function(a,b2){return (followersAt(b2,S.di)||0)-(followersAt(a,S.di)||0);})
-    .slice(0,10).forEach(function(b){ bubLab[b.id]=1; });
+/* ---------- rankings: stupid-simple leaderboard (replaces the old bubble field) ---------- */
+var RANK_MODES=[{id:"audience",label:"Audience"},{id:"activity",label:"Activity"},{id:"momentum",label:"Momentum"}];
+function ageStr(age){
+  if(age==null) return "no recent posts";
+  if(age<=0) return "posted today";
+  if(age===1) return "posted yesterday";
+  if(age<30) return "posted "+age+"d ago";
+  if(age<60) return "posted ~1mo ago";
+  return "quiet "+Math.round(age/30)+"mo+";
 }
-function fmtAxisF(f){ return f>=1000?(f/1000)+"k":String(f); }
-function drawBubbles(){
-  if(S.view!=="bubbles") return;
-  var W=innerWidth,H=innerHeight;
-  var padL=bubX.padL,padR=bubX.padR;
-  ctx.clearRect(0,0,W,H);
-  /* x gridlines: powers of 10 followers */
-  ctx.font="600 10px Hanken Grotesk"; ctx.textAlign="center";
-  var p;
-  for(p=Math.ceil(bubX.lmn); p<=Math.floor(bubX.lmx); p++){
-    var f=Math.pow(10,p);
-    var x=padL+(p-bubX.lmn)/(bubX.lmx-bubX.lmn)*(W-padL-padR);
-    ctx.strokeStyle="rgba(255,255,255,.06)"; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(x,bubYT-8); ctx.lineTo(x,bubYB+8); ctx.stroke();
-    ctx.fillStyle="rgba(107,116,132,.95)";
-    ctx.fillText(fmtAxisF(f)+" followers",Math.max(x,padL+56),bubYB+22);
-  }
-  /* y-axis: posting recency */
-  ctx.textAlign="left";
-  [["Posting now",0],["A month ago",30],["3+ months quiet",100]].forEach(function(row){
-    var y=bubYB-(bubYB-bubYT)*(1-Math.min(120,row[1])/120);
-    ctx.fillStyle="rgba(107,116,132,.95)";
-    ctx.fillText(row[0],padL+8,y+3);
-    ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR+16,y); ctx.stroke();
+function renderRankings(){
+  var el=$("#rankings"); if(!el) return;
+  var mode=S.rankMode||"audience", list=filtered();
+  var rows=list.map(function(b){
+    var key,val,frac,cls="";
+    if(mode==="audience"){ var f=followersAt(b,S.di);
+      key=f==null?-1:f; val=f==null?"\u2014":fmt(f); frac=f==null?0:1; }
+    else if(mode==="activity"){ var a=b.postAge;
+      key=a==null?1e9:a; val=ageStr(a); frac=a==null?0:Math.max(0.05,1-Math.min(a,120)/120); }
+    else { var ch=pctChange(b,Math.max(0,S.di-7),S.di);
+      key=ch==null?-1e9:ch; val=ch==null?"\u2014":pctStr(ch); frac=ch==null?0:1;
+      cls=ch==null?"":(ch>=0?"up":"dn"); }
+    return {b:b,key:key,val:val,frac:frac,cls:cls};
   });
-  /* title + how-to-read + lane legend */
-  (function(){
-    var lx=padL+8, hy=bubHeadY;
-    ctx.textAlign="left";
-    ctx.fillStyle="rgba(236,233,226,.95)"; ctx.font="700 16px Hanken Grotesk";
-    ctx.fillText("Size vs. activity",lx,hy);
-    ctx.fillStyle="rgba(154,163,178,.9)"; ctx.font="500 11px Hanken Grotesk";
-    ctx.fillText("Bigger = more followers · higher = posted more recently · click a bubble for detail",lx,hy+18,Math.max(50,W-padR-16-lx));
-    var ly=hy+42;
-    ctx.font="600 10px Hanken Grotesk";
-    Object.keys(LANE_COLOR).forEach(function(k){
-      ctx.fillStyle=LANE_COLOR[k];
-      ctx.beginPath(); ctx.arc(lx,ly-3,5,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle="rgba(154,163,178,.9)";
-      var t=LANE_LABEL[k]||k; ctx.fillText(t,lx+10,ly);
-      lx+=10+ctx.measureText(t).width+18;
-    });
-    ctx.fillStyle="rgba(107,116,132,.9)";
-    ctx.fillText("○ no follower data",lx+4,ly);
-  })();
-  /* bubbles */
-  bub.forEach(function(p){
-    var b=p.b, sel=S.sel===b.id, hov=hovId===b.id, dim=S.sel&&!sel;
-    ctx.globalAlpha=dim?0.15:1;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    if(p.hollow){ ctx.setLineDash([5,4]); ctx.strokeStyle=sel||hov?"#e8b34b":"rgba(255,255,255,.45)";
-      ctx.lineWidth=sel||hov?2.5:1.5; ctx.stroke(); ctx.setLineDash([]); }
-    else{ ctx.fillStyle=LANE_COLOR[b.specialty]||"#999"; ctx.globalAlpha=(dim?0.15:0.85);
-      ctx.fill(); ctx.globalAlpha=dim?0.15:1;
-      ctx.lineWidth=sel||hov?3:1.2; ctx.strokeStyle=sel||hov?"#e8b34b":"rgba(0,0,0,.4)"; ctx.stroke(); }
-    if(b.you){ ctx.beginPath(); ctx.arc(p.x,p.y,p.r+6,0,Math.PI*2);
-      ctx.strokeStyle="rgba(232,179,75,.7)"; ctx.lineWidth=2; ctx.stroke(); }
-    if(sel||hov){ ctx.beginPath(); ctx.arc(p.x,p.y,p.r+9,0,Math.PI*2);
-      ctx.strokeStyle="rgba(232,179,75,.4)"; ctx.lineWidth=2; ctx.stroke(); }
-    ctx.globalAlpha=1;
-  });
-  /* labels: biggest bubbles first, width-aware declutter, flip below near the top bar */
-  var labCands=bub.filter(function(p){ return bubLab[p.b.id]||S.sel===p.b.id||hovId===p.b.id; })
-    .sort(function(a,b){ return b.r-a.r; });
-  var placed=[];
-  ctx.font="600 11px Hanken Grotesk"; ctx.textAlign="center";
-  labCands.forEach(function(p){
-    var b=p.b, sel=S.sel===b.id, hov=hovId===b.id;
-    var nm=b.name.length>22?b.name.slice(0,21)+"…":b.name;
-    var tw=ctx.measureText(nm).width;
-    var below=(p.y-p.r-30)<104;
-    var ly=below?p.y+p.r+12:p.y-p.r-12;
-    var clash=placed.some(function(q){ return Math.abs(q.x-p.x)<(q.w+tw)/2+12&&Math.abs(q.y-ly)<22; });
-    if(clash) return;
-    placed.push({x:p.x,y:ly,w:tw});
-    /* keep the label pill clear of the side panels */
-    var maxLx0=W-padR-8-(tw+14);
-    var lx0=Math.min(p.x-tw/2-7,maxLx0); lx0=Math.max(lx0,padL+8);
-    var cx=lx0+tw/2+7, ly0=below?ly+8:ly-26;
-    ctx.fillStyle="rgba(10,14,20,.88)";
-    ctx.beginPath();
-    if(ctx.roundRect) ctx.roundRect(lx0,ly0,tw+14,18,6); else ctx.rect(lx0,ly0,tw+14,18);
-    ctx.fill();
-    ctx.fillStyle=sel||hov?"#e8b34b":"rgba(236,233,226,.95)";
-    ctx.fillText(nm,cx,ly0+13);
-  });
+  var mx=0; rows.forEach(function(r){ if(mode==="momentum") mx=Math.max(mx,Math.abs(r.key)); else if(r.frac) mx=Math.max(mx,r.key); });
+  if(mode==="audience"&&mx<=0) mx=1; if(mode==="momentum"&&mx<=0) mx=1;
+  rows.sort(function(a,b){ return mode==="activity"?a.key-b.key:b.key-a.key; });
+  var h='<div class="rk-head"><div><h2>Rankings</h2>'+
+    '<div class="rk-sub">Who leads the North Country market right now · '+esc(dstr(DATES[S.di]))+'</div></div>'+
+    '<div class="rk-modes" role="tablist">'+RANK_MODES.map(function(m){
+      return '<button data-rank="'+m.id+'" class="'+(m.id===mode?"on":"")+'" role="tab" aria-selected="'+(m.id===mode)+'">'+m.label+'</button>'; }).join("")+'</div></div>';
+  h+='<div class="rk-hint">'+(mode==="audience"?"Ranked by follower count.":
+    mode==="activity"?"Ranked by how recently they posted.":
+    "Ranked by follower growth over the last 7 days.")+' Click a row for detail.</div>';
+  h+='<div class="rk-list">'+rows.map(function(r,i){
+    var b=r.b, w;
+    if(mode==="momentum") w=r.frac?Math.max(3,Math.abs(r.key)/mx*100):0;
+    else w=r.frac?(mode==="audience"?(r.key/mx*100):r.frac*100):0;
+    return '<div class="rk-row'+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'">'+
+      '<span class="rk-rank">'+(i+1)+'</span>'+
+      '<span class="rk-dot" style="background:'+(LANE_COLOR[b.specialty]||"#888")+'"></span>'+
+      '<div class="rk-main"><div class="rk-top"><b>'+esc(b.name)+(b.you?'<span class="youbadge">You</span>':"")+'</b>'+
+      '<span class="rk-val '+r.cls+'">'+esc(r.val)+'</span></div>'+
+      '<div class="rk-bar"><i style="width:'+w.toFixed(1)+'%;background:'+(LANE_COLOR[b.specialty]||"#888")+'"></i></div>'+
+      '<div class="rk-sub">'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+
+      (mode!=="activity"?' · <span class="rk-age">'+esc(ageStr(b.postAge))+'</span>':"")+'</div></div></div>';
+  }).join("")+'</div>';
+  el.innerHTML=h;
 }
-function tickBubbles(){
-  var done=true;
-  bub.forEach(function(p){ ["x","y","r"].forEach(function(k){
-    var t=p["t"+k], v=p[k], d=(t-v)*0.12;
-    if(Math.abs(d)>0.15){ p[k]=v+d; done=false; } else p[k]=t; }); });
-  drawBubbles();
-  if(!done&&S.view==="bubbles") bubAnim=requestAnimationFrame(tickBubbles);
-  else bubAnim=null;
-}
-function renderBubbles(){
-  cancelAnimationFrame(bubAnim); bubAnim=null;
-  layoutBubbles();
-  if(REDUCED){ bub.forEach(function(p){p.x=p.tx;p.y=p.ty;p.r=p.tr;}); drawBubbles(); }
-  else tickBubbles();
-}
-cv.addEventListener("click",function(e){
-  var mx=e.clientX,my=e.clientY,best=null,bd=1e9;
-  var pad=innerWidth<=900?22:6; /* generous tap targets on touch screens */
-  bub.forEach(function(p){ var d=Math.hypot(p.x-mx,p.y-my);
-    if(d<p.r+pad&&d<bd){bd=d;best=p.b;} });
-  if(best) select(best.id,{fly:false});
-  else clearSel(); /* click empty canvas space to deselect */
-});
-cv.addEventListener("mousemove",function(e){
-  var mx=e.clientX,my=e.clientY,best=null,bd=1e9;
-  bub.forEach(function(p){ var d=Math.hypot(p.x-mx,p.y-my);
-    if(d<p.r+8&&d<bd){bd=d;best=p.b.id;} });
-  if(best!==hovId){ hovId=best; cv.style.cursor=best?"pointer":"default"; drawBubbles(); }
-});
-cv.addEventListener("mouseleave",function(){ if(hovId){ hovId=null; drawBubbles(); } });
 
 /* ---------- selection: highlight everywhere + fly ---------- */
 function clearSel(){
@@ -882,14 +774,14 @@ function clearSel(){
   S.sel=null;
   renderPins(); renderRight();
   $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
-  if(S.view==="bubbles") drawBubbles();
+  if(S.view==="rankings") renderRankings();
 }
 function select(id,opts){
   opts=opts||{};
   S.sel=id;
   var b=BY_ID[id];
   renderPins(); renderRight();
-  if(S.view==="bubbles") drawBubbles();  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
+  if(S.view==="rankings") renderRankings();  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
   var row=$('#leftbody .row[data-open="'+id+'"]'); if(row) row.classList.add("sel");
   if(b&&opts.fly!==false&&S.view==="map") flyTo(b);
   if(b&&window.innerWidth<=900){ $("#right").classList.add("open"); }
@@ -932,7 +824,7 @@ function setPlaying(on){
 }
 function onScrub(){
   renderScrub(); renderPins();
-  if(S.view==="bubbles") renderBubbles();
+  if(S.view==="rankings") renderRankings();
   if(S.tab==="today") renderLeft();
   renderRight();
 }
@@ -969,10 +861,10 @@ function setView(v){
   $$(".viewtoggle button").forEach(function(b){
     var on=b.getAttribute("data-view")===v;
     b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
-  var bubbles=v==="bubbles";
-  cv.hidden=!bubbles;
-  $("#map").style.visibility=bubbles?"hidden":"visible";
-  if(bubbles){ sizeCanvas(); renderBubbles(); }
+  var rk=v==="rankings";
+  $("#rankings").hidden=!rk;
+  $("#map").style.visibility=rk?"hidden":"visible";
+  if(rk) renderRankings();
 }
 
 /* ---------- events ---------- */
@@ -981,6 +873,8 @@ document.addEventListener("click",function(e){
   if(t){ select(t.getAttribute("data-open")); return; }
   var vt=e.target.closest(".viewtoggle button");
   if(vt){ setView(vt.getAttribute("data-view")); return; }
+  var rb=e.target.closest("[data-rank]");
+  if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); return; }
   var tb=e.target.closest(".tabs button");
   if(tb){ S.tab=tb.getAttribute("data-tab");
     $$(".tabs button").forEach(function(b){ var on=b===tb;
@@ -994,7 +888,7 @@ $("#fq").addEventListener("input",function(e){
 [["#flane","lane"],["#fmom","mom"],["#freg","reg"]].forEach(function(p){
   $(p[0]).addEventListener("change",function(e){ S[p[1]]=e.target.value; refreshFiltered(); });
 });
-function refreshFiltered(){ renderPins(); if(S.view==="bubbles") renderBubbles(); renderLeft(); }
+function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); renderLeft(); }
 timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
 $("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
 $("#adminBtn").addEventListener("click",askAdmin);
@@ -1006,7 +900,7 @@ document.addEventListener("keydown",function(e){
     else if(S.sel){ S.sel=null; renderPins(); renderRight(); } }
   if(e.key==="/"&&document.activeElement!==$("#fq")){ e.preventDefault(); $("#fq").focus(); }
 });
-window.addEventListener("resize",function(){ if(S.view==="bubbles"){ sizeCanvas(); renderBubbles(); } });
+window.addEventListener("resize",function(){ /* rankings view flows with layout */ });
 
 /* ---------- init ---------- */
 try{ if(typeof L==="undefined") throw new Error("leaflet");
