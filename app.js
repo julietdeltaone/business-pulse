@@ -546,7 +546,7 @@ RENDER.pulse = function(el){
     else bands[2].v++;
   });
   var bmax=Math.max.apply(null,bands.map(function(b){return b.v;}));
-  h += (PUB?'<div class="grid g-2 pulse-duo" style="margin-bottom:18px">':'')+'<div class="panel"><h2>'+(PUB?'Who\u2019s active right now':'Are they posting')+'</h2>'+
+  h += (PUB?'<div class="grid g-2 pulse-duo" style="margin-bottom:18px">':'')+'<div class="panel"><h2>'+(PUB?'Who\u2019s active':'Are they posting')+'</h2>'+
     (PUB?'':tells('<b>What this tells you:</b> how many businesses are actually marketing right now. A quiet rival is not taking your clients this month.'))+
     '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div>'+(PUB?'':'</div>');
 
