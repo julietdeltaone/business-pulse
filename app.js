@@ -536,9 +536,9 @@ RENDER.pulse = function(el){
 
   /* --- recency bands --- */
   var bands=[
-    {label:"Active \u00b7 posted \u226430 days ago", v:0, color:"var(--m-active)"},
-    {label:"Quiet \u00b7 last post 1\u20133 months ago", v:0, color:"var(--m-quiet)"},
-    {label:"Dormant \u00b7 silent 3+ months or never tracked", v:0, color:"var(--m-fading)"}
+    {label:"Active \u00b7 last 30 days", v:0, color:"var(--m-active)"},
+    {label:"Quiet \u00b7 1\u20133 months", v:0, color:"var(--m-quiet)"},
+    {label:"Dormant \u00b7 3+ months", v:0, color:"var(--m-fading)"}
   ];
   C.forEach(function(c){
     if(c.postAge!=null && c.postAge<=30) bands[0].v++;
@@ -546,7 +546,7 @@ RENDER.pulse = function(el){
     else bands[2].v++;
   });
   var bmax=Math.max.apply(null,bands.map(function(b){return b.v;}));
-  h += (PUB?'<div class="grid g-2" style="margin-bottom:18px">':'')+'<div class="panel"><h2>'+(PUB?'Who\u2019s active right now':'Are they posting')+'</h2>'+
+  h += (PUB?'<div class="grid g-2 pulse-duo" style="margin-bottom:18px">':'')+'<div class="panel"><h2>'+(PUB?'Who\u2019s active right now':'Are they posting')+'</h2>'+
     (PUB?'':tells('<b>What this tells you:</b> how many businesses are actually marketing right now. A quiet rival is not taking your clients this month.'))+
     '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div>'+(PUB?'':'</div>');
 
@@ -606,7 +606,10 @@ RENDER.pulse = function(el){
 /* right-rail activity feed: who's posting, newest first */
 function recColor(ds){
   var d=Math.max(0,Math.round((Date.now()-new Date(ds+"T12:00:00").getTime())/864e5));
-  return d<=3?"#E8C476":d<=7?"#9DB4C8":"#5A6577";
+  if(d<=2) return "#E8C476";
+  var t=Math.min(1,(d-2)/28);
+  var r=Math.round(232-142*t), g=Math.round(196-112*t), b=Math.round(118-42*t);
+  return "rgb("+r+","+g+","+b+")";
 }
 function truncW(s,n){ s=s||""; if(s.length<=n) return s; var t=s.slice(0,n), i=t.lastIndexOf(" "); return (i>12?t.slice(0,i):t)+"\u2026"; }
 function activityRail(syncDay){
@@ -616,7 +619,7 @@ function activityRail(syncDay){
     (items.length?'<ul class="activity-feed">'+items.map(function(c){
       return '<li><button class="activity-item" data-open="'+c.id+'"><span class="dot" style="background:'+recColor(c.last_post_date)+'"></span>'+
         '<span class="a-main"><span class="a-name">'+esc(c.name.replace(/ \(.*\)/,""))+'</span>'+
-        (c.last_post_topic?'<span class="a-topic">'+esc(truncW(c.last_post_topic,36))+'</span>':'')+'</span>'+
+        (c.last_post_topic?'<span class="a-topic">'+esc(truncW(c.last_post_topic,30))+'</span>':'')+'</span>'+
         '<span class="a-when">'+esc(ago(c.last_post_date))+'</span></button></li>';
     }).join("")+'</ul>':'<p class="muted">No recent posts tracked.</p>')+
     srcChip('Instagram activity \u00b7 '+(syncDay||''))+'</aside>';
