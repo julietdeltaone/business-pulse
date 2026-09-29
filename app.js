@@ -522,53 +522,74 @@ function flyTo(b){ if(map) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{d
 /* ---------- bubble field (canvas) ---------- */
 var cv=$("#bubbles"), ctx=cv.getContext("2d"), bub=[], bubAnim=null, hovId=null;
 var bubLab={}, bubYT=0, bubYB=0;
+var bubX={padL:64,padR:40,lmn:1,lmx:3};
 function sizeCanvas(){ var dpr=Math.min(2,window.devicePixelRatio||1);
   cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
 function layoutBubbles(){
   var list=filtered();
-  var fs=list.filter(function(b){return followersAt(b,S.di)!=null;}).map(function(b){return followersAt(b,S.di);});
+  var fs=list.map(function(b){return followersAt(b,S.di);}).filter(function(f){return f!=null;});
   var mn=Math.min.apply(null,fs.concat([10])), mx=Math.max.apply(null,fs.concat([100]));
-  var lx=function(f){return (Math.log10(Math.max(1,f))-Math.log10(mn))/(Math.log10(mx)-Math.log10(mn)||1);};
-  var W=innerWidth,H=innerHeight,pad=28,padT=104,padB=112;
-  var yT=padT+20, yB=H-padB-20; bubYT=yT; bubYB=yB;
+  var lmn=Math.log10(Math.max(1,mn)), lmx=Math.log10(Math.max(1,mx));
+  if(lmx-lmn<1) lmx=lmn+1;
+  var W=innerWidth,H=innerHeight,padL=64,padR=40,padT=118,padB=112;
+  if(W<900){padL=58;padR=16;}
+  var yT=padT, yB=H-padB; bubYT=yT; bubYB=yB;
+  bubX={padL:padL,padR:padR,lmn:lmn,lmx:lmx};
   function yForAge(age){ age=age==null?120:Math.min(120,age); return yB-(yB-yT)*(1-age/120); }
-  var groups={};
-  list.forEach(function(b){ (groups[b.specialty]=groups[b.specialty]||[]).push(b); });
-  var keys=Object.keys(groups), cx={};
-  var laneW=(W-pad*2)/Math.max(1,keys.length);
-  keys.forEach(function(k,i){ cx[k]=pad+laneW*(i+0.5); });
+  function xForF(f){ var l=Math.log10(Math.max(1,f));
+    return padL+(l-lmn)/(lmx-lmn)*(W-padL-padR); }
   bub=list.map(function(b){
     var f=followersAt(b,S.di);
-    var x=cx[b.specialty]+(hashN(b.id+"x")%1000/1000-0.5)*laneW*0.62;
-    var y=yForAge(b.postAge)+(hashN(b.id+"y")%1000/1000-0.5)*40;
-    var r=f!=null?9+Math.sqrt(lx(f))*26:9;
-    return {b:b,x:x,y:y,r:r,tx:x,ty:y,tr:r,hollow:f==null||!b.hasPrice};
+    var x=(f==null?padL-26:xForF(f))+(hashN(b.id+"x")%1000/1000-0.5)*26;
+    var y=yForAge(b.postAge)+(hashN(b.id+"y")%1000/1000-0.5)*30;
+    var l=f==null?0:(Math.log10(Math.max(1,f))-lmn)/(lmx-lmn);
+    var r=f!=null?9+Math.sqrt(l)*24:9;
+    return {b:b,x:x,y:y,r:r,tx:x,ty:y,tr:r,hollow:f==null};
   });
   bubLab={};
-  keys.forEach(function(k){
-    groups[k].slice().sort(function(a,b2){return (followersAt(b2,S.di)||0)-(followersAt(a,S.di)||0);})
-      .slice(0,3).forEach(function(b){ bubLab[b.id]=1; });
-  });
+  list.slice().sort(function(a,b2){return (followersAt(b2,S.di)||0)-(followersAt(a,S.di)||0);})
+    .slice(0,10).forEach(function(b){ bubLab[b.id]=1; });
 }
+function fmtAxisF(f){ return f>=1000?(f/1000)+"k":String(f); }
 function drawBubbles(){
   if(S.view!=="bubbles") return;
   var W=innerWidth,H=innerHeight;
+  var padL=bubX.padL,padR=bubX.padR;
   ctx.clearRect(0,0,W,H);
-  /* lane cluster labels */
-  ctx.font="600 11px Hanken Grotesk"; ctx.textAlign="center";
-  var seen={};
-  bub.forEach(function(p){ if(seen[p.b.specialty])return; seen[p.b.specialty]=1;
-    ctx.fillStyle="rgba(154,163,178,.85)";
-    ctx.fillText((LANE_LABEL[p.b.specialty]||"").toUpperCase(),p.tx,88); });
-  /* y-axis: posting recency (positions match the bubble layout math) */
+  /* x gridlines: powers of 10 followers */
+  ctx.font="600 10px Hanken Grotesk"; ctx.textAlign="center";
+  var p;
+  for(p=Math.ceil(bubX.lmn); p<=Math.floor(bubX.lmx); p++){
+    var f=Math.pow(10,p);
+    var x=padL+(p-bubX.lmn)/(bubX.lmx-bubX.lmn)*(W-padL-padR);
+    ctx.strokeStyle="rgba(255,255,255,.06)"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,bubYT-8); ctx.lineTo(x,bubYB+8); ctx.stroke();
+    ctx.fillStyle="rgba(107,116,132,.95)";
+    ctx.fillText(fmtAxisF(f)+" followers",x,bubYB+22);
+  }
+  /* y-axis: posting recency */
   ctx.textAlign="left";
   [["Posting now",0],["A month ago",30],["3+ months quiet",100]].forEach(function(row){
     var y=bubYB-(bubYB-bubYT)*(1-Math.min(120,row[1])/120);
     ctx.fillStyle="rgba(107,116,132,.95)";
-    ctx.fillText(row[0],28,y+3);
+    ctx.fillText(row[0],padL-36,y+3);
     ctx.strokeStyle="rgba(255,255,255,.07)"; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(20,y); ctx.lineTo(W-20,y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(padL-44,y); ctx.lineTo(W-padR+16,y); ctx.stroke();
   });
+  /* lane legend */
+  (function(){
+    var lanes=Object.keys(LANE_COLOR), lx=padL-36, ly=96;
+    ctx.textAlign="left"; ctx.font="600 10px Hanken Grotesk";
+    lanes.forEach(function(k){
+      ctx.fillStyle=LANE_COLOR[k];
+      ctx.beginPath(); ctx.arc(lx,ly-3,5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle="rgba(154,163,178,.9)";
+      var t=LANE_LABEL[k]||k; ctx.fillText(t,lx+10,ly);
+      lx+=10+ctx.measureText(t).width+18;
+    });
+    ctx.fillStyle="rgba(107,116,132,.9)";
+    ctx.fillText("○ no follower data",lx+4,ly);
+  })();
   /* bubbles + decluttered labels */
   var placed=[];
   function canLabel(x,y){ for(var i=0;i<placed.length;i++){ var q=placed[i];
