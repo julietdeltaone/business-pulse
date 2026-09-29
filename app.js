@@ -781,13 +781,16 @@ function drawBubbles(){
     var clash=placed.some(function(q){ return Math.abs(q.x-p.x)<(q.w+tw)/2+12&&Math.abs(q.y-ly)<22; });
     if(clash) return;
     placed.push({x:p.x,y:ly,w:tw});
-    var lx0=p.x-tw/2-7, ly0=below?ly+8:ly-26;
+    /* keep the label pill clear of the side panels */
+    var maxLx0=W-padR-8-(tw+14);
+    var lx0=Math.min(p.x-tw/2-7,maxLx0); lx0=Math.max(lx0,padL+8);
+    var cx=lx0+tw/2+7, ly0=below?ly+8:ly-26;
     ctx.fillStyle="rgba(10,14,20,.88)";
     ctx.beginPath();
     if(ctx.roundRect) ctx.roundRect(lx0,ly0,tw+14,18,6); else ctx.rect(lx0,ly0,tw+14,18);
     ctx.fill();
     ctx.fillStyle=sel||hov?"#e8b34b":"rgba(236,233,226,.95)";
-    ctx.fillText(nm,p.x,ly0+13);
+    ctx.fillText(nm,cx,ly0+13);
   });
 }
 function tickBubbles(){
