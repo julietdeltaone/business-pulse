@@ -7,12 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=b9eb97d5">
+<link rel="stylesheet" href="styles.css?v=4bf07b65">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
 <div id="map" aria-hidden="true"></div>
-<canvas id="bubbles" hidden></canvas>
+<section id="rankings" hidden aria-label="Rankings"></section>
 
 <header id="topbar" class="glass">
   <div class="brand">
@@ -45,10 +45,10 @@
   <div class="top-actions">
     <div class="viewtoggle" role="tablist" aria-label="Background view">
       <button data-view="map" class="on" role="tab" aria-selected="true">Map</button>
-      <button data-view="bubbles" role="tab" aria-selected="false">Bubbles</button>
+      <button data-view="rankings" role="tab" aria-selected="false">Rankings</button>
     </div>
     <span id="datelabel" title="Data as of this date"></span>
-    <span id="buildtag" title="Deployed build">build 262c9af4 &middot; Sep 29 22:58 UTC</span>
+    <span id="buildtag" title="Deployed build">build b2a5d9c2 &middot; Sep 29 23:00 UTC</span>
     <button id="adminBtn" class="ghostbtn">Admin</button>
   </div>
 </header>
@@ -81,6 +81,6 @@
 <script src="data/data.js?v=36acbd6f"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=262c9af4"></script>
+<script src="app.js?v=b2a5d9c2"></script>
 </body>
 </html>
