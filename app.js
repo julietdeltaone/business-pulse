@@ -686,8 +686,16 @@ function layoutBubbles(){
   if(lmx-lmn<1) lmx=lmn+1;
   var W=innerWidth,H=innerHeight;
   var wide=W>900;
-  var padL=wide?404:58, padR=wide?380:16, padT=wide?172:176, padB=126;
-  bubHeadY=wide?100:132;
+  /* measure the real chrome so the plot always fits the visible screen */
+  var topClear=76, botClear=126;
+  if(!wide){
+    var tb=document.getElementById("topbar");
+    if(tb) topClear=Math.ceil(tb.getBoundingClientRect().bottom)+8;
+    var sc=document.getElementById("scrub");
+    if(sc) botClear=Math.ceil(H-sc.getBoundingClientRect().top)+12;
+  }
+  var padL=wide?404:58, padR=wide?380:16, padT=wide?172:topClear+52, padB=wide?126:botClear;
+  bubHeadY=wide?100:topClear+8;
   var yT=padT, yB=H-padB; bubYT=yT; bubYB=yB;
   bubX={padL:padL,padR:padR,lmn:lmn,lmx:lmx};
   function yForAge(age){ age=age==null?120:Math.min(120,age); return yB-(yB-yT)*(1-age/120); }
@@ -811,8 +819,9 @@ function renderBubbles(){
 }
 cv.addEventListener("click",function(e){
   var mx=e.clientX,my=e.clientY,best=null,bd=1e9;
+  var pad=innerWidth<=900?22:6; /* generous tap targets on touch screens */
   bub.forEach(function(p){ var d=Math.hypot(p.x-mx,p.y-my);
-    if(d<p.r+6&&d<bd){bd=d;best=p.b;} });
+    if(d<p.r+pad&&d<bd){bd=d;best=p.b;} });
   if(best) select(best.id,{fly:false});
   else clearSel(); /* click empty canvas space to deselect */
 });
