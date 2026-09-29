@@ -69,7 +69,7 @@ function jitter(id,lat,lng){ return {lat:lat,lng:lng}; } /* replaced by town spi
 /* ---------- enrich roster ---------- */
 var IGH=D.igFollowersHistory||{};
 var WI=(window.PULSE_WEBSITE_INTEL||{}).intel||{}; /* pilot website sweep, Sep 2026 */
-var C=(D.competitors||[]).map(function(c){
+var B=(D.competitors||[]).map(function(c){
   var e=Object.assign({},c);
   e.price=priceFloors(c.pricing);
   var h=c.ig_handle&&IGH[c.ig_handle];
@@ -85,11 +85,11 @@ var C=(D.competitors||[]).map(function(c){
   e.townShort=(e.town||"").split(",")[0];
   return e;
 });
-var BY_ID={}; C.forEach(function(c){BY_ID[c.id]=c;});
+var B_BY_ID={}; B.forEach(function(c){B_BY_ID[c.id]=c;});
 /* ordered golden-angle spiral per town so same-town pins read as a cluster, not noise */
 (function(){
   var groups={};
-  C.forEach(function(b){ var k=townCanon(b.town); (groups[k]=groups[k]||[]).push(b); });
+  B.forEach(function(b){ var k=townCanon(b.town); (groups[k]=groups[k]||[]).push(b); });
   Object.keys(groups).forEach(function(k){
     var g=groups[k].sort(function(a,b){return (b.followers||0)-(a.followers||0);});
     var cl=townLatLng(g[0].town);
@@ -101,6 +101,22 @@ var BY_ID={}; C.forEach(function(c){BY_ID[c.id]=c;});
     });
   });
 })();
+
+/* ---------- venues: separate dataset, hard-switched via S.mode ----------
+   Venues never mix with the competitor roster: separate collection, separate
+   stats, separate medians. C / BY_ID below always point at the ACTIVE set. */
+var V=(window.PULSE_VENUES||[]).map(function(v){
+  var e=Object.assign({},v);
+  e.type="venue"; e.specialty="venue";
+  e.followHist=[]; e.followers=(v.followers==null?null:v.followers);
+  e.postAge=daysSince(v.last_post_date);
+  e.price={wedding:null,session:null}; e.hasPrice=false;
+  e._geo=(v.lat!=null&&v.lng!=null);
+  e.townShort=(v.town||"").split(",")[0];
+  return e;
+});
+var V_BY_ID={}; V.forEach(function(v){V_BY_ID[v.id]=v;});
+var C=B, BY_ID=B_BY_ID;
 
 /* ---------- snapshot dates ---------- */
 var DATES=[]; (function(){ var s={};
@@ -130,13 +146,13 @@ function recencyDot(b){
   if(b.postAge<=45) return "#e8b34b";
   return "#e06c6c";
 }
-var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b48ce8",drone:"#5fd0b5"};
-var LANE_LABEL={photo:"Photo",video:"Video",both:"Photo + Video",drone:"Drone"};
+var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b48ce8",drone:"#5fd0b5",venue:"#d98e4a"};
+var LANE_LABEL={photo:"Photo",video:"Video",both:"Photo + Video",drone:"Drone",venue:"Venue"};
 var MOM_LABEL={gaining:"Gaining",slipping:"Slipping",active:"Active",quiet:"Quiet",dormant:"Dormant"};
 var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unconfirmed"};
 
 /* ---------- state ---------- */
-var S={ view:"map", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
+var S={ view:"map", mode:"businesses", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
         sel:null, playing:false };
 
 /* ---------- filtering ---------- */
@@ -144,9 +160,9 @@ function norm(s){ return (s||"").toLowerCase(); }
 function passes(b){
   if(S.q){ var q=norm(S.q);
     if(norm(b.name).indexOf(q)<0&&norm(b.ig_handle).indexOf(q)<0&&norm(b.townShort).indexOf(q)<0&&norm(b.town).indexOf(q)<0) return false; }
-  if(S.lane&&b.specialty!==S.lane) return false;
+  if(S.mode!=="venues"&&S.lane&&b.specialty!==S.lane) return false;
   if(S.reg&&b.region!==S.reg) return false;
-  if(S.mom){ var m=momentumOf(b,S.di);
+  if(S.mode!=="venues"&&S.mom){ var m=momentumOf(b,S.di);
     if(S.mom==="gaining"){ if(m!=="gaining") return false; }
     else if(m!==S.mom) return false; }
   return true;
@@ -252,7 +268,23 @@ function weekHighlights(){
     }).join("")+"</div></div>";
 }
 
+/* venue-mode Today: no change history exists yet — overview instead */
+function renderVenueToday(){
+  var h='<div class="sec"><h3>Venue watch</h3><div class="sub">Tracking started Sep 29, 2026 · '+V.length+' venues</div>';
+  var counties={};
+  V.forEach(function(v){ counties[v.county]=(counties[v.county]||0)+1; });
+  var ig=V.filter(function(v){return v.ig_handle;}).length;
+  h+='<div class="statgrid">'+
+    '<div class="stat"><div class="v">'+V.length+'</div><div class="l">Venues</div></div>'+
+    '<div class="stat"><div class="v">'+Object.keys(counties).length+'</div><div class="l">Counties</div></div>'+
+    '<div class="stat"><div class="v">'+ig+'</div><div class="l">On Instagram</div></div></div>';
+  h+='<div class="sub" style="margin:8px 0 0">Change history builds from here — check back as snapshots accumulate.</div></div>';
+  h+='<div class="sec"><h3>All venues</h3><div class="stagger">'+V.map(venueRow).join("")+"</div></div>";
+  return h;
+}
+
 function renderToday(){
+  if(S.mode==="venues") return renderVenueToday();
   var ch=todayChanges(), h=weekHighlights();
   h+='<div class="sec"><h3>What changed</h3><div class="sub">Since '+esc(dstr(ch.prev))+' · '+esc(dstr(ch.date))+'</div>';
   function rows(list,fn){ return '<div class="stagger">'+list.slice(0,8).map(fn).join("")+"</div>"; }
@@ -299,7 +331,16 @@ function renderToday(){
 }
 
 /* ---------- directory ---------- */
+function venueRow(b,i){
+  return '<div class="row'+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
+    '<span class="dot" style="background:'+recencyDot(b)+'"></span>'+
+    '<div class="nm"><b>'+esc(b.name)+'</b>'+
+    '<span>'+esc(b.townShort)+locTag(b)+' · '+(b.capacity?esc(b.capacity.split("(")[0].trim()):"Venue")+'</span></div>'+
+    '<div class="meta"><b>'+(b.capacity_num!=null?fmt(b.capacity_num):"—")+'</b><span>max guests'+
+    (b.followers!=null?' · '+fmt(b.followers)+' IG':"")+'</span></div></div>';
+}
 function dirRow(b,i){
+  if(b.type==="venue") return venueRow(b,i);
   var f=followersAt(b,S.di), ch=pctChange(b,Math.max(0,S.di-7),S.di);
   var pcls=ch==null?"fl":(ch>=0?"up":"dn");
   return '<div class="row'+(b.you?" you":"")+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
@@ -317,14 +358,18 @@ function locTag(b){
 }
 function renderDir(){
   var list=filtered().slice().sort(function(a,b){return (b.you?1:0)-(a.you?1:0)||((b.followers||0)-(a.followers||0));});
-  var h='<div class="sec"><h3>Directory</h3><div class="sub">'+list.length+' of '+C.length+' businesses</div>';
-  if(!list.length) return h+'<div class="empty-note">No businesses match these filters.</div></div>';
+  var noun=S.mode==="venues"?"venues":"businesses";
+  var h='<div class="sec"><h3>Directory</h3><div class="sub">'+list.length+' of '+C.length+' '+noun+'</div>';
+  if(!list.length) return h+'<div class="empty-note">No '+noun+' match these filters.</div></div>';
   h+='<div class="stagger">'+list.map(dirRow).join("")+"</div></div>";
   return h;
 }
 
 /* ---------- AI search visibility ---------- */
 function renderAI(){
+  if(S.mode==="venues")
+    return '<div class="sec"><h3>AI Search</h3><div class="sub">Venue visibility</div>'+
+      '<div class="empty-note">No AI visibility data for venues yet.</div></div>';
   var rows=(D.aiVisibility||[]).filter(function(r){ return r.jd_named!=="unreachable"; });
   var h='<div class="sec"><h3>AI Search</h3><div class="sub">Are the AI assistants recommending you?</div>';
   if(!rows.length)
@@ -397,7 +442,31 @@ function postEvents(){
 }
 var EVENTS=postEvents();
 
+/* venue-mode Market: venue-only aggregates, never business medians */
+function renderVenueMarket(){
+  var list=filtered(), h='<div class="sec"><h3>Market</h3><div class="sub">Aggregates across '+list.length+' venues</div>';
+  var caps=list.filter(function(b){return b.capacity_num!=null;}).map(function(b){return b.capacity_num;}).sort(function(a,b){return a-b;});
+  var med=caps.length?caps[Math.floor(caps.length/2)]:null;
+  var ig=list.filter(function(b){return b.ig_handle;}).length;
+  var counties={}; list.forEach(function(b){ counties[b.county]=1; });
+  h+='<div class="statgrid">'+
+    '<div class="stat"><div class="v" data-count="'+list.length+'">0</div><div class="l">Venues</div></div>'+
+    '<div class="stat"><div class="v" data-count="'+(med||0)+'">0</div><div class="l">Median max guests</div></div>'+
+    '<div class="stat"><div class="v">'+ig+'</div><div class="l">On Instagram</div></div>'+
+    '<div class="stat"><div class="v">'+Object.keys(counties).length+'</div><div class="l">Counties</div></div></div>';
+  var buckets=[["≤ 200 guests",0],["201–300",0],["301+",0],["Not published",0]];
+  list.forEach(function(b){ var v=b.capacity_num;
+    if(v==null) buckets[3][1]++; else if(v<=200) buckets[0][1]++; else if(v<=300) buckets[1][1]++; else buckets[2][1]++; });
+  var tot=list.length||1, cols=["#5fd0b5","#6db3f2","#e8b34b","#e06c6c"];
+  h+='<div class="sec"><h3>Capacity spread</h3><div class="sub">Largest published guest count per venue</div><div class="bar">'+
+    buckets.map(function(bk,i){ return '<i style="width:'+(bk[1]/tot*100)+'%;background:'+cols[i]+'" title="'+bk[0]+': '+bk[1]+'"></i>'; }).join("")+
+    '</div><div class="barlbl">'+buckets.map(function(bk,i){return '<span><b style="color:'+cols[i]+'">'+bk[1]+'</b> '+bk[0]+'</span>';}).join("")+'</div></div>';
+  h+="</div>";
+  return h;
+}
+
 function renderMarket(){
+  if(S.mode==="venues") return renderVenueMarket();
   var list=filtered(), h='<div class="sec"><h3>Market</h3><div class="sub">Aggregates across '+list.length+' businesses</div>';
   var f=list.filter(function(b){return b.followers!=null;}).map(function(b){return b.followers;});
   f.sort(function(a,b){return a-b;});
@@ -505,7 +574,43 @@ function rankOf(b,key,desc){
   var arr=C.filter(function(x){return x[key]!=null;}).sort(function(a,c){return desc?c[key]-a[key]:a[key]-c[key];});
   var i=arr.indexOf(b); return i<0?null:{rank:i+1,of:arr.length};
 }
+/* venue detail panel: capacity, setting, spaces, services — no business comparisons */
+function venueProfileHTML(b){
+  var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
+  var h='<div class="sec"><div class="prof-head"><div class="prof-ava">'+esc(ini)+'</div>'+
+    '<div><h2>'+esc(b.name)+'</h2>'+
+    '<div class="sub">'+esc(b.town)+locTag(b)+' · Venue</div></div></div>';
+  h+='<div class="chiprow">';
+  if(b.ig_handle) h+='<span class="chip">@'+esc(b.ig_handle)+'</span>';
+  if(b.website) h+='<a class="chip extlink" href="'+esc(/^https?:/.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a>';
+  h+='</div>';
+  var rows="";
+  if(b.capacity) rows+='<dt>Capacity</dt><dd><b>'+esc(b.capacity)+'</b></dd>';
+  if(b.price_note) rows+='<dt>Pricing note</dt><dd>'+esc(b.price_note)+'</dd>';
+  if(b.setting) rows+='<dt>Setting</dt><dd>'+esc(b.setting)+'</dd>';
+  if(b.season) rows+='<dt>Season</dt><dd>'+esc(b.season)+'</dd>';
+  if(b.spaces&&b.spaces.length) rows+='<dt>Spaces</dt><dd>'+b.spaces.map(function(s){return '<span class="chip">'+esc(s)+'</span>';}).join(" ")+'</dd>';
+  if(b.services&&b.services.length) rows+='<dt>Services</dt><dd>'+b.services.map(function(s){return '<span class="chip">'+esc(s)+'</span>';}).join(" ")+'</dd>';
+  if(b.coverage&&b.coverage.length) rows+='<dt>Coverage</dt><dd>'+esc(b.coverage.join(" · "))+'</dd>';
+  if(b.platform) rows+='<dt>Site built on</dt><dd>'+esc(b.platform)+'</dd>';
+  if(b.since) rows+='<dt>Since</dt><dd><b>'+esc(b.since)+'</b></dd>';
+  if(b.address) rows+='<dt>Address</dt><dd>'+esc(b.address)+'</dd>';
+  if(rows) h+='<h3>Venue</h3><dl class="kv">'+rows+'</dl>';
+  if(b.site_note) h+='<div class="sub">'+esc(b.site_note)+'</div>';
+  var f=b.followers, igRows="";
+  if(b.ig_handle&&(b.followHist.length||f!=null||b.postAge!=null)){
+    if(f!=null) igRows+='<dt>Followers</dt><dd><b>'+fmt(f)+'</b></dd>';
+    if(b.last_post_date) igRows+='<dt>Last post</dt><dd><b>'+dstr(b.last_post_date)+'</b>'+(b.postAge!=null?' <span style="color:var(--dim)">('+b.postAge+'d ago)</span>':"")+'</dd>';
+    if(b.last_post_type) igRows+='<dt>Format</dt><dd>'+esc(b.last_post_type)+'</dd>';
+    if(b.last_post_topic) igRows+='<dt>Topic</dt><dd>'+esc(b.last_post_topic)+'</dd>';
+  }
+  if(igRows) h+='<h3>Instagram</h3><dl class="kv">'+igRows+'</dl>';
+  h+='<div class="sub" style="opacity:.65">Researched Sep 29, 2026</div>';
+  h+='</div>';
+  return h;
+}
 function profileHTML(b){
+  if(b.type==="venue") return venueProfileHTML(b);
   var f=followersAt(b,S.di), ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
   var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
   var h='<div class="sec"><div class="prof-head"><div class="prof-ava'+(b.you?" you":"")+'">'+esc(ini)+'</div>'+
@@ -572,6 +677,16 @@ function profileHTML(b){
   return h;
 }
 function marketGlanceHTML(){
+  if(S.mode==="venues"){
+    var caps=V.filter(function(b){return b.capacity_num!=null;}).map(function(b){return b.capacity_num;}).sort(function(a,b){return a-b;});
+    var vmed=caps.length?caps[Math.floor(caps.length/2)]:null;
+    return '<div class="sec"><h3>Venues at a glance</h3><div class="sub">Researched Sep 29, 2026</div>'+
+      '<div class="statgrid">'+
+      '<div class="stat"><div class="v" data-count="'+V.length+'">0</div><div class="l">Venues</div></div>'+
+      '<div class="stat"><div class="v" data-count="'+(vmed||0)+'">0</div><div class="l">Median max guests</div></div>'+
+      '<div class="stat"><div class="v">'+V.filter(function(b){return b.ig_handle;}).length+'</div><div class="l">On Instagram</div></div></div>'+
+      '<div class="sub">Pick any venue — here, on the map, or in the directory — to open its profile.</div></div>';
+  }
   var h='<div class="sec"><h3>Market at a glance</h3><div class="sub">As of '+esc(dstr(DATES[S.di]))+'</div>';
   var f=C.filter(function(b){return b.followers!=null;}).map(function(b){return b.followers;}).sort(function(a,b){return a-b;});
   var mF=f.length?f[Math.floor(f.length/2)]:null;
@@ -626,8 +741,15 @@ function initMap(){
   renderPins();
 }
 /* heat intensity: bigger follower counts weigh more, recent activity adds more */
-var _maxLogF=1;
-C.forEach(function(b){ var f=b.followers; if(f!=null) _maxLogF=Math.max(_maxLogF,Math.log10(f+1)); });
+var _maxLogF=1, topIds={};
+/* heat/weight/label stats always describe the ACTIVE collection — recomputed on mode switch */
+function computeModeStats(){
+  _maxLogF=1; topIds={};
+  C.forEach(function(b){ var f=b.followers; if(f!=null) _maxLogF=Math.max(_maxLogF,Math.log10(f+1)); });
+  C.slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);}).slice(0,12)
+    .forEach(function(b){ topIds[b.id]=1; });
+}
+computeModeStats();
 function heatWeight(b){
   var f=followersAt(b,S.di), w;
   if(f!=null) w=0.2+0.8*(Math.log10(f+1)/_maxLogF);
@@ -652,9 +774,7 @@ function refreshHeat(){
   if(heatLayer._canvas) heatLayer._canvas.style.opacity=op;
 }
 /* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
-var topIds={}, pinMode="dots";
-C.slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);}).slice(0,12)
-  .forEach(function(b){ topIds[b.id]=1; });
+var pinMode="dots";
 function labelFor(b){
   var f=followersAt(b,S.di);
   var loc=b.townShort+((b.region==="adjacent"&&b.county)?" · "+b.county+" Co (adjacent)":
@@ -704,7 +824,7 @@ function renderPins(){
   geoList.forEach(function(b){
     var f=followersAt(b,S.di);
     var r=f!=null?Math.max(9,Math.min(26,6+Math.sqrt(f)/6)):9;
-    var hollow=f==null||!b.hasPrice;
+    var hollow=b.type==="venue"?false:(f==null||!b.hasPrice);
     var dim=(selId&&b.id!==selId)?" dim":"";
     var live=postedOn(b,S.di)?" live":"";
     var sel=b.id===selId?" sel":"", you=b.you?" you":"";
@@ -890,12 +1010,39 @@ function setView(v){
   if(rk) renderRankings();
 }
 
+/* ---------- businesses / venues hard switch ----------
+   Re-points the active collection, clears business-only filters, rebuilds every
+   view. Venue stats never touch business medians, rankings, or heat weights. */
+function setMode(m){
+  if(S.mode===m) return;
+  S.mode=m;
+  C=(m==="venues"?V:B); BY_ID=(m==="venues"?V_BY_ID:B_BY_ID);
+  S.sel=null; S.lane=""; S.mom="";
+  $("#flane").value=""; $("#fmom").value="";
+  computeModeStats();
+  $$(".modetoggle button").forEach(function(b){ var on=b.getAttribute("data-mode")===m;
+    b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
+  var biz=m!=="venues";
+  $("#flane").style.display=biz?"":"none";
+  $("#fmom").style.display=biz?"":"none";
+  $("#fq").setAttribute("placeholder",biz?"Search businesses…":"Search venues…");
+  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo market":"North Country venue watch";
+  document.title=biz?"Business Pulse · North Country photo market":"Business Pulse · North Country venues";
+  renderPins();
+  var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
+  if(pts.length&&map) map.fitBounds(L.latLngBounds(pts).pad(0.12));
+  if(S.view==="rankings") renderRankings();
+  renderLeft(); renderRight();
+}
+
 /* ---------- events ---------- */
 document.addEventListener("click",function(e){
   var t=e.target.closest("[data-open]");
   if(t){ select(t.getAttribute("data-open")); return; }
   var vt=e.target.closest(".viewtoggle button");
   if(vt){ setView(vt.getAttribute("data-view")); return; }
+  var mt=e.target.closest(".modetoggle button");
+  if(mt){ setMode(mt.getAttribute("data-mode")); return; }
   var rb=e.target.closest("[data-rank]");
   if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); return; }
   var tb=e.target.closest(".tabs button");
