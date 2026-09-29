@@ -118,6 +118,35 @@ var V=(window.PULSE_VENUES||[]).map(function(v){
 var V_BY_ID={}; V.forEach(function(v){V_BY_ID[v.id]=v;});
 var C=B, BY_ID=B_BY_ID;
 
+/* ---------- web-research detail enrichment (data/details-enrichment.js) ----------
+   Fills only empty fields; never overwrites curated data. Businesses merge into
+   the Website-intel section, venues merge onto the venue record. */
+(function(){
+  var DET=window.PULSE_DETAILS||{}, ids=Object.keys(DET);
+  if(!ids.length) return;
+  ids.forEach(function(id){
+    var d=DET[id]; if(!d) return;
+    var v=V_BY_ID[id];
+    if(v){
+      ["site_note","pricing_note","setting","season","since"].forEach(function(k){ if((v[k]==null||v[k]==="")&&d[k]!=null) v[k]=d[k]; });
+      ["services","spaces","coverage"].forEach(function(k){ if((!v[k]||!v[k].length)&&d[k]&&d[k].length) v[k]=d[k].slice(); });
+      return;
+    }
+    var b=B_BY_ID[id]; if(!b) return;
+    var w=WI[id];
+    if(!w){ w={}; WI[id]=w; }
+    if(w.unreachable) return;
+    if(d.services&&d.services.length&&(!w.services||!w.services.length)) w.services=d.services.slice();
+    if(d.coverage&&d.coverage.length&&(!w.coverage||!w.coverage.length)) w.coverage=d.coverage.slice();
+    if(d.platform&&!w.platform) w.platform=d.platform;
+    if(d.since&&!w.since&&w.years_in_business==null) w.since=d.since;
+    else if(d.years_in_business!=null&&w.years_in_business==null&&!w.since) w.years_in_business=d.years_in_business;
+    var note=d.blurb||d.site_note;
+    if(note&&!w.site_note) w.site_note=note;
+    if(!w.fetched) w.fetched="Web research, Sep 2026";
+  });
+})();
+
 /* ---------- snapshot dates ---------- */
 var DATES=[]; (function(){ var s={};
   Object.keys(IGH).forEach(function(h){ IGH[h].forEach(function(r){ s[r.date]=1; }); });
@@ -717,7 +746,25 @@ function renderRight(){
 }
 
 /* ---------- map ---------- */
-var map=null, pinLayer=null, pinById={}, heatLayer=null;
+var map=null, pinLayer=null, pinById={}, heatLayer=null, covLayer=null, covOn=false;
+function buildCoverage(){
+  /* 25-mile radius circles for EVERY business and venue with real coordinates,
+     regardless of the active Businesses/Venues mode — overlaps show intersecting coverage. */
+  covLayer=L.layerGroup();
+  var seen={};
+  B.concat(V).forEach(function(b){
+    if(!b._geo||b.lat==null||b.lng==null||seen[b.id]) return; seen[b.id]=1;
+    var col=b.type==="venue"?"#ff9a3c":"#e8b34b";
+    L.circle([b.lat,b.lng],{radius:40234,color:col,weight:1.5,opacity:.55,
+      fillColor:col,fillOpacity:.06,interactive:false}).addTo(covLayer);
+  });
+}
+function toggleCoverage(){
+  if(!map||!covLayer) return;
+  covOn=!covOn;
+  if(covOn) covLayer.addTo(map); else map.removeLayer(covLayer);
+  var t=$("#covtoggle"); if(t) t.classList.toggle("on",covOn);
+}
 function initMap(){
   map=L.map("map",{zoomControl:false,attributionControl:true}).setView([44.55,-74.9],9);
   map.attributionControl.setPrefix(false);
@@ -731,6 +778,7 @@ function initMap(){
     if(heatLayer._canvas){ heatLayer._canvas.style.transition="opacity .3s ease"; }
   }
   pinLayer=L.layerGroup().addTo(map);
+  buildCoverage();
   map.on("zoomend",refreshLabels);
   map.on("zoom",refreshHeat); map.on("zoomend",refreshHeat); map.on("moveend",refreshHeat);
   map.on("click",function(e){ /* click-away on empty map deselects */
@@ -1007,6 +1055,7 @@ function setView(v){
   var rk=v==="rankings";
   $("#rankings").hidden=!rk;
   $("#map").style.visibility=rk?"hidden":"visible";
+  var ct=$("#covtoggle"); if(ct) ct.style.visibility=rk?"hidden":"visible";
   if(rk) renderRankings();
 }
 
@@ -1049,6 +1098,7 @@ document.addEventListener("click",function(e){
   if(mt){ setMode(mt.getAttribute("data-mode")); return; }
   var rb=e.target.closest("[data-rank]");
   if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); return; }
+  if(e.target.closest("#covtoggle")){ toggleCoverage(); return; }
   var tb=e.target.closest(".tabs button");
   if(tb){ S.tab=tb.getAttribute("data-tab");
     $$(".tabs button").forEach(function(b){ var on=b===tb;
