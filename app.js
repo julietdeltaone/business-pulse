@@ -461,7 +461,7 @@ function initMap(){
   renderPins();
 }
 /* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
-var topIds={};
+var topIds={}, pinMode="dots";
 C.slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);}).slice(0,12)
   .forEach(function(b){ topIds[b.id]=1; });
 function labelFor(b){
@@ -469,15 +469,17 @@ function labelFor(b){
   return "<b>"+esc(b.name)+"</b>"+(b.you?' <span style="color:#e8b34b">(you)</span>':"")+
     (f!=null?'<br><span style="color:#9aa3b2;font-weight:400">'+fmt(f)+" followers</span>":"");
 }
+function rowEl(id){ return $('#leftbody .row[data-b="'+id+'"]'); }
 function refreshLabels(){
   if(!map) return;
-  var showAll=map.getZoom()>=13;
+  var z=map.getZoom(), wantPills=z>=11, pills=pinMode==="pills";
+  if(wantPills!==pills){ pinMode=wantPills?"pills":"dots"; renderPins(); return; }
   Object.keys(pinById).forEach(function(id){
     var m=pinById[id], b=BY_ID[id]; if(!b||!m) return;
-    var show=showAll||!!topIds[id]||S.sel===id;
+    var show=pills?false:(z>=13||!!topIds[id]||S.sel===id);
     if(m._lbl===show) return; m._lbl=show;
     m.unbindTooltip();
-    m.bindTooltip(labelFor(b),{permanent:show,direction:"top",offset:[0,-13],
+    m.bindTooltip(labelFor(b),{permanent:show,direction:"top",offset:pills?[0,-16]:[0,-13],
       opacity:.97,className:"mklabel"+(b.you?" you":"")});
   });
 }
@@ -498,14 +500,28 @@ function renderPins(){
     var f=followersAt(b,S.di);
     var r=f!=null?Math.max(9,Math.min(26,6+Math.sqrt(f)/6)):9;
     var hollow=f==null||!b.hasPrice;
-    var cls="mkpin"+(hollow?" hollow":"")+(b.id===selId?" sel":"")+(b.you?" you":"")+
-      (postedOn(b,S.di)?" live":"")+((selId&&b.id!==selId)?" dim":"");
-    var html='<div class="'+cls+'" style="width:'+(r*2)+'px;height:'+(r*2)+'px;'+
-      (hollow?"":"background:"+LANE_COLOR[b.specialty]+";")+
-      (newIds[b.id]?"opacity:0;":"")+'"></div>';
-    var m=L.marker([b.lat,b.lng],{icon:L.divIcon({className:"",html:html,iconSize:[r*2,r*2],iconAnchor:[r,r]}),
-      title:b.name, keyboard:false});
+    var dim=(selId&&b.id!==selId)?" dim":"";
+    var live=postedOn(b,S.di)?" live":"";
+    var sel=b.id===selId?" sel":"", you=b.you?" you":"";
+    var html, icon;
+    if(pinMode==="pills"){
+      var txt=f!=null?fmt(f):"—";
+      html='<div class="zpin'+sel+you+live+dim+'" style="--lc:'+(LANE_COLOR[b.specialty]||"#888")+'">'+
+        "<i></i><span>"+txt+"</span></div>";
+      icon=L.divIcon({className:"zwrap",html:html});
+    }else{
+      var cls="mkpin"+(hollow?" hollow":"")+sel+you+live+dim;
+      html='<div class="'+cls+'" style="width:'+(r*2)+'px;height:'+(r*2)+'px;'+
+        (hollow?"":"background:"+LANE_COLOR[b.specialty]+";")+
+        (newIds[b.id]?"opacity:0;":"")+'"></div>';
+      icon=L.divIcon({className:"",html:html,iconSize:[r*2,r*2],iconAnchor:[r,r]});
+    }
+    var m=L.marker([b.lat,b.lng],{icon:icon,keyboard:false});
     m.on("click",function(){ select(b.id,{fly:false}); });
+    m.on("mouseover",function(){ var rw=rowEl(b.id); if(rw) rw.classList.add("hot");
+      var el=m.getElement(); if(el&&el.firstChild) el.firstChild.classList.add("hot"); });
+    m.on("mouseout",function(){ var rw=rowEl(b.id); if(rw) rw.classList.remove("hot");
+      var el=m.getElement(); if(el&&el.firstChild) el.firstChild.classList.remove("hot"); });
     m.addTo(pinLayer); pinById[b.id]=m;
     if(newIds[b.id]){ /* fade-in for new entrants */
       var el=m.getElement(); if(el){ var d=el.firstChild;
@@ -783,5 +799,16 @@ try{ if(typeof L==="undefined") throw new Error("leaflet");
   $("#map").innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6b7484;font-size:13px">Map tiles unavailable — switch to Bubbles view.</div>';
 }
 if(ADMIN){ $("#adminBtn").classList.add("on"); $("#adminBtn").textContent="Admin ✓"; }
+/* Airbnb-style hover sync between directory rows and map pins */
+$("#leftbody").addEventListener("mouseover",function(e){
+  var row=e.target.closest?e.target.closest(".row"):null; if(!row||!row.dataset.b) return;
+  var m=pinById[row.dataset.b], el=m&&m.getElement();
+  if(el&&el.firstChild) el.firstChild.classList.add("hot");
+});
+$("#leftbody").addEventListener("mouseout",function(e){
+  var row=e.target.closest?e.target.closest(".row"):null; if(!row||!row.dataset.b) return;
+  var m=pinById[row.dataset.b], el=m&&m.getElement();
+  if(el&&el.firstChild) el.firstChild.classList.remove("hot");
+});
 renderScrub(); renderLeft(); renderRight();
 })();
