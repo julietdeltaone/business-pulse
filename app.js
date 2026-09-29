@@ -80,6 +80,7 @@ var C=(D.competitors||[]).map(function(c){
   e.hasPrice=e.price.wedding!=null||e.price.session!=null;
   var tc=townLatLng(e.town);
   e.lat=tc.lat; e.lng=tc.lng; /* spiral placement below */
+  e._geo=!!(TC.coords||{})[townCanon(e.town)]; /* false = Potsdam fallback, never heat-mapped */
   e.townShort=(e.town||"").split(",")[0];
   return e;
 });
@@ -571,21 +572,51 @@ function renderRight(){
 }
 
 /* ---------- map ---------- */
-var map=null, pinLayer=null, pinById={};
+var map=null, pinLayer=null, pinById={}, heatLayer=null;
 function initMap(){
   map=L.map("map",{zoomControl:false,attributionControl:true}).setView([44.55,-74.9],9);
   map.attributionControl.setPrefix(false);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     {maxZoom:19,opacity:0.9,
      attribution:"© OpenStreetMap contributors"}).addTo(map);
+  /* heatmap: concentrated where the big, active pages are; dissolves as you zoom in */
+  if(L.heatLayer){
+    heatLayer=L.heatLayer([],{minOpacity:0.3,maxZoom:12,radius:40,blur:30,
+      gradient:{0:"rgba(0,0,0,0)",0.35:"rgba(146,106,32,0.55)",0.65:"#e8b34b",1:"#ffe6a8"}}).addTo(map);
+    if(heatLayer._canvas){ heatLayer._canvas.style.transition="opacity .3s ease"; heatLayer._canvas.style.opacity=heatOpacity(); }
+  }
   pinLayer=L.layerGroup().addTo(map);
   map.on("zoomend",refreshLabels);
+  map.on("zoom",function(){ if(heatLayer&&heatLayer._canvas) heatLayer._canvas.style.opacity=heatOpacity(); });
+  map.on("zoomend",function(){ if(heatLayer) heatLayer.setOptions({radius:map.getZoom()<=8?52:40}); });
   map.on("click",function(e){ /* click-away on empty map deselects */
     var t=e.originalEvent&&e.originalEvent.target;
     if(t&&t.closest&&t.closest(".leaflet-marker-icon")) return;
     clearSel();
   });
   renderPins();
+}
+/* heat intensity: bigger follower counts weigh more, recent activity adds more */
+var _maxLogF=1;
+C.forEach(function(b){ var f=b.followers; if(f!=null) _maxLogF=Math.max(_maxLogF,Math.log10(f+1)); });
+function heatWeight(b){
+  var f=followersAt(b,S.di), w;
+  if(f!=null) w=0.2+0.8*(Math.log10(f+1)/_maxLogF);
+  else w=0.12;
+  if(b.postAge!=null&&b.postAge<=30) w=Math.min(1,w+0.2);
+  return w;
+}
+function heatOpacity(){
+  if(!map) return 0;
+  var z=map.getZoom();
+  return Math.max(0,Math.min(1,(11-z)/2))*0.9; /* full at z<=9, gone by z>=11 */
+}
+function refreshHeat(){
+  if(!heatLayer) return;
+  var pts=[];
+  filtered().forEach(function(b){ if(b._geo) pts.push([b.lat,b.lng,heatWeight(b)]); });
+  heatLayer.setLatLngs(pts);
+  if(heatLayer._canvas) heatLayer._canvas.style.opacity=heatOpacity();
 }
 /* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
 var topIds={}, pinMode="dots";
@@ -666,6 +697,7 @@ function renderPins(){
     }
   });
   refreshLabels();
+  refreshHeat();
   if(!map._fitDone){ map._fitDone=true;
     var pts=list.map(function(b){return [b.lat,b.lng];});
     if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.12)); }
