@@ -1030,7 +1030,11 @@ function setMode(m){
   document.title=biz?"Business Pulse · North Country photo market":"Business Pulse · North Country venues";
   renderPins();
   var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
-  if(pts.length&&map) map.fitBounds(L.latLngBounds(pts).pad(0.12));
+  if(pts.length&&map){
+    /* account for the fixed side panels so edge pins (e.g. Altona) don't sit underneath them */
+    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts), {paddingTopLeft:L.point(400,90), paddingBottomRight:L.point(380,90)});
+    else map.fitBounds(L.latLngBounds(pts).pad(0.15));
+  }
   if(S.view==="rankings") renderRankings();
   renderLeft(); renderRight();
 }
