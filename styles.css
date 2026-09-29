@@ -44,7 +44,8 @@ button{font-family:var(--sans)}
 #map .leaflet-control-zoom{display:none}
 #map .leaflet-control-attribution{background:rgba(0,0,0,.35);color:#5a6372;font-size:10px}
 #map .leaflet-control-attribution a{color:#7a8494}
-#bubbles{position:fixed;inset:0;z-index:1;pointer-events:auto}
+#buildtag{font-size:11px;color:#8a8f9e;white-space:nowrap}
+#bubbles{position:fixed;inset:0;width:100vw;height:100vh;z-index:1;pointer-events:auto}
 #bubbles[hidden]{display:none}
 
 /* map pins */
