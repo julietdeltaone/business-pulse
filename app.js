@@ -466,8 +466,11 @@ function heroWatch(bizCount, jdAiPct){
     else if(t.follower_delta) moveLine = '<span class="w-delta" style="color:'+d.c+'">'+(t.follower_delta>0?"+":"")+fmt(t.follower_delta)+' followers</span>';
     var meta = [t.town, t.followers!=null?fmt(t.followers)+" followers":null].filter(function(x){return x;}).join(" · ");
     var reasons = PUB ? (t.reasons||[]).filter(function(r){ return !/AI answers/i.test(r); }) : (t.reasons||[]);
+    if(PUB) reasons = reasons.filter(function(r){ return !/watch list/i.test(r); })
+      .map(function(r){ return r.replace(/\s*[—–-]\s*(photo|video|both)\s*·.*$/i,"").trim(); })
+      .filter(function(r){ return r.length>0; });
     return '<button class="watch-card" data-open="'+esc(t.id)+'">'+
-      '<span class="w-rank">'+(i+1)+'</span>'+
+      '<span class="w-rank">#'+(i+1)+'</span>'+
       '<span class="w-flag" style="--c:'+d.c+'">'+d.t+'</span>'+
       '<span class="w-name">'+esc(t.name)+'</span>'+
       (meta?'<span class="w-meta">'+esc(meta)+'</span>':"")+
@@ -476,7 +479,7 @@ function heroWatch(bizCount, jdAiPct){
     '</button>';
   }).join("");
   return '<div class="hero-watch">'+
-    '<div class="kicker">Ones to watch</div>'+
+    '<div class="kicker">Market movers</div>'+
     '<h1>Top movers this week</h1>'+
     '<p class="sub">'+esc(dateLine)+(win?' · trailing week '+esc(win):"")+' · '+fmt(bizCount)+' businesses tracked'+(jdAiPct?' · JD named in '+esc(jdAiPct)+' of AI answers':"")+'</p>'+
     (cards?'<div class="watch-grid">'+cards+'</div>':'<p class="muted">No movement signals this week.</p>')+
@@ -506,10 +509,11 @@ RENDER.pulse = function(el){
       '<button class="cost-tile" data-go="market"><b class="num" data-count="'+(median(sPrices)||0)+'" data-fmt="money">'+money(median(sPrices))+'</b><span>median session start</span></button>'+
       '<button class="cost-tile" data-go="market"><b class="num" data-count="'+priced.length+'">'+priced.length+'</b><span>of '+C.length+' publish prices</span></button>'+
       '</div>'+
-      '<div class="tbar"><i style="width:'+(onWeb/C.length*100)+'%;background:#7FB2CE"></i><i style="width:'+((priced.length-onWeb)/C.length*100)+'%;background:#E7A04F"></i><i style="width:'+((C.length-priced.length)/C.length*100)+'%;background:#2A3347"></i></div>'+
-      '<div class="tlegend"><span><i class="sw" style="background:#7FB2CE"></i>'+onWeb+' link a price page</span><span><i class="sw" style="background:#E7A04F"></i>'+(priced.length-onWeb)+' publish with no page linked</span><span><i class="sw" style="background:#2A3347"></i>'+(C.length-priced.length)+' publish nothing</span></div>'+
+      '<p class="tbar-title">Where prices live</p>'+
+      '<div class="tbar"><i style="width:'+(onWeb/C.length*100)+'%;background:#7FB2CE"><b>'+onWeb+'</b></i><i style="width:'+((priced.length-onWeb)/C.length*100)+'%;background:#E7A04F"><b>'+(priced.length-onWeb)+'</b></i><i style="width:'+((C.length-priced.length)/C.length*100)+'%;background:#2A3347"><b>'+(C.length-priced.length)+'</b></i></div>'+
+      '<div class="tlegend"><span><i class="sw" style="background:#7FB2CE"></i>link a price page</span><span><i class="sw" style="background:#E7A04F"></i>publish with no page linked</span><span><i class="sw" style="background:#2A3347"></i>publish nothing</span></div>'+
       '<div class="strip" id="pulseStripW"></div>'+
-      '<p class="hint">'+noWeb.length+' businesses have no website at all \u2014 '+noWebPriced+' of them still publish prices on Instagram. Each dot is one business\u2019s published wedding starting price \u2014 hover for the name, click to open the profile. Tap a tile for the full Market lanes breakdown.</p>'+
+      '<p class="hint">'+noWeb.length+' businesses have no website at all \u2014 '+noWebPriced+' of them still publish prices on Instagram. Each dot is one business\u2019s published wedding starting price \u2014 tap a dot for the name, tap again to open the profile. Tap a tile for the full Market lanes breakdown.</p>'+
       srcChip('Directory pricing \u00b7 '+syncDay)+'</div>';
   }
 
@@ -542,7 +546,7 @@ RENDER.pulse = function(el){
     else bands[2].v++;
   });
   var bmax=Math.max.apply(null,bands.map(function(b){return b.v;}));
-  h += '<div class="panel"><h2>'+(PUB?'Who\u2019s active right now':'Are they posting')+'</h2>'+
+  h += (PUB?'<div class="grid g-2" style="margin-bottom:18px">':'')+'<div class="panel"><h2>'+(PUB?'Who\u2019s active right now':'Are they posting')+'</h2>'+
     (PUB?'':tells('<b>What this tells you:</b> how many businesses are actually marketing right now. A quiet rival is not taking your clients this month.'))+
     '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div>'+(PUB?'':'</div>');
 
@@ -561,7 +565,7 @@ RENDER.pulse = function(el){
       var pos=m.d>0;
       return '<div class="bar"><span class="n"'+(m.id?' data-open="'+m.id+'"':'')+'>'+esc(m.n)+'</span><span class="t" style="display:flex;justify-content:'+(pos?'flex-start':'flex-end')+'"><i style="width:'+Math.max(3,Math.round(Math.abs(m.d)/mmax*100))+'%;--c:'+(pos?'var(--amber)':'var(--m-fading)')+'"></i></span><span class="v" style="color:'+(pos?'var(--amber)':'var(--m-fading)')+'">'+(pos?'+':'')+fmt(m.d)+'</span></div>';
     }).join("")+'</div>': '<p class="muted">No movement in the tracking window.</p>')+
-    srcChip('IG snapshots · Sep 24\u201326')+'</div>';
+    srcChip('IG snapshots · Sep 24\u201326')+'</div>'+(PUB?'</div>':'');
 
   /* --- AI by prompt (admin-only: hidden in public mode) --- */
   if(!PUB){
@@ -600,14 +604,19 @@ RENDER.pulse = function(el){
 };
 
 /* right-rail activity feed: who's posting, newest first */
+function recColor(ds){
+  var d=Math.max(0,Math.round((Date.now()-new Date(ds+"T12:00:00").getTime())/864e5));
+  return d<=3?"#E8C476":d<=7?"#9DB4C8":"#5A6577";
+}
+function truncW(s,n){ s=s||""; if(s.length<=n) return s; var t=s.slice(0,n), i=t.lastIndexOf(" "); return (i>12?t.slice(0,i):t)+"\u2026"; }
 function activityRail(syncDay){
   var items=C.filter(function(c){return c.last_post_date;})
     .sort(function(a,b){return a.last_post_date<b.last_post_date?1:a.last_post_date>b.last_post_date?-1:0;}).slice(0,15);
   return '<aside class="panel activity-rail"><h2>Recently posting</h2>'+
     (items.length?'<ul class="activity-feed">'+items.map(function(c){
-      return '<li><button class="activity-item" data-open="'+c.id+'"><span class="dot" style="background:'+MOM[c.momentum.k].color+'"></span>'+
+      return '<li><button class="activity-item" data-open="'+c.id+'"><span class="dot" style="background:'+recColor(c.last_post_date)+'"></span>'+
         '<span class="a-main"><span class="a-name">'+esc(c.name.replace(/ \(.*\)/,""))+'</span>'+
-        (c.last_post_topic?'<span class="a-topic">'+esc(c.last_post_topic)+'</span>':'')+'</span>'+
+        (c.last_post_topic?'<span class="a-topic">'+esc(truncW(c.last_post_topic,36))+'</span>':'')+'</span>'+
         '<span class="a-when">'+esc(ago(c.last_post_date))+'</span></button></li>';
     }).join("")+'</ul>':'<p class="muted">No recent posts tracked.</p>')+
     srcChip('Instagram activity \u00b7 '+(syncDay||''))+'</aside>';
@@ -2001,7 +2010,7 @@ RENDER.market = function(el){
        mixBar(s.mom,s.n)+nameGroups(sorted,{meta:function(c){return shortTown(c.town);},collapseUnknown:true})+'</div>';
   });
   h+='</div>';
-  h+='<div class="grid g-2" style="margin-top:18px"><div class="panel"><h2>Wedding starting prices</h2><p class="hint">Each dot is a published starting price. The amber line is the median. Hover for the name, click to open.</p><div class="strip" id="stripW"></div></div>'+
+  h+='<div class="grid g-2" style="margin-top:18px"><div class="panel"><h2>Wedding starting prices</h2><p class="hint">Each dot is a published starting price. The amber line is the median. Tap a dot to open the profile.</p><div class="strip" id="stripW"></div></div>'+
      '<div class="panel"><h2>Session starting prices</h2><p class="hint">Minis, family, senior and couples sessions.</p><div class="strip" id="stripS"></div></div></div>';
   el.innerHTML=h;
   priceStrip($("#stripW"), C.filter(function(c){return c.price.wedding;}).map(function(c){return {c:c,v:c.price.wedding};}));
@@ -2032,10 +2041,14 @@ RENDER.market = function(el){
 };
 function priceStrip(el, pts){
   if(!pts.length){ el.innerHTML='<p class="empty">No published prices yet.</p>'; return; }
-  var W=1000,H=120,pl=20,pr=20,max=Math.max.apply(null,pts.map(function(p){return p.v;})), step=max>2000?1000:100, top=Math.ceil(max*1.08/step)*step;
-  function X(v){ return pl+v/top*(W-pl-pr); }
+  var W=1000,H=120,pl=10,pr=10;
+  var vals=pts.map(function(p){return p.v;});
+  var lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals);
+  var llo=Math.log(Math.max(lo*0.92,1)), lhi=Math.log(hi*1.08);
+  function X(v){ return pl+(Math.log(Math.max(v,1))-llo)/(lhi-llo)*(W-pl-pr); }
+  var raw=(hi*1.08-lo*0.92)/5, mag=Math.pow(10,Math.floor(Math.log10(raw))), step=[1,2,2.5,5,10].map(function(m){return m*mag;}).filter(function(s){return s>=raw;})[0]||mag*10;
   var g='<g class="axis">';
-  for(var t=0;t<=top;t+=step*(top/step>10?2:1)) g+='<line x1="'+X(t)+'" x2="'+X(t)+'" y1="10" y2="'+(H-24)+'" stroke="#242A37"/><text x="'+X(t)+'" y="'+(H-6)+'" text-anchor="middle">'+money(t)+'</text>';
+  for(var t=Math.ceil(lo*0.92/step)*step; t<=hi*1.08; t+=step) g+='<line x1="'+X(t)+'" x2="'+X(t)+'" y1="10" y2="'+(H-24)+'" stroke="#242A37"/><text x="'+X(t)+'" y="'+(H-6)+'" text-anchor="middle">'+money(t)+'</text>';
   g+='</g>';
   var med=median(pts.map(function(p){return p.v;}));
   g+='<line x1="'+X(med)+'" x2="'+X(med)+'" y1="4" y2="'+(H-24)+'" stroke="#E7A04F" stroke-width="2"/><text x="'+(X(med)+6)+'" y="14" fill="#E7A04F" font-size="12">median '+money(med)+'</text>';
