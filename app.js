@@ -17,6 +17,18 @@ var TOWNS = D.townCoords || {coords:{}, aliases:{}, unmappable:[]};
 var JD_ACCOUNTS = ["jdmeyersproductions"];
 
 /* ============================================================
+   Public vs admin mode.
+   Public mode is the colleague-safe view: generic wording, JD Meyers
+   Productions appears as one business among the rest, and JD-specific
+   intel (AI visibility, website sweeps, intake queue, follow graph) is
+   hidden behind the admin password. Admin mode = the full site.
+   ============================================================ */
+var ADMIN = (function(){ try{ return sessionStorage.getItem("pulse_admin")==="1"; }catch(e){ return false; } })();
+var PUB = !ADMIN;
+var HIDDEN_PUB = {network:1, ai:1, sweeps:1, intake:1};
+var JD_PUB_ID = "jd-meyers-productions";
+
+/* ============================================================
    helpers
    ============================================================ */
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
@@ -114,6 +126,16 @@ function priceFloors(p){
    enrich the roster
    ============================================================ */
 var IGH = D.igFollowersHistory || {};
+if(PUB){
+  /* Public mode: JD Meyers Productions joins the market as one business among the rest. */
+  var jdHist = (D.ownAccounts||[]).filter(function(r){ return r.account==="jdmeyersproductions" && /^\d{4}-\d{2}-\d{2}$/.test(r.date); })
+    .map(function(r){ return {date:r.date, count:r.follower_count}; })
+    .sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; });
+  if(jdHist.length) IGH["jdmeyersproductions"] = jdHist;
+  D.competitors.push({id:JD_PUB_ID, name:"JD Meyers Productions", specialty:"both", town:"Potsdam, NY (SLC)",
+    region:"slc", county:"St. Lawrence", website:"jdmeyersjr.com", ig_handle:"jdmeyersproductions",
+    pricing:"", pricing_url:"", notes:"", status:"active", flags:[], source:"directory", source_label:"Directory"});
+}
 var C = (D.competitors||[]).map(function(c){
   var e = Object.assign({}, c);
   e.price = priceFloors(c.pricing);
@@ -177,7 +199,7 @@ C.forEach(function(c){
   } else if(c.source==="web-audit-may2026" || c.source_label==="Web search"){
     h = hub("web", {label:"Web audit, May 2026", kind:"Search audit", desc:"The original Google search audit of local wedding and portrait photographers."});
   } else {
-    h = hub("roster", {label:"Initial roster", kind:"Directory build", desc:"Built from directories, Google listings, The Knot, Zola and JD’s own knowledge."});
+    h = hub("roster", {label:"Initial roster", kind:"Directory build", desc:"Built from directories, Google listings, The Knot, Zola and "+(PUB?"local knowledge.":"JD’s own knowledge.")});
   }
   h.spokes.push(c.id); c.hub = h.id;
 });
@@ -296,15 +318,51 @@ var VIEWS = [
 ];
 var RENDER = {}, rendered = {};
 function buildNav(){
-  $("#nav").innerHTML = VIEWS.map(function(v){
+  $("#nav").innerHTML = VIEWS.filter(function(v){ return v.sep || !PUB || !HIDDEN_PUB[v.id]; }).map(function(v){
     if(v.sep) return '<div class="sep" role="presentation"></div>';
-    return '<a href="#/'+v.id+'" data-v="'+v.id+'">'+esc(v.label)+(v.count?'<span>'+esc(v.count())+'</span>':"")+'</a>';
+    var label = (PUB && v.id==="roster") ? "Directory" : v.label;
+    return '<a href="#/'+v.id+'" data-v="'+v.id+'">'+esc(label)+(v.count?'<span>'+esc(v.count())+'</span>':"")+'</a>';
   }).join("");
   var gen = D.meta && D.meta.generated_at ? new Date(D.meta.generated_at) : null;
   $("#freshness").innerHTML = '<span class="live-dot"></span>Synced <b>'+(gen&&!isNaN(gen)?gen.toLocaleDateString("en-US",{month:"short",day:"numeric"})+", "+gen.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}):"unknown")+'</b><br>Refreshes each morning after the digest.';
+  $(".brand-text small").textContent = PUB ? "North Country photo market" : "JD Meyers Productions";
+  document.title = PUB ? "Business Pulse · North Country photo market" : "Business Pulse · JD Meyers Productions";
+  $("#freshness").insertAdjacentHTML("beforeend", '<button class="admin-btn'+(ADMIN?' on':'')+'" id="adminBtn" aria-label="'+(ADMIN?'Lock admin mode':'Unlock admin mode')+'">'+(ADMIN?'Admin · lock':'Admin')+'</button>');
+  $("#adminBtn").addEventListener("click", ADMIN?lockAdmin:askAdmin);
+}
+function askAdmin(){
+  showAdminModal();
+}
+function lockAdmin(){
+  try{ sessionStorage.removeItem("pulse_admin"); }catch(e){}
+  location.reload();
+}
+function showAdminModal(){
+  var ov = document.createElement("div");
+  ov.className = "admin-overlay";
+  ov.innerHTML =
+    '<div class="admin-modal" role="dialog" aria-modal="true" aria-label="Admin sign in">'+
+    '<h2>Admin sign in</h2><p class="muted">Enter the admin password to see the full site: AI visibility, website sweeps, the intake queue and the follow graph.</p>'+
+    '<label class="field"><span>Password</span><input type="password" id="adminPw" autocomplete="off" placeholder="Password"></label>'+
+    '<p class="admin-err" id="adminErr" hidden>That password is not right. Try again.</p>'+
+    '<div class="admin-actions"><button class="btn ghost sm" id="adminCancel">Cancel</button><button class="btn sm" id="adminGo">Unlock</button></div></div>';
+  document.body.appendChild(ov);
+  var pw = ov.querySelector("#adminPw"), err = ov.querySelector("#adminErr");
+  function close(){ ov.remove(); }
+  function submit(){
+    if(pw.value === "admin"){ try{ sessionStorage.setItem("pulse_admin","1"); }catch(e){} location.reload(); }
+    else { err.hidden = false; pw.value = ""; pw.focus(); }
+  }
+  ov.querySelector("#adminCancel").addEventListener("click", close);
+  ov.querySelector("#adminGo").addEventListener("click", submit);
+  pw.addEventListener("keydown", function(e){ if(e.key==="Enter") submit(); });
+  ov.addEventListener("click", function(e){ if(e.target===ov) close(); });
+  document.addEventListener("keydown", function esc2(e){ if(e.key==="Escape"){ close(); document.removeEventListener("keydown", esc2); } });
+  requestAnimationFrame(function(){ pw.focus(); });
 }
 function route(){
   var id = (location.hash.replace(/^#\/?/,"").split("/")[0]) || "pulse";
+  if(PUB && HIDDEN_PUB[id]) id = "pulse";
   if(!RENDER[id]) id="pulse";
   $$(".view").forEach(function(v){ v.classList.toggle("on", v.id==="view-"+id); });
   $$("#nav a").forEach(function(a){ if(a.dataset.v===id) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -352,7 +410,7 @@ function donutSVG(segs){
     acc+=len;
   });
   g+='<text x="90" y="86" text-anchor="middle" style="font-size:30px;font-weight:700;fill:var(--silver)">'+fmt(total)+'</text><text x="90" y="106" text-anchor="middle" style="font-size:12px">tracked</text>';
-  return '<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="Competitor split donut">'+g+'</svg>';
+  return '<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="Market split donut">'+g+'</svg>';
 }
 function hbar(n, v, max, color, extra, suffix){
   return '<div class="bar"><span class="n"'+(extra||"")+'>'+esc(n)+'</span><span class="t"><i style="width:'+Math.max(2,Math.round(v/max*100))+'%;--c:'+color+'"></i></span><span class="v">'+fmt(v)+(suffix||"")+'</span></div>';
@@ -360,6 +418,7 @@ function hbar(n, v, max, color, extra, suffix){
 
 /* --- ones-to-watch hero: top 5 movers of the trailing week --- */
 function heroWatch(bizCount, jdAiPct){
+  if(PUB) jdAiPct = null; /* AI intel is admin-only */
   var W = D.waves || {window:null, top:[]};
   var win = W.window && W.window.label ? W.window.label : "";
   var dateLine = NOW.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
@@ -372,16 +431,17 @@ function heroWatch(bizCount, jdAiPct){
   var cards = (W.top||[]).map(function(t,i){
     var d = DIR[t.direction] || DIR.active;
     var moveLine = "";
-    if(t.direction==="new") moveLine = '<span class="w-delta" style="color:'+d.c+'">New to the watch list</span>';
+    if(t.direction==="new") moveLine = '<span class="w-delta" style="color:'+d.c+'">'+(PUB?'New to the market':'New to the watch list')+'</span>';
     else if(t.follower_delta) moveLine = '<span class="w-delta" style="color:'+d.c+'">'+(t.follower_delta>0?"+":"")+fmt(t.follower_delta)+' followers</span>';
     var meta = [t.town, t.followers!=null?fmt(t.followers)+" followers":null].filter(function(x){return x;}).join(" · ");
+    var reasons = PUB ? (t.reasons||[]).filter(function(r){ return !/AI answers/i.test(r); }) : (t.reasons||[]);
     return '<button class="watch-card" data-open="'+esc(t.id)+'">'+
       '<span class="w-rank">'+(i+1)+'</span>'+
       '<span class="w-flag" style="--c:'+d.c+'">'+d.t+'</span>'+
       '<span class="w-name">'+esc(t.name)+'</span>'+
       (meta?'<span class="w-meta">'+esc(meta)+'</span>':"")+
       moveLine+
-      '<span class="w-reasons">'+(t.reasons||[]).map(function(r){ return '<span>'+esc(r)+'</span>'; }).join("")+'</span>'+
+      '<span class="w-reasons">'+reasons.map(function(r){ return '<span>'+esc(r)+'</span>'; }).join("")+'</span>'+
     '</button>';
   }).join("");
   return '<div class="hero-watch">'+
@@ -410,7 +470,7 @@ RENDER.pulse = function(el){
     {label:"Location unconfirmed", v:regN.unconfirmed||0, color:"#737C8E"}
   ];
   h += '<div class="grid g-2" style="margin-bottom:18px"><div class="panel"><h2>Where they are</h2>'+
-    tells('<b>What this tells you:</b> how much of the watch list sits in your home county versus the surrounding counties you also compete in.')+
+    tells('<b>What this tells you:</b> '+(PUB?'how the market splits between the home county and the surrounding counties.':'how much of the watch list sits in your home county versus the surrounding counties you also compete in.'))+
     '<div class="donut-wrap">'+donutSVG(segs)+'<div class="donut-legend">'+
     segs.map(function(s){ return '<div class="row"><span class="sw" style="background:'+s.color+'"></span><span>'+esc(s.label)+'</span><b>'+s.v+' ('+Math.round(s.v/C.length*100)+'%)</b></div>'; }).join("")+
     '</div></div>'+srcChip('Roster · '+syncDay)+'</div>';
@@ -428,7 +488,7 @@ RENDER.pulse = function(el){
   });
   var bmax=Math.max.apply(null,bands.map(function(b){return b.v;}));
   h += '<div class="panel"><h2>Are they posting</h2>'+
-    tells('<b>What this tells you:</b> how many competitors are actually marketing right now. A quiet rival is not taking your clients this month.')+
+    tells('<b>What this tells you:</b> how many businesses are actually marketing right now. A quiet rival is not taking '+(PUB?'clients':'your clients')+' this month.')+
     '<div class="bars">'+bands.map(function(b){ return hbar(b.label,b.v,bmax,b.color); }).join("")+'</div>'+srcChip('Instagram activity · '+syncDay)+'</div></div>';
 
   /* --- follower movers --- */
@@ -447,7 +507,8 @@ RENDER.pulse = function(el){
     }).join("")+'</div>': '<p class="muted">No movement in the tracking window.</p>')+
     srcChip('IG snapshots · Sep 24\u201326')+'</div>';
 
-  /* --- AI by prompt --- */
+  /* --- AI by prompt (admin-only: hidden in public mode) --- */
+  if(!PUB){
   var aiH='';
   if(LAST_RUN){
     aiH=PROMPTS.map(function(p){
@@ -462,11 +523,13 @@ RENDER.pulse = function(el){
   }
   h += '<div class="panel"><h2>AI answers, by question</h2>'+
     tells('<b>What this tells you:</b> when someone asks an AI who to hire, how often JD comes up \u2014 broken down by the exact question asked.')+
-    (aiH||'<p class="muted">No AI audit data yet.</p>')+srcChip('AI audit \u00b7 '+(LAST_RUN?LAST_RUN.label:'none'))+'</div></div>';
+    (aiH||'<p class="muted">No AI audit data yet.</p>')+srcChip('AI audit \u00b7 '+(LAST_RUN?LAST_RUN.label:'none'))+'</div>';
+  }
+  h += '</div>';
 
   /* --- market momentum (already visual) --- */
   h += '<div class="panel" style="margin-bottom:18px"><h2>Market momentum</h2>'+
-    tells('<b>What this tells you:</b> the whole watch list sorted by what each business is doing right now \u2014 entering, active, quiet, fading, or no signal yet.')+
+    tells('<b>What this tells you:</b> the whole '+(PUB?'market':'watch list')+' sorted by what each business is doing right now \u2014 entering, active, quiet, fading, or no signal yet.')+
     '<div class="mix" style="height:12px;margin-bottom:14px">'+Object.keys(MOM).map(function(k){ return MOMCOUNT[k]?'<i style="width:'+(MOMCOUNT[k]/C.length*100)+'%;background:'+MOM[k].color+'"></i>':""; }).join("")+'</div>'+
     '<div class="chips">'+Object.keys(MOM).map(function(k){ return '<button class="chip" data-mom="'+k+'" style="--d:'+MOM[k].color+'"><span class="dot"></span>'+MOM[k].label+' '+MOMCOUNT[k]+'</button>'; }).join("")+'</div>'+srcChip('Roster + IG activity · '+syncDay)+'</div>';
 
@@ -508,7 +571,7 @@ function movementFeed(){
 }
 function audienceBars(){
   var rows=[];
-  Object.keys(OWN).forEach(function(a){ rows.push({n:"@"+a, v:OWN[a].follower_count, jd:true}); });
+  if(!PUB) Object.keys(OWN).forEach(function(a){ rows.push({n:"@"+a, v:OWN[a].follower_count, jd:true}); });
   C.filter(function(c){return c.followers;}).forEach(function(c){ rows.push({n:c.name.replace(/ \(.*\)/,""), v:c.followers, id:c.id}); });
   rows.sort(function(a,b){return b.v-a.v;});
   var top = rows.filter(function(r){return !r.jd;}).slice(0,7).concat(rows.filter(function(r){return r.jd;})).sort(function(a,b){return b.v-a.v;});
@@ -1666,7 +1729,7 @@ RENDER.map=function(el){
    ============================================================ */
 var RF = {q:"", lane:null, mom:null, region:null, county:null, sort:"momentum", dir:1};
 RENDER.roster = function(el){
-  var h='<div class="page-head"><h1>Every business on watch</h1><p>Search, filter by lane, momentum or region, and click a row for the full profile.</p></div>';
+  var h='<div class="page-head"><h1>'+(PUB?'Every business in the market':'Every business on watch')+'</h1><p>Search, filter by lane, momentum or region, and click a row for the full profile.</p></div>';
   h+='<div class="panel"><div class="filters" style="margin-bottom:16px"><input class="search" id="rq" type="search" placeholder="Search name, town, handle, notes"></div>';
   h+='<div class="filters"><span class="lbl">Lane</span>'+LANES.map(function(l){return '<button class="filter" data-f="lane" data-v="'+l.id+'"><span class="sw" style="--c:'+l.color+'"></span>'+esc(l.label)+'</button>';}).join("")+'</div>';
   h+='<div class="filters"><span class="lbl">Momentum</span>'+Object.keys(MOM).map(function(k){return '<button class="filter" data-f="mom" data-v="'+k+'"><span class="sw" style="--c:'+MOM[k].color+'"></span>'+MOM[k].label+'</button>';}).join("")+'</div>';
@@ -1750,7 +1813,7 @@ RENDER.landscape = function(el){
   /* ---- (a) positioning scatter ---- */
   var pts=C.filter(function(c){ return c.price.wedding!=null && c.followers!=null; })
     .map(function(c){ return {id:c.id, n:c.name.replace(/ \(.*\)/,""), x:c.price.wedding, y:c.followers}; });
-  var jdPt = OWN.jdmeyersproductions ? {x:1400, y:OWN.jdmeyersproductions.follower_count} : null;
+  var jdPt = PUB ? null : (OWN.jdmeyersproductions ? {x:1400, y:OWN.jdmeyersproductions.follower_count} : null);
 
   /* ---- (b) 2x2 ---- */
   var withW=C.filter(function(c){ return c.price.wedding!=null; });
@@ -1790,12 +1853,12 @@ RENDER.landscape = function(el){
     return t.ids.length+" businesses playing a similar game.";
   }
 
-  var h='<div class="page-head"><h1>Competitive landscape</h1><p>Three classic strategy views of the same market: where everyone sits on price and audience, the four boxes that matter, and the groups playing the same game.</p></div>';
+  var h='<div class="page-head"><h1>'+(PUB?'Market landscape':'Competitive landscape')+'</h1><p>Three classic strategy views of the same market: where everyone sits on price and audience, the four boxes that matter, and the groups playing the same game.</p></div>';
 
   h+='<div class="panel" style="margin-bottom:18px"><h2>Positioning map</h2>'+
     tells('<b>What this tells you:</b> everyone plotted on the two things clients weigh most \u2014 price and audience. Gaps on the map are ground nobody owns yet.')+
     '<div class="chart-narrow">'+scatterSVG(pts, jdPt)+'</div>'+
-    '<p class="hint" style="margin-top:10px">Plotted '+pts.length+' of '+C.length+' competitors'+(jdPt?' \u2014 amber diamond is JD ($1,400 wedding start, '+fmt(jdPt.y)+' followers)':'')+'. Dashed lines mark the medians; the labels name each corner of the market. Hover any dot for the numbers, tap it to open the profile.</p>';
+    '<p class="hint" style="margin-top:10px">Plotted '+pts.length+' of '+C.length+' businesses'+(jdPt?' \u2014 amber diamond is JD ($1,400 wedding start, '+fmt(jdPt.y)+' followers)':'')+'. Dashed lines mark the medians; the labels name each corner of the market. Hover any dot for the numbers, tap it to open the profile.</p>';
   var unplotted=C.filter(function(c){ return !(c.price.wedding!=null && c.followers!=null); });
   if(unplotted.length) h+='<p class="hint" style="margin:6px 0 8px">Not plotted \u2014 no published wedding price or follower count yet ('+unplotted.length+'):</p><div class="chips" style="margin-bottom:6px">'+unplotted.map(function(c){ return chipFor(c.id); }).join("")+'</div>';
   h+=srcChip('Roster pricing + IG snapshots \u00b7 Sep 26')+'</div>';
@@ -1816,7 +1879,7 @@ RENDER.landscape = function(el){
     srcChip('Roster pricing \u00b7 Sep 26')+'</div>';
 
   h+='<div class="panel"><h2>Strategic groups</h2>'+
-    tells('<b>What this tells you:</b> businesses playing the same game the same way. You compete hardest against your own group \u2014 JD sits in Mid-market.')+
+    tells('<b>What this tells you:</b> businesses playing the same game the same way. '+(PUB?'Each business competes hardest against its own group.':'You compete hardest against your own group \u2014 JD sits in Mid-market.'))+
     TIERS.map(function(t){
       return '<div class="tier" data-tier="'+t.id+'" tabindex="0" role="button" data-tip="'+esc(t.name)+' \u2014 '+esc(t.sub)+'. '+t.ids.length+' in this group. Tap to see the members."><div class="tr"><div><div class="tn">'+esc(t.name)+'</div><div class="muted" style="font-size:13px">'+esc(t.sub)+'</div></div><div class="qc" style="font-size:24px;font-weight:700">'+t.ids.length+'</div></div><p class="tread">'+esc(tierRead(t))+'</p></div>';
     }).join("")+
@@ -1844,7 +1907,9 @@ RENDER.landscape = function(el){
    MARKET LANES
    ============================================================ */
 RENDER.market = function(el){
-  var h='<div class="page-head"><h1>The market, lane by lane</h1><p>How each type of work is shaping up: who is in it, which way it is moving, where prices sit, and how often AI points people to JD.</p></div>';
+  var h='<div class="page-head"><h1>The market, lane by lane</h1><p>'+(PUB
+    ?'How each type of work is shaping up: who is in it, which way it is moving, and where prices sit.'
+    :'How each type of work is shaping up: who is in it, which way it is moving, where prices sit, and how often AI points people to JD.')+'</p></div>';
   h+='<div class="grid g-2">';
   LANES.forEach(function(l){
     var s=LSTATS[l.id]; if(!s.n) return;
@@ -1853,7 +1918,7 @@ RENDER.market = function(el){
        (l.id==="unclassified"?'<p class="hint" style="margin-top:6px">No service information yet. Classifying these (a website visit or an IG check) is the fastest way to sharpen the picture.</p>':'')+
        '<div class="stats"><div><b class="num">'+s.n+'</b>tracked</div><div><b class="num">'+s.home+'</b>in St. Lawrence</div>'+
        (s.wMed&&(l.id==="weddings"||l.id==="video")?'<div><b class="num">'+money(s.wMed)+'</b>median wedding start</div>':'')+(s.sMed&&l.id!=="video"&&l.id!=="drone"?'<div><b class="num">'+money(s.sMed)+'</b>median session start</div>':'')+
-       (s.ai!=null?'<div><b class="num" style="color:var(--amber)">'+pct(s.ai)+'</b>JD in AI answers</div>':'')+'</div>'+
+       (s.ai!=null && !PUB?'<div><b class="num" style="color:var(--amber)">'+pct(s.ai)+'</b>JD in AI answers</div>':'')+'</div>'+
        mixBar(s.mom,s.n)+'<div class="chips" style="margin-top:14px">'+sorted.map(function(c){return chipFor(c.id);}).join("")+'</div></div>';
   });
   h+='</div>';
@@ -2009,6 +2074,7 @@ function closeDetail(){
 }
 function relList(id){
   var ls=linksOf(id);
+  if(PUB) ls=ls.filter(function(l){ return l.type!=="jd"; }); /* JD-tied links are admin-only */
   if(!ls.length) return '<p class="muted" style="font-size:13.5px">No recorded collaborations yet.</p>';
   return '<div class="conn">'+ls.map(function(l){ var o=l.s===id?l.t:l.s; return '<div><button class="linkish" data-open="'+esc(o)+'">'+esc(nameOf(o))+'</button> <span class="muted">'+esc(SUB_LABEL[l.sub]||l.sub)+(l.date?", "+shortDate(l.date):"")+'</span><div class="muted" style="font-size:12.5px;margin-top:2px">'+esc(l.evidence||"")+'</div></div>'; }).join("")+'</div>';
 }
@@ -2034,16 +2100,16 @@ function compDetail(c){
   h+='<dt>Instagram</dt><dd>'+(c.ig_handle?'<a href="https://instagram.com/'+esc(c.ig_handle)+'" target="_blank" rel="noopener">@'+esc(c.ig_handle)+'</a>'+(c.followers?', '+fmt(c.followers)+' followers':''):'<span class="muted">None on file</span>')+'</dd>';
   h+='<dt>Last post</dt><dd>'+(c.last_post_date?shortDate(c.last_post_date)+' ('+ago(c.last_post_date)+')'+(c.last_post_topic?'<div class="muted">'+esc(c.last_post_topic)+(c.last_post_type?", "+esc(c.last_post_type):"")+'</div>':''):'<span class="muted">Unknown</span>')+'</dd>';
   h+='<dt>Found via</dt><dd><button class="linkish" data-open="'+esc(hb.seed||hb.id)+'">'+esc(hb.label)+'</button>'+(c.discovered_date?' <span class="muted">on '+shortDate(c.discovered_date)+'</span>':'')+'</dd>';
-  h+='<dt>AI mentions</dt><dd>'+(c.aiMentions?'Named in '+c.aiMentions+' AI answers across all runs':'<span class="muted">Never named by AI</span>')+'</dd>';
-  if(c.may2026_web_score!=null) h+='<dt>May web score</dt><dd>'+c.may2026_web_score+'</dd>';
+  if(!PUB) h+='<dt>AI mentions</dt><dd>'+(c.aiMentions?'Named in '+c.aiMentions+' AI answers across all runs':'<span class="muted">Never named by AI</span>')+'</dd>';  if(c.may2026_web_score!=null) h+='<dt>May web score</dt><dd>'+c.may2026_web_score+'</dd>';
   h+='</dl>';
   if(c.followHist && c.followHist.length>1) h+='<section><h3>Followers over time</h3><div class="chart" id="followSpark"></div></section>';
   if(isHub) h+='<section><h3>This account is a hub. Its following surfaced '+isHub.spokes.length+' businesses</h3><div class="chips">'+isHub.spokes.map(chipFor).join("")+'</div></section>';
   h+='<section><h3>Connections</h3>'+relList(c.id)+'</section>';
-  if(c.sweep) h+='<section><h3>Website monitor</h3><div class="note">'+esc(c.sweep.status.charAt(0).toUpperCase()+c.sweep.status.slice(1))+' on '+shortDate(c.sweep.date)+(c.sweep.note?'. '+esc(c.sweep.note):'')+'</div></section>';
-  if((c.flags||[]).length) h+='<section><h3>Signals</h3><div>'+c.flags.map(function(f){return '<span class="tag">'+esc(flagText(f))+'</span>';}).join("")+'</div></section>';
-  if(c.notes) h+='<section><h3>Research notes</h3><div class="note">'+esc(c.notes)+'</div></section>';
-  h+='<section><button class="btn ghost sm" data-focus="'+esc(isHub?c.id:c.id)+'">Show on network</button></section>';
+  if(c.sweep && !PUB) h+='<section><h3>Website monitor</h3><div class="note">'+esc(c.sweep.status.charAt(0).toUpperCase()+c.sweep.status.slice(1))+' on '+shortDate(c.sweep.date)+(c.sweep.note?'. '+esc(c.sweep.note):'')+'</div></section>';
+  var pubFlags = PUB ? (c.flags||[]).filter(function(f){ return f!=="vouched-by-jd" && f!=="mutual-ig-follows-jd"; }) : (c.flags||[]);
+  if(pubFlags.length) h+='<section><h3>Signals</h3><div>'+pubFlags.map(function(f){return '<span class="tag">'+esc(flagText(f))+'</span>';}).join("")+'</div></section>';
+  if(c.notes && !PUB) h+='<section><h3>Research notes</h3><div class="note">'+esc(c.notes)+'</div></section>';
+  if(!PUB) h+='<section><button class="btn ghost sm" data-focus="'+esc(isHub?c.id:c.id)+'">Show on network</button></section>';
   return h;
 }
 function hubDetail(hb){
@@ -2055,8 +2121,8 @@ function hubDetail(hb){
   return h;
 }
 function extDetail(x){
-  return '<h2>'+esc(x.name)+'</h2><div class="sub">Not on the roster</div><p class="note">This business appears only as a collaborator. If it works in the North Country, consider adding it.</p><section><h3>Connections</h3>'+relList(x.id)+'</section>'+
-    '<section><button class="btn ghost sm" data-go="intake">Add as competitor</button></section>';
+  return '<h2>'+esc(x.name)+'</h2><div class="sub">Not on the roster</div><p class="note">This business appears only as a collaborator.'+(PUB?'':' If it works in the North Country, consider adding it.')+'</p><section><h3>Connections</h3>'+relList(x.id)+'</section>'+
+    (PUB?'':'<section><button class="btn ghost sm" data-go="intake">Add as competitor</button></section>');
 }
 function jdDetail(){
   var h='<h2>JD Meyers Productions</h2><div class="sub">Potsdam, NY. Photo, video and FAA Part 107 drone.</div><dl class="facts">';
