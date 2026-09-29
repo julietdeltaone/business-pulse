@@ -747,7 +747,7 @@ function drawBubbles(){
     ctx.fillStyle="rgba(236,233,226,.95)"; ctx.font="700 16px Hanken Grotesk";
     ctx.fillText("Size vs. activity",lx,hy);
     ctx.fillStyle="rgba(154,163,178,.9)"; ctx.font="500 11px Hanken Grotesk";
-    ctx.fillText("Bigger = more followers · higher = posted more recently · click a bubble for detail",lx,hy+18);
+    ctx.fillText("Bigger = more followers · higher = posted more recently · click a bubble for detail",lx,hy+18,Math.max(50,W-padR-16-lx));
     var ly=hy+42;
     ctx.font="600 10px Hanken Grotesk";
     Object.keys(LANE_COLOR).forEach(function(k){
