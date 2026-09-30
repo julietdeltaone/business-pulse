@@ -918,13 +918,15 @@ var SVC_NORM={
  "children":"Children & newborns","child photography":"Children & newborns","newborns":"Children & newborns",
  "maternity":"Maternity","boudoir":"Boudoir","events":"Events",
  "branding":"Commercial & branding","photobooth":"Photo booth","pets":"Pets","dj package":"DJ services",
- "videography":"Videography","wedding videography":"Videography","memory videos":"Videography","promotional video":"Videography",
- "drone photo+video":"Drone","aerial photo/video":"Drone",
+ "videography":"Videography","video":"Videography","wedding videography":"Videography","memory videos":"Videography","promotional video":"Videography",
+ "drone":"Drone","drone photo+video":"Drone","aerial photo/video":"Drone",
  "real estate":"Real estate","real estate/commercial aerial + ground photo/video":"Real estate"};
 var LS_COUNTIES=["St. Lawrence","Essex","Franklin","Jefferson","Clinton","Lewis","Herkimer"];
 var LS_CSHORT={"St. Lawrence":"St. Law.","Essex":"Essex","Franklin":"Frank.","Jefferson":"Jeff.","Clinton":"Clinton","Lewis":"Lewis","Herkimer":"Herk."};
 function svcList(b){ var out=[],seen={};
-  (b.services||"").split(",").forEach(function(s){ s=s.replace(/\s*\(.*$/,"").trim().toLowerCase();
+  /* B normalizes services to an array at load; tolerate a raw string too. */
+  var arr=Array.isArray(b.services)?b.services:String(b.services||"").split(/[,;]+/);
+  arr.forEach(function(s){ s=String(s).replace(/\s*\(.*$/,"").trim().toLowerCase();
     var n=SVC_NORM[s]||null;
     if(n&&!seen[n]){ seen[n]=1; out.push(n); } });
   return out; }
