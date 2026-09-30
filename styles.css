@@ -361,6 +361,33 @@ a{color:var(--blue)}
 .cfrub li{display:flex;gap:9px;align-items:flex-start;margin:7px 0;color:var(--mut);line-height:1.5}
 .cfrub li b{color:var(--txt);font-weight:600;white-space:nowrap}
 .cfrub .sw{width:10px;height:10px;border-radius:3px;flex:none;margin-top:4px}
+/* score strip + scorecard dashboard */
+.scorerow{display:flex;gap:6px;margin:8px 0 2px;flex-wrap:wrap}
+.schip{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);cursor:pointer;min-width:64px;color:var(--txt);font-family:inherit}
+.schip .scl{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}
+.schip .scv{font-size:12.5px;font-weight:700;white-space:nowrap}
+.schip.hi .scv{color:#6db3f2}.schip.mid .scv{color:#e8b34b}.schip.lo .scv{color:#e06c6c}.schip.unk .scv{color:var(--dim)}
+.schip:hover{border-color:rgba(109,179,242,.45)}
+.cfmeter.hero{border-color:rgba(109,179,242,.4);box-shadow:0 0 0 1px rgba(109,179,242,.12),0 4px 18px rgba(109,179,242,.07)}
+.modal.wide{width:min(540px,94vw);max-height:88vh;overflow-y:auto}
+.dsec{border-top:1px solid var(--line);padding:12px 0}
+.dsec.hero{border:1px solid rgba(109,179,242,.35);border-radius:12px;padding:12px;background:rgba(109,179,242,.06);margin-bottom:6px}
+.dhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.dlabel{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--txt)}
+.dpill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:11px;border:1px solid var(--line);white-space:nowrap}
+.dpill.hi{color:#6db3f2;border-color:rgba(109,179,242,.5)}
+.dpill.mid{color:#e8b34b;border-color:rgba(232,179,75,.5)}
+.dpill.lo{color:#e06c6c;border-color:rgba(224,108,108,.5)}
+.dpill.unk{color:var(--dim)}
+.dmeas{font-size:12px;color:var(--mut);margin:0 0 8px;line-height:1.5}
+.dnums{font-size:12.5px;color:var(--txt)}
+.dsum{font-size:12px;font-weight:700;color:var(--txt);margin:2px 0 8px}
+.dfactor{display:flex;gap:9px;align-items:flex-start;margin:7px 0;font-size:12.5px;line-height:1.5}
+.dfactor>div b{display:block;color:var(--txt);font-weight:600}
+.dfactor>div span{color:var(--mut);font-size:12px}
+.dfactor.missed{opacity:.55}
+.dfm{font-weight:800;flex:none;width:20px;text-align:center}
+.dfm.ok{color:#6db3f2}.dfm.no{color:#e06c6c}
 .cfpct{font-family:var(--serif);font-size:34px;line-height:1;margin:2px 0 4px}
 
 /* ---------- persistent nav buttons: home / back / forward ---------- */
