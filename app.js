@@ -464,7 +464,7 @@ function confMeter(b){
   var s=confOf(b); if(s==null) return "";
   var cls=confBand(s);
   return '<button class="cfmeter '+cls+'" data-cf="'+b.id+'" aria-label="Information confidence '+s+' percent — tap for an explanation">'+
-    '<span class="cfl">Confidence</span>'+
+    '<span class="cfl">Information confidence</span>'+
     '<span class="cfbar"><i style="width:'+Math.max(3,s)+'%"></i></span>'+
     '<span class="cfv">'+s+'%</span><span class="cfaq">?</span></button>';
 }
@@ -480,19 +480,27 @@ function openConfModal(id){
     '<div class="cfpct" style="color:'+(cls==="lo"?"#e06c6c":cls==="mid"?"#e8b34b":"#6db3f2")+'">'+s+'%</div>'+
     '<h2 style="font-size:20px">Information confidence</h2>'+
     '<p style="margin-bottom:4px"><b style="color:var(--txt)">'+esc(b.name)+'</b></p>'+
-    '<p>'+esc(bandTxt)+'</p>'+
-    '<ul class="cfrub">'+
-    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Website (25)</b> — the business site loads and was actually read.</span></li>'+
-    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Prices (15)</b> — a starting price could be parsed from their published pricing.</span></li>'+
-    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Services (15)</b> — their service list is on record.</span></li>'+
-    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Instagram (15)</b> — the handle resolves to a tracked profile.</span></li>'+
-    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Location (10)</b> — town/county corroborated beyond the roster.</span></li>'+
-    '<li><span class="sw" style="background:#6db3f2"></span><span><b>History (10)</b> — years in business known.</span></li>'+
-    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Third source (10)</b> — at least one source beyond their own site (directory, Knot, Facebook…).</span></li>'+
-    '<li><span class="sw" style="background:#e06c6c"></span><span><b>Price conflict (−20)</b> — two sources state different prices; flagged for human review.</span></li>'+
-    '</ul>';
+    '<p>'+esc(bandTxt)+'</p>';
+  /* actual grading for THIS profile — earned points per factor, not the generic rubric */
+  var parts=(cfd&&cfd.parts)||{};
+  var FACTORS=[
+    ["website","Website",25,"the business site loads and was actually read"],
+    ["prices","Prices",15,"a starting price could be parsed from their published pricing"],
+    ["services","Services",15,"their service list is on record"],
+    ["ig","Instagram",15,"the handle resolves to a tracked profile"],
+    ["location","Location",10,"town/county corroborated beyond the roster"],
+    ["history","History",10,"years in business known"],
+    ["corroboration","Third source",10,"at least one source beyond their own site (directory, Knot, Facebook…)"]
+  ];
+  h+='<ul class="cfrub">';
+  FACTORS.forEach(function(f){
+    var e=parts[f[0]]||0, full=e>=f[2], none=e<=0;
+    var mark=full?'<span style="color:#6db3f2">●</span>':none?'<span style="color:#e06c6c">○</span>':'<span style="color:#e8b34b">◐</span>';
+    h+='<li>'+mark+'<span><b>'+f[1]+'</b> — <b>'+e+'/'+f[2]+'</b> · '+f[3]+'</span></li>';
+  });
+  h+='</ul>';
   if(cfd&&cfd.conflict)
-    h+='<p style="color:#e08a8a"><b>Price conflict on this profile:</b><br>'+
+    h+='<p style="color:#e08a8a"><b>Price conflict (−20) on this profile:</b><br>'+
       cfd.conflict.values.map(function(v){ return esc(v.label)+": <b>"+esc(v.text)+"</b>"; }).join("<br>")+'</p>';
   h+='<p style="font-size:12px">A rotating deep-dive pass re-researches every business and venue weekly to raise these scores.</p>'+
     '<div class="mrow"><button class="btn" id="cfok">Got it</button></div></div></div>';
