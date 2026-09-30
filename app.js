@@ -906,6 +906,69 @@ function yearsOf(b){ var w=WI[b.id]||{};
   if(b.est_year!=null) return "est. "+b.est_year;
   return ""; }
 function townCounty(b){ return b.townShort+((b.county&&b.region==="adjacent")?" · "+b.county+" Co":""); }
+/* ---------- service landscape ---------- */
+var SVC_NORM={
+ "weddings":"Weddings","wedding photography":"Weddings","wedding photo+video":"Weddings",
+ "elopements":"Elopements",
+ "engagements":"Engagements","engagement":"Engagements",
+ "couples":"Couples",
+ "portraits":"Portraits",
+ "seniors":"Seniors","senior":"Seniors","school/team photos":"School & team",
+ "families":"Families","family":"Families","family portraits":"Families","some family photography":"Families",
+ "children":"Children & newborns","child photography":"Children & newborns","newborns":"Children & newborns",
+ "maternity":"Maternity","boudoir":"Boudoir","events":"Events",
+ "branding":"Commercial & branding","photobooth":"Photo booth","pets":"Pets","dj package":"DJ services",
+ "videography":"Videography","wedding videography":"Videography","memory videos":"Videography","promotional video":"Videography",
+ "drone photo+video":"Drone","aerial photo/video":"Drone",
+ "real estate":"Real estate","real estate/commercial aerial + ground photo/video":"Real estate"};
+var LS_COUNTIES=["St. Lawrence","Essex","Franklin","Jefferson","Clinton","Lewis","Herkimer"];
+var LS_CSHORT={"St. Lawrence":"St. Law.","Essex":"Essex","Franklin":"Frank.","Jefferson":"Jeff.","Clinton":"Clinton","Lewis":"Lewis","Herkimer":"Herk."};
+function svcList(b){ var out=[],seen={};
+  (b.services||"").split(",").forEach(function(s){ s=s.replace(/\s*\(.*$/,"").trim().toLowerCase();
+    var n=SVC_NORM[s]||null;
+    if(n&&!seen[n]){ seen[n]=1; out.push(n); } });
+  return out; }
+function landscapeHTML(list){
+  var withSvc=0, svcCount={}, svcFol={}, svcCounty={}, totFol=0;
+  list.forEach(function(b){
+    var f=followersAt(b,S.di); if(f!=null) totFol+=f;
+    var sv=svcList(b); if(sv.length) withSvc++;
+    sv.forEach(function(s){
+      svcCount[s]=(svcCount[s]||0)+1;
+      if(f!=null) svcFol[s]=(svcFol[s]||0)+f;
+      if(b.county&&LS_COUNTIES.indexOf(b.county)>=0){
+        svcCounty[s]=svcCounty[s]||{}; svcCounty[s][b.county]=(svcCounty[s][b.county]||0)+1; }
+    });
+  });
+  var svcs=Object.keys(svcCount).sort(function(a,b2){ return svcCount[b2]-svcCount[a]; });
+  if(!svcs.length) return "";
+  var h='<div class="sec ls"><h3>Service landscape</h3><div class="sub">Where the market\u2019s services run deep \u2014 and where coverage thins. Based on services businesses list publicly ('+withSvc+' of '+list.length+' disclose a list).</div>';
+  h+='<div class="ls-bars">'+svcs.map(function(s){
+    var n=svcCount[s], pct=Math.round(n/list.length*100),
+        share=totFol?Math.round((svcFol[s]||0)/totFol*100):0;
+    return '<div class="ls-brow"><div class="ls-blab" title="'+esc(s)+'">'+esc(s)+'</div>'+
+      '<div class="ls-btrack"><i style="width:'+Math.max(2,Math.round(n/svcCount[svcs[0]]*100))+'%"></i></div>'+
+      '<div class="ls-bmeta"><b>'+n+'</b> \u00b7 '+pct+'% of market \u00b7 '+share+'% of audience</div></div>';
+  }).join("")+'</div>';
+  var top=svcs.slice(0,12), mx=1;
+  top.forEach(function(s){ LS_COUNTIES.forEach(function(c){ mx=Math.max(mx,((svcCounty[s]||{})[c])||0); }); });
+  h+='<h3 class="ls-h">Service \u00d7 county map</h3><div class="sub">Providers per service in each county \u2014 deeper color means deeper coverage.</div><div class="ls-mx">';
+  h+='<div class="ls-mxlab"></div>'+LS_COUNTIES.map(function(c){ return '<div class="ls-mxch" title="'+esc(c)+' County">'+esc(LS_CSHORT[c])+'</div>'; }).join("");
+  top.forEach(function(s){
+    h+='<div class="ls-mxlab" title="'+esc(s)+'">'+esc(s)+'</div>';
+    LS_COUNTIES.forEach(function(c){ var v=((svcCounty[s]||{})[c])||0, a=v?0.12+0.55*(v/mx):0;
+      h+='<div class="ls-mxc" title="'+esc(s)+' \u00b7 '+esc(c)+' Co: '+v+' provider'+(v===1?'':'s')+'" style="background:rgba(232,179,75,'+a.toFixed(2)+')">'+(v||'<span class="ls-zero">\u2014</span>')+'</div>'; });
+  });
+  h+='</div>';
+  var thin=svcs.slice().sort(function(a,b2){ return svcCount[a]-svcCount[b2]; }).slice(0,4);
+  h+='<h3 class="ls-h">Thinner coverage</h3><div class="sub">The least-served offerings \u2014 potential openings.</div>'+
+    thin.map(function(s){
+      var missing=LS_COUNTIES.filter(function(c){ return !((svcCounty[s]||{})[c]); });
+      return '<div class="ls-open"><b>'+esc(s)+'</b> \u2014 '+svcCount[s]+' provider'+(svcCount[s]===1?'':'s')+' market-wide'+
+        (missing.length?'; no listed providers in '+missing.map(function(c){ return esc(LS_CSHORT[c]); }).join(', '):'')+'.</div>';
+    }).join("")+'</div>';
+  return h;
+}
 var DCOLS=[
   ["name","Name","str"],["town","Town/County","str"],["followers","IG followers","num"],
   ["ch7","7d","num"],["ch30","30d","num"],["posts","Posts","num"],
@@ -938,6 +1001,7 @@ function dCellHTML(b,k){
     case "ig": return v?"@"+esc(v):"—";
     case "conf": return v==null?"—":confBadge(b);
     case "name": return "<b>"+esc(v)+"</b>";
+    case "town": return '<span title="'+esc(v)+'">'+esc(b.townShort||v)+"</span>";
     default: return esc(v==null||v===""?"—":v);
   }
 }
@@ -1083,6 +1147,7 @@ function renderVenueMarket(){
 function renderMarket(){
   if(S.mode==="venues") return renderVenueMarket();
   var list=filtered(), h='<div class="sec"><h3>Market</h3><div class="sub">Aggregates across '+list.length+' businesses</div>';
+  h+=landscapeHTML(list);
   var f=list.filter(function(b){return b.followers!=null;}).map(function(b){return b.followers;});
   f.sort(function(a,b){return a-b;});
   function med(a){ return a.length?a[Math.floor(a.length/2)]:null; }
