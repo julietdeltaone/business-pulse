@@ -205,7 +205,7 @@ var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unc
 
 /* ---------- state ---------- */
 var S={ view:"map", mode:"businesses", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
-        sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, ptab:"overview" };
+        sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, ptab:"overview", qx:{} };
 
 /* ---------- undo / redo history (back-forward) + home ----------
    Every meaningful action pushes a full snapshot; back/forward restore it.
@@ -577,19 +577,23 @@ function scoreChips4(b){
     chip("Activity",a)+chip("Momentum",m)+chip("Engagement",e)+chip("Reviews",r)+"</div>";
 }
 /* five headline numbers for the collapsed panel */
+function dstrShort(ds){ if(!ds) return "\u2014"; var d=new Date(ds+"T12:00:00");
+  return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
 function headStats(b){
   var f=followersAt(b,S.di), ri=reviewInfo(b), s=confOf(b);
   var price=b.price.wedding!=null?money(b.price.wedding)
     :b.price.session!=null?money(b.price.session)
-    :b.price.weddingHourly!=null?money(b.price.weddingHourly)+"/hr":"—";
-  var last=b.last_post_date?dstr(b.last_post_date):(b.postAge!=null?b.postAge+"d ago":"—");
-  function stat(v,l){ return '<div class="hstat"><div class="v">'+v+'</div><div class="l">'+l+"</div></div>"; }
+    :b.price.weddingHourly!=null?money(b.price.weddingHourly)+"/hr":"\u2014";
+  var lastFull=b.last_post_date?dstr(b.last_post_date):null;
+  var last=lastFull?dstrShort(b.last_post_date):(b.postAge!=null?b.postAge+"d ago":"\u2014");
+  /* Nuclear overflow rule: values never wrap and never spill; full value lives in title. */
+  function stat(v,l,t){ return '<div class="hstat"><div class="v"'+(t?' title="'+esc(t)+'"':"")+'>'+v+'</div><div class="l">'+l+"</div></div>"; }
   return '<div class="hstats">'+
-    stat(f!=null?fmt(f):"—","Followers")+
-    stat(last,"Last post")+
-    stat(price,"Starting price")+
-    stat(ri?fmt(ri.count):"—","Reviews")+
-    stat(s!=null?s+"%":"—","Confidence")+"</div>";
+    stat(f!=null?fmt(f):"\u2014","Followers",f!=null?("Followers: "+f):"")+
+    stat(last,"Last post",lastFull?("Last post: "+lastFull):(b.postAge!=null?("Last post: "+b.postAge+" days ago"):""))+
+    stat(price,"Starting price",price!=="\u2014"?("Starting price: "+price):"")+
+    stat(ri?fmt(ri.count):"\u2014","Reviews",ri?("Reviews: "+ri.count):"")+
+    stat(s!=null?s+"%":"\u2014","Confidence",s!=null?("Information confidence: "+s+"%"):"")+"</div>";
 }
 function profHead(b){
   var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
@@ -1276,128 +1280,153 @@ function yearsNum(b){ var w=WI[b.id]||{}, Y=new Date().getFullYear();
   if(b.est_year!=null) return Y-b.est_year;
   return null; }
 function marketGlanceHTML(){
-  /* The questions our data answers best, as full-height cards. */
-  function qCard(q,sub,bars,answer){
+  /* The questions our data answers best, as roomy cards in a no-scroll grid.
+     Every bucket row expands inline to list the businesses inside it. */
+  function qCard(q,sub,bars,answer,ci){
+    var rows=bars.map(function(r,ri){
+      var key=ci+":"+ri, open=S.qx[key];
+      var attrs=r.id?' data-open="'+r.id+'"':(r.members?' data-qx="'+key+'"':"");
+      var h='<div class="qrow'+(r.members?" qx":"")+'"'+attrs+'>'+
+        '<span class="qn"'+(r.full?' title="'+esc(r.full)+'"':"")+'>'+esc(r.label)+'</span>'+
+        '<span class="qv">'+r.val+(r.members?'<span class="qchev">'+(open?"\u25BE":"\u25B8")+"</span>":"")+"</span>"+
+        '<span class="qtrack"><i style="width:'+r.pct+"%;background:"+r.color+'"></i></span></div>';
+      if(r.members&&open){
+        var ms=r.members.slice(0,12);
+        h+='<div class="qmem">'+ms.map(function(m){
+          return '<div class="qmemrow" data-open="'+m.id+'" title="'+esc(m.name)+'">'+
+            '<span class="qn">'+esc(m.name)+'</span><span class="qv">'+esc(m.sub||"")+"</span></div>";
+        }).join("")+(r.members.length>12?'<div class="qmore">+'+(r.members.length-12)+" more in this bucket</div>":"")+"</div>";
+      }
+      return h;
+    }).join("");
     return '<div class="sec qcard"><h3>'+q+'</h3><div class="sub">'+sub+'</div><div class="qbars">'+
-      bars.map(function(r){ return '<div class="qrow"'+(r.id?' data-open="'+r.id+'"':"")+'>'+
-        '<span class="qn">'+esc(r.label)+'</span><span class="qv">'+r.val+'</span>'+
-        '<span class="qtrack"><i style="width:'+r.pct+'%;background:'+r.color+'"></i></span></div>'; }).join("")+
-      '</div><div class="qans">'+answer+'</div></div>';
+      rows+'</div><div class="qans">'+answer+"</div></div>";
   }
+  /* members: sorted business/venue list backing an expandable bucket row */
+  function bmem(arr,sortFn,subFn){
+    return arr.slice().sort(sortFn).map(function(x){ return {id:x.id,name:x.name,sub:subFn(x)}; });
+  }
+  function byName(a,b){ return a.name<b.name?-1:(a.name>b.name?1:0); }
   if(S.mode==="venues"){
     var cards=[];
     /* Q1: where are the venues? */
-    var co={}; V.forEach(function(v){ var c=v.county||"Unknown"; co[c]=(co[c]||0)+1; });
+    var co={},com={};
+    V.forEach(function(v){ var c=v.county||"Unknown"; co[c]=(co[c]||0)+1; (com[c]=com[c]||[]).push(v); });
     var ckeys=Object.keys(co).sort(function(a,b){return co[b]-co[a];});
     var cmax=co[ckeys[0]]||1, ccols=["#e8b34b","#6db3f2","#6fd3e7","#b48ce8","#e06c6c","#8a94a6"];
     cards.push(qCard("Locations","All "+V.length+" venues by county",
-      ckeys.map(function(k,i){ return {label:k,val:co[k],pct:Math.round(co[k]/cmax*100),color:ccols[i%ccols.length]}; }),
-      "St. Lawrence County holds <b>"+(co["St. Lawrence"]||0)+"</b> of "+V.length+" — the rest spread across "+(ckeys.length-1)+" nearby counties."));
+      ckeys.map(function(k,i){ return {label:k,full:k,val:co[k],pct:Math.round(co[k]/cmax*100),color:ccols[i%ccols.length],
+        members:bmem(com[k],byName,function(v){return v.town||""})}; }),
+      "St. Lawrence County holds <b>"+(co["St. Lawrence"]||0)+"</b> of "+V.length+" \u2014 the rest spread across "+(ckeys.length-1)+" nearby counties.",0));
     /* Q2: how big are they? */
-    var cb=[["Up to 100",0],["101–200",0],["201–300",0],["300+",0],["Unknown",0]];
-    V.forEach(function(v){ var c=v.capacity_num;
-      if(c==null)cb[4][1]++; else if(c<=100)cb[0][1]++; else if(c<=200)cb[1][1]++; else if(c<=300)cb[2][1]++; else cb[3][1]++; });
-    var bmax=Math.max.apply(null,cb.map(function(x){return x[1];}))||1;
-    var bcols=["#6fd3e7","#6db3f2","#e8b34b","#e06c6c","#3a4353"];
-    cards.push(qCard("Capacity","Max guest capacity, "+(V.length-cb[4][1])+" of "+V.length+" known",
-      cb.map(function(x,i){ return {label:x[0]+" guests",val:x[1],pct:Math.round(x[1]/bmax*100),color:bcols[i]}; }),
-      "The sweet spot is <b>101–300 guests</b> — mid-size barns dominate the market."));
+    var cb=[["Up to 100",[],"#6fd3e7"],["101\u2013200",[],"#6db3f2"],["201\u2013300",[],"#e8b34b"],["300+",[],"#e06c6c"],["Unknown",[],"#3a4353"]];
+    V.forEach(function(v){ var c=v.capacity_num,bi=c==null?4:(c<=100?0:(c<=200?1:(c<=300?2:3))); cb[bi][1].push(v); });
+    var bmax=Math.max.apply(null,cb.map(function(x){return x[1].length;}))||1;
+    cards.push(qCard("Capacity","Max guest capacity, "+(V.length-cb[4][1].length)+" of "+V.length+" known",
+      cb.map(function(x){ return {label:x[0]+" guests",val:x[1].length,pct:Math.round(x[1].length/bmax*100),color:x[2],
+        members:bmem(x[1],function(a,b){return (b.capacity_num||0)-(a.capacity_num||0);},
+          function(v){return v.capacity_num?v.capacity_num+" guests":"";})}; }),
+      "The sweet spot is <b>101\u2013300 guests</b> \u2014 mid-size barns dominate the market.",1));
     /* Q3: are they on Instagram? */
-    var ia=0,idm=0,inone=0;
-    V.forEach(function(v){ if(!v.ig_handle)inone++;
-      else{ var a=v.last_post_date?Math.floor((Date.now()-new Date(v.last_post_date+"T12:00:00"))/864e5):1e9;
-        if(a<=90)ia++; else idm++; } });
-    var imax=Math.max(ia,idm,inone,1);
-    cards.push(qCard("Instagram","Verified venue accounts only — never guessed",
-      [{label:"Active (posted ≤90d)",val:ia,pct:Math.round(ia/imax*100),color:"#e8b34b"},
-       {label:"Dormant",val:idm,pct:Math.round(idm/imax*100),color:"#6db3f2"},
-       {label:"No verified account",val:inone,pct:Math.round(inone/imax*100),color:"#3a4353"}],
-      "<b>"+inone+" of "+V.length+"</b> venues have no verified Instagram — the outreach gap is wide open."));
-    if(S.railX){
-      var st={}; V.forEach(function(v){ var s=v.setting||"Unknown"; st[s]=(st[s]||0)+1; });
-      var skeys=Object.keys(st).sort(function(a,b){return st[b]-st[a];}).slice(0,7);
-      var smax=st[skeys[0]]||1, scols=["#e8b34b","#6db3f2","#6fd3e7","#b9c2cf","#e06c6c","#8a94a6","#3a4353"];
-      cards.push(qCard("Settings","Venue style, as listed",
-        skeys.map(function(k,i){ return {label:k,val:st[k],pct:Math.round(st[k]/smax*100),color:scols[i%scols.length]}; }),
-        "Settings vary — <b>"+skeys.length+"</b> distinct styles across "+V.length+" venues"+(st[skeys[0]]>1?"; <b>"+skeys[0]+"</b> leads ("+st[skeys[0]]+")":"; no single style dominates")+"."));
-    }
+    var ia=[],idm=[],inone=[];
+    V.forEach(function(v){ if(!v.ig_handle){ inone.push(v); return; }
+      var a=v.last_post_date?Math.floor((Date.now()-new Date(v.last_post_date+"T12:00:00"))/864e5):1e9;
+      (a<=90?ia:idm).push(v); });
+    var imax=Math.max(ia.length,idm.length,inone.length,1);
+    function vsub(v){ return v.ig_handle?"@"+v.ig_handle:""; }
+    cards.push(qCard("Instagram","Verified venue accounts only \u2014 never guessed",
+      [{label:"Active (posted \u226490d)",val:ia.length,pct:Math.round(ia.length/imax*100),color:"#e8b34b",members:bmem(ia,byName,vsub)},
+       {label:"Dormant",val:idm.length,pct:Math.round(idm.length/imax*100),color:"#6db3f2",members:bmem(idm,byName,vsub)},
+       {label:"No verified account",val:inone.length,pct:Math.round(inone.length/imax*100),color:"#3a4353",members:bmem(inone,byName,vsub)}],
+      "<b>"+inone.length+" of "+V.length+"</b> venues have no verified Instagram \u2014 the outreach gap is wide open.",2));
+    /* Q4: what style of venue? */
+    var st={},stm={};
+    V.forEach(function(v){ var s=v.setting||"Unknown"; st[s]=(st[s]||0)+1; (stm[s]=stm[s]||[]).push(v); });
+    var skeys=Object.keys(st).sort(function(a,b){return st[b]-st[a];}).slice(0,7);
+    var smax=st[skeys[0]]||1, scols=["#e8b34b","#6db3f2","#6fd3e7","#b9c2cf","#e06c6c","#8a94a6","#3a4353"];
+    cards.push(qCard("Settings","Venue style, as listed",
+      skeys.map(function(k,i){ return {label:k,full:k,val:st[k],pct:Math.round(st[k]/smax*100),color:scols[i%scols.length],
+        members:bmem(stm[k],byName,function(v){return v.town||""})}; }),
+      "Settings vary \u2014 <b>"+skeys.length+"</b> distinct styles across "+V.length+" venues"+(st[skeys[0]]>1?"; <b>"+esc(skeys[0])+"</b> leads ("+st[skeys[0]]+")":"; no single style dominates")+".",3));
     return railHead()+cards.join("");
   }
   var list=C, cards=[];
   /* Q1: who is actually posting? */
-  var ab=[["Active · ≤30 days",0,"#e8b34b"],["Steady · 31–90 days",0,"#6db3f2"],
-          ["Quiet · 91–180 days",0,"#6fd3e7"],["Dormant · 180+ days",0,"#e06c6c"],["Unknown",0,"#3a4353"]];
-  list.forEach(function(b){ var a=b.postAge;
-    if(a==null)ab[4][1]++; else if(a<=30)ab[0][1]++; else if(a<=90)ab[1][1]++;
-    else if(a<=180)ab[2][1]++; else ab[3][1]++; });
-  var amax=Math.max.apply(null,ab.map(function(x){return x[1];}))||1;
-  var knownPosters=ab[0][1]+ab[1][1];
+  var ab=[["Active \u00b7 \u226430 days",[],"#e8b34b"],["Steady \u00b7 31\u201390 days",[],"#6db3f2"],
+          ["Quiet \u00b7 91\u2013180 days",[],"#6fd3e7"],["Dormant \u00b7 180+ days",[],"#e06c6c"],["Unknown",[],"#3a4353"]];
+  list.forEach(function(b){ var a=b.postAge,bi=a==null?4:(a<=30?0:(a<=90?1:(a<=180?2:3))); ab[bi][1].push(b); });
+  var amax=Math.max.apply(null,ab.map(function(x){return x[1].length;}))||1;
   cards.push(qCard("Posting activity","Last post recency across "+list.length+" businesses",
-    ab.map(function(x){ return {label:x[0],val:x[1],pct:Math.round(x[1]/amax*100),color:x[2]}; }),
-    "<b>"+ab[0][1]+" of "+list.length+"</b> posted in the last 30 days — a small active set carries the market's feed."));
+    ab.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/amax*100),color:x[2],
+      members:bmem(x[1],
+        function(a,b){return (a.postAge==null?1e9:a.postAge)-(b.postAge==null?1e9:b.postAge);},
+        function(b){return b.postAge!=null?b.postAge+"d ago":"";})}; }),
+    "<b>"+ab[0][1].length+" of "+list.length+"</b> posted in the last 30 days \u2014 a small active set carries the market's feed.",0));
   /* Q2: where does the audience sit? */
   var aud=list.filter(function(b){return b.followers!=null;})
-    .sort(function(a,b){return b.followers-a.followers;}).slice(0,8);
+    .sort(function(a,b){return b.followers-a.followers;}).slice(0,6);
   var totAud=list.reduce(function(s,b){return s+(b.followers||0);},0);
   var topAud=aud.reduce(function(s,b){return s+b.followers;},0);
   var fmax=aud.length?aud[0].followers:1;
   var acols=["#e8b34b","#6db3f2","#6fd3e7","#b48ce8","#8a94a6"];
-  cards.push(qCard("Audience","Top 8 by Instagram followers",
-    aud.map(function(b,i){ return {label:b.name,val:fmt(b.followers),id:b.id,
+  cards.push(qCard("Audience","Top 6 by Instagram followers",
+    aud.map(function(b,i){ return {label:b.name,full:b.name,val:fmt(b.followers),id:b.id,
       pct:Math.round(b.followers/fmax*100),color:acols[i%acols.length]}; }),
-    "The top 8 hold <b>"+(totAud?Math.round(topAud/totAud*100):0)+"%</b> of all "+fmt(totAud)+" tracked followers."));
+    "The top 6 hold <b>"+(totAud?Math.round(topAud/totAud*100):0)+"%</b> of all "+fmt(totAud)+" tracked followers.",1));
   /* Q3: what does it cost? */
-  var pb=[["Under $1k",0,"#6fd3e7"],["$1k–$2k",0,"#6db3f2"],["$2k–$3.5k",0,"#e8b34b"],
-          ["$3.5k+",0,"#e06c6c"],["Not published",0,"#3a4353"]];
-  list.forEach(function(b){ var w=b.price.wedding;
-    if(w==null)pb[4][1]++; else if(w<1000)pb[0][1]++; else if(w<2000)pb[1][1]++;
-    else if(w<3500)pb[2][1]++; else pb[3][1]++; });
-  var pmax=Math.max.apply(null,pb.map(function(x){return x[1];}))||1;
-  var pub=pb[0][1]+pb[1][1]+pb[2][1]+pb[3][1];
+  var pb=[["Under $1k",[],"#6fd3e7"],["$1k\u2013$2k",[],"#6db3f2"],["$2k\u2013$3.5k",[],"#e8b34b"],
+          ["$3.5k+",[],"#e06c6c"],["Not published",[],"#3a4353"]];
+  list.forEach(function(b){ var w=b.price.wedding,bi=w==null?4:(w<1000?0:(w<2000?1:(w<3500?2:3))); pb[bi][1].push(b); });
+  var pmax=Math.max.apply(null,pb.map(function(x){return x[1].length;}))||1;
+  var pub=pb[0][1].length+pb[1][1].length+pb[2][1].length+pb[3][1].length;
   cards.push(qCard("Cost","Starting wedding price, where published",
-    pb.map(function(x){ return {label:x[0],val:x[1],pct:Math.round(x[1]/pmax*100),color:x[2]}; }),
-    "<b>"+pub+" of "+list.length+"</b> publish a starting wedding price — "+pb[4][1]+" keep it hidden."));
-  if(S.railX){
-    /* Q4: who's gaining followers? */
-    var gr=list.map(function(b){ return {b:b,ch:pctChange(b,Math.max(0,S.di-30),S.di)}; })
-      .filter(function(x){return x.ch!=null;}).sort(function(a,b){return b.ch-a.ch;}).slice(0,8);
-    if(gr.length){
-      var gmax=Math.max.apply(null,gr.map(function(x){return Math.abs(x.ch);} ).concat([0.1]));
-      cards.push(qCard("Follower growth","30-day follower change, top movers",
-        gr.map(function(x){ return {id:x.b.id,label:x.b.name,val:(x.ch>=0?"+":"")+x.ch.toFixed(1)+"%",
-          pct:Math.min(100,Math.round(Math.abs(x.ch)/gmax*100)),color:x.ch>=0?"#6db3f2":"#e06c6c"}; }),
-        "Tap a row to open the profile."));
-    }
-    /* Q5: how long have they been around? */
-    var yb=[["Under 3 yrs",0,"#6fd3e7"],["3–5 yrs",0,"#6db3f2"],["6–10 yrs",0,"#e8b34b"],
-            ["10+ yrs",0,"#b9c2cf"],["Unknown",0,"#3a4353"]];
-    list.forEach(function(b){ var y=yearsNum(b);
-      if(y==null)yb[4][1]++; else if(y<3)yb[0][1]++; else if(y<=5)yb[1][1]++; else if(y<=10)yb[2][1]++; else yb[3][1]++; });
-    var ymax=Math.max.apply(null,yb.map(function(x){return x[1];}))||1, yk=yb[0][1]+yb[1][1]+yb[2][1]+yb[3][1];
-    cards.push(qCard("Years in business","Track record, "+yk+" of "+list.length+" known",
-      yb.map(function(x){ return {label:x[0],val:x[1],pct:Math.round(x[1]/ymax*100),color:x[2]}; }),
-      "The market skews <b>established</b> — "+yb[3][1]+" businesses are 10+ years in."));
-    /* Q6: how solid is each profile? */
-    var sb=[["80–100 · strong",0,"#6db3f2"],["60–79 · decent",0,"#6fd3e7"],["40–59 · thin",0,"#e8b34b"],
-            ["Under 40 · weak",0,"#e06c6c"]];
-    list.forEach(function(b){ var s=confOf(b); if(s==null)return;
-      if(s>=80)sb[0][1]++; else if(s>=60)sb[1][1]++; else if(s>=40)sb[2][1]++; else sb[3][1]++; });
-    var smax2=Math.max.apply(null,sb.map(function(x){return x[1];}))||1;
-    cards.push(qCard("Profile strength","Information confidence across "+list.length+" businesses",
-      sb.map(function(x){ return {label:x[0],val:x[1],pct:Math.round(x[1]/smax2*100),color:x[2]}; }),
-      "<b>"+sb[0][1]+" of "+list.length+"</b> profiles score 80+ — the deep-dive pass keeps raising the rest."));
+    pb.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/pmax*100),color:x[2],
+      members:bmem(x[1],function(a,b){return (a.price.wedding||1e9)-(b.price.wedding||1e9);},
+        function(b){return b.price.wedding!=null?money(b.price.wedding):"";})}; }),
+    "<b>"+pub+" of "+list.length+"</b> publish a starting wedding price \u2014 "+pb[4][1].length+" keep it hidden.",2));
+  /* Q4: who's gaining followers? */
+  var gr=list.map(function(b){ return {b:b,ch:pctChange(b,Math.max(0,S.di-30),S.di)}; })
+    .filter(function(x){return x.ch!=null;}).sort(function(a,b){return b.ch-a.ch;}).slice(0,6);
+  if(gr.length){
+    var gmax=Math.max.apply(null,gr.map(function(x){return Math.abs(x.ch);}).concat([0.1]));
+    var gm=gr[0];
+    cards.push(qCard("Follower growth","30-day follower change, top movers",
+      gr.map(function(x){ return {id:x.b.id,full:x.b.name,label:x.b.name,val:(x.ch>=0?"+":"")+x.ch.toFixed(1)+"%",
+        pct:Math.min(100,Math.round(Math.abs(x.ch)/gmax*100)),color:x.ch>=0?"#6db3f2":"#e06c6c"}; }),
+      "Biggest 30-day mover: <b>"+esc(gm.b.name)+"</b> ("+(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%).",3));
   }
+  /* Q5: how long have they been around? */
+  var yb=[["Under 3 yrs",[],"#6fd3e7"],["3\u20135 yrs",[],"#6db3f2"],["6\u201310 yrs",[],"#e8b34b"],
+          ["10+ yrs",[],"#b9c2cf"],["Unknown",[],"#3a4353"]];
+  list.forEach(function(b){ var y=yearsNum(b),bi=y==null?4:(y<3?0:(y<=5?1:(y<=10?2:3))); yb[bi][1].push(b); });
+  var ymax=Math.max.apply(null,yb.map(function(x){return x[1].length;}))||1,
+      yk=yb[0][1].length+yb[1][1].length+yb[2][1].length+yb[3][1].length;
+  cards.push(qCard("Years in business","Track record, "+yk+" of "+list.length+" known",
+    yb.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/ymax*100),color:x[2],
+      members:bmem(x[1],function(a,b){return (yearsNum(b)||0)-(yearsNum(a)||0);},
+        function(b){var y=yearsNum(b);return y!=null?y+" yrs":"";})}; }),
+    "The market skews <b>established</b> \u2014 "+yb[3][1].length+" businesses are 10+ years in.",4));
+  /* Q6: how solid is each profile? */
+  var sb=[["80\u2013100 \u00b7 strong",[],"#6db3f2"],["60\u201379 \u00b7 decent",[],"#6fd3e7"],["40\u201359 \u00b7 thin",[],"#e8b34b"],
+          ["Under 40 \u00b7 weak",[],"#e06c6c"]];
+  list.forEach(function(b){ var s=confOf(b); if(s==null)return;
+    var bi=s>=80?0:(s>=60?1:(s>=40?2:3)); sb[bi][1].push(b); });
+  var smax2=Math.max.apply(null,sb.map(function(x){return x[1].length;}))||1;
+  cards.push(qCard("Profile strength","Information confidence across "+list.length+" businesses",
+    sb.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/smax2*100),color:x[2],
+      members:bmem(x[1],function(a,b){return (confOf(b)||0)-(confOf(a)||0);},
+        function(b){var s=confOf(b);return s!=null?s+"%":"";})}; }),
+    "<b>"+sb[0][1].length+" of "+list.length+"</b> profiles score 80+ \u2014 the deep-dive pass keeps raising the rest.",5));
   return railHead()+cards.join("");
 }
 function railHead(){
-  return '<div class="railhead"><span>Market glance</span>'+
-    '<button id="railx" class="rxbtn" aria-expanded="'+(S.railX?"true":"false")+'">'+
-    (S.railX?"Collapse ▸":"Expand ◂")+'</button></div>';
+  return '<div class="railhead"><span>Market glance</span></div>'+
+    '<div class="railhint">Tap a bucket to see who\u2019s inside \u2014 tap a name to open the profile.</div>';
 }
 function renderRight(){
   var el=$("#rightbody");
   var b=S.sel&&BY_ID[S.sel];
-  $("#right").classList.toggle("wide",!!S.railX&&!S.sel);
+  $("#right").classList.toggle("wide",!S.sel);
   $("#right").classList.toggle("expanded",!!(S.expanded&&b));
   $("#right").classList.toggle("hassel",!!b);
   document.body.classList.toggle("panelexp",!!(S.expanded&&b));
@@ -1780,7 +1809,7 @@ function setMode(m){
   if(S.mode===m) return;
   S.mode=m;
   C=(m==="venues"?V:B); BY_ID=(m==="venues"?V_BY_ID:B_BY_ID);
-  S.sel=null; S.lane=""; S.mom="";
+  S.sel=null; S.lane=""; S.mom=""; S.qx={};
   $("#flane").value=""; $("#fmom").value="";
   computeModeStats();
   $$(".modetoggle button").forEach(function(b){ var on=b.getAttribute("data-mode")===m;
@@ -1806,8 +1835,6 @@ function setMode(m){
 
 /* ---------- events ---------- */
 document.addEventListener("click",function(e){
-  var rx=e.target.closest("#railx");
-  if(rx){ S.railX=!S.railX; renderRight(); pushHist(); return; }
   var px=e.target.closest("#panelex");
   if(px){ toggleExpand(); return; }
   var ptab=e.target.closest(".ptabs button");
@@ -1820,6 +1847,8 @@ document.addEventListener("click",function(e){
     S.expanded=true; S.ptab="scorecard"; renderRight(); pushHist(); return; }
   var t=e.target.closest("[data-open]");
   if(t){ select(t.getAttribute("data-open")); return; }
+  var qx=e.target.closest("[data-qx]");
+  if(qx){ var k=qx.getAttribute("data-qx"); S.qx[k]=!S.qx[k]; renderRight(); return; }
   var vt=e.target.closest(".viewtoggle button");
   if(vt){ setView(vt.getAttribute("data-view")); return; }
   var mt=e.target.closest(".modetoggle button");
