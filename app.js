@@ -459,50 +459,137 @@ function confBadge(b){
   var cf=(CONF[b.id]&&CONF[b.id].conflict)?' <span class="pcflag" title="'+esc(pcTitle(b))+'">price conflict</span>':"";
   return ' <span class="cf '+cls+'" data-cf="'+b.id+'" title="'+t+'">'+s+'%</span>'+cf;
 }
-/* profile meter: color-coded bar, full-width row under the header (never near the X) */
+/* profile meter: color-coded bar, full-width row under the header (never near the X).
+   Highlighted as the governing score — every other score is only as reliable as this one. */
 function confMeter(b){
   var s=confOf(b); if(s==null) return "";
   var cls=confBand(s);
-  return '<button class="cfmeter '+cls+'" data-cf="'+b.id+'" aria-label="Information confidence '+s+' percent — tap for an explanation">'+
+  return '<button class="cfmeter hero '+cls+'" data-cf="'+b.id+'" aria-label="Information confidence '+s+' percent — tap for the full scorecard">'+
     '<span class="cfl">Information confidence</span>'+
     '<span class="cfbar"><i style="width:'+Math.max(3,s)+'%"></i></span>'+
     '<span class="cfv">'+s+'%</span><span class="cfaq">?</span></button>';
 }
+/* ---------- business scores: information, activity, momentum, value, reviews ---------- */
+function actScore(b){
+  var d=b.postAge;
+  if(d==null) return {score:null,band:"Unknown",why:"No recent-post date on record."};
+  var s=d<=7?100:d<=14?85:d<=30?70:d<=60?50:d<=90?30:d<=180?15:5;
+  var band=s>=70?"Active":s>=30?"Cooling":"Dormant";
+  var ago=d===0?"today":d+" day"+(d>1?"s":"")+" ago";
+  return {score:s,band:band,why:"Last posted "+ago+".",days:d};
+}
+function momScore(b){
+  var ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
+  if(ch30==null) return {score:null,band:"Unknown",why:"No follower history to measure.",ch7:ch7,ch30:ch30};
+  var s=Math.max(5,Math.min(100,Math.round(50+ch30*8)));
+  var band=s>=75?"Surging":s>=60?"Gaining":s>=40?"Steady":s>=25?"Slipping":"Falling";
+  return {score:s,band:band,ch7:ch7,ch30:ch30,
+    why:"Followers "+(ch30>=0?"+":"")+ch30.toFixed(1)+"% over the last 30 days."};
+}
+var _wedArr=null;
+function wedRank(b){
+  if(!_wedArr) _wedArr=B.filter(function(x){return x.price.wedding!=null;})
+    .sort(function(a,c){return a.price.wedding-c.price.wedding;});
+  var i=_wedArr.indexOf(b); if(i<0) return null;
+  var n=_wedArr.length, med=_wedArr[Math.floor(n/2)].price.wedding;
+  return {rank:i+1,n:n,med:med,pct:n>1?Math.round(100*(1-i/(n-1))):50};
+}
+function valScore(b){
+  var r=wedRank(b);
+  if(!r) return {score:null,band:"Unknown",why:"No published wedding floor.",r:null};
+  var q=r.rank/r.n, band=q<=0.25?"Budget":q<=0.5?"Mid-market":q<=0.75?"Premium":"Luxury";
+  return {score:r.pct,band:band,r:r,
+    why:money(b.price.wedding)+" wedding floor — cheaper than "+r.pct+"% of "+r.n+" tracked businesses."};
+}
+function reviewInfo(b){
+  if(b.review_count!=null) return {count:b.review_count,rating:b.review_rating||null,
+    src:b.review_source?(b.review_source.charAt(0).toUpperCase()+b.review_source.slice(1)):"Google"};
+  var fl=b.flags||[], txt=(fl.join?fl.join(" "):String(fl))+" "+(b.notes||"");
+  var m=/(\d+)[- ]?(google|fb|facebook|yelp)[- ]reviews/i.exec(txt);
+  if(!m) return null;
+  var src=m[2].toLowerCase(), after=txt.slice(m.index,m.index+64), rm=/(\d)[\-.](\d)/.exec(after);
+  return {count:+m[1],rating:rm?(+rm[1]+"."+ +rm[2]):null,
+    src:src==="fb"||src==="facebook"?"Facebook":src==="yelp"?"Yelp":"Google"};
+}
+function revScore(b){
+  var r=reviewInfo(b);
+  if(!r) return {score:null,band:"Not researched",
+    why:"Review count not yet collected — the daily deep-dive pass is gathering it from live listings.",r:null};
+  var s=Math.round(100*Math.log10(1+r.count)/Math.log10(201));
+  var band=s>=70?"Well reviewed":s>=40?"Some reviews":"Few reviews";
+  return {score:s,band:band,r:r,
+    why:r.count+" "+r.src+" reviews"+(r.rating?" · "+r.rating+" / 5":"")+"."};
+}
+/* compact score strip under the profile header: information meter (governing, highlighted)
+   + four chips. Clicking any of them opens the full scorecard. */
+function scoreStrip(b){
+  var a=actScore(b), m=momScore(b), v=valScore(b), r=revScore(b);
+  function chip(label,val,res){
+    var cls=res&&res.score!=null?confBand(res.score):"unk";
+    var disp=(res&&res.score!=null)?val:"—";
+    var title=res?esc(res.band+" — "+res.why+" Tap for the full scorecard."):"";
+    return '<button class="schip '+cls+'" data-cf="'+b.id+'" title="'+title+'">'+
+      '<span class="scl">'+label+'</span><span class="scv">'+disp+'</span></button>';
+  }
+  var mv=m.score!=null?((m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):"";
+  var vv=v.score!=null?money(b.price.wedding):"";
+  var rv=r.r?fmt(r.r.count):"";
+  return confMeter(b)+'<div class="scorerow" role="group" aria-label="Business scores">'+
+    chip("Activity",a.band,a)+chip("Momentum",mv,m)+chip("Value",vv,v)+chip("Reviews",rv,r)+'</div>';
+}
 /* clickable explainer: what the percentage measures, in plain language */
-function openConfModal(id){
-  var b=BY_ID[id]||B_BY_ID[id]||V_BY_ID[id]; if(!b) return;
+function openScoreDash(id){
+  var b=BY_ID[id]||B_BY_ID[id]||V_BY_ID[id]; if(!b||b.type==="venue") return;
   var s=confOf(b); if(s==null) return;
   var cfd=CONF[id], cls=confBand(s);
-  var bandTxt=cls==="hi"?"High — this profile is well cross-referenced across multiple sources.":
-    cls==="mid"?"Medium — partly verified. Some fields are still missing or single-sourced.":
-    "Low — thin or single-sourced. Treat the details as provisional until the deep-dive pass fills them in.";
-  var h='<div class="mback" id="cfback"><div class="modal" role="dialog" aria-label="Information confidence">'+
-    '<div class="cfpct" style="color:'+(cls==="lo"?"#e06c6c":cls==="mid"?"#e8b34b":"#6db3f2")+'">'+s+'%</div>'+
-    '<h2 style="font-size:20px">Information confidence</h2>'+
-    '<p style="margin-bottom:4px"><b style="color:var(--txt)">'+esc(b.name)+'</b></p>'+
-    '<p>'+esc(bandTxt)+'</p>';
-  /* actual grading for THIS profile — earned points per factor, not the generic rubric */
+  var a=actScore(b), m=momScore(b), v=valScore(b), r=revScore(b);
+  var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function dstr(ds){ if(!ds) return "—"; var d=new Date(ds+"T12:00:00"); return isNaN(d)?ds:MO[d.getMonth()]+" "+d.getDate(); }
+  function pill(res){
+    if(res.score==null) return '<span class="dpill unk">'+esc(res.band)+'</span>';
+    return '<span class="dpill '+confBand(res.score)+'">'+res.score+' · '+esc(res.band)+'</span>';
+  }
+  function sec(label,res,measures,detail){
+    return '<div class="dsec"><div class="dhead"><span class="dlabel">'+label+'</span>'+pill(res)+'</div>'+
+      '<p class="dmeas">'+measures+'</p>'+(detail?'<div class="dnums">'+detail+'</div>':"")+'</div>';
+  }
+  /* information: the actual grading for THIS profile — verified factors bright, missed dimmed */
   var parts=(cfd&&cfd.parts)||{};
   var FACTORS=[
-    ["website","Website",25,"the business site loads and was actually read"],
-    ["prices","Prices",15,"a starting price could be parsed from their published pricing"],
-    ["services","Services",15,"their service list is on record"],
-    ["ig","Instagram",15,"the handle resolves to a tracked profile"],
-    ["location","Location",10,"town/county corroborated beyond the roster"],
-    ["history","History",10,"years in business known"],
-    ["corroboration","Third source",10,"at least one source beyond their own site (directory, Knot, Facebook…)"]
+    ["website","Website",25,"the business site loads and was actually read","site never loaded in a sweep"],
+    ["prices","Prices",15,"a starting price was parsed from their published pricing","no starting price found"],
+    ["services","Services",15,"their service list is on record","no service list found"],
+    ["ig","Instagram",15,"the handle resolves to a tracked profile","no tracked Instagram handle"],
+    ["location","Location",10,"town/county corroborated beyond the roster","location not corroborated"],
+    ["history","History",10,"years in business known","years in business unknown"],
+    ["corroboration","Third source",10,"at least one source beyond their own site","no outside source found yet"]
   ];
-  h+='<ul class="cfrub">';
+  var verified=0, frows="";
   FACTORS.forEach(function(f){
-    var e=parts[f[0]]||0, full=e>=f[2], none=e<=0;
-    var mark=full?'<span style="color:#6db3f2">●</span>':none?'<span style="color:#e06c6c">○</span>':'<span style="color:#e8b34b">◐</span>';
-    h+='<li>'+mark+'<span><b>'+f[1]+'</b> — <b>'+e+'/'+f[2]+'</b> · '+f[3]+'</span></li>';
+    var e=parts[f[0]]||0, got=e>0; if(got) verified++;
+    frows+='<div class="dfactor'+(got?"":" missed")+'"><span class="dfm '+(got?"ok":"no")+'">'+(got?"✓":"✗")+'</span>'+
+      '<div><b>'+f[1]+' — '+e+'/'+f[2]+'</b><span>'+(got?f[3]:"Not verified — "+f[4])+'</span></div></div>';
   });
-  h+='</ul>';
-  if(cfd&&cfd.conflict)
-    h+='<p style="color:#e08a8a"><b>Price conflict (−20) on this profile:</b><br>'+
-      cfd.conflict.values.map(function(v){ return esc(v.label)+": <b>"+esc(v.text)+"</b>"; }).join("<br>")+'</p>';
-  h+='<p style="font-size:12px">A rotating deep-dive pass re-researches every business and venue weekly to raise these scores.</p>'+
+  var infoSec='<div class="dsec hero"><div class="dhead"><span class="dlabel">Information confidence</span>'+
+    '<span class="dpill '+cls+'">'+s+' · '+(cls==="hi"?"High":cls==="mid"?"Medium":"Low")+'</span></div>'+
+    '<p class="dmeas">The governing score — every score below is only as reliable as the data behind it.</p>'+
+    '<div class="dsum">'+verified+' of '+FACTORS.length+' factors verified</div>'+frows+
+    (cfd&&cfd.conflict?'<div class="dfactor missed"><span class="dfm no">−20</span><div><b>Price conflict</b><span>'+
+      cfd.conflict.values.map(function(x){ return esc(x.label)+": "+esc(x.text); }).join(" vs ")+
+      ' — flagged for human review</span></div></div>':"")+'</div>';
+  var h='<div class="mback" id="cfback"><div class="modal wide" role="dialog" aria-label="Scorecard">'+
+    '<h2 style="font-size:20px">Scorecard</h2>'+
+    '<p style="margin-bottom:10px"><b style="color:var(--txt)">'+esc(b.name)+'</b></p>'+
+    infoSec+
+    sec("Activity",a,"How recently the business posted — an active competitor is a different animal than a dormant one.",
+      a.days!=null?("Last post "+dstr(b.last_post_date)+" ("+a.days+(a.days===1?" day":" days")+" ago)"):esc(a.why))+
+    sec("Momentum",m,"Week-to-month follower movement — who is gaining on you and who is slipping.",
+      m.ch30!=null?("7-day "+(m.ch7>=0?"+":"")+m.ch7.toFixed(1)+"% · 30-day "+(m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):esc(m.why))+
+    sec("Value",v,"Where their wedding floor sits against the market — budget to luxury by actual published prices.",
+      v.r?("Floor "+money(b.price.wedding)+" · #"+v.r.rank+" of "+v.r.n+" tracked · market median "+money(v.r.med)):esc(v.why))+
+    sec("Reviews",r,"Social proof — review counts and ratings from live listings.",
+      r.r?(r.r.count+" "+r.r.src+" reviews"+(r.r.rating?" · "+r.r.rating+" / 5":"")):esc(r.why))+
+    '<p style="font-size:12px">A rotating deep-dive pass re-researches every business weekly to raise these scores.</p>'+
     '<div class="mrow"><button class="btn" id="cfok">Got it</button></div></div></div>';
   document.body.insertAdjacentHTML("beforeend",h);
   function close(){ var m=$("#cfback"); if(m) m.remove(); document.removeEventListener("keydown",onKey); }
@@ -890,7 +977,7 @@ function profileHTML(b){
   var h='<div class="sec"><div class="prof-head"><div class="prof-ava">'+esc(ini)+'</div>'+
     '<div><h2>'+esc(b.name)+'</h2>'+
     '<div class="sub">'+esc(b.town)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+(b.region==="slc"?" · St. Lawrence Co":"")+'</div></div></div>'+
-    confMeter(b);
+    scoreStrip(b);
 
   /* You vs market median — always visible */
   var medF=C.map(function(x){return x.followers;}).filter(function(v){return v!=null;}).sort(function(a,c){return a-c;});
@@ -1380,7 +1467,7 @@ function setMode(m){
 /* ---------- events ---------- */
 document.addEventListener("click",function(e){
   var cf=e.target.closest("[data-cf]");
-  if(cf){ openConfModal(cf.getAttribute("data-cf")); return; }
+  if(cf){ openScoreDash(cf.getAttribute("data-cf")); return; }
   var t=e.target.closest("[data-open]");
   if(t){ select(t.getAttribute("data-open")); return; }
   var vt=e.target.closest(".viewtoggle button");
