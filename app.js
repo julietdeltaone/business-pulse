@@ -215,7 +215,7 @@ var HIST={stack:[],i:-1,busy:false,noPush:false};
 function snapState(){
   var c=null; try{ if(map){ var ll=map.getCenter(); c={lat:ll.lat,lng:ll.lng}; } }catch(e){}
   return {view:S.view,mode:S.mode,tab:S.tab,sel:S.sel,q:S.q,lane:S.lane,mom:S.mom,reg:S.reg,
-    rankMode:S.rankMode,dq:S.dq,railX:S.railX,dsort:S.dsort?{key:S.dsort.key,dir:S.dsort.dir}:null,
+    rankMode:S.rankMode,rankDir:S.rankDir,dq:S.dq,railX:S.railX,dsort:S.dsort?{key:S.dsort.key,dir:S.dsort.dir}:null,
     z:map?map.getZoom():null,c:c};
 }
 function statesEq(a,b){ return JSON.stringify(a)===JSON.stringify(b); }
@@ -261,7 +261,7 @@ function applyState(st){
   try{
     S.view=st.view; S.mode=st.mode; S.tab=st.tab; S.sel=st.sel;
     S.q=st.q; S.lane=st.lane; S.mom=st.mom; S.reg=st.reg;
-    S.rankMode=st.rankMode; S.dq=st.dq; S.railX=!!st.railX;
+    S.rankMode=st.rankMode; S.rankDir=st.rankDir; S.dq=st.dq; S.railX=!!st.railX;
     S.dsort=st.dsort?{key:st.dsort.key,dir:st.dsort.dir}:null;
     C=(S.mode==="venues"?V:B); BY_ID=(S.mode==="venues"?V_BY_ID:B_BY_ID);
     computeModeStats();
@@ -1029,12 +1029,15 @@ function renderAI(){
         '<span>'+r+'% mentioned'+(pr[p].best!=null?' · best rank #'+pr[p].best:" · never ranked")+'</span></div>'+
         '<div class="ai-pbar"><i style="width:'+Math.max(3,r)+'%"></i></div></div>';
     }).join("")+"</div></div>";
-  /* rivals named most */
+  /* businesses the AIs name most — JD Meyers Productions counts as one of them */
   var rc={};
-  rows.forEach(function(r){ (r.rivals||[]).forEach(function(n){ rc[n]=(rc[n]||0)+1; }); });
+  rows.forEach(function(r){
+    (r.rivals||[]).forEach(function(n){ rc[n]=(rc[n]||0)+1; });
+    if(r.jd_named==="yes"||r.jd_named==="partial") rc["JD Meyers Productions"]=(rc["JD Meyers Productions"]||0)+1;
+  });
   var topR=Object.keys(rc).sort(function(a,b){return rc[b]-rc[a];}).slice(0,6);
   if(topR.length){
-    h+='<div class="sec"><h3>Rivals the AIs name most</h3><div class="stagger">'+
+    h+='<div class="sec"><h3>Businesses the AIs name most</h3><div class="stagger">'+
       topR.map(function(n){
         return '<div class="lb-row"><span class="lb-nm">'+esc(n)+'</span>'+
           '<span class="lb-v">'+rc[n]+'×</span>'+
@@ -1701,7 +1704,14 @@ function renderPins(){
 function flyTo(b){ if(map&&b.lat!=null){ HIST.noPush=true; map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); } }
 
 /* ---------- rankings: stupid-simple leaderboard (replaces the old bubble field) ---------- */
-var RANK_MODES=[{id:"audience",label:"Audience"},{id:"activity",label:"Activity"},{id:"momentum",label:"Momentum"}];
+var RANK_MODES=[{id:"audience",label:"Audience"},{id:"activity",label:"Activity"},{id:"momentum",label:"Momentum"},
+  {id:"price",label:"Price"},{id:"reviews",label:"Reviews"},{id:"strength",label:"Profile strength"}];
+/* composite profile score: mean of the signals that report */
+function compScore(b){
+  var ss=[actScore(b),momScore(b),engScore(b),valScore(b),revScore(b)]
+    .map(function(r){return r.score;}).filter(function(s){return s!=null;});
+  return ss.length?Math.round(ss.reduce(function(a,x){return a+x;})/ss.length):null;
+}
 function ageStr(age){
   if(age==null) return "no recent posts";
   if(age<=0) return "posted today";
@@ -1712,28 +1722,46 @@ function ageStr(age){
 }
 function renderRankings(){
   var el=$("#rankings"); if(!el) return;
-  var mode=S.rankMode||"audience", list=filtered();
+  var mode=S.rankMode||"audience", dir=S.rankDir||"desc", list=filtered();
   var rows=list.map(function(b){
-    var key,val,frac,cls="";
+    var key,val,frac,cls="",nodata=false;
     if(mode==="audience"){ var f=followersAt(b,S.di);
-      key=f==null?-1:f; val=f==null?"\u2014":fmt(f); frac=f==null?0:1; }
+      key=f==null?-1:f; val=f==null?"\u2014":fmt(f); frac=f==null?0:1; nodata=f==null; }
     else if(mode==="activity"){ var a=b.postAge;
-      key=a==null?1e9:a; val=ageStr(a); frac=a==null?0:Math.max(0.05,1-Math.min(a,120)/120); }
-    else { var ch=pctChange(b,Math.max(0,S.di-7),S.di);
+      key=a==null?1e9:a; val=ageStr(a); frac=a==null?0:Math.max(0.05,1-Math.min(a,120)/120); nodata=a==null; }
+    else if(mode==="momentum"){ var ch=pctChange(b,Math.max(0,S.di-7),S.di);
       key=ch==null?-1e9:ch; val=ch==null?"\u2014":pctStr(ch); frac=ch==null?0:1;
-      cls=ch==null?"":(ch>=0?"up":"dn"); }
-    return {b:b,key:key,val:val,frac:frac,cls:cls};
+      cls=ch==null?"":(ch>=0?"up":"dn"); nodata=ch==null; }
+    else if(mode==="price"){ var w=b.price?b.price.wedding:null;
+      key=w==null?0:w; val=w==null?"\u2014":money(w); frac=w==null?0:1; nodata=w==null; }
+    else if(mode==="reviews"){ var ri=reviewInfo(b);
+      key=!ri?0:ri.count; val=!ri?"\u2014":(ri.count+(!ri.rating?"":" \u00b7 "+ri.rating+"/5")); frac=!ri?0:1; nodata=!ri; }
+    else { var cs=compScore(b);
+      key=cs==null?0:cs; val=cs==null?"\u2014":String(cs); frac=cs==null?0:cs/100; nodata=cs==null; }
+    return {b:b,key:key,val:val,frac:frac,cls:cls,nodata:nodata};
   });
-  var mx=0; rows.forEach(function(r){ if(mode==="momentum") mx=Math.max(mx,Math.abs(r.key)); else if(r.frac) mx=Math.max(mx,r.key); });
-  if(mode==="audience"&&mx<=0) mx=1; if(mode==="momentum"&&mx<=0) mx=1;
-  rows.sort(function(a,b){ return mode==="activity"?a.key-b.key:b.key-a.key; });
+  var mx=0; rows.forEach(function(r){ if(r.nodata) return;
+    if(mode==="momentum") mx=Math.max(mx,Math.abs(r.key)); else mx=Math.max(mx,mode==="activity"?r.frac:r.key); });
+  if(mx<=0) mx=1;
+  rows.sort(function(a,b){
+    if(a.nodata&&b.nodata) return 0;
+    if(a.nodata) return 1;
+    if(b.nodata) return -1;
+    var d=mode==="activity"?a.key-b.key:b.key-a.key; /* desc = current order */
+    return dir==="asc"?-d:d;
+  });
   var h='<div class="rk-head"><div><h2>Rankings</h2>'+
     '<div class="rk-sub">Who leads the North Country photo, video & drone market right now · '+esc(dstr(DATES[S.di]))+'</div></div>'+
     '<div class="rk-modes" role="tablist">'+RANK_MODES.map(function(m){
-      return '<button data-rank="'+m.id+'" class="'+(m.id===mode?"on":"")+'" role="tab" aria-selected="'+(m.id===mode)+'">'+m.label+'</button>'; }).join("")+'</div></div>';
-  h+='<div class="rk-hint">'+(mode==="audience"?"Ranked by follower count.":
+      return '<button data-rank="'+m.id+'" class="'+(m.id===mode?"on":"")+'" role="tab" aria-selected="'+(m.id===mode)+'">'+m.label+'</button>'; }).join("")+
+    '<button data-rankdir class="'+(dir==="asc"?"on":"")+'" title="Flip sort direction">'+(dir==="asc"?"&#8593; Low to high":"&#8595; High to low")+'</button></div></div>';
+  var hint=mode==="audience"?"Ranked by follower count.":
     mode==="activity"?"Ranked by how recently they posted.":
-    "Ranked by follower growth over the last 7 days.")+' Click a row for detail.</div>';
+    mode==="momentum"?"Ranked by follower growth over the last 7 days.":
+    mode==="price"?"Ranked by starting wedding price, where published.":
+    mode==="reviews"?"Ranked by review count.":
+    "Ranked by composite profile score (5 signals).";
+  h+='<div class="rk-hint">'+hint+' Click a row for detail.</div>';
   h+='<div class="rk-list">'+rows.map(function(r,i){
     var b=r.b, w;
     if(mode==="momentum") w=r.frac?Math.max(3,Math.abs(r.key)/mx*100):0;
@@ -1938,6 +1966,8 @@ document.addEventListener("click",function(e){
   if(mt){ setMode(mt.getAttribute("data-mode")); return; }
   var rb=e.target.closest("[data-rank]");
   if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); pushHist(); return; }
+  var rd=e.target.closest("[data-rankdir]");
+  if(rd){ S.rankDir=S.rankDir==="asc"?"desc":"asc"; renderRankings(); pushHist(); return; }
   var th=e.target.closest("th[data-dk]");
   if(th){ var k=th.getAttribute("data-dk"), s2=S.dsort||{key:"followers",dir:-1};
     if(s2.key===k) s2.dir=-s2.dir;
