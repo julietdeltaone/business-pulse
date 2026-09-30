@@ -185,7 +185,7 @@ function recencyDot(b){
   if(b.postAge<=45) return "#e8b34b";
   return "#e06c6c";
 }
-var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b48ce8",drone:"#6fd3e7",venue:"#d98e4a"};
+var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b9c2cf",drone:"#6fd3e7",venue:"#d98e4a"};
 var LANE_LABEL={photo:"Photo",video:"Video",both:"Photo + Video",drone:"Drone",venue:"Venue"};
 var MOM_LABEL={gaining:"Gaining",slipping:"Slipping",active:"Active",quiet:"Quiet",dormant:"Dormant"};
 var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unconfirmed"};
