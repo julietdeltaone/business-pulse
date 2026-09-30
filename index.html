@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=29315efa">
+<link rel="stylesheet" href="styles.css?v=613c9bfe">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -52,8 +52,8 @@
       <button data-view="map" class="on" role="tab" aria-selected="true">Map</button>
       <button data-view="rankings" role="tab" aria-selected="false">Rankings</button>
     </div>
-    <span id="datelabel" title="Data as of this date"></span>
-    <span id="buildtag" title="Deployed build">build 32b48e55 &middot; Sep 30 02:40 UTC</span>
+    <div id="fresh" aria-label="Data freshness"></div>
+    <span id="buildtag" title="Deployed build">build d87b761e &middot; Sep 30 03:03 UTC</span>
   </div>
 </header>
 
@@ -82,12 +82,12 @@
 
 <div id="toast" role="status"></div>
 
-<script src="data/data.js?v=61c0584f"></script>
+<script src="data/data.js?v=fa34075e"></script>
 <script src="data/website-intel.js?v=8b116b0d"></script>
-<script src="data/venues.js"></script>
-<script src="data/details-enrichment.js"></script>
+<script src="data/venues.js?v=7865ba46"></script>
+<script src="data/details-enrichment.js?v=58ec6f51"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=32b48e55"></script>
+<script src="app.js?v=d87b761e"></script>
 </body>
 </html>
