@@ -649,17 +649,25 @@ function snapRowsHTML(b){
     row("Starting price",esc(d.price),d.priceT)+
     row("Reviews",d.ri?fmt(d.ri.count):"—",d.ri?("Reviews: "+d.ri.count):"");
 }
-/* how-AI-sees-it framing: the digital footprint, with confidence as its headline metric */
+/* hero: the digital-footprint score as a big ring gauge at the top of the collapsed profile */
+function fpHeroHTML(b){
+  var s=confOf(b), pct=s==null?0:Math.max(0,Math.min(100,Math.round(s)));
+  var band=s==null?"unknown":(s>=80?"strong":s>=60?"decent":s>=40?"thin":"weak");
+  var col=s==null?"#8b93a3":s>=80?"#e8b34b":s>=60?"#6db3f2":s>=40?"#d08a4e":"#e05a4e";
+  var r=30, c=(2*Math.PI*r).toFixed(1), fill=(c*pct/100).toFixed(1);
+  return '<div class="fphero" data-cf="'+b.id+'" title="Digital footprint \u2014 '+band+' \u2014 expand for everything">'+
+    '<svg class="fring" width="92" height="92" viewBox="0 0 76 76" role="img" aria-label="Digital footprint '+pct+' of 100">'+
+    '<circle cx="38" cy="38" r="'+r+'" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>'+
+    '<circle cx="38" cy="38" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="7" stroke-linecap="round" '+
+    'stroke-dasharray="'+fill+" "+c+'" transform="rotate(-90 38 38)"/>'+
+    '<text x="38" y="40" text-anchor="middle" dominant-baseline="central" class="fringnum">'+(s==null?"\u2014":pct)+"</text></svg>"+
+    '<div class="fphl">Digital Footprint</div>'+
+    '<div class="fphb" style="color:'+col+'">'+band+"</div></div>";
+}
+/* how-AI-sees-it framing: the digital footprint paragraph (the score itself is the hero above) */
 function footprintHTML(b){
-  var s=confOf(b), pct=s==null?0:Math.max(0,Math.min(100,s));
-  var band=s==null?null:(s>=80?"strong":s>=60?"decent":s>=40?"thin":"weak");
-  var h='<div class="plab">How AI sees this business</div>'+
-    '<div class="footprint"><p>This business\u2019s digital footprint \u2014 what AI assistants and search engines see when they look it up.</p>';
-  if(s!=null) h+='<div class="pbar" data-cf="'+b.id+'" title="Information confidence \u2014 '+band+' \u2014 expand for everything">'+
-    '<span class="pbl">Confidence</span>'+
-    '<span class="pbtrack"><i style="width:'+pct+'%"></i></span>'+
-    '<span class="pbv">'+s+' <small>'+band+"</small></span></div>";
-  return h+"</div>";
+  return '<div class="plab">How AI sees this business</div>'+
+    '<div class="footprint"><p>This business\u2019s digital footprint \u2014 what AI assistants and search engines see when they look it up.</p></div>';
 }
 /* overview: bio, services, coverage, years */
 function ovBioHTML(b){
@@ -702,6 +710,7 @@ function scoreBarsHTML(b,clickable){
 /* collapsed: headline numbers first, then score bars, then links — fits the rail, no scrolling */
 function profileCollapsedHTML(b){
   return '<div class="pcol">'+
+    fpHeroHTML(b)+
     '<div class="plab">Headline numbers</div>'+snapRowsHTML(b)+
     '<div class="pspace"></div>'+
     footprintHTML(b)+
@@ -1373,7 +1382,8 @@ function marketGlanceHTML(){
       '<div class="qchartlab">Top styles</div>'+
       histSVG(stop5.map(shortLab),stop5.map(function(k){return st[k];}),
         ["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
-    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):glanceCollapsedHTML(glances));
+    var vHero=V.reduce(function(a,v){return a+(v.followers||0);},0);
+    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(vHero),"total venue followers","combined Instagram audience \u00b7 "+V.length+" venues")+glanceCollapsedHTML(glances));
   }
   var list=C, cards=[];
   /* Q1: who is actually posting? */
@@ -1474,10 +1484,16 @@ function marketGlanceHTML(){
     histSVG(["80+","60\u201379","40\u201359","<40","Unknown"],
       [sb[0][1].length,sb[1][1].length,sb[2][1].length,sb[3][1].length,sb[4][1].length],
       ["#e8b34b","#6db3f2","#6db3f2","#e06c6c","#3a4353"])));
-  return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):glanceCollapsedHTML(glances));
+    var bHero=list.reduce(function(a,b){return a+(b.followers||0);},0);
+    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(bHero),"total market followers","combined Instagram audience \u00b7 "+list.length+" businesses")+glanceCollapsedHTML(glances));
 }
 /* collapsed market glance: one glanceable row per question, each expanding
    the full view on tap */
+/* collapsed glance hero: one big number for the whole market */
+function gheroHTML(num,label,sub){
+  return '<div class="ghero"><div class="ghnum">'+num+'</div>'+
+    '<div class="ghlab">'+label+'</div><div class="ghsub">'+sub+"</div></div>";
+}
 function glanceCollapsedHTML(glances){
   return '<div class="gqrows">'+glances.map(function(g){
     if(!g) return "";
