@@ -246,8 +246,8 @@ function syncChrome(){
   $("#flane").style.display=biz?"":"none";
   $("#fmom").style.display=biz?"":"none";
   $("#fq").setAttribute("placeholder",biz?"Search businesses…":"Search venues…");
-  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo market":"North Country venue watch";
-  document.title=biz?"Business Pulse · North Country photo market":"Business Pulse · North Country venues";
+  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo, video & drone market":"North Country venue watch";
+  document.title=biz?"Business Pulse · North Country photo, video & drone market":"Business Pulse · North Country venues";
   /* tabs */
   $$(".tabs button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
     x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
@@ -1383,7 +1383,7 @@ function marketGlanceHTML(){
       histSVG(stop5.map(shortLab),stop5.map(function(k){return st[k];}),
         ["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
     var vHero=V.reduce(function(a,v){return a+(v.followers||0);},0);
-    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(vHero),"total venue followers","combined Instagram audience \u00b7 "+V.length+" venues")+glanceCollapsedHTML(glances));
+    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(vHero),"total venue followers","combined Instagram audience \u00b7 "+V.length+" North Country venues")+glanceCollapsedHTML(glances));
   }
   var list=C, cards=[];
   /* Q1: who is actually posting? */
@@ -1485,7 +1485,7 @@ function marketGlanceHTML(){
       [sb[0][1].length,sb[1][1].length,sb[2][1].length,sb[3][1].length,sb[4][1].length],
       ["#e8b34b","#6db3f2","#6db3f2","#e06c6c","#3a4353"])));
     var bHero=list.reduce(function(a,b){return a+(b.followers||0);},0);
-    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(bHero),"total market followers","combined Instagram audience \u00b7 "+list.length+" businesses")+glanceCollapsedHTML(glances));
+    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(bHero),"total market followers","combined Instagram audience \u00b7 "+list.length+" photo, video & drone businesses")+glanceCollapsedHTML(glances));
 }
 /* collapsed market glance: one glanceable row per question, each expanding
    the full view on tap */
@@ -1728,7 +1728,7 @@ function renderRankings(){
   if(mode==="audience"&&mx<=0) mx=1; if(mode==="momentum"&&mx<=0) mx=1;
   rows.sort(function(a,b){ return mode==="activity"?a.key-b.key:b.key-a.key; });
   var h='<div class="rk-head"><div><h2>Rankings</h2>'+
-    '<div class="rk-sub">Who leads the North Country market right now · '+esc(dstr(DATES[S.di]))+'</div></div>'+
+    '<div class="rk-sub">Who leads the North Country photo, video & drone market right now · '+esc(dstr(DATES[S.di]))+'</div></div>'+
     '<div class="rk-modes" role="tablist">'+RANK_MODES.map(function(m){
       return '<button data-rank="'+m.id+'" class="'+(m.id===mode?"on":"")+'" role="tab" aria-selected="'+(m.id===mode)+'">'+m.label+'</button>'; }).join("")+'</div></div>';
   h+='<div class="rk-hint">'+(mode==="audience"?"Ranked by follower count.":
@@ -1897,8 +1897,8 @@ function setMode(m){
   $("#flane").style.display=biz?"":"none";
   $("#fmom").style.display=biz?"":"none";
   $("#fq").setAttribute("placeholder",biz?"Search businesses…":"Search venues…");
-  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo market":"North Country venue watch";
-  document.title=biz?"Business Pulse · North Country photo market":"Business Pulse · North Country venues";
+  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo, video & drone market":"North Country venue watch";
+  document.title=biz?"Business Pulse · North Country photo, video & drone market":"Business Pulse · North Country venues";
   renderPins();
   var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
   if(pts.length&&map){
