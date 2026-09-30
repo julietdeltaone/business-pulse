@@ -52,9 +52,10 @@ button{font-family:var(--sans)}
 .rk-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:4px}
 .rk-head h2{margin:0;font-size:22px;letter-spacing:.01em}
 .rk-sub{color:#9aa3b2;font-size:12px;margin-top:2px}
-.rk-modes{display:flex;gap:6px}
+.rk-modes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .rk-modes button{background:rgba(255,255,255,.05);border:1px solid var(--line);color:#c8cfdb;font:600 12px "Hanken Grotesk";padding:7px 14px;border-radius:20px;cursor:pointer}
 .rk-modes button.on{background:rgba(232,179,75,.14);border-color:rgba(232,179,75,.55);color:var(--amber)}
+.rk-modes button[data-rankdir]{border-style:dashed}
 .rk-hint{color:#8b93a3;font-size:12px;margin:8px 0 14px}
 .rk-list{display:flex;flex-direction:column;gap:8px}
 .rk-row{display:flex;align-items:center;gap:10px;background:var(--glass-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;transition:border-color .15s}
