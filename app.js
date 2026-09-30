@@ -30,9 +30,9 @@ function countUp(el,to,ms){ if(REDUCED||to==null){ el.textContent=fmt(to); retur
 
 /* ---------- pricing parse (from roster text) ---------- */
 function priceFloors(p){
-  if(!p) return {wedding:null,session:null};
-  var wedding=null, m=/wedding[^$;]*?\$([\d,]+)(\/hr)?/i.exec(p);
-  if(m && !m[2]) wedding=+m[1].replace(/,/g,"");
+  if(!p) return {wedding:null,session:null,weddingHourly:null};
+  var wedding=null, weddingHourly=null, m=/wedding[^$;]*?\$([\d,]+)(\/hr)?/i.exec(p);
+  if(m){ if(m[2]) weddingHourly=+m[1].replace(/,/g,""); else wedding=+m[1].replace(/,/g,""); }
   var re=/\$([\d,]+)/g,x,big=[],small=[];
   while((x=re.exec(p))){ var v=+x[1].replace(/,/g,""),
     before=p.slice(Math.max(0,x.index-18),x.index).toLowerCase(),
@@ -40,7 +40,7 @@ function priceFloors(p){
     if(/deposit/.test(after)||/sports/.test(before)||/^\/((hr|event))/.test(after)) continue;
     (v>=1000?big:small).push(v); }
   if(wedding==null&&big.length) wedding=Math.min.apply(null,big);
-  return {wedding:wedding,session:small.length?Math.min.apply(null,small):null};
+  return {wedding:wedding,session:small.length?Math.min.apply(null,small):null,weddingHourly:weddingHourly};
 }
 
 /* ---------- JD Meyers Productions as a regular data point ----------
@@ -101,7 +101,7 @@ var B=(D.competitors||[]).map(function(c){
   else{ var fm=/\((\d{1,3}(?:,\d{3})+|\d+), verified/.exec(c.notes||"");
     e.followers=fm?+fm[1].replace(/,/g,""):null; e.followHist=[]; }
   e.postAge=daysSince(c.last_post_date);
-  e.hasPrice=e.price.wedding!=null||e.price.session!=null;
+  e.hasPrice=e.price.wedding!=null||e.price.session!=null||e.price.weddingHourly!=null;
   var tc=townLatLng(e.town);
   e._geo=!!tc; /* false = no real coordinates: no map pin, no heat contribution */
   e.lat=tc?tc.lat:null; e.lng=tc?tc.lng:null; /* spiral placement below */
@@ -133,7 +133,7 @@ var V=(window.PULSE_VENUES||[]).map(function(v){
   e.type="venue"; e.specialty="venue";
   e.followHist=[]; e.followers=(v.followers==null?null:v.followers);
   e.postAge=daysSince(v.last_post_date);
-  e.price={wedding:null,session:null}; e.hasPrice=false;
+  e.price={wedding:null,session:null,weddingHourly:null}; e.hasPrice=false;
   e._geo=(v.lat!=null&&v.lng!=null);
   e.townShort=(v.town||"").split(",")[0];
   return e;
@@ -515,7 +515,11 @@ function wedRank(b){
 }
 function valScore(b){
   var r=wedRank(b);
-  if(!r) return {score:null,band:"Unknown",why:"No published wedding floor.",r:null};
+  if(!r){
+    if(b.price.weddingHourly!=null) return {score:null,band:"Hourly",r:null,
+      why:money(b.price.weddingHourly)+"/hr wedding rate — hourly pricing isn't ranked against package floors."};
+    return {score:null,band:"Unknown",why:"No published wedding floor.",r:null};
+  }
   var q=r.rank/r.n, band=q<=0.25?"Budget":q<=0.5?"Mid-market":q<=0.75?"Premium":"Luxury";
   return {score:r.pct,band:band,r:r,
     why:money(b.price.wedding)+" wedding floor — cheaper than "+r.pct+"% of "+r.n+" tracked businesses."};
@@ -744,7 +748,7 @@ function dirRow(b,i){
     '<span class="dot" style="background:'+recencyDot(b)+'"></span>'+
     '<div class="nm"><b>'+esc(b.name)+'</b>'+
     '<span>'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+'</span></div>'+
-    '<div class="meta"><b>'+fmt(f)+'</b><span>'+(b.hasPrice?money(b.price.wedding||b.price.session):"price n/a")+
+    '<div class="meta"><b>'+fmt(f)+'</b><span>'+(b.hasPrice?(b.price.wedding!=null?money(b.price.wedding):(b.price.session!=null?money(b.price.session):money(b.price.weddingHourly)+"/hr")):"price n/a")+
     ' · <span class="pct '+pcls+'">'+pctStr(ch)+'</span></span>'+confBadge(b)+'</div></div>';
 }
 /* explicit county labeling: adjacent-county businesses are named as such everywhere */
@@ -1150,6 +1154,7 @@ function profileHTML(b){
   /* Pricing — from the earlier web sweep */
   var priceRows="";
   if(b.price.wedding!=null) priceRows+='<dt>Wedding from</dt><dd><b>'+money(b.price.wedding)+'</b>'+(rW?' <span style="color:var(--dim)">#'+rW+' of '+wArr.length+'</span>':"")+'</dd>';
+  if(b.price.weddingHourly!=null) priceRows+='<dt>Wedding rate</dt><dd><b>'+money(b.price.weddingHourly)+'/hr</b></dd>';
   if(b.price.session!=null) priceRows+='<dt>Session from</dt><dd><b>'+money(b.price.session)+'</b></dd>';
   var cfd=CONF[b.id];
   if(cfd&&cfd.conflict) priceRows+='<dt>Price conflict</dt><dd><span class="pcflag">needs review</span><br>'+
