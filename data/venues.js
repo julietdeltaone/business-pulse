@@ -41,7 +41,7 @@ window.PULSE_VENUES = [
     last_post_date: "2024-03-28", last_post_type: null, last_post_topic: null,
     capacity: "250+ seated guests (official site)",
     capacity_num: 250,
-    price_note: "Third-party Zola listing: pricing from $5,000",
+    price_note: "Third-party Zola listing 'Full wedding (ceremony and reception) starting at $5,000'; the venue's own site publishes no pricing — only 'variety of package options and a la carte services'; the 'from $5,000' figure cannot be confirmed as the venue's own figure.",
     setting: "Riverside on the Grass River, Adirondack foothills",
     season: null,
     spaces: ["Reception Lodge", "Riverside ceremony space", "Bridal cabin"],
@@ -49,8 +49,8 @@ window.PULSE_VENUES = [
     coverage: ["Northern New York"],
     platform: "WordPress",
     since: null,
-    site_note: "Riverside wedding and event venue on the Grass River; 250+ seated reception capacity with all amenities included in price.",
-    sources: ["http://shindigzontheriver.com/", "https://www.zola.com/wedding-vendors/wedding-venues/shindigz-on-the-river"],
+    site_note: "Riverside wedding and event venue on the Grass River; 250+ seated reception capacity with all amenities included in price. Deep-dive 2026-09-30: operating since at least Sep 2022 (booking posts 'Booking NOW for 2023'); real wedding held there Sep 13, 2025 (The Knot couple site). Featured in NNY Living Magazine Wedding Issue. Full-property rental Thu evening–Sun morning with champagne, bridal cabin, patio heaters, BBQ grill, fire pit included. Zola shows 'No reviews yet'; the venue's own weddings page quotes Google reviews but without a live listing count/rating, so no review seed set.",
+    sources: ["http://shindigzontheriver.com/", "https://www.zola.com/wedding-vendors/wedding-venues/shindigz-on-the-river", "http://shindigzontheriver.com/weddings-events/", "https://www.theknot.com/us/jessica-lanning-and-jeremy-bond-sep-2025", "https://www.evepla.com/US/Russell/335646300646120/Shindigz-on-the-river"],
     confidence: "high"
   },
   {
@@ -99,8 +99,8 @@ window.PULSE_VENUES = [
     coverage: null,
     platform: "GoDaddy",
     since: null,
-    site_note: "Family-run venue in Chase Mills (town of Louisville) with views of the rapids; thin official site with no stated capacity or social links; hosted a bridal show September 20, 2026.",
-    sources: ["http://rapidviewvenue.com/"],
+    site_note: "Family-run venue in Chase Mills (town of Louisville) with views of the rapids; thin official site with no stated capacity or social links; hosted a bridal show September 20, 2026. Deep-dive 2026-09-30: no pricing or capacity published anywhere on the site — only contact info. Brand-new venue; earliest verifiable activity is a Dec 2025 event (Christmas sign class); hosted a bridal show Sep 20 2026. Contact: 315-705-5223 / rapidviewvenue@gmail.com. No Google reviews surfaced (venue too new).",
+    sources: ["http://rapidviewvenue.com/", "https://allevents.in/chase-mills/rapid-view-venue-christmas-sign-class-2/200029228824150", "https://allevents.in/chase-mills/bridal-show/200030515180923"],
     confidence: "medium"
   },
   {
@@ -366,7 +366,7 @@ window.PULSE_VENUES = [
     last_post_date: null, last_post_type: null, last_post_topic: null,
     capacity: "Up to 250 guests (official site)",
     capacity_num: 250,
-    price_note: null,
+    price_note: "Venue rental Mon-Thu $3,120 (50-300 guests); Fri & Sun $5,200; Sat $6,240 — via Eventective listing (third-party, not the venue's own site; rustictiesweddings.com publishes no pricing). Note: Eventective lists 300 max capacity vs the venue site's own 250.",
     setting: "All-inclusive timber-frame barn at the foothills of the Adirondacks",
     season: "May through October",
     spaces: ["Timber-frame barn (built 2018)", "Bridal suite", "Groom's cabin"],
@@ -374,8 +374,8 @@ window.PULSE_VENUES = [
     coverage: ["Herkimer County", "Adirondack foothills"],
     platform: null,
     since: 2018,
-    site_note: "Newly built 2018 timber-frame barn; in-house catering, licensed bar, day-of coordination and décor packages; bridal suite + groom's cabin; handicap accessible.",
-    sources: ["https://www.rustictiesweddings.com/"],
+    site_note: "Newly built 2018 timber-frame barn; in-house catering, licensed bar, day-of coordination and décor packages; bridal suite + groom's cabin; handicap accessible. Deep-dive 2026-09-30: The Knot 5.0 (8 reviews), WeddingWire 4.9/5 recommended by 98% of couples; season May-Oct and since-2018 (barn built 2018) corroborated by the venue's own Google Business description. Live Google listing count/rating not obtainable via search, so no review seed set.",
+    sources: ["https://www.rustictiesweddings.com/", "https://www.eventective.com/dolgeville-ny/rustic-ties-787549.html", "https://www.weddingwire.com/biz/rustic-ties/834ab2ac226a16a5.html", "https://www.theknot.com/marketplace/wedding-reception-venues-sackets-harbor-ny/barn?page=2"],
     confidence: "high"
   },
   {
