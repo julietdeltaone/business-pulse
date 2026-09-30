@@ -1,6 +1,7 @@
 /* Business Pulse command center — full-viewport map/bubble market view.
    Reads window.PULSE_DATA from data/data.js (built by scripts/build_data_js.py). */
 (function(){
+document.body.classList.add("fp"); /* entrance animations run on first paint only */
 "use strict";
 var D = window.PULSE_DATA || {};
 var $ = function(s,r){ return (r||document).querySelector(s); };
@@ -24,9 +25,11 @@ function hashN(s){ var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i)
 function toast(msg){ var t=$("#toast"); t.textContent=msg; t.classList.add("show");
   clearTimeout(t._h); t._h=setTimeout(function(){ t.classList.remove("show"); },2600); }
 function countUp(el,to,ms){ if(REDUCED||to==null){ el.textContent=fmt(to); return; }
-  var from=0,t0=null; function step(t){ if(!t0)t0=t; var p=Math.min(1,(t-t0)/(ms||900));
+  var from=0,t0=null; function step(t){ if(!t0)t0=t; var p=Math.min(1,(t-t0)/(ms||500));
     var e=1-Math.pow(1-p,3); el.textContent=fmt(Math.round(to*e)); if(p<1)requestAnimationFrame(step); }
   requestAnimationFrame(step); }
+/* first paint done: entrance stagger stops replaying on re-renders */
+setTimeout(function(){ document.body.classList.remove("fp"); },1600);
 
 /* ---------- pricing parse (from roster text) ---------- */
 function priceFloors(p){
