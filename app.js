@@ -208,7 +208,7 @@ var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unc
 
 /* ---------- state ---------- */
 var S={ view:"map", mode:"businesses", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
-        sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, glanceX:false, ptab:"overview", qx:{}, qall:{} };
+        sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, glanceX:false, lsWide:false, ptab:"overview", qx:{}, qall:{} };
 
 /* ---------- undo / redo history (back-forward) + home ----------
    Every meaningful action pushes a full snapshot; back/forward restore it.
@@ -957,11 +957,10 @@ function lsMatrixHTML(d,all){
   });
   return h+'</div>';
 }
-var LS_LAST=null; /* snapshot of the landscape data behind the current Market render */
 function landscapeHTML(list){
   var d=landscapeData(list);
-  LS_LAST=d.svcs.length?d:null;
   if(!d.svcs.length) return "";
+  var wide=!!S.lsWide;
   var h='<div class="sec ls"><h3>Service landscape</h3><div class="sub">Where the market\u2019s services run deep. Based on services businesses list publicly ('+d.withSvc+' of '+d.total+' disclose a list).</div>';
   h+='<div class="ls-bars">'+d.svcs.map(function(s){
     var n=d.svcCount[s], pct=Math.round(n/d.total*100),
@@ -971,27 +970,9 @@ function landscapeHTML(list){
       '<div class="ls-bmeta"><b>'+n+'</b> \u00b7 '+pct+'% of market \u00b7 '+share+'% of audience</div></div>';
   }).join("")+'</div>';
   h+='<div class="ls-mxhead"><div><h3 class="ls-h">Service \u00d7 county map</h3><div class="sub">Providers per service in each county \u2014 deeper color means deeper coverage.</div></div>'+
-    '<button class="ls-xbtn" data-lsopen>Expand</button></div>'+
-    lsMatrixHTML(d,false)+'</div>';
+    '<button class="ls-xbtn" data-lsx>'+(wide?'Collapse':'Expand')+'</button></div>'+
+    lsMatrixHTML(d,wide)+'</div>';
   return h;
-}
-/* full-size Service x county overlay: kicks out toward the center of the screen */
-function openLsBox(){
-  if(!LS_LAST||!LS_LAST.svcs.length) return;
-  closeLsBox();
-  var d=LS_LAST, n=d.svcs.length;
-  var box=document.createElement("div");
-  box.id="lsbox";
-  box.innerHTML='<div class="lsbox-back" data-lsclose></div>'+
-    '<div class="lsbox-card" role="dialog" aria-label="Service by county, full size">'+
-    '<div class="lsbox-head"><div><h3>Service \u00d7 county map</h3>'+
-    '<div class="sub">'+n+' services \u00d7 7 counties \u2014 providers per service in each county.</div></div>'+
-    '<button class="lsbox-x" data-lsclose aria-label="Close">\u00d7</button></div>'+
-    '<div class="lsbox-body">'+lsMatrixHTML(d,true)+'</div></div>';
-  document.body.appendChild(box);
-}
-function closeLsBox(){
-  var b=$("#lsbox"); if(b) b.parentNode.removeChild(b);
 }
 var DCOLS=[
   ["name","Name","str"],["town","Town/County","str"],["followers","IG followers","num"],
@@ -1886,6 +1867,7 @@ function select(id,opts){
 function renderLeft(){
   var el=$("#leftbody");
   el.innerHTML=S.tab==="today"?renderToday():S.tab==="dir"?renderDir():S.tab==="ai"?renderAI():S.tab==="data"?renderData():renderMarket();
+  $("#left").classList.toggle("lswide",!!S.lsWide&&S.tab==="market");
   $$("[data-count]",el).forEach(function(n){
     var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
     if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
@@ -2033,10 +2015,8 @@ document.addEventListener("click",function(e){
   if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
   var gx=e.target.closest("[data-gexpand]");
   if(gx){ S.glanceX=!S.glanceX; renderRight(); pushHist(); return; }
-  var lso=e.target.closest("[data-lsopen]");
-  if(lso){ openLsBox(); return; }
-  var lsc=e.target.closest("[data-lsclose]");
-  if(lsc){ closeLsBox(); return; }
+  var lsx=e.target.closest("[data-lsx]");
+  if(lsx){ S.lsWide=!S.lsWide; renderLeft(); pushHist(); return; }
   var cf=e.target.closest("[data-cf]");
   if(cf){ var id=cf.getAttribute("data-cf");
     if(id!==S.sel) select(id,{fly:false});
@@ -2061,7 +2041,7 @@ document.addEventListener("click",function(e){
     else s2={key:k,dir:/^(followers|ch7|ch30|posts|conf)$/.test(k)?-1:1};
     S.dsort=s2; renderLeft(); pushHist(); return; }
   var tb=e.target.closest(".tabs button");
-  if(tb){ S.tab=tb.getAttribute("data-tab");
+  if(tb){ S.tab=tb.getAttribute("data-tab"); S.lsWide=false;
     $$(".tabs button").forEach(function(b){ var on=b===tb;
       b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
     renderLeft(); pushHist(); return; }
@@ -2092,7 +2072,7 @@ $("#navfwd").addEventListener("click",goFwd);
 $("#navhome").addEventListener("click",goHome);
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){
-    if($("#lsbox")){ closeLsBox(); return; }
+    if(S.lsWide){ S.lsWide=false; renderLeft(); return; }
     if(S.expanded){ S.expanded=false; renderRight(); pushHist(); return; }
     if(S.glanceX&&!S.sel){ S.glanceX=false; renderRight(); pushHist(); return; }
     setPlaying(false);
