@@ -736,10 +736,7 @@ function xsecPricing(b){
 }
 function xsecWebsite(b){
   var wi=WI[b.id], wOk=wi&&!wi.unreachable;
-  var sv=servicesOf2(b), cov=coverageOf(b), yrs=yearsStr(b);
   var rows="";
-  if(yrs) rows+="<dt>In business</dt><dd><b>"+esc(yrs)+"</b></dd>";
-  if(cov) rows+="<dt>Coverage</dt><dd>"+esc(cov)+"</dd>";
   if(wOk&&wi.platform) rows+="<dt>Site built on</dt><dd>"+esc(wi.platform)+"</dd>";
   var h='<section class="xsec"><h4>Website</h4>';
   if(rows){
@@ -747,7 +744,6 @@ function xsecWebsite(b){
     if(wOk&&wi.site_note) h+='<div class="xdim clamp3">'+esc(wi.site_note)+"</div>";
     h+='<div class="xdim">Checked '+esc((wi&&wi.fetched)||"Sep 2026")+"</div>";
   } else h+='<div class="xdim">No website intel on record.</div>';
-  if(sv) h+='<div class="chiprow">'+sv.map(function(s){return '<span class="chip">'+esc(s)+"</span>";}).join(" ")+"</div>";
   if(b.website) h+='<div class="sc-link"><a class="dsrc" href="'+esc(/^https?:/i.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a></div>';
   return h+"</section>";
 }
