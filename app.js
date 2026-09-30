@@ -702,13 +702,6 @@ function marketGlanceHTML(){
     '<div class="stat"><div class="v" data-count="'+C.length+'">0</div><div class="l">Businesses</div></div>'+
     '<div class="stat"><div class="v" data-count="'+(mF||0)+'">0</div><div class="l">Median followers</div></div>'+
     '<div class="stat"><div class="v">'+C.filter(function(b){return b.postAge!=null&&b.postAge<=30;}).length+'</div><div class="l">Posted ≤30d</div></div></div>';
-  var you=BY_ID[JD_ID];
-  if(you){
-    h+='<div class="sec"><h3 style="font-size:17px">Your position</h3>'+
-      '<div class="rankline"><span>Price rank</span><span class="rk">'+(you.price.wedding!=null?"#"+(C.filter(function(x){return x.price.wedding!=null;}).sort(function(a,b){return a.price.wedding-b.price.wedding;}).indexOf(you)+1):"—")+'</span></div>'+
-      '<div class="rankline"><span>Follower rank</span><span class="rk">'+(you.followers!=null?"#"+(C.filter(function(x){return x.followers!=null;}).sort(function(a,b){return b.followers-a.followers;}).indexOf(you)+1):"—")+'</span></div>'+
-      '<div class="rankline" style="border:0"><span>Posting cadence</span><span class="rk" style="font-size:15px">'+(you.postAge!=null?you.postAge+"d since post":"—")+'</span></div></div>';
-  }
   h+='<div class="sub">Pick any business — here, on the map, or in the directory — to open its profile.</div></div>';
   return h;
 }
