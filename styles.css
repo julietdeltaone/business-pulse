@@ -541,7 +541,12 @@ a{color:var(--blue)}
 /* ---------- market glance: wide kickout, roomy cards, no scroll ---------- */
 #right.wide{width:min(58vw,1160px);bottom:12px}
 #right.wide #rightbody{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start;align-items:start;
-  padding:12px 14px;overflow-y:visible}
+  padding:12px 14px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#39424f transparent}
+/* internal scroll is the safety net: cards are roomy, and on short viewports the
+   panel scrolls instead of cutting cards off at the bottom */
+#right.wide #rightbody::-webkit-scrollbar{width:8px}
+#right.wide #rightbody::-webkit-scrollbar-thumb{background:#2b333f;border-radius:4px}
+#right.wide #rightbody::-webkit-scrollbar-track{background:transparent}
 #right.wide .phead{grid-column:1/-1;margin-bottom:0}
 #right.wide .qcard{margin-bottom:0;min-width:0;background:rgba(255,255,255,.025);
   border:1px solid var(--line-soft);border-radius:14px;padding:11px 13px 10px}
@@ -578,16 +583,19 @@ a{color:var(--blue)}
 
 /* ---------- market glance: collapsed rows (slim rail) ---------- */
 .gqrows{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly;gap:0;margin:0}
-.gqrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;cursor:pointer;
+.gqrow{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;text-align:left;font:inherit;cursor:pointer;
   background:rgba(255,255,255,.03);border:1px solid var(--line-soft);border-radius:10px;
-  padding:10px 12px;color:var(--txt)}
+  padding:10px 12px 11px;color:var(--txt)}
 .gqrow:hover{border-color:var(--gold-dim);background:rgba(233,183,79,.05)}
 .gqrow:hover .gqchev{color:var(--amber);transform:translateX(2px)}
+.gqtop{display:flex;align-items:center;gap:10px}
 .gqstat{width:96px;flex:none;font-size:15px;font-weight:700;color:var(--amber);white-space:nowrap;font-variant-numeric:tabular-nums}
 /* fixed-width number column keeps every label on the same x; long labels truncate to one line */
 .gqlabel{font-size:12px;color:var(--mut);line-height:1.35;flex:1;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gqchev{color:var(--mut);flex:none;font-size:13px;transition:transform .15s ease}
+.gqmeter{display:block;height:4px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.gqmeter i{display:block;height:100%;border-radius:3px}
 
 /* ---------- detail panel two-state redesign (collapsed scan / expanded study) ---------- */
 #right{overflow:visible}
@@ -615,21 +623,8 @@ body.panelexp #map{filter:brightness(.82)}
 .pcol{flex:1;min-height:0;display:flex;flex-direction:column}
 .pcol .pspace{flex:1;min-height:12px}
 .plab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:10px 0 6px}
-.footprint{position:relative;overflow:hidden;margin:0 0 2px}
+.footprint{margin:0 0 2px}
 .footprint p{font-size:12px;color:var(--mut);line-height:1.5;margin:0 0 8px}
-/* one-time scan: a gold sweep line + "indexing" tag, then the confidence bar fills.
-   Plays once per page load (the builder only adds .scan on the first render). */
-.footprint.scan::after{content:"";position:absolute;left:-4px;right:-4px;top:-12px;height:10px;
-  background:linear-gradient(180deg,transparent,rgba(232,179,75,.55) 55%,rgba(232,179,75,.95));
-  filter:blur(1px);pointer-events:none;animation:fpscan 1.7s ease-in-out .1s 1 both}
-@keyframes fpscan{0%{top:-12px;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:102%;opacity:0}}
-.footprint .fpstat{position:absolute;top:0;right:2px;font-size:10px;font-weight:700;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--amber);pointer-events:none;animation:fpstat 1.9s ease .1s 1 both}
-@keyframes fpstat{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
-.footprint .scanfill{display:block;height:100%;border-radius:4px;background:#6db3f2;
-  animation:fpfill 1.1s cubic-bezier(.3,.7,.3,1) .5s 1 both}
-@keyframes fpfill{from{width:0}to{width:var(--w)}}
-@media (prefers-reduced-motion:reduce){.footprint.scan::after,.footprint .fpstat,.footprint .scanfill{animation:none}}
 .pbars{display:flex;flex-direction:column;gap:9px;margin:2px 0}
 .pbar{display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:10px;align-items:center}
 .pbar[data-cf]{cursor:pointer}
