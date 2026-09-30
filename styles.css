@@ -369,9 +369,28 @@ a{color:var(--blue)}
 .schip.hi .scv{color:#6db3f2}.schip.mid .scv{color:#e8b34b}.schip.lo .scv{color:#e06c6c}.schip.unk .scv{color:var(--dim)}
 .schip:hover{border-color:rgba(109,179,242,.45)}
 .cfmeter.hero{border-color:rgba(109,179,242,.4);box-shadow:0 0 0 1px rgba(109,179,242,.12),0 4px 18px rgba(109,179,242,.07)}
-.modal.wide{width:min(540px,94vw);max-height:88vh;overflow-y:auto}
-.dsec{border-top:1px solid var(--line);padding:12px 0}
-.dsec.hero{border:1px solid rgba(109,179,242,.35);border-radius:12px;padding:12px;background:rgba(109,179,242,.06);margin-bottom:6px}
+/* full-screen scorecard dashboard — fits one viewport, no scrolling on desktop */
+.modal.fulldash{width:100vw;height:100dvh;max-height:100dvh;border-radius:0;padding:0;display:flex;flex-direction:column;overflow:hidden;border:none}
+.dash-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 26px 14px;border-bottom:1px solid var(--line);flex:none}
+.dtitle{font-size:20px;font-weight:800;color:var(--txt)}
+.dsub{font-size:13px;color:var(--mut);margin-top:2px}
+.dbtn-x{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--txt);font-size:15px;cursor:pointer;flex:none;font-family:inherit}
+.dbtn-x:hover{border-color:rgba(224,108,108,.6);color:#e08a8a}
+.dash-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:16px 26px;overflow:hidden}
+.dinfo{flex:none;border:1px solid rgba(109,179,242,.35);border-radius:14px;padding:14px 16px;background:rgba(109,179,242,.06)}
+.dfactors{display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}
+.dfactor.full{grid-column:1/-1}
+.dash-widgets{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.dwidget{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.dbig{font-size:30px;font-weight:800;color:var(--txt);margin:2px 0 6px;font-variant-numeric:tabular-nums;line-height:1.1}
+.dash-foot{flex:none;font-size:11.5px;color:var(--dim);text-align:center}
+@media (max-width:760px){
+  .dash-body{overflow-y:auto}
+  .dash-head{padding:14px 16px 10px}
+  .dash-widgets{grid-template-columns:1fr 1fr}
+  .dfactors{grid-template-columns:1fr}
+  .dbig{font-size:24px}
+}
 .dhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
 .dlabel{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--txt)}
 .dpill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:11px;border:1px solid var(--line);white-space:nowrap}
