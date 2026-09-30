@@ -139,24 +139,21 @@ button{font-family:var(--sans)}
 .modetoggle{display:flex;background:rgba(255,255,255,.06);border:1px solid var(--line-soft);border-radius:10px;padding:3px}
 .modetoggle button{background:transparent;border:0;color:var(--mut);font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:7px;cursor:pointer}
 .modetoggle button.on{background:rgba(217,142,74,.2);color:#e8a45c}
-/* slim page footer: sync timestamps + build hash (moved out of the top bar) */
-#pagefoot{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;z-index:20;
-  display:flex;align-items:center;gap:14px;padding:7px 16px;border-radius:12px;
-  font-size:11px;color:var(--mut);white-space:nowrap;max-width:calc(100vw - 24px)}
-#pagefoot .frow{display:flex;align-items:center;gap:10px}
-#pagefoot .fsrc{display:inline-flex;align-items:center;gap:5px;cursor:default}
-#pagefoot .fdot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
-#pagefoot .fdot.stale{background:var(--red)}
-#pagefoot b{color:var(--txt);font-weight:600}
-#pagefoot .fl{color:var(--mut)}
-#pagefoot .fap{color:var(--dim)}
-#pagefoot .fstale{color:var(--red);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
-#footmeta{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
-#footbuild{color:var(--dim);font-size:10.5px;border-left:1px solid var(--line);padding-left:14px;flex:none}
-/* the freshness pill is viewport-centered — when the panel kicks out wide it would
-   sit on top of the panel's bottom cards, so recenter it over the visible map */
-body:has(#right.wide) #pagefoot,body:has(#right.expanded) #pagefoot{
-  left:calc((100vw - 12px - min(58vw,1160px))/2)}
+/* data-freshness footer tucked into the collapsed market glance — fades out on expand */
+#glancefoot{position:absolute;left:0;right:0;bottom:0;z-index:5;padding:12px 16px 12px;
+  font-size:10.5px;color:var(--dim);opacity:0;pointer-events:none;transition:opacity .3s ease;
+  background:linear-gradient(180deg,transparent,rgba(7,10,16,.92) 45%)}
+#right.showgfoot #glancefoot{opacity:1}
+#glancefoot .frow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#glancefoot .fsrc{display:inline-flex;align-items:center;gap:5px;cursor:default}
+#glancefoot .fdot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
+#glancefoot .fdot.stale{background:var(--red)}
+#glancefoot b{color:var(--txt);font-weight:600}
+#glancefoot .fl{color:var(--mut)}
+#glancefoot .fap{color:var(--dim)}
+#glancefoot .fstale{color:var(--red);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+#glancefoot .fmeta{margin-top:5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#glancefoot .fbuild{color:var(--mut)}
 /* explicit threshold notes on change-feed headers */
 .thr{font-size:10px;font-weight:500;color:var(--dim);text-transform:none;letter-spacing:0}
 /* venue rows wrap to multiple lines — never cut mid-word */
@@ -339,7 +336,6 @@ body.fp .stagger>*:nth-child(n+10){animation-delay:.36s}
   .brand-text h1{font-size:17px}
   .filters{order:3;flex-basis:100%;justify-content:flex-start;overflow-x:auto}
   .filters input{flex:1;min-width:140px}
-  #pagefoot{display:none}
   .panel{top:auto;bottom:0;left:0;right:0;width:auto;max-height:46vh;border-radius:18px 18px 0 0;transform:translateY(calc(100% - 118px));transition:transform .3s ease}
   #left.open{transform:none}
   #right,#right.wide,#right.expanded{width:auto;top:120px;bottom:196px;left:8px;right:8px;max-height:none;transform:translateY(12px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
@@ -605,7 +601,7 @@ body.fp .stagger>*:nth-child(n+10){animation-delay:.36s}
 .ghlab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-top:7px}
 .ghsub{font-size:11px;color:var(--dim);margin-top:3px}
 /* ---------- market glance: collapsed rows (slim rail) ---------- */
-.gqrows{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly;gap:0;margin:0}
+.gqrows{display:flex;flex-direction:column;gap:10px;margin:0}
 .gqrow{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;text-align:left;font:inherit;cursor:pointer;
   background:rgba(255,255,255,.03);border:1px solid var(--line-soft);border-radius:10px;
   padding:10px 12px 11px;color:var(--txt)}
