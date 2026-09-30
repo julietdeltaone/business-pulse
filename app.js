@@ -649,21 +649,16 @@ function snapRowsHTML(b){
     row("Starting price",esc(d.price),d.priceT)+
     row("Reviews",d.ri?fmt(d.ri.count):"—",d.ri?("Reviews: "+d.ri.count):"");
 }
-/* how-AI-sees-it framing: the digital footprint, with confidence as its headline metric.
-   The scan animation (sweep line + bar fill + "indexing" tag) plays once per page load. */
-var __fpScanned=false;
+/* how-AI-sees-it framing: the digital footprint, with confidence as its headline metric */
 function footprintHTML(b){
   var s=confOf(b), pct=s==null?0:Math.max(0,Math.min(100,s));
   var band=s==null?null:(s>=80?"strong":s>=60?"decent":s>=40?"thin":"weak");
-  var scan=!__fpScanned; __fpScanned=true;
   var h='<div class="plab">How AI sees this business</div>'+
-    '<div class="footprint'+(scan?" scan":"")+'">'+
-    (scan?'<div class="fpstat">Indexing\u2026</div>':"")+
-    '<p>This business\u2019s digital footprint \u2014 what AI assistants and search engines see when they look it up.</p>';
+    '<div class="footprint"><p>This business\u2019s digital footprint \u2014 what AI assistants and search engines see when they look it up.</p>';
   if(s!=null) h+='<div class="pbar" data-cf="'+b.id+'" title="Information confidence \u2014 '+band+' \u2014 expand for everything">'+
-    '<span class="pbl">Confidence</span><span class="pbtrack">'+
-    (scan?'<i class="scanfill" style="--w:'+pct+'%"></i>':'<i style="width:'+pct+'%"></i>')+
-    '</span><span class="pbv">'+s+' <small>'+band+"</small></span></div>";
+    '<span class="pbl">Confidence</span>'+
+    '<span class="pbtrack"><i style="width:'+pct+'%"></i></span>'+
+    '<span class="pbv">'+s+' <small>'+band+"</small></span></div>";
   return h+"</div>";
 }
 /* overview: bio, services, coverage, years */
@@ -1332,7 +1327,7 @@ function marketGlanceHTML(){
       ckeys.map(function(k,i){ return {label:k,full:k,val:co[k],pct:Math.round(co[k]/cmax*100),color:"#6db3f2",
         members:bmem(com[k],byName,function(v){return v.town||""})}; }),
       0,
-      {stat:(co["St. Lawrence"]||0)+" of "+V.length,label:"venues in St. Lawrence Co"}));
+      {stat:(co["St. Lawrence"]||0)+" of "+V.length,label:"venues in St. Lawrence Co",frac:(co["St. Lawrence"]||0)/V.length,color:"#6db3f2"}));
     /* Q2: how big are they? */
     var cb=[["Up to 100",[],"#6db3f2"],["101\u2013200",[],"#6db3f2"],["201\u2013300",[],"#6db3f2"],["300+",[],"#6db3f2"],["Unknown",[],"#3a4353"]];
     V.forEach(function(v){ var c=v.capacity_num,bi=c==null?4:(c<=100?0:(c<=200?1:(c<=300?2:3))); cb[bi][1].push(v); });
@@ -1342,7 +1337,7 @@ function marketGlanceHTML(){
         members:bmem(x[1],function(a,b){return (b.capacity_num||0)-(a.capacity_num||0);},
           function(v){return v.capacity_num?v.capacity_num+" guests":"";})}; }),
       1,
-      {stat:(V.length-cb[4][1].length)+" of "+V.length,label:"venues with known capacity"},
+      {stat:(V.length-cb[4][1].length)+" of "+V.length,label:"venues with known capacity",frac:(V.length-cb[4][1].length)/V.length,color:"#6db3f2"},
       '<div class="qchartlab">Distribution</div>'+
       histSVG(["\u2264100","101\u2013200","201\u2013300","300+","Unknown"],
         cb.map(function(x){return x[1].length;}),cb.map(function(x){return x[2];}))));
@@ -1358,7 +1353,7 @@ function marketGlanceHTML(){
        {label:"Dormant",val:idm.length,pct:Math.round(idm.length/imax*100),color:"#e06c6c",vcol:"#e06c6c",members:bmem(idm,byName,vsub)},
        {label:"No verified account",val:inone.length,pct:Math.round(inone.length/imax*100),color:"#3a4353",nodata:true,members:bmem(inone,byName,vsub)}],
       2,
-      {stat:inone.length+" of "+V.length,label:"venues with no verified Instagram"},
+      {stat:inone.length+" of "+V.length,label:"venues with no verified Instagram",frac:(ia.length+idm.length)/V.length,color:"#6db3f2"},
       '<div class="qchartlab">Share of venues</div>'+
       donutSVG([{label:"Active",val:ia.length,color:"#e8b34b"},
         {label:"Dormant",val:idm.length,color:"#e06c6c"},
@@ -1374,7 +1369,7 @@ function marketGlanceHTML(){
       skeys.map(function(k,i){ return {label:k,full:k,val:st[k],pct:Math.round(st[k]/smax*100),color:"#6db3f2",
         members:bmem(stm[k],byName,function(v){return v.town||""})}; }),
       3,
-      {stat:skeys.length+" styles",label:"across "+V.length+" venues"},
+      {stat:skeys.length+" styles",label:"across "+V.length+" venues",frac:smax/V.length,color:"#6db3f2"},
       '<div class="qchartlab">Top styles</div>'+
       histSVG(stop5.map(shortLab),stop5.map(function(k){return st[k];}),
         ["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
@@ -1391,7 +1386,7 @@ function marketGlanceHTML(){
         function(a,b){return (a.postAge==null?1e9:a.postAge)-(b.postAge==null?1e9:b.postAge);},
         function(b){return b.postAge!=null?b.postAge+"d ago":"";})}; }),
     0,
-    {stat:ab[0][1].length+" of "+list.length,label:"posted in the last 30 days"},
+    {stat:ab[0][1].length+" of "+list.length,label:"posted in the last 30 days",frac:ab[0][1].length/list.length,color:"#e8b34b"},
     '<div class="qchartlab">Share of the market</div>'+
     donutSVG([["Active",0],["Steady",1],["Quiet",2],["Dormant",3],["No data",4]].map(function(x){
       return {label:x[0],val:ab[x[1]][1].length,color:ab[x[1]][2]}; }))));
@@ -1409,7 +1404,7 @@ function marketGlanceHTML(){
     aud.map(function(b,i){ return {label:b.name,full:b.name,val:fmt(b.followers),id:b.id,
       pct:Math.round(b.followers/fmax*100),color:"#6db3f2"}; }),
     1,
-    {stat:(totAud?Math.round(topAud/totAud*100):0)+"%",label:"of "+fmt(totAud)+" followers sit in the top 6"},
+    {stat:(totAud?Math.round(topAud/totAud*100):0)+"%",label:"of "+fmt(totAud)+" followers sit in the top 6",frac:totAud?topAud/totAud:0,color:"#6db3f2"},
     '<div class="qchartlab">Follower distribution</div>'+
     histSVG(abins.map(function(bn){return bn[0];}),acounts,["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
   /* Q3: what does it cost? */
@@ -1423,12 +1418,14 @@ function marketGlanceHTML(){
       members:bmem(x[1],function(a,b){return (a.price.wedding||1e9)-(b.price.wedding||1e9);},
         function(b){return b.price.wedding!=null?money(b.price.wedding):"";})}; }),
     2,
-    {stat:pub+" of "+list.length,label:"publish a starting wedding price"},
+    {stat:pub+" of "+list.length,label:"publish a starting wedding price",frac:pub/list.length,color:"#6db3f2"},
     '<div class="qchartlab">Price distribution</div>'+
     histSVG(["<$1k","$1\u20132k","$2\u20133.5k","$3.5k+"],
       [pb[0][1].length,pb[1][1].length,pb[2][1].length,pb[3][1].length],
       ["#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
   /* Q4: who's gaining followers? */
+  var grAll=list.map(function(b){ return pctChange(b,Math.max(0,S.di-30),S.di); }).filter(function(c){return c!=null;});
+  var posFrac=grAll.length?grAll.filter(function(c){return c>0;}).length/grAll.length:0;
   var gr=list.map(function(b){ return {b:b,ch:pctChange(b,Math.max(0,S.di-30),S.di)}; })
     .filter(function(x){return x.ch!=null;}).sort(function(a,b){return b.ch-a.ch;}).slice(0,6);
   if(gr.length){
@@ -1442,7 +1439,7 @@ function marketGlanceHTML(){
       gr.map(function(x){ return {id:x.b.id,full:x.b.name,label:x.b.name,val:(x.ch>=0?"+":"")+x.ch.toFixed(1)+"%",
         pct:Math.min(100,Math.round(Math.abs(x.ch)/gmax*100)),color:x.ch>=0?"#6db3f2":"#e06c6c",vcol:x.ch>=0?null:"#e06c6c"}; }),
       3,
-      {stat:(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%",label:"best 30-day mover · "+gm.b.name},
+      {stat:(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%",label:"best 30-day mover · "+gm.b.name,frac:posFrac,color:"#6db3f2"},
       '<div class="qchartlab">Total market followers</div>'+sparkline(mhist,300,72)));
   }
   /* Q5: how long have they been around? */
@@ -1456,7 +1453,7 @@ function marketGlanceHTML(){
       members:bmem(x[1],function(a,b){return (yearsNum(b)||0)-(yearsNum(a)||0);},
         function(b){var y=yearsNum(b);return y!=null?y+" yrs":"";})}; }),
     4,
-    {stat:String(yb[3][1].length),label:"businesses at 10+ years"},
+    {stat:String(yb[3][1].length),label:"businesses at 10+ years",frac:yb[3][1].length/list.length,color:"#e8b34b"},
     '<div class="qchartlab">Distribution</div>'+
     histSVG(["<3","3\u20135","6\u201310","10+","Unknown"],
       [yb[0][1].length,yb[1][1].length,yb[2][1].length,yb[3][1].length,yb[4][1].length],
@@ -1472,7 +1469,7 @@ function marketGlanceHTML(){
       members:bmem(x[1],function(a,b){return (confOf(b)||0)-(confOf(a)||0);},
         function(b){var s=confOf(b);return s!=null?s+"%":"";})}; }),
     5,
-    {stat:sb[0][1].length+" of "+list.length,label:"profiles score 80+ (strong)"},
+    {stat:sb[0][1].length+" of "+list.length,label:"profiles score 80+ (strong)",frac:sb[0][1].length/list.length,color:"#e8b34b"},
     '<div class="qchartlab">Distribution</div>'+
     histSVG(["80+","60\u201379","40\u201359","<40","Unknown"],
       [sb[0][1].length,sb[1][1].length,sb[2][1].length,sb[3][1].length,sb[4][1].length],
@@ -1485,9 +1482,11 @@ function glanceCollapsedHTML(glances){
   return '<div class="gqrows">'+glances.map(function(g){
     if(!g) return "";
     return '<button class="gqrow" data-gexpand title="'+esc(g.stat+" \u00b7 "+g.label+" \u2014 open the full market view")+'">'+
-      '<span class="gqstat">'+esc(g.stat)+'</span>'+
+      '<span class="gqtop"><span class="gqstat">'+esc(g.stat)+'</span>'+
       '<span class="gqlabel" title="'+esc(g.label)+'">'+esc(g.label)+'</span>'+
-      '<span class="gqchev">\u25B8</span></button>';
+      '<span class="gqchev">\u25B8</span></span>'+
+      (g.frac!=null?'<span class="gqmeter"><i style="width:'+Math.round(Math.max(0,Math.min(1,g.frac))*100)+'%;background:'+(g.color||"#6db3f2")+'"></i></span>':"")+
+      "</button>";
   }).join("")+"</div>";
 }
 function renderRight(){
