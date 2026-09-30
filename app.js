@@ -631,7 +631,7 @@ function openScoreDash(id){
     var cut=new Date(DATES[S.di]+"T12:00:00"); cut.setDate(cut.getDate()-90);
     var cutS=cut.getFullYear()+"-"+("0"+(cut.getMonth()+1)).slice(-2)+"-"+("0"+cut.getDate()).slice(-2);
     var hist=(b.followHist||[]).filter(function(r){ return r.date>=cutS; });
-    if(hist.length>1) mGraph='<div class="dgraph">'+sparkline(hist,300,54)+"</div>";
+    if(hist.length>1) mGraph='<div class="dgraph">'+sparkline(hist,300,96)+"</div>";
   })();
   if(m.ch30!=null){
     var s7=Math.max(5,Math.min(100,Math.round(50+(m.ch7||0)*8)));
