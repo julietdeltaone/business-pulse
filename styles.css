@@ -164,8 +164,8 @@ button{font-family:var(--sans)}
 /* ---------- side panels ---------- */
 .panel{position:fixed;top:76px;bottom:76px;z-index:15;display:flex;flex-direction:column;overflow:hidden}
 #left{left:12px;width:372px}
-#right{right:12px;width:348px}
-#right.wide{width:472px}
+#right{right:12px;width:348px;transition:width .38s cubic-bezier(.22,.9,.24,1)}
+#right.wide{width:560px}
 .railhead{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 10px}
 .railhead>span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
 .rxbtn{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt);font-family:inherit;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:9px;cursor:pointer}
@@ -515,3 +515,25 @@ a{color:var(--blue)}
 @keyframes qgrow{from{width:0!important}}
 .qans{margin-top:12px;font-size:12px;color:var(--mut);line-height:1.5;border-top:1px solid var(--line-soft);padding-top:9px}
 .qans b{color:var(--amber);font-weight:700}
+.qcard>h3{font-size:16px;margin:2px 0 6px}
+
+/* ---------- market glance expanded: kickout grid, fits without v-scroll ---------- */
+#right.wide #rightbody{display:grid;grid-template-columns:1fr 1fr;gap:16px 14px;align-content:start;align-items:start;padding:12px}
+#right.wide .railhead{grid-column:1/-1;margin:0}
+#right.wide .qcard{margin-bottom:0;min-width:0}
+#right.wide .qcard>h3{font-size:13px;margin:0 0 6px}
+#right.wide .qcard>.sub{display:none}
+#right.wide .qbars{gap:5px;margin-top:2px}
+#right.wide .qrow{padding:1px 2px;gap:2px 8px}
+#right.wide .qn,#right.wide .qv{font-size:11px}
+#right.wide .qtrack{height:4px}
+#right.wide .qans{font-size:10.5px;line-height:1.4;margin-top:6px;padding-top:5px}
+@media (max-width:640px){
+  #right.wide #rightbody{display:block}
+  #right.wide .qcard{margin-bottom:16px}
+  #right.wide .qcard>.sub{display:block}
+  #right.wide .qcard>h3{font-size:14px}
+}
+@media (prefers-reduced-motion:reduce){
+  #right{transition:none}
+}
