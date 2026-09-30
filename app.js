@@ -1232,7 +1232,7 @@ function marketGlanceHTML(){
       var smax=st[skeys[0]]||1, scols=["#e8b34b","#6db3f2","#6fd3e7","#b9c2cf","#e06c6c","#8a94a6","#3a4353"];
       cards.push(qCard("Settings","Venue style, as listed",
         skeys.map(function(k,i){ return {label:k,val:st[k],pct:Math.round(st[k]/smax*100),color:scols[i%scols.length]}; }),
-        "Barns lead — <b>"+skeys[0]+"</b> is the most common setting ("+st[skeys[0]]+" of "+V.length+")."));
+        "Settings vary — <b>"+skeys.length+"</b> distinct styles across "+V.length+" venues"+(st[skeys[0]]>1?"; <b>"+skeys[0]+"</b> leads ("+st[skeys[0]]+")":"; no single style dominates")+"."));
     }
     return railHead()+cards.join("");
   }
