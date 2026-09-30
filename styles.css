@@ -152,6 +152,10 @@ button{font-family:var(--sans)}
 #pagefoot .fstale{color:var(--red);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
 #footmeta{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
 #footbuild{color:var(--dim);font-size:10.5px;border-left:1px solid var(--line);padding-left:14px;flex:none}
+/* the freshness pill is viewport-centered — when the panel kicks out wide it would
+   sit on top of the panel's bottom cards, so recenter it over the visible map */
+body:has(#right.wide) #pagefoot,body:has(#right.expanded) #pagefoot{
+  left:calc((100vw - 12px - min(58vw,1160px))/2)}
 /* explicit threshold notes on change-feed headers */
 .thr{font-size:10px;font-weight:500;color:var(--dim);text-transform:none;letter-spacing:0}
 /* venue rows wrap to multiple lines — never cut mid-word */
@@ -169,8 +173,9 @@ button{font-family:var(--sans)}
 #left{left:12px;width:372px}
 #right{right:12px;width:348px;transition:width .38s cubic-bezier(.22,.9,.24,1)}
 #right.wide{width:min(58vw,1160px);bottom:12px} /* market glance kickout — always wide, no scroll */
-.railhead{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 10px}
-.railhead>span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+/* collapsed states share a flex column so the glance rows can breathe to fill the rail */
+#right:not(.wide):not(.expanded) #rightbody{display:flex;flex-direction:column;min-height:0}
+#right:not(.wide):not(.expanded):not(.hassel) #rightbody{overflow:hidden}
 /* ---------- persistent history nav (back / forward / home) ---------- */
 .topnav{display:flex;gap:5px;align-items:center;margin-right:2px}
 .topnav button{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.05);
@@ -337,7 +342,6 @@ a{color:var(--blue)}
   #left.open{transform:none}
   #right,#right.wide,#right.expanded{width:auto;top:120px;bottom:196px;left:8px;right:8px;max-height:none;transform:translateY(12px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
   #right.open{transform:none;opacity:1;pointer-events:auto}
-  #panelex{display:none!important}
   .mclose{display:block;position:sticky;top:0;margin:0 0 8px auto;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--txt);font-size:12.5px;font-weight:600;border-radius:20px;padding:6px 14px;cursor:pointer;z-index:2}
   #sheetgrab{display:flex;justify-content:center;padding:8px 0 2px;background:none;border:0;width:100%;cursor:pointer}
   #sheetgrab span{width:44px;height:4px;border-radius:3px;background:rgba(255,255,255,.25)}
@@ -516,16 +520,15 @@ a{color:var(--blue)}
 .qtrack{grid-column:1/-1;height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
 .qtrack i{display:block;height:100%;border-radius:4px;animation:qgrow .6s ease both}
 @keyframes qgrow{from{width:0!important}}
-.qans{margin-top:12px;font-size:12px;color:var(--mut);line-height:1.5;border-top:1px solid var(--line-soft);padding-top:9px}
-.qans b{color:var(--amber);font-weight:700}
+.qrow.nodata{opacity:.62}
+#right.wide .qmore{font-size:12px;color:var(--mut);padding:5px 8px;cursor:pointer;font-weight:600}
 .qcard>h3{font-size:16px;margin:2px 0 6px}
 
 /* ---------- market glance: wide kickout, roomy cards, no scroll ---------- */
 #right.wide{width:min(58vw,1160px);bottom:12px}
 #right.wide #rightbody{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start;align-items:start;
   padding:12px 14px;overflow-y:visible}
-#right.wide .railhead{grid-column:1/-1;margin:2px 2px 0}
-#right.wide .railhint{grid-column:1/-1;font-size:12px;color:var(--dim);margin:-8px 2px 0}
+#right.wide .phead{grid-column:1/-1;margin-bottom:0}
 #right.wide .qcard{margin-bottom:0;min-width:0;background:rgba(255,255,255,.025);
   border:1px solid var(--line-soft);border-radius:14px;padding:11px 13px 10px}
 #right.wide .qcard>h3{font-size:16px;margin:0 0 2px}
@@ -538,7 +541,7 @@ a{color:var(--blue)}
 #right.wide .qn,#right.wide .qv{font-size:13px;line-height:1.25}
 #right.wide .qchev{color:var(--dim);font-size:10px;margin-left:5px}
 #right.wide .qtrack{height:8px}
-#right.wide .qans{font-size:12px;line-height:1.4;margin-top:7px;padding-top:6px}
+#right.wide .qmore:hover{color:var(--amber)}
 #right.wide .qmem{max-height:228px;overflow-y:auto;margin:4px -4px 2px;padding:0 4px;
   scrollbar-width:thin;scrollbar-color:#39424f transparent}
 #right.wide .qmem::-webkit-scrollbar{width:8px}
@@ -549,7 +552,6 @@ a{color:var(--blue)}
 #right.wide .qmemrow:hover .qn{color:var(--txt)}
 #right.wide .qmemrow .qn{flex:1;min-width:0;font-size:12.5px}
 #right.wide .qmemrow .qv{font-size:12px;color:var(--mut);flex:none}
-#right.wide .qmore{font-size:11.5px;color:var(--dim);padding:4px 8px;cursor:pointer}
 #right.wide .qmore:hover{color:var(--amber)}
 @media (max-width:640px){
   #right.wide{width:auto;bottom:196px}
@@ -561,15 +563,17 @@ a{color:var(--blue)}
 }
 
 /* ---------- market glance: collapsed rows (slim rail) ---------- */
-.gqrows{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-.gqrow{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;font:inherit;cursor:pointer;
+.gqrows{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly;gap:0;margin:0}
+.gqrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;cursor:pointer;
   background:rgba(255,255,255,.03);border:1px solid var(--line-soft);border-radius:10px;
   padding:10px 12px;color:var(--txt)}
 .gqrow:hover{border-color:var(--gold-dim);background:rgba(233,183,79,.05)}
-.gqrow:hover .gqchev{color:var(--amber)}
-.gqstat{font-size:15px;font-weight:700;color:var(--amber);white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
-.gqlabel{font-size:12px;color:var(--mut);line-height:1.35;flex:1;min-width:0}
-.gqchev{color:var(--dim);flex:none;font-size:11px}
+.gqrow:hover .gqchev{color:var(--amber);transform:translateX(2px)}
+.gqstat{width:96px;flex:none;font-size:15px;font-weight:700;color:var(--amber);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* fixed-width number column keeps every label on the same x; long labels truncate to one line */
+.gqlabel{font-size:12px;color:var(--mut);line-height:1.35;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gqchev{color:var(--mut);flex:none;font-size:13px;transition:transform .15s ease}
 
 /* ---------- detail panel two-state redesign (collapsed scan / expanded study) ---------- */
 #right{overflow:visible}
@@ -577,16 +581,24 @@ a{color:var(--blue)}
 #right.expanded #rightbody{overflow:hidden} /* everything visible at once — no scrolling */
 body.panelexp #map{filter:brightness(.82)}
 #map{transition:filter .38s}
-/* expand button on the panel's edge — gold, the state accent */
-#panelex{position:absolute;top:50%;left:-17px;transform:translateY(-50%);z-index:5;display:none;
-  width:32px;height:76px;border-radius:10px 0 0 10px;cursor:pointer;
-  background:rgba(232,179,75,.13);border:1px solid rgba(232,179,75,.5);border-right:0;
-  color:var(--amber);font-size:17px;line-height:1;font-family:inherit}
-#panelex:hover{background:rgba(232,179,75,.26)}
-#right.hassel #panelex{display:block}
+/* ---------- right panel: one shared header in every state ----------
+   Title left, one chevron control right — same height and padding whether the
+   panel shows the market glance or a business profile, collapsed or expanded. */
+.phead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  min-height:46px;padding:4px 2px 10px;margin-bottom:6px;border-bottom:1px solid var(--line-soft)}
+.pt{display:flex;align-items:center;gap:9px;min-width:0;font-size:11px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.pt .pname{text-transform:none;letter-spacing:0;font-size:15px;font-weight:700;color:var(--txt);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pava{width:27px;height:27px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:12px;color:#0a0d13;background:linear-gradient(135deg,#e8b34b,#c98f2b)}
+.pxbtn{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;
+  color:var(--mut);font-size:16px;cursor:pointer}
+.pxbtn:hover{color:var(--amber);border-color:var(--gold-dim);background:rgba(232,179,75,.08)}
 /* ---------- business profile: simple two-state panel, glance footprints ---------- */
-/* collapsed: overview + score bars spread across the full vertical rail */
-.pcol{min-height:100%;display:flex;flex-direction:column}
+/* collapsed: headline numbers + score bars spread across the full vertical rail */
+.pcol{flex:1;min-height:0;display:flex;flex-direction:column}
 .pcol .pspace{flex:1;min-height:12px}
 .plab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:10px 0 6px}
 .pbars{display:flex;flex-direction:column;gap:9px;margin:2px 0}
@@ -602,18 +614,22 @@ body.panelexp #map{filter:brightness(.82)}
 .hstat{background:rgba(255,255,255,.03);border:1px solid var(--line-soft);border-radius:10px;padding:8px 4px;text-align:center;min-width:0}
 .hstat .v{font-size:15px;font-weight:700;color:var(--txt);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .hstat .l{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-top:3px}
-.expandhint{margin-top:10px;font-size:12px}
-.expandhint b{color:var(--amber)}
 /* expanded: everything at once — no tabs, no scrolling */
-.xall{display:flex;flex-direction:column;min-height:100%}
-.xhead{display:flex;align-items:flex-start;gap:8px}
-.xhead .prof-head{flex:1;min-width:0}
-#panelcollapse{flex:none;margin:2px 0 0}
+.xall{display:flex;flex-direction:column}
 .hstats6{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:8px 0 2px}
 .xgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
 .xgrid2{display:grid;grid-template-columns:1.15fr 1fr;gap:8px;margin-top:8px}
-.xsec{background:rgba(255,255,255,.025);border:1px solid var(--line-soft);border-radius:12px;padding:8px 12px;min-width:0}
-.xsec>h4{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 6px}
+/* cards size to their own content — no forced equal heights, no dead space */
+.xsec{align-self:start;background:rgba(255,255,255,.025);border:1px solid var(--line-soft);border-radius:12px;padding:8px 12px;min-width:0}
+.xsec>h4{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 6px}
+.xsec>h4 .dsrc{font-size:11px;letter-spacing:0;text-transform:none}
+/* long text values (coverage) left-align on their own lines instead of wrapping ragged on the right */
+.cov{margin:6px 0}
+.cov>span{display:block;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+.cov>b{font-size:12px;font-weight:600;line-height:1.5}
+/* raw evidence rides inside the score row, right-aligned and readable */
+.praw{font-weight:500;color:var(--mut);font-size:12px}
+.spark .sx{font-size:9px;fill:#6b7484}
 .xsec .kv{margin:4px 0;font-size:12px;gap:4px 10px}
 .xsec .chiprow{margin:6px 0}
 .xsec .chip{font-size:11px;padding:3px 9px}
@@ -622,16 +638,11 @@ body.panelexp #map{filter:brightness(.82)}
 .xsec .xkv span{font-size:11.5px}
 .xsec .xkv b{font-size:12px}
 .xsec .xkv.missed b{color:var(--dim);font-weight:500}
-.x2stat{display:flex;gap:8px;align-items:baseline;margin:4px 0}
-.x2stat .pct{font-size:15px;font-weight:700}
 .xdim{color:var(--dim);font-size:11.5px;line-height:1.45}
 .xdim b{color:var(--txt)}
 .xcomp{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .xcomp b{font-size:26px;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1}
 .xcomp span{font-size:11.5px;color:var(--mut);line-height:1.4}
-.xraws{margin-top:6px;display:flex;flex-direction:column;gap:3px}
-.xraw{font-size:11.5px;color:var(--dim);line-height:1.4}
-.xraw b{color:var(--txt);font-weight:600}
 .xsec .cf2-bar{margin:4px 0 6px}
 .xsec .sc-link{margin-top:6px}
 .xall>.chiprow{margin-top:8px}
