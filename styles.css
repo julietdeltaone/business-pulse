@@ -14,7 +14,7 @@
   --violet:#b48ce8;
   --teal:#5fd0b5;
   --red:#e06c6c;
-  --green:#7dc98f;
+  --up:#6fd3e7;
   --serif:'Instrument Serif',Georgia,serif;
   --sans:'Hanken Grotesk',system-ui,sans-serif;
   --r:14px;
@@ -142,8 +142,25 @@ button{font-family:var(--sans)}
 .modetoggle{display:flex;background:rgba(255,255,255,.06);border:1px solid var(--line-soft);border-radius:10px;padding:3px}
 .modetoggle button{background:transparent;border:0;color:var(--mut);font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:7px;cursor:pointer}
 .modetoggle button.on{background:rgba(217,142,74,.2);color:#e8a45c}
-#datelabel{font-size:12px;color:var(--mut);white-space:nowrap}
-#datelabel b{color:var(--txt)}
+/* per-source freshness cluster (replaces the old single "Data as of" label) */
+#fresh{display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:11px;color:var(--mut);white-space:nowrap;line-height:1.4}
+#fresh .frow{display:flex;align-items:center;gap:10px}
+#fresh .frow.dim{color:var(--dim);font-size:10.5px}
+#fresh .fsrc{display:inline-flex;align-items:center;gap:4px;cursor:default}
+#fresh .fdot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
+#fresh .fdot.stale{background:var(--red)}
+#fresh b{color:var(--txt);font-weight:600}
+#fresh .fl{color:var(--mut)}
+#fresh .fap{color:var(--dim)}
+#fresh .fstale{color:var(--red);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+/* explicit threshold notes on change-feed headers */
+.thr{font-size:10px;font-weight:500;color:var(--dim);text-transform:none;letter-spacing:0}
+/* venue rows wrap to multiple lines — never cut mid-word */
+.row.wrap{align-items:flex-start}
+.row.wrap .nm b,.row.wrap .nm span{white-space:normal;overflow:visible;text-overflow:clip}
+.row.wrap .meta{padding-top:2px}
+.rk-row.wrap .rk-top b{white-space:normal;overflow:visible}
+.rk-row.wrap .rk-sub{white-space:normal;overflow:visible}
 .ghostbtn{background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:9px;padding:7px 12px;font-size:12.5px;cursor:pointer}
 .ghostbtn:hover{color:var(--txt);border-color:rgba(255,255,255,.25)}
 .ghostbtn.on{color:var(--amber);border-color:rgba(232,179,75,.5)}
@@ -152,7 +169,8 @@ button{font-family:var(--sans)}
 .panel{position:fixed;top:76px;bottom:76px;z-index:15;display:flex;flex-direction:column;overflow:hidden}
 #left{left:12px;width:372px}
 #right{right:12px;width:348px}
-#rightclose{display:none}
+#rightclose{position:absolute;top:10px;right:12px;z-index:2;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--mut);font-size:15px;line-height:1;width:28px;height:28px;border-radius:50%;cursor:pointer}
+#rightclose:hover{color:var(--txt);border-color:rgba(255,255,255,.25)}
 .tabs{display:flex;gap:4px;padding:10px 12px 0}
 .tabs button{flex:1;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--mut);font-size:13px;font-weight:600;padding:9px 4px;cursor:pointer}
 .tabs button.on{color:var(--txt);border-bottom-color:var(--amber)}
@@ -179,7 +197,7 @@ button{font-family:var(--sans)}
 .row .meta b{display:block;font-size:13px}
 .row .meta span{font-size:11px;color:var(--mut)}
 .row .pct{font-size:11.5px;font-weight:700}
-.pct.up{color:var(--green)} .pct.dn{color:var(--red)} .pct.fl{color:var(--dim)}
+.pct.up{color:var(--up)} .pct.dn{color:var(--red)} .pct.fl{color:var(--dim)}
 .youbadge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(232,179,75,.5);border-radius:20px;padding:2px 8px;margin-left:6px;vertical-align:2px}
 .adj{color:var(--amber);font-weight:600}
 .unv{color:#8b93a3;font-style:italic}
@@ -224,7 +242,7 @@ button{font-family:var(--sans)}
 .ai-prow .nm span{font-size:11px;color:#9aa3b2}
 .ai-pbar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:6px}
 .ai-pbar i{display:block;height:100%;background:#6db3f2;border-radius:3px}
-.lb-v{font-size:12.5px;font-weight:700;color:var(--green)}
+.lb-v{font-size:12.5px;font-weight:700;color:var(--up)}
 
 /* donut */
 .donutwrap{display:flex;align-items:center;gap:14px}
@@ -300,7 +318,7 @@ a{color:var(--blue)}
   .brand-text h1{font-size:17px}
   .filters{order:3;flex-basis:100%;justify-content:flex-start;overflow-x:auto}
   .filters input{flex:1;min-width:140px}
-  #datelabel{display:none}
+  #fresh{display:none}
   .panel{top:auto;bottom:0;left:0;right:0;width:auto;max-height:46vh;border-radius:18px 18px 0 0;transform:translateY(calc(100% - 118px));transition:transform .3s ease}
   #left.open{transform:none}
   #right{top:120px;bottom:196px;left:8px;right:8px;max-height:none;transform:translateY(12px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
