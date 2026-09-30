@@ -253,13 +253,15 @@ button{font-family:var(--sans)}
 .spark .al{font-size:9px;fill:#6b7484}
 
 /* profile */
-.prof-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+.prof-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:4px;padding-right:38px} /* right pad clears the absolute X button */
+.prof-head>div{min-width:0;flex:1} /* long names wrap instead of sliding under the X */
+.prof-head h2{overflow-wrap:break-word}
 .prof-ava{width:52px;height:52px;border-radius:14px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;color:#0a0d13;background:linear-gradient(135deg,#e8b34b,#c98f2b)}
 .prof-ava.you{background:linear-gradient(135deg,#f5cd6d,#e8b34b);box-shadow:0 0 18px rgba(232,179,75,.4)}
 .prof-head h2{font-size:23px;margin:0;line-height:1.15}
 .prof-head .sub{font-size:12px;color:var(--mut);margin-top:3px}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13px;margin:10px 0}
-.kv dt{color:var(--mut)} .kv dd{margin:0;text-align:right}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 12px;font-size:13px;margin:10px 0}
+.kv dt{color:var(--mut)} .kv dd{margin:0;text-align:right;min-width:0;overflow-wrap:anywhere} /* values wrap inside the panel, never clip at the edge */
 .kv dd b{font-weight:600}
 .chiprow{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .chip{display:inline-block;vertical-align:top;line-height:1.45;margin:1px 0;font-size:11.5px;background:rgba(255,255,255,.07);border:1px solid var(--line-soft);border-radius:20px;padding:4px 10px;color:var(--txt)}
@@ -335,11 +337,40 @@ a{color:var(--blue)}
 }
 
 /* ---------- confidence badges + price-conflict flags ---------- */
-.cf{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;border:1px solid rgba(255,255,255,.16);margin-left:6px;vertical-align:2px;letter-spacing:.02em;white-space:nowrap}
+.cf{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;border:1px solid rgba(255,255,255,.16);margin-left:6px;vertical-align:2px;letter-spacing:.02em;white-space:nowrap;cursor:pointer}
 .cf.hi{color:#9fb3c8}
 .cf.mid{color:#e8b34b}
 .cf.lo{color:#e06c6c}
 .pcflag{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px;background:rgba(224,108,108,.12);border:1px solid rgba(224,108,108,.5);color:#e08a8a;margin-left:6px;vertical-align:2px;white-space:nowrap}
+
+/* confidence meter (profile): color-coded bar, clickable for the explainer */
+.cfmeter{display:flex;align-items:center;gap:10px;width:100%;margin:10px 0 2px;padding:9px 12px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line-soft);border-radius:11px;cursor:pointer;
+  color:var(--txt);font-family:var(--sans);font-size:12px;text-align:left}
+.cfmeter:hover{border-color:rgba(232,179,75,.45)}
+.cfmeter .cfl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+.cfmeter .cfbar{flex:1;height:8px;border-radius:5px;background:rgba(255,255,255,.09);overflow:hidden;min-width:40px}
+.cfmeter .cfbar i{display:block;height:100%;border-radius:5px}
+.cfmeter .cfv{font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cfmeter.lo .cfbar i{background:#e06c6c}.cfmeter.lo .cfv{color:#e06c6c}
+.cfmeter.mid .cfbar i{background:#e8b34b}.cfmeter.mid .cfv{color:#e8b34b}
+.cfmeter.hi .cfbar i{background:#6db3f2}.cfmeter.hi .cfv{color:#6db3f2}
+.cfmeter .cfaq{color:var(--dim);font-size:12px;flex:none}
+/* confidence explainer modal */
+.cfrub{list-style:none;margin:10px 0;padding:0;font-size:12.5px}
+.cfrub li{display:flex;gap:9px;align-items:flex-start;margin:7px 0;color:var(--mut);line-height:1.5}
+.cfrub li b{color:var(--txt);font-weight:600;white-space:nowrap}
+.cfrub .sw{width:10px;height:10px;border-radius:3px;flex:none;margin-top:4px}
+.cfpct{font-family:var(--serif);font-size:34px;line-height:1;margin:2px 0 4px}
+
+/* ---------- persistent nav buttons: home / back / forward ---------- */
+.navbtns{display:flex;gap:6px;align-items:center}
+.nbtn{background:rgba(255,255,255,.06);border:1px solid var(--line-soft);color:var(--txt);
+  width:32px;height:32px;border-radius:9px;font-size:16px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0}
+.nbtn:hover:not(:disabled){border-color:rgba(232,179,75,.55);color:var(--amber)}
+.nbtn:disabled{opacity:.28;cursor:default}
+.nbtn.home{font-size:17px}
 
 /* ---------- data tab ---------- */
 .dfilter{width:100%;box-sizing:border-box;margin:10px 0 4px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt);font-size:13px;font-family:inherit}
