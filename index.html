@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=694fe329">
+<link rel="stylesheet" href="styles.css?v=bcb3bcf8">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -43,11 +43,6 @@
     </select>
   </div>
   <div class="top-actions">
-    <div class="navbtns" role="group" aria-label="Map navigation">
-      <button id="navback" class="nbtn" title="Back — undo last action" aria-label="Back">←</button>
-      <button id="navfwd" class="nbtn" title="Forward — redo" aria-label="Forward">→</button>
-      <button id="navhome" class="nbtn home" title="Home — reset map view and clear selection" aria-label="Home">⌂</button>
-    </div>
     <div class="modetoggle" role="tablist" aria-label="Dataset">
       <button data-mode="businesses" class="on" role="tab" aria-selected="true">Businesses</button>
       <button data-mode="venues" role="tab" aria-selected="false">Venues</button>
@@ -56,8 +51,6 @@
       <button data-view="map" class="on" role="tab" aria-selected="true">Map</button>
       <button data-view="rankings" role="tab" aria-selected="false">Rankings</button>
     </div>
-    <div id="fresh" aria-label="Data freshness"></div>
-    <span id="buildtag" title="Deployed build">build 805230f1 &middot; Sep 30 15:26 UTC</span>
   </div>
 </header>
 
@@ -75,8 +68,14 @@
 
 <aside id="right" class="glass panel" aria-label="Detail panel">
   <button id="rightclose" aria-label="Close detail panel">×</button>
+  <button id="panelex" aria-label="Expand detail panel" title="Expand — study this business">⟨</button>
   <div id="rightbody"></div>
 </aside>
+
+<footer id="pagefoot" class="glass" aria-label="Data freshness">
+  <span id="footfresh"></span>
+  <span id="footbuild" title="Deployed build">build bcd62bda &middot; Sep 30 15:42 UTC</span>
+</footer>
 
 <footer id="scrub" class="glass" aria-label="Time scrubber">
   <button id="playbtn" aria-label="Replay daily updates">▶</button>
@@ -93,6 +92,6 @@
 <script src="data/details-enrichment.js?v=93151786"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=805230f1"></script>
+<script src="app.js?v=bcd62bda"></script>
 </body>
 </html>
