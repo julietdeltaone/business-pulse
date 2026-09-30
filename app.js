@@ -815,12 +815,7 @@ function xsecScores(b){
   var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
   var parts=defs.filter(function(d){return d[1].score!=null;});
   var h='<section class="xsec"><h4>Scores</h4>';
-  if(parts.length){
-    var comp=Math.round(parts.reduce(function(s,d){return s+d[1].score;},0)/parts.length);
-    var best=parts.slice().sort(function(x,y){return y[1].score-x[1].score;})[0];
-    var worst=parts.slice().sort(function(x,y){return x[1].score-y[1].score;})[0];
-    h+='<div class="xcomp"><b>'+comp+'</b><span>Composite · '+parts.length+" of 5 signals reporting · strongest "+esc(best[0])+" ("+best[1].score+") · weakest "+esc(worst[0])+" ("+worst[1].score+")</span></div>";
-  } else h+='<div class="xdim">No scored signals yet.</div>';
+  if(!parts.length) h+='<div class="xdim">No scored signals yet.</div>';
   h+=xscoreBarsHTML(b);
   return h+"</section>";
 }
@@ -1707,11 +1702,6 @@ function flyTo(b){ if(map&&b.lat!=null){ HIST.noPush=true; map.flyTo([b.lat,b.ln
 var RANK_MODES=[{id:"audience",label:"Audience"},{id:"activity",label:"Activity"},{id:"momentum",label:"Momentum"},
   {id:"price",label:"Price"},{id:"reviews",label:"Reviews"},{id:"strength",label:"Profile strength"}];
 /* composite profile score: mean of the signals that report */
-function compScore(b){
-  var ss=[actScore(b),momScore(b),engScore(b),valScore(b),revScore(b)]
-    .map(function(r){return r.score;}).filter(function(s){return s!=null;});
-  return ss.length?Math.round(ss.reduce(function(a,x){return a+x;})/ss.length):null;
-}
 function ageStr(age){
   if(age==null) return "no recent posts";
   if(age<=0) return "posted today";
@@ -1736,8 +1726,8 @@ function renderRankings(){
       key=w==null?0:w; val=w==null?"\u2014":money(w); frac=w==null?0:1; nodata=w==null; }
     else if(mode==="reviews"){ var ri=reviewInfo(b);
       key=!ri?0:ri.count; val=!ri?"\u2014":(ri.count+(!ri.rating?"":" \u00b7 "+ri.rating+"/5")); frac=!ri?0:1; nodata=!ri; }
-    else { var cs=compScore(b);
-      key=cs==null?0:cs; val=cs==null?"\u2014":String(cs); frac=cs==null?0:cs/100; nodata=cs==null; }
+    else { var cs=confOf(b); /* one score only: the Digital Footprint score */
+      key=cs==null?0:cs; val=cs==null?"\u2014":String(Math.round(cs)); frac=cs==null?0:cs/100; nodata=cs==null; }
     return {b:b,key:key,val:val,frac:frac,cls:cls,nodata:nodata};
   });
   var mx=0; rows.forEach(function(r){ if(r.nodata) return;
@@ -1760,7 +1750,7 @@ function renderRankings(){
     mode==="momentum"?"Ranked by follower growth over the last 7 days.":
     mode==="price"?"Ranked by starting wedding price, where published.":
     mode==="reviews"?"Ranked by review count.":
-    "Ranked by composite profile score (5 signals).";
+    "Ranked by Digital Footprint score.";
   h+='<div class="rk-hint">'+hint+' Click a row for detail.</div>';
   h+='<div class="rk-list">'+rows.map(function(r,i){
     var b=r.b, w;
