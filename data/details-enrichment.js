@@ -62,7 +62,7 @@ window.PULSE_DETAILS = {
       "https://mccluskeyphotography.net"
     ]
   },
-  "jsc-photography": {
+  "jsc-photography-media": {
     "blurb": "JSC Photography & Media is a North Country-born artistic photographer with a creative, color-forward style spanning themes, set building and special effects, alongside family, lifestyle, and studio work.",
     "services": [
       "Family portraits",
@@ -579,7 +579,7 @@ window.PULSE_DETAILS = {
       "http://www.heathphotography.net/"
     ]
   },
-  "horizon-aerial-media-service": {
+  "horizon-aerial-media-services": {
     "blurb": "Husband-and-wife aerial photo/video company in Glen Park (Watertown), NY — 'Watertown's first and premier aerial photography & videography service,' fully insured and FAA Part 107 approved, specializing in real estate photography plus commercial work, weddings, and special events.",
     "services": [
       "Real estate photography",
@@ -955,32 +955,7 @@ window.PULSE_DETAILS = {
       "https://www.makenzieleighphotography.com/about/"
     ]
   },
-  "sheila-llibre-video": {
-    "blurb": "Sheila Llibre Productions is a Lake Placid-based media company specializing in wedding photography and videography, with a journalistic, fun, earthy style. She also offers brand/social-media content, real estate, and corporate event photography.",
-    "services": [
-      "Wedding photography",
-      "Wedding videography",
-      "Elopements",
-      "Micro weddings",
-      "Engagement sessions",
-      "Family sessions",
-      "Brand/social media content",
-      "Real estate photography"
-    ],
-    "coverage": [
-      "Lake Placid",
-      "Adirondacks",
-      "New York & beyond"
-    ],
-    "pricing_note": "Weddings from $3,400; elopements from $1,200; micro weddings from $2,400; wedding videography from $3,500; sessions from $550; brand/social packages from $500/hr (site, 2026)",
-    "site_note": "Birdeye directory listing shows 60 five-star reviews and a Lake Placid address (2509 Main St); her site footer is dated 2026.",
-    "sources": [
-      "https://www.sheilallibreproductions.net/about/",
-      "https://www.sheilallibreproductions.net/investment/",
-      "https://reviews.birdeye.com/sheila-llibre-photo-video-170413525212810"
-    ]
-  },
-  "butterfly-photography": {
+  "butterfly-photography-nny": {
     "blurb": "Butterfly Photography NNY is Sara's Watertown-based wedding and portrait photography business, focused on romantic, storytelling, candid imagery.",
     "services": [
       "Weddings",
