@@ -535,7 +535,7 @@ function scoreStrip(b){
   var vv=v.score!=null?money(b.price.wedding):"";
   var rv=r.r?fmt(r.r.count):"";
   return confMeter(b)+'<div class="scorerow" role="group" aria-label="Business scores">'+
-    chip("Activity",a.band,a)+chip("Momentum",mv,m)+chip("Value",vv,v)+chip("Reviews",rv,r)+'</div>';
+    chip("Activity",a.band,a)+chip("Momentum",mv,m)+chip("Price position",vv,v)+chip("Reviews",rv,r)+'</div>';
 }
 /* clickable explainer: what the percentage measures, in plain language */
 function openScoreDash(id){
@@ -549,8 +549,9 @@ function openScoreDash(id){
     if(res.score==null) return '<span class="dpill unk">'+esc(res.band)+'</span>';
     return '<span class="dpill '+confBand(res.score)+'">'+res.score+' · '+esc(res.band)+'</span>';
   }
-  function sec(label,res,measures,detail){
-    return '<div class="dsec"><div class="dhead"><span class="dlabel">'+label+'</span>'+pill(res)+'</div>'+
+  function wdg(label,res,measures,big,detail){
+    return '<div class="dwidget"><div class="dhead"><span class="dlabel">'+label+'</span>'+pill(res)+'</div>'+
+      (big?'<div class="dbig">'+big+'</div>':"")+
       '<p class="dmeas">'+measures+'</p>'+(detail?'<div class="dnums">'+detail+'</div>':"")+'</div>';
   }
   /* information: the actual grading for THIS profile — verified factors bright, missed dimmed */
@@ -570,32 +571,40 @@ function openScoreDash(id){
     frows+='<div class="dfactor'+(got?"":" missed")+'"><span class="dfm '+(got?"ok":"no")+'">'+(got?"✓":"✗")+'</span>'+
       '<div><b>'+f[1]+' — '+e+'/'+f[2]+'</b><span>'+(got?f[3]:"Not verified — "+f[4])+'</span></div></div>';
   });
-  var infoSec='<div class="dsec hero"><div class="dhead"><span class="dlabel">Information confidence</span>'+
+  var infoSec='<div class="dinfo"><div class="dhead"><span class="dlabel">Information confidence</span>'+
     '<span class="dpill '+cls+'">'+s+' · '+(cls==="hi"?"High":cls==="mid"?"Medium":"Low")+'</span></div>'+
     '<p class="dmeas">The governing score — every score below is only as reliable as the data behind it.</p>'+
-    '<div class="dsum">'+verified+' of '+FACTORS.length+' factors verified</div>'+frows+
-    (cfd&&cfd.conflict?'<div class="dfactor missed"><span class="dfm no">−20</span><div><b>Price conflict</b><span>'+
+    '<div class="dsum">'+verified+' of '+FACTORS.length+' factors verified</div>'+
+    '<div class="dfactors">'+frows+
+    (cfd&&cfd.conflict?'<div class="dfactor full missed"><span class="dfm no">−20</span><div><b>Price conflict</b><span>'+
       cfd.conflict.values.map(function(x){ return esc(x.label)+": "+esc(x.text); }).join(" vs ")+
-      ' — flagged for human review</span></div></div>':"")+'</div>';
-  var h='<div class="mback" id="cfback"><div class="modal wide" role="dialog" aria-label="Scorecard">'+
-    '<h2 style="font-size:20px">Scorecard</h2>'+
-    '<p style="margin-bottom:10px"><b style="color:var(--txt)">'+esc(b.name)+'</b></p>'+
-    infoSec+
-    sec("Activity",a,"How recently the business posted — an active competitor is a different animal than a dormant one.",
+      ' — flagged for human review</span></div></div>':"")+'</div></div>';
+  var h='<div class="mback" id="cfback"><div class="modal fulldash" role="dialog" aria-label="Scorecard">'+
+    '<div class="dash-head"><div><div class="dtitle">Scorecard</div>'+
+    '<div class="dsub">'+esc(b.name)+'</div></div>'+
+    '<button class="dbtn-x" id="cfx" aria-label="Close scorecard">✕</button></div>'+
+    '<div class="dash-body">'+infoSec+
+    '<div class="dash-widgets">'+
+    wdg("Activity",a,"How recently they posted — an active competitor is a different animal than a dormant one.",
+      a.score!=null?esc(a.band):null,
       a.days!=null?("Last post "+dstr(b.last_post_date)+" ("+a.days+(a.days===1?" day":" days")+" ago)"):esc(a.why))+
-    sec("Momentum",m,"Week-to-month follower movement — who is gaining on you and who is slipping.",
+    wdg("Momentum",m,"Week-to-month follower movement — who is gaining on you and who is slipping.",
+      m.ch30!=null?((m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):null,
       m.ch30!=null?("7-day "+(m.ch7>=0?"+":"")+m.ch7.toFixed(1)+"% · 30-day "+(m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):esc(m.why))+
-    sec("Value",v,"Where their wedding floor sits against the market — budget to luxury by actual published prices.",
-      v.r?("Floor "+money(b.price.wedding)+" · #"+v.r.rank+" of "+v.r.n+" tracked · market median "+money(v.r.med)):esc(v.why))+
-    sec("Reviews",r,"Social proof — review counts and ratings from live listings.",
-      r.r?(r.r.count+" "+r.r.src+" reviews"+(r.r.rating?" · "+r.r.rating+" / 5":"")):esc(r.why))+
-    '<p style="font-size:12px">A rotating deep-dive pass re-researches every business weekly to raise these scores.</p>'+
-    '<div class="mrow"><button class="btn" id="cfok">Got it</button></div></div></div>';
+    wdg("Price position",v,"Where their wedding floor sits against the market, by actual published prices.",
+      v.score!=null?esc(v.band):null,
+      v.r?("Floor "+money(b.price.wedding)+" · #"+v.r.rank+" of "+v.r.n+" · median "+money(v.r.med)):esc(v.why))+
+    wdg("Reviews",r,"Social proof — review counts and ratings from live listings.",
+      r.r?fmt(r.r.count):null,
+      r.r?(r.r.src+" reviews"+(r.r.rating?" · "+r.r.rating+" / 5":"")):esc(r.why))+
+    '</div>'+
+    '<div class="dash-foot">A rotating deep-dive pass re-researches every business weekly to raise these scores.</div>'+
+    '</div></div></div>';
   document.body.insertAdjacentHTML("beforeend",h);
   function close(){ var m=$("#cfback"); if(m) m.remove(); document.removeEventListener("keydown",onKey); }
   function onKey(e){ if(e.key==="Escape") close(); }
   document.addEventListener("keydown",onKey);
-  $("#cfback").addEventListener("click",function(e){ if(e.target.id==="cfback"||e.target.id==="cfok") close(); });
+  $("#cfback").addEventListener("click",function(e){ if(e.target.id==="cfback"||e.target.id==="cfx") close(); });
 }
 /* ---------- directory ---------- */
 function venueRow(b,i){
