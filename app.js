@@ -869,13 +869,17 @@ function confSection(b){
     all+=row;
     if(!got) missed+='<div class="dfactor missed slim"><b>'+f[1]+':</b><span>not verified — '+f[4]+"</span></div>";
   });
+  /* a price conflict docks 20 points off the factor sum — show it so the
+     total always reconciles with the breakdown above */
+  if(cfd.conflict) all+='<div class="dfactor missed"><b>Price conflict</b><span class="dfpts">−20</span>'+
+    "<span>Conflicting wedding floors across sources — total reduced by 20.</span></div>";
   var cls=confBand(s);
   var note="The governing score — every score above is only as reliable as the data behind it. A rotating deep-dive pass re-researches every business weekly to raise these scores.";
   return '<section class="sc-card conf"><div class="sc-head"><span class="sc-label">Information confidence</span>'+
     '<span class="sc-badge"><span class="n">'+s+'%</span></span>'+
     '<span class="infoq" title="'+esc(note)+'">?</span></div>'+
     '<div class="cf2-bar"><span class="dcsegs wide">'+segs+'</span></div>'+
-    '<div class="sc-detail"><b>'+verified+" of "+FACTORS.length+"</b> factors verified.</div>"+
+    '<div class="sc-detail"><b>'+verified+" of "+FACTORS.length+"</b> factors verified"+(cfd.conflict?'; <b>−20</b> price-conflict penalty applied':"")+".</div>"+
     (missed?'<div class="cf2-missed">'+missed+"</div>":"")+
     '<details class="cf2-all"><summary>Full seven-factor breakdown</summary><div class="dfactors">'+all+"</div></details>"+
     "</section>";
@@ -1847,10 +1851,8 @@ document.addEventListener("input",function(e){
 [["#flane","lane"],["#fmom","mom"],["#freg","reg"]].forEach(function(p){
   $(p[0]).addEventListener("change",function(e){ S[p[1]]=e.target.value; refreshFiltered(); pushHist(); });
 });
-/* persistent nav: back / forward / home */
-$("#navback").addEventListener("click",function(){ if(HIST.i>0){ HIST.i--; applyState(HIST.stack[HIST.i]); } });
-$("#navfwd").addEventListener("click",function(){ if(HIST.i<HIST.stack.length-1){ HIST.i++; applyState(HIST.stack[HIST.i]); } });
-$("#navhome").addEventListener("click",goHome);
+/* persistent nav buttons were removed from the top bar in the redesign;
+   history is still tracked via pushHist for state restore. */
 function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); renderLeft(); }
 timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
 $("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
