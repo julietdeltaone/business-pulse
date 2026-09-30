@@ -105,7 +105,7 @@ window.PULSE_VENUES = [
   },
   {
     id: "rainbow-banquet-hall",
-    name: "Rainbow Wedding & Banquet Hall (Brookside Barn)",
+    name: "Rainbow Wedding & Banquet Hall",
     town: "Altona, NY",
     county: "Clinton",
     region: "adjacent",
