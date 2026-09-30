@@ -488,3 +488,17 @@ a{color:var(--blue)}
 .dtable tbody tr{cursor:pointer}
 .dtable tbody tr:hover td{background:rgba(255,255,255,.03)}
 .dtable a{color:#6db3f2;text-decoration:none}
+
+/* ---------- market question cards (right rail) ---------- */
+.qcard{margin-bottom:22px}
+.qbars{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.qrow{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center;padding:2px}
+.qrow[data-open]{cursor:pointer}
+.qrow[data-open]:hover .qn{color:var(--amber)}
+.qn{font-size:12px;color:#cfd3dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qv{font-size:12px;font-weight:700;color:#ece9e2;font-variant-numeric:tabular-nums}
+.qtrack{grid-column:1/-1;height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.qtrack i{display:block;height:100%;border-radius:4px;animation:qgrow .6s ease both}
+@keyframes qgrow{from{width:0!important}}
+.qans{margin-top:12px;font-size:12px;color:var(--mut);line-height:1.5;border-top:1px solid var(--line-soft);padding-top:9px}
+.qans b{color:var(--amber);font-weight:700}
