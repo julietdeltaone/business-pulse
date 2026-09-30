@@ -171,8 +171,14 @@ button{font-family:var(--sans)}
 #right.wide{width:700px;bottom:12px} /* market glance kickout — always wide, no scroll */
 .railhead{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 10px}
 .railhead>span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
-#rightclose{position:absolute;top:10px;right:12px;z-index:2;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--mut);font-size:15px;line-height:1;width:28px;height:28px;border-radius:50%;cursor:pointer}
-#rightclose:hover{color:var(--txt);border-color:rgba(255,255,255,.25)}
+/* ---------- persistent history nav (back / forward / home) ---------- */
+.topnav{display:flex;gap:5px;align-items:center;margin-right:2px}
+.topnav button{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.05);
+  border:1px solid var(--line);color:var(--txt);font-size:16px;line-height:1;cursor:pointer;font-family:inherit}
+.topnav button:hover:not(:disabled){border-color:rgba(232,179,75,.5);color:var(--amber)}
+.topnav button:disabled{opacity:.28;cursor:default}
+#navhome{font-size:14px}
+/* mobile sheet close: labeled button rendered at the top of #rightbody (data-mclose), desktop has no X */
 .tabs{display:flex;gap:4px;padding:10px 12px 0}
 .tabs button{flex:1;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--mut);font-size:13px;font-weight:600;padding:9px 4px;cursor:pointer}
 .tabs button.on{color:var(--txt);border-bottom-color:var(--amber)}
@@ -259,8 +265,8 @@ button{font-family:var(--sans)}
 .spark .al{font-size:9px;fill:#6b7484}
 
 /* profile */
-.prof-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:4px;padding-right:38px} /* right pad clears the absolute X button */
-.prof-head>div{min-width:0;flex:1} /* long names wrap instead of sliding under the X */
+.prof-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:4px}
+.prof-head>div{min-width:0;flex:1}
 .prof-head h2{overflow-wrap:break-word}
 .prof-ava{width:52px;height:52px;border-radius:14px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;color:#0a0d13;background:linear-gradient(135deg,#e8b34b,#c98f2b)}
 .prof-ava.you{background:linear-gradient(135deg,#f5cd6d,#e8b34b);box-shadow:0 0 18px rgba(232,179,75,.4)}
@@ -319,6 +325,8 @@ a{color:var(--blue)}
   #left{width:330px}#right{width:310px}
   .filters input{width:150px}
 }
+/* mobile sheet close: labeled button, hidden on desktop */
+.mclose{display:none}
 @media (max-width:900px){
   #topbar{flex-wrap:wrap;gap:8px;padding:8px 12px}
   .brand-text h1{font-size:17px}
@@ -330,7 +338,7 @@ a{color:var(--blue)}
   #right,#right.wide,#right.expanded{width:auto;top:120px;bottom:196px;left:8px;right:8px;max-height:none;transform:translateY(12px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
   #right.open{transform:none;opacity:1;pointer-events:auto}
   #panelex{display:none!important}
-  #rightclose{display:block;position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:22px;cursor:pointer;z-index:2}
+  .mclose{display:block;position:sticky;top:0;margin:0 0 8px auto;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--txt);font-size:12.5px;font-weight:600;border-radius:20px;padding:6px 14px;cursor:pointer;z-index:2}
   #sheetgrab{display:flex;justify-content:center;padding:8px 0 2px;background:none;border:0;width:100%;cursor:pointer}
   #sheetgrab span{width:44px;height:4px;border-radius:3px;background:rgba(255,255,255,.25)}
   #scrub{top:auto;bottom:130px;width:calc(100vw - 16px);left:8px;transform:none;padding:8px 12px}
@@ -554,7 +562,8 @@ a{color:var(--blue)}
 
 /* ---------- detail panel two-state redesign (collapsed scan / expanded study) ---------- */
 #right{overflow:visible}
-#right.expanded{width:min(64vw,940px)}
+#right.expanded{width:700px} /* same footprint as the expanded market glance */
+#right.expanded #rightbody{overflow:hidden} /* everything visible at once — no scrolling */
 body.panelexp #map{filter:brightness(.82)}
 #map{transition:filter .38s}
 /* expand button on the panel's edge — gold, the state accent */
@@ -564,111 +573,64 @@ body.panelexp #map{filter:brightness(.82)}
   color:var(--amber);font-size:17px;line-height:1;font-family:inherit}
 #panelex:hover{background:rgba(232,179,75,.26)}
 #right.hassel #panelex{display:block}
-/* collapsed: score badges — score in blue (data), band in gold (state) */
-.schip .scl{color:var(--dim)}
-.schip.hi .scv,.schip.mid .scv,.schip.lo .scv{color:var(--blue)}
-.schip.unk .scv{color:var(--dim)}
-.schip .scb{font-size:10px;font-weight:600;color:var(--amber);letter-spacing:.04em;white-space:nowrap}
-/* collapsed: five headline numbers */
-.hstats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0 4px}
+/* ---------- business profile: simple two-state panel, glance footprints ---------- */
+/* collapsed: overview + score bars spread across the full vertical rail */
+.pcol{min-height:100%;display:flex;flex-direction:column}
+.pcol .pspace{flex:1;min-height:12px}
+.plab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:10px 0 6px}
+.pbars{display:flex;flex-direction:column;gap:9px;margin:2px 0}
+.pbar{display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:10px;align-items:center}
+.pbar[data-cf]{cursor:pointer}
+.pbl{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbar:hover .pbl{color:var(--amber)}
+.pbtrack{height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
+.pbtrack i{display:block;height:100%;background:#6db3f2;border-radius:4px}
+.pbv{font-size:12.5px;font-weight:700;color:var(--txt);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pbv small{font-weight:500;color:var(--amber);font-size:11px}
+.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .hstat{background:rgba(255,255,255,.03);border:1px solid var(--line-soft);border-radius:10px;padding:8px 4px;text-align:center;min-width:0}
 .hstat .v{font-size:15px;font-weight:700;color:var(--txt);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .hstat .l{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-top:3px}
 .expandhint{margin-top:10px;font-size:12px}
 .expandhint b{color:var(--amber)}
-/* expanded: header + tabs */
+/* expanded: everything at once — no tabs, no scrolling */
+.xall{display:flex;flex-direction:column;min-height:100%}
 .xhead{display:flex;align-items:flex-start;gap:8px}
-.xhead .prof-head{flex:1;min-width:0;padding-right:0}
-#panelcollapse{flex:none;margin:2px 34px 0 0}
-.ptabs{display:flex;gap:2px;margin:12px -14px 0;padding:0 14px;border-bottom:1px solid var(--line)}
-.ptabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--mut);
-  font-size:13px;font-weight:600;padding:9px 10px;cursor:pointer;font-family:inherit}
-.ptabs button:hover{color:var(--txt)}
-.ptabs button.on{color:var(--amber);border-bottom-color:var(--amber)}
-.ptab-body{padding-top:4px}
+.xhead .prof-head{flex:1;min-width:0}
+#panelcollapse{flex:none;margin:2px 0 0}
+.hstats6{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:10px 0 4px}
+.xgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.xgrid2{display:grid;grid-template-columns:1.15fr 1fr;gap:10px;margin-top:10px}
+.xsec{background:rgba(255,255,255,.025);border:1px solid var(--line-soft);border-radius:12px;padding:9px 12px;min-width:0}
+.xsec>h4{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 6px}
+.xsec .kv{margin:6px 0;font-size:12px;gap:4px 10px}
+.xsec .chiprow{margin:6px 0}
+.xsec .chip{font-size:11px;padding:3px 9px}
+.xsec .sub{font-size:12px;margin:4px 0}
+.xsec .xkv{padding:3px 0}
+.xsec .xkv span{font-size:11.5px}
+.xsec .xkv b{font-size:12px}
+.xsec .xkv.missed b{color:var(--dim);font-weight:500}
+.x2stat{display:flex;gap:8px;align-items:baseline;margin:6px 0}
+.x2stat .pct{font-size:15px;font-weight:700}
+.xdim{color:var(--dim);font-size:11.5px;line-height:1.45}
+.xdim b{color:var(--txt)}
+.xcomp{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.xcomp b{font-size:26px;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1}
+.xcomp span{font-size:11.5px;color:var(--mut);line-height:1.4}
+.xraws{margin-top:8px;display:flex;flex-direction:column;gap:3px}
+.xraw{font-size:11.5px;color:var(--dim);line-height:1.4}
+.xraw b{color:var(--txt);font-weight:600}
+.xsec .cf2-bar{margin:4px 0 6px}
+.xsec .sc-link{margin-top:6px}
+.xall>.chiprow{margin-top:10px}
 .bio{font-style:italic}
-/* ---------- market glance: collapsed slim sidebar (default) ---------- */
-.gqrows{display:flex;flex-direction:column;gap:6px}
-.gqrow{display:grid;grid-template-columns:auto 1fr 12px;gap:10px;align-items:center;width:100%;
-  background:rgba(255,255,255,.025);border:1px solid var(--line-soft);border-radius:10px;
-  padding:9px 12px;cursor:pointer;font-family:inherit;text-align:left;color:inherit}
-.gqrow:hover{background:rgba(255,255,255,.05);border-color:rgba(232,179,75,.4)}
-.gqstat{font-size:15px;font-weight:700;color:var(--txt);font-variant-numeric:tabular-nums;white-space:nowrap}
-.gqlabel{font-size:12px;color:var(--dim);line-height:1.35}
-.gqchev{color:var(--dim);font-size:10px;justify-self:end}
-.gqrow:hover .gqchev{color:var(--amber)}
-.railhead .ghostbtn{flex:none;padding:5px 10px;font-size:11.5px}
-.railhint{font-size:11.5px;color:var(--dim);margin:0 2px 10px;line-height:1.45}
-/* ---------- expanded profile: dossier with sticky snapshot rail ---------- */
-.xmain{display:grid;grid-template-columns:minmax(0,1fr) 252px;gap:22px;margin-top:12px;align-items:start}
-.xleft{min-width:0}
-.xside{position:sticky;top:0;background:rgba(255,255,255,.02);border:1px solid var(--line-soft);
-  border-radius:12px;padding:14px}
-.xsnap{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:8px}
 .xkv{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid var(--line-soft)}
 .xkv span{font-size:12px;color:var(--dim);flex:none}
 .xkv b{font-size:13px;color:var(--txt);font-variant-numeric:tabular-nums;font-weight:700;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
-.xside .scorerow{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 2px}
-.xside .schip{min-width:0}
-.xside .chiprow{margin-top:10px}
-/* scorecard tab: cards tile two-up in the wider panel */
-.sc-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;align-items:start}
-.sc-grid2 .sc-card{margin-bottom:0;min-width:0}
-.sc-grid2>.conf{grid-column:1/-1}
-@media(max-width:1100px){.xmain{grid-template-columns:minmax(0,1fr) 220px}}
-@media(max-width:900px){.xmain{grid-template-columns:1fr}.xside{position:static}.sc-grid2{grid-template-columns:1fr}}
-/* ---------- scorecard as a tab: raw figures lead, scores are annotations ---------- */
-.sc-comp{display:flex;align-items:center;gap:14px;background:rgba(232,179,75,.07);
-  border:1px solid rgba(232,179,75,.3);border-radius:12px;padding:12px 16px;margin:10px 0 12px}
-.sc-comp-n{font-size:34px;font-weight:700;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1}
-.sc-comp-t b{display:block;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--amber)}
-.sc-comp-t span{font-size:12.5px;color:var(--mut)}
-.sc-card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
-  border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
-.sc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
-.sc-label{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}
-.sc-badge{display:inline-flex;align-items:baseline;gap:6px;font-size:12.5px;white-space:nowrap}
-.sc-badge .n{color:var(--blue);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
-.sc-badge .sep{color:var(--dim)}
-.sc-badge .b{color:var(--amber);font-weight:600}
-.sc-badge.unk{color:var(--dim)}
-.sc-raw{font-size:32px;font-weight:700;color:var(--txt);font-variant-numeric:tabular-nums;line-height:1.15}
-.sc-raw small{display:block;font-size:12.5px;font-weight:500;color:var(--mut);margin-top:3px;line-height:1.4}
-.sc-raw small b{font-weight:700}
-.sc-raw small b.up{color:var(--up)}
-.sc-chart{margin:12px 0 4px}
-.sc-line{width:100%;height:auto;display:block}
-.sc-grid{stroke:rgba(255,255,255,.09);stroke-width:1}
-.sc-poly{fill:none;stroke:var(--blue);stroke-width:2.5}
-.sc-dot{fill:var(--blue)}
-.sc-axis{fill:var(--mut);font-size:12px;font-family:var(--sans)}
-.sc-detail{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.5}
-.sc-detail b{color:var(--txt);font-weight:600}
 .sc-link{margin-top:8px}
-/* hourly-only price: slim row, not a full card */
-.sc-slim{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;
-  padding:12px 16px;margin-bottom:10px;background:rgba(255,255,255,.03)}
-.sc-slim b{font-size:20px;color:var(--txt);white-space:nowrap;font-variant-numeric:tabular-nums}
-.sc-slim span{font-size:12.5px;color:var(--mut);flex:1;line-height:1.45}
-/* bigger engagement bars with per-post value labels */
-.dbars.big{height:118px;gap:6px}
-.dbar.big{flex-direction:column;align-items:center;justify-content:flex-end}
-.dbar.big .vlab{display:block;font-size:10px;color:var(--mut);margin-bottom:3px;font-variant-numeric:tabular-nums;font-style:normal}
-.dbar.big .bfill{display:block;width:100%;border-radius:4px 4px 2px 2px;
-  background:linear-gradient(180deg,#6db3f2,rgba(109,179,242,.3));
-  transform:scaleY(0);transform-origin:bottom;animation:barUp .7s cubic-bezier(.22,.8,.28,1) forwards}
-.dscale-lbl.big{font-size:12px;color:var(--mut)}
-/* confidence: collapsed to bar + one-liner; unverified surfaced, rest behind expander */
+/* confidence bar */
 .cf2-bar{margin:10px 0 4px}
 .dcsegs.wide{display:flex;height:12px}
-.cf2-missed{margin-top:8px;display:flex;flex-direction:column;gap:5px}
-.dfactor.slim{display:flex;gap:6px;align-items:baseline;font-size:12px;line-height:1.45}
-.dfactor.slim b{color:var(--amber);font-weight:600;flex:none}
-.dfactor.slim.missed span{color:var(--mut)}
-.cf2-all{margin-top:10px}
-.cf2-all summary{cursor:pointer;font-size:12.5px;color:var(--blue);font-weight:600;outline:none}
-.cf2-all .dfactors{margin-top:8px}
-.infoq{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex:none;
-  border-radius:50%;border:1px solid var(--line);color:var(--dim);font-size:11px;cursor:help;margin-left:6px}
-.sc-head .infoq{margin-left:0}
+@media(max-width:900px){.xgrid,.xgrid2{grid-template-columns:1fr}#right.expanded #rightbody{overflow-y:auto}.hstats6{grid-template-columns:repeat(3,1fr)}}
