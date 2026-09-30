@@ -205,7 +205,7 @@ var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unc
 
 /* ---------- state ---------- */
 var S={ view:"map", mode:"businesses", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
-        sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, ptab:"overview", qx:{} };
+        sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, ptab:"overview", qx:{}, qall:{} };
 
 /* ---------- undo / redo history (back-forward) + home ----------
    Every meaningful action pushes a full snapshot; back/forward restore it.
@@ -1283,8 +1283,10 @@ function marketGlanceHTML(){
   /* The questions our data answers best, as roomy cards in a no-scroll grid.
      Every bucket row expands inline to list the businesses inside it. */
   function qCard(q,sub,bars,answer,ci){
-    var rows=bars.map(function(r,ri){
-      var key=ci+":"+ri, open=S.qx[key];
+    var showAll=S.qall[ci];
+    var rows=bars.map(function(r,oi){
+      if(!showAll&&oi>=4) return "";
+      var key=ci+":"+oi, open=S.qx[key];
       var attrs=r.id?' data-open="'+r.id+'"':(r.members?' data-qx="'+key+'"':"");
       var h='<div class="qrow'+(r.members?" qx":"")+'"'+attrs+'>'+
         '<span class="qn"'+(r.full?' title="'+esc(r.full)+'"':"")+'>'+esc(r.label)+'</span>'+
@@ -1299,6 +1301,9 @@ function marketGlanceHTML(){
       }
       return h;
     }).join("");
+    if(bars.length>4){
+      rows+='<div class="qmore" data-qall="'+ci+'">'+(showAll?"Show fewer":"Show all "+bars.length+" \u25B8")+"</div>";
+    }
     return '<div class="sec qcard"><h3>'+q+'</h3><div class="sub">'+sub+'</div><div class="qbars">'+
       rows+'</div><div class="qans">'+answer+"</div></div>";
   }
@@ -1807,9 +1812,9 @@ function setView(v){
    view. Venue stats never touch business medians, rankings, or heat weights. */
 function setMode(m){
   if(S.mode===m) return;
-  S.mode=m;
+  S.mode=m; S.qx={}; S.qall={};
   C=(m==="venues"?V:B); BY_ID=(m==="venues"?V_BY_ID:B_BY_ID);
-  S.sel=null; S.lane=""; S.mom=""; S.qx={};
+  S.sel=null; S.lane=""; S.mom=""; S.qx={}; S.qall={};
   $("#flane").value=""; $("#fmom").value="";
   computeModeStats();
   $$(".modetoggle button").forEach(function(b){ var on=b.getAttribute("data-mode")===m;
@@ -1849,6 +1854,8 @@ document.addEventListener("click",function(e){
   if(t){ select(t.getAttribute("data-open")); return; }
   var qx=e.target.closest("[data-qx]");
   if(qx){ var k=qx.getAttribute("data-qx"); S.qx[k]=!S.qx[k]; renderRight(); return; }
+  var qall=e.target.closest("[data-qall]");
+  if(qall){ var ka=qall.getAttribute("data-qall"); S.qall[ka]=!S.qall[ka]; renderRight(); return; }
   var vt=e.target.closest(".viewtoggle button");
   if(vt){ setView(vt.getAttribute("data-view")); return; }
   var mt=e.target.closest(".modetoggle button");
