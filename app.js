@@ -71,6 +71,7 @@ function jitter(id,lat,lng){ return {lat:lat,lng:lng}; } /* replaced by town spi
 /* ---------- enrich roster ---------- */
 var IGH=D.igFollowersHistory||{};
 var WI=(window.PULSE_WEBSITE_INTEL||{}).intel||{}; /* pilot website sweep, Sep 2026 */
+var CONF=D.confidence||{}; /* per-business info confidence, rebuilt by scripts/score_confidence.py */
 var B=(D.competitors||[]).map(function(c){
   var e=Object.assign({},c);
   e.price=priceFloors(c.pricing);
@@ -173,18 +174,18 @@ function momentumOf(b,di){
 }
 function recencyDot(b){
   if(b.postAge==null) return "#6b7484";
-  if(b.postAge<=14) return "#7dc98f";
+  if(b.postAge<=14) return "#6fd3e7";
   if(b.postAge<=45) return "#e8b34b";
   return "#e06c6c";
 }
-var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b48ce8",drone:"#5fd0b5",venue:"#d98e4a"};
+var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b48ce8",drone:"#6fd3e7",venue:"#d98e4a"};
 var LANE_LABEL={photo:"Photo",video:"Video",both:"Photo + Video",drone:"Drone",venue:"Venue"};
 var MOM_LABEL={gaining:"Gaining",slipping:"Slipping",active:"Active",quiet:"Quiet",dormant:"Dormant"};
 var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unconfirmed"};
 
 /* ---------- state ---------- */
 var S={ view:"map", mode:"businesses", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
-        sel:null, playing:false };
+        sel:null, playing:false, dsort:null, dq:"" };
 
 /* ---------- filtering ---------- */
 function norm(s){ return (s||"").toLowerCase(); }
@@ -362,6 +363,17 @@ function renderToday(){
   return h;
 }
 
+/* ---------- confidence badges + price-conflict flags ---------- */
+function confOf(b){ var c=CONF[b.id]; return c?c.score:null; }
+function pcTitle(b){ var c=CONF[b.id]; if(!c||!c.conflict) return "";
+  return "Price conflict — "+c.conflict.values.map(function(v){ return v.label+": "+v.text; }).join(" vs "); }
+function confBadge(b){
+  var s=confOf(b); if(s==null) return "";
+  var cls=s>=70?"hi":s>=40?"mid":"lo";
+  var t="Information confidence "+s+"% — cross-referenced across website, Instagram, and directory sources. Low scores need quality control.";
+  var cf=(CONF[b.id]&&CONF[b.id].conflict)?' <span class="pcflag" title="'+esc(pcTitle(b))+'">price conflict</span>':"";
+  return ' <span class="cf '+cls+'" title="'+t+'">'+s+'%</span>'+cf;
+}
 /* ---------- directory ---------- */
 function venueRow(b,i){
   return '<div class="row wrap'+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
@@ -380,7 +392,7 @@ function dirRow(b,i){
     '<div class="nm"><b>'+esc(b.name)+'</b>'+
     '<span>'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+'</span></div>'+
     '<div class="meta"><b>'+fmt(f)+'</b><span>'+(b.hasPrice?money(b.price.wedding||b.price.session):"price n/a")+
-    ' · <span class="pct '+pcls+'">'+pctStr(ch)+'</span></span></div></div>';
+    ' · <span class="pct '+pcls+'">'+pctStr(ch)+'</span></span>'+confBadge(b)+'</div></div>';
 }
 /* explicit county labeling: adjacent-county businesses are named as such everywhere */
 function locTag(b){
@@ -397,6 +409,93 @@ function renderDir(){
   return h;
 }
 
+/* ---------- data tab: every gathered data point, sortable + filterable ---------- */
+var MC_MAP={}; (D.igActivity||[]).forEach(function(r){
+  if(r.media_count==null||!r.handle) return;
+  var p=MC_MAP[r.handle];
+  if(!p||String(r.date||"")>String(p.date||"")) MC_MAP[r.handle]=r; });
+function postsOf(b){ if(b.media_count!=null) return b.media_count;
+  var r=b.ig_handle&&MC_MAP[b.ig_handle]; return r?r.media_count:null; }
+function servicesOf(b){ var w=WI[b.id];
+  if(w&&w.services&&w.services.length) return w.services.join(", ");
+  return b.services||""; }
+function yearsOf(b){ var w=WI[b.id]||{};
+  if(w.years_in_business!=null) return w.years_in_business+" yrs";
+  if(w.since) return "since "+w.since;
+  if(b.est_year!=null) return "est. "+b.est_year;
+  return ""; }
+function townCounty(b){ return b.townShort+((b.county&&b.region==="adjacent")?" · "+b.county+" Co":""); }
+var DCOLS=[
+  ["name","Name","str"],["town","Town/County","str"],["followers","IG followers","num"],
+  ["ch7","7d","num"],["ch30","30d","num"],["posts","Posts","num"],
+  ["services","Services","str"],["price","Price range","num"],["years","Years","str"],
+  ["website","Website","str"],["ig","IG handle","str"],["conf","Conf.","num"]];
+function dCellVal(b,k){
+  switch(k){
+    case "name": return b.name;
+    case "town": return townCounty(b);
+    case "followers": return followersAt(b,S.di);
+    case "ch7": return pctChange(b,Math.max(0,S.di-7),S.di);
+    case "ch30": return pctChange(b,Math.max(0,S.di-30),S.di);
+    case "posts": return postsOf(b);
+    case "services": return servicesOf(b);
+    case "price": return b.price.wedding!=null?b.price.wedding:(b.price.session!=null?b.price.session:null);
+    case "years": return yearsOf(b);
+    case "website": return b.website||"";
+    case "ig": return b.ig_handle||"";
+    case "conf": return confOf(b);
+  } return null;
+}
+function dCellHTML(b,k){
+  var v=dCellVal(b,k);
+  switch(k){
+    case "followers": return fmt(v);
+    case "ch7": case "ch30": return v==null?"—":'<span class="pct '+(v>=0?"up":"dn")+'">'+pctStr(v)+"</span>";
+    case "posts": return fmt(v);
+    case "price": return v==null?"—":money(v);
+    case "website": return v?'<a href="'+esc(/^https?:/.test(v)?v:"https://"+v)+'" target="_blank" rel="noopener">site ↗</a>':"—";
+    case "ig": return v?"@"+esc(v):"—";
+    case "conf": return v==null?"—":v+"%";
+    case "name": return "<b>"+esc(v)+"</b>";
+    default: return esc(v==null||v===""?"—":v);
+  }
+}
+function dSortRows(rows,s){
+  var num=(DCOLS.filter(function(c){return c[0]===s.key;})[0]||DCOLS[2])[2]==="num";
+  rows.sort(function(a,b2){
+    var x=dCellVal(a,s.key), y=dCellVal(b2,s.key);
+    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    var r=num?(x-y):String(x).localeCompare(String(y));
+    return r*s.dir;
+  });
+}
+function renderData(){
+  var s=S.dsort||{key:"followers",dir:-1};
+  var q=(S.dq||"").toLowerCase();
+  var rows=B.filter(function(b){
+    if(!q) return true;
+    return (b.name+" "+(b.town||"")+" "+(b.ig_handle||"")+" "+(b.website||"")).toLowerCase().indexOf(q)>=0; });
+  dSortRows(rows,s);
+  var h='<div class="sec"><h3>Data</h3><div class="sub">Every gathered data point · secondary view · click a column header to sort · click a row to open the profile</div>'+
+    '<input id="dq" class="dfilter" type="search" placeholder="Filter rows…" value="'+esc(S.dq||"")+'" aria-label="Filter data rows">';
+  h+='<div class="dsub">Businesses · '+rows.length+'</div><div class="dtable-wrap"><table class="dtable"><thead><tr>'+
+    DCOLS.map(function(c){ return '<th data-dk="'+c[0]+'" class="'+(s.key===c[0]?"sorted":"")+'">'+c[1]+(s.key===c[0]?(s.dir<0?" ▼":" ▲"):"")+'</th>'; }).join("")+
+    '</tr></thead><tbody>'+
+    rows.map(function(b){ return '<tr data-open="'+b.id+'">'+DCOLS.map(function(c){ return "<td>"+dCellHTML(b,c[0])+"</td>"; }).join("")+"</tr>"; }).join("")+
+    '</tbody></table></div>';
+  var vs=V.filter(function(v){ if(!q) return true;
+    return (v.name+" "+(v.town||"")+" "+(v.website||"")).toLowerCase().indexOf(q)>=0; });
+  h+='<div class="dsub">Venues · '+vs.length+'</div><div class="dtable-wrap"><table class="dtable"><thead><tr>'+
+    ["Name","Town/County","Type","Capacity","Website","IG"].map(function(t){ return "<th>"+t+"</th>"; }).join("")+
+    '</tr></thead><tbody>'+
+    vs.map(function(v){
+      var site=v.website?('<a href="'+esc(/^https?:/.test(v.website)?v.website:"https://"+v.website)+'" target="_blank" rel="noopener">site ↗</a>'):"—";
+      return '<tr data-open="'+v.id+'"><td><b>'+esc(v.name)+'</b></td><td>'+esc(townCounty(v))+'</td>'+
+      '<td>'+esc(v.setting||"Venue")+'</td><td>'+esc(v.capacity||"—")+'</td><td>'+site+'</td>'+
+      '<td>'+(v.ig_handle?"@"+esc(v.ig_handle):"—")+'</td></tr>'; }).join("")+
+    '</tbody></table></div></div>';
+  return h;
+}
 /* ---------- AI search visibility ---------- */
 function renderAI(){
   if(S.mode==="venues")
@@ -489,7 +588,7 @@ function renderVenueMarket(){
   var buckets=[["≤ 200 guests",0],["201–300",0],["301+",0],["Not published",0]];
   list.forEach(function(b){ var v=b.capacity_num;
     if(v==null) buckets[3][1]++; else if(v<=200) buckets[0][1]++; else if(v<=300) buckets[1][1]++; else buckets[2][1]++; });
-  var tot=list.length||1, cols=["#5fd0b5","#6db3f2","#e8b34b","#e06c6c"];
+  var tot=list.length||1, cols=["#6fd3e7","#6db3f2","#e8b34b","#e06c6c"];
   h+='<div class="sec"><h3>Capacity spread</h3><div class="sub">Largest published guest count per venue</div><div class="bar">'+
     buckets.map(function(bk,i){ return '<i style="width:'+(bk[1]/tot*100)+'%;background:'+cols[i]+'" title="'+bk[0]+': '+bk[1]+'"></i>'; }).join("")+
     '</div><div class="barlbl">'+buckets.map(function(bk,i){return '<span><b style="color:'+cols[i]+'">'+bk[1]+'</b> '+bk[0]+'</span>';}).join("")+'</div></div>';
@@ -519,7 +618,7 @@ function renderMarket(){
   w.forEach(function(v){ if(v<1000)buckets[0][1]++; else if(v<2000)buckets[1][1]++;
     else if(v<3500)buckets[2][1]++; else buckets[3][1]++; });
   buckets[4][1]=list.length-withPrice;
-  var tot=list.length||1, cols=["#5fd0b5","#6db3f2","#e8b34b","#e06c6c","#3a4353"];
+  var tot=list.length||1, cols=["#6fd3e7","#6db3f2","#e8b34b","#e06c6c","#3a4353"];
   h+='<div class="sec"><h3>Wedding price spread</h3><div class="sub">Starting wedding price, where published</div><div class="bar">'+
     buckets.map(function(bk,i){ return '<i style="width:'+(bk[1]/tot*100)+'%;background:'+cols[i]+'" title="'+bk[0]+': '+bk[1]+'"></i>'; }).join("")+
     '</div><div class="barlbl">'+buckets.map(function(bk,i){return '<span><b style="color:'+cols[i]+'">'+bk[1]+'</b> '+bk[0]+'</span>';}).join("")+'</div></div>';
@@ -546,13 +645,13 @@ function renderMarket(){
     var tcols={carousel:"#e8b34b",photo:"#6db3f2",reel:"#b48ce8"};
     var circ=2*Math.PI*34, off=0, segs="";
     tkeys.forEach(function(k){ var frac=types[k]/ttot;
-      segs+='<circle cx="42" cy="42" r="34" fill="none" stroke="'+(tcols[k]||"#5fd0b5")+'" stroke-width="14" '+
+      segs+='<circle cx="42" cy="42" r="34" fill="none" stroke="'+(tcols[k]||"#6fd3e7")+'" stroke-width="14" '+
         'stroke-dasharray="'+(frac*circ).toFixed(1)+' '+circ.toFixed(1)+'" stroke-dashoffset="'+(-off*circ).toFixed(1)+'" transform="rotate(-90 42 42)"/>';
       off+=frac; });
     h+='<div class="sec"><h3>Post-type mix</h3><div class="sub">Latest known post format</div><div class="donutwrap">'+
       '<svg class="donut" width="84" height="84" viewBox="0 0 84 84">'+segs+
       '<text x="42" y="47" text-anchor="middle" fill="#ece9e2" font-size="15" font-weight="700">'+ttot+'</text></svg>'+
-      '<div class="dlegend">'+tkeys.map(function(k){ return '<div><i style="background:'+(tcols[k]||"#5fd0b5")+'"></i>'+
+      '<div class="dlegend">'+tkeys.map(function(k){ return '<div><i style="background:'+(tcols[k]||"#6fd3e7")+'"></i>'+
         esc(k)+' <b>'+types[k]+'</b></div>'; }).join("")+'</div></div></div>';
   }
 
@@ -653,7 +752,7 @@ function profileHTML(b){
   var f=followersAt(b,S.di), ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
   var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
   var h='<div class="sec"><div class="prof-head"><div class="prof-ava">'+esc(ini)+'</div>'+
-    '<div><h2>'+esc(b.name)+'</h2>'+
+    '<div><h2>'+esc(b.name)+confBadge(b)+'</h2>'+
     '<div class="sub">'+esc(b.town)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+(b.region==="slc"?" · St. Lawrence Co":"")+'</div></div></div>';
 
   /* You vs market median — always visible */
@@ -691,6 +790,9 @@ function profileHTML(b){
   var priceRows="";
   if(b.price.wedding!=null) priceRows+='<dt>Wedding from</dt><dd><b>'+money(b.price.wedding)+'</b>'+(rW?' <span style="color:var(--dim)">#'+rW+' of '+wArr.length+'</span>':"")+'</dd>';
   if(b.price.session!=null) priceRows+='<dt>Session from</dt><dd><b>'+money(b.price.session)+'</b></dd>';
+  var cfd=CONF[b.id];
+  if(cfd&&cfd.conflict) priceRows+='<dt>Price conflict</dt><dd><span class="pcflag">needs review</span><br>'+
+    cfd.conflict.values.map(function(v){ return '<span style="color:var(--dim)">'+esc(v.label)+':</span> <b>'+esc(v.text)+'</b>'; }).join('<br>')+'</dd>';
   if(priceRows) h+='<h3>Pricing</h3><dl class="kv">'+priceRows+'</dl>';
   /* Website intel — pilot sweep, Sep 2026, with roster-level fallbacks */
   var wi=WI[b.id], wrows="", wOk=wi&&!wi.unreachable;
@@ -754,27 +856,7 @@ function renderRight(){
 }
 
 /* ---------- map ---------- */
-var map=null, pinLayer=null, pinById={}, heatLayer=null, covLayer=null, covOn=false;
-function buildCoverage(){
-  /* 25-mile radius circles for EVERY business and venue with real coordinates,
-     regardless of the active Businesses/Venues mode — overlaps show intersecting coverage. */
-  covLayer=L.layerGroup();
-  var seen={};
-  B.concat(V).forEach(function(b){
-    if(!b._geo||b.lat==null||b.lng==null||seen[b.id]) return; seen[b.id]=1;
-    var venue=b.type==="venue", col=venue?"#ff9a3c":"#e8b34b";
-    /* venue circles: thin orange stroke, very low fill — elegant, never loud */
-    L.circle([b.lat,b.lng],{radius:40234,color:col,
-      weight:venue?1:1.5,opacity:venue?.5:.55,
-      fillColor:col,fillOpacity:venue?.035:.06,interactive:false}).addTo(covLayer);
-  });
-}
-function toggleCoverage(){
-  if(!map||!covLayer) return;
-  covOn=!covOn;
-  if(covOn) covLayer.addTo(map); else map.removeLayer(covLayer);
-  var t=$("#covtoggle"); if(t) t.classList.toggle("on",covOn);
-}
+var map=null, pinLayer=null, pinById={}, heatLayer=null;
 function initMap(){
   map=L.map("map",{zoomControl:false,attributionControl:true}).setView([44.55,-74.9],9);
   map.attributionControl.setPrefix(false);
@@ -788,7 +870,6 @@ function initMap(){
     if(heatLayer._canvas){ heatLayer._canvas.style.transition="opacity .3s ease"; }
   }
   pinLayer=L.layerGroup().addTo(map);
-  buildCoverage();
   map.on("zoomend",refreshLabels);
   map.on("zoom",refreshHeat); map.on("zoomend",refreshHeat); map.on("moveend",refreshHeat);
   map.on("click",function(e){ /* click-away on empty map deselects */
@@ -989,7 +1070,7 @@ function renderRankings(){
       '<span class="rk-val '+r.cls+'">'+esc(r.val)+'</span></div>'+
       '<div class="rk-bar"><i style="width:'+w.toFixed(1)+'%;background:'+(LANE_COLOR[b.specialty]||"#888")+'"></i></div>'+
       '<div class="rk-sub">'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+
-      (mode!=="activity"?' · <span class="rk-age">'+esc(ageStr(b.postAge))+'</span>':"")+'</div></div></div>';
+      (mode!=="activity"?' · <span class="rk-age">'+esc(ageStr(b.postAge))+'</span>':"")+confBadge(b)+'</div></div></div>';
   }).join("")+'</div>';
   el.innerHTML=h;
 }
@@ -1016,7 +1097,7 @@ function select(id,opts){
 /* ---------- left body ---------- */
 function renderLeft(){
   var el=$("#leftbody");
-  el.innerHTML=S.tab==="today"?renderToday():S.tab==="dir"?renderDir():S.tab==="ai"?renderAI():renderMarket();
+  el.innerHTML=S.tab==="today"?renderToday():S.tab==="dir"?renderDir():S.tab==="ai"?renderAI():S.tab==="data"?renderData():renderMarket();
   $$("[data-count]",el).forEach(function(n){
     var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
     if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
@@ -1118,7 +1199,6 @@ function setView(v){
   var rk=v==="rankings";
   $("#rankings").hidden=!rk;
   $("#map").style.visibility=rk?"hidden":"visible";
-  var ct=$("#covtoggle"); if(ct) ct.style.visibility=rk?"hidden":"visible";
   if(rk) renderRankings();
 }
 
@@ -1161,7 +1241,11 @@ document.addEventListener("click",function(e){
   if(mt){ setMode(mt.getAttribute("data-mode")); return; }
   var rb=e.target.closest("[data-rank]");
   if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); return; }
-  if(e.target.closest("#covtoggle")){ toggleCoverage(); return; }
+  var th=e.target.closest("th[data-dk]");
+  if(th){ var k=th.getAttribute("data-dk"), s2=S.dsort||{key:"followers",dir:-1};
+    if(s2.key===k) s2.dir=-s2.dir;
+    else s2={key:k,dir:/^(followers|ch7|ch30|posts|conf)$/.test(k)?-1:1};
+    S.dsort=s2; renderLeft(); return; }
   var tb=e.target.closest(".tabs button");
   if(tb){ S.tab=tb.getAttribute("data-tab");
     $$(".tabs button").forEach(function(b){ var on=b===tb;
@@ -1171,6 +1255,13 @@ document.addEventListener("click",function(e){
 var fqT=null;
 $("#fq").addEventListener("input",function(e){
   clearTimeout(fqT); fqT=setTimeout(function(){ S.q=e.target.value.trim(); refreshFiltered(); },160);
+});
+var dqT=null;
+document.addEventListener("input",function(e){
+  if(e.target&&e.target.id==="dq"){
+    clearTimeout(dqT); dqT=setTimeout(function(){ S.dq=e.target.value.trim(); renderLeft();
+      var n=$("#dq"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },160);
+  }
 });
 [["#flane","lane"],["#fmom","mom"],["#freg","reg"]].forEach(function(p){
   $(p[0]).addEventListener("change",function(e){ S[p[1]]=e.target.value; refreshFiltered(); });
