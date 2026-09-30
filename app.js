@@ -6,8 +6,6 @@ var D = window.PULSE_DATA || {};
 var $ = function(s,r){ return (r||document).querySelector(s); };
 var $$ = function(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
 var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-var ADMIN = false;
-try{ ADMIN = sessionStorage.getItem("pulse_admin")==="1"; }catch(e){}
 
 /* ---------- small helpers ---------- */
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
@@ -278,20 +276,10 @@ function weekHighlights(){
     cards.push({k:"Biggest audience",b:big[0],
       why:fmt(followersAt(big[0],di))+" followers — largest audience tracked"});
   }
-  /* your week */
-  var you=list.filter(function(b){ return b.you; })[0];
-  if(you){
-    var ych=pctChange(you,d0,di), yfrom=followersAt(you,d0), yto=followersAt(you,di);
-    var yh=norm(you.ig_handle), yn=yh&&actBy[yh]?actBy[yh].length:0;
-    var parts=[];
-    if(ych!=null) parts.push((ych>=0?"+":"")+ych.toFixed(1)+"% ("+fmt(yfrom)+" → "+fmt(yto)+")");
-    parts.push(yn+(yn===1?" post":" posts")+" in 7 days");
-    cards.push({k:"Your week",b:you,you:true,why:parts.join(" · ")});
-  }
   if(!cards.length) return "";
   return '<div class="sec"><h3>Week\'s highlights</h3><div class="sub">Top of the market · last 7 days</div>'+
     '<div class="hl-grid">'+cards.map(function(c){
-      return '<div class="hl-card'+(c.you?" you":"")+'" data-open="'+c.b.id+'">'+
+      return '<div class="hl-card" data-open="'+c.b.id+'">'+
         '<div class="hl-k">'+esc(c.k)+'</div><div class="hl-n">'+esc(c.b.name)+'</div>'+
         '<div class="hl-w">'+esc(c.why)+'</div></div>';
     }).join("")+"</div></div>";
@@ -307,7 +295,7 @@ function renderVenueToday(){
     '<div class="stat"><div class="v">'+V.length+'</div><div class="l">Venues</div></div>'+
     '<div class="stat"><div class="v">'+Object.keys(counties).length+'</div><div class="l">Counties</div></div>'+
     '<div class="stat"><div class="v">'+ig+'</div><div class="l">On Instagram</div></div></div>';
-  h+='<div class="sub" style="margin:8px 0 0">Change history builds from here — check back as snapshots accumulate.</div></div>';
+  h+='<div class="sub" style="margin:8px 0 0">Change history builds from here — check back as daily updates accumulate.</div></div>';
   h+='<div class="sec"><h3>All venues</h3><div class="stagger">'+V.map(venueRow).join("")+"</div></div>";
   return h;
 }
@@ -372,9 +360,9 @@ function dirRow(b,i){
   if(b.type==="venue") return venueRow(b,i);
   var f=followersAt(b,S.di), ch=pctChange(b,Math.max(0,S.di-7),S.di);
   var pcls=ch==null?"fl":(ch>=0?"up":"dn");
-  return '<div class="row'+(b.you?" you":"")+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
-    '<span class="dot" style="background:'+(b.you?"#e8b34b":recencyDot(b))+'"></span>'+
-    '<div class="nm"><b>'+esc(b.name)+(b.you?'<span class="youbadge">You</span>':"")+'</b>'+
+  return '<div class="row'+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
+    '<span class="dot" style="background:'+recencyDot(b)+'"></span>'+
+    '<div class="nm"><b>'+esc(b.name)+'</b>'+
     '<span>'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+'</span></div>'+
     '<div class="meta"><b>'+fmt(f)+'</b><span>'+(b.hasPrice?money(b.price.wedding||b.price.session):"price n/a")+
     ' · <span class="pct '+pcls+'">'+pctStr(ch)+'</span></span></div></div>';
@@ -386,7 +374,7 @@ function locTag(b){
   return "";
 }
 function renderDir(){
-  var list=filtered().slice().sort(function(a,b){return (b.you?1:0)-(a.you?1:0)||((b.followers||0)-(a.followers||0));});
+  var list=filtered().slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);});
   var noun=S.mode==="venues"?"venues":"businesses";
   var h='<div class="sec"><h3>Directory</h3><div class="sub">'+list.length+' of '+C.length+' '+noun+'</div>';
   if(!list.length) return h+'<div class="empty-note">No '+noun+' match these filters.</div></div>';
@@ -509,7 +497,6 @@ function renderMarket(){
     '<div class="stat"><div class="v" data-count="'+(med(w)||0)+'" data-money="1">0</div><div class="l">Median wedding $</div></div>'+
     '<div class="stat"><div class="v">'+(list.length?Math.round(withPrice/list.length*100):0)+'%</div><div class="l">Show pricing</div></div>'+
     '<div class="stat"><div class="v">'+(list.length?Math.round(active/list.length*100):0)+'%</div><div class="l">Posted ≤30d</div></div>'+
-    '<div class="stat"><div class="v">'+C.filter(function(b){return b.you;}).length+'</div><div class="l">That\'s you</div></div>'+
   '</div>';
 
   /* pricing transparency bar */
@@ -530,7 +517,7 @@ function renderMarket(){
     var mx=lb[0].ch;
     h+='<div class="sec"><h3>Growth leaderboard</h3><div class="sub">7-day follower change, ≥3%</div><div class="stagger">'+
       lb.map(function(x){ return '<div class="lb-row" data-open="'+x.b.id+'"><span class="lb-nm">'+esc(x.b.name)+
-        (x.b.you?'<span class="youbadge">You</span>':"")+'</span><span class="lb-v">+'+x.ch.toFixed(1)+'%</span>'+
+        '</span><span class="lb-v">+'+x.ch.toFixed(1)+'%</span>'+
         '<span class="lb-bar"><i style="width:'+Math.max(4,x.ch/mx*100)+'%"></i></span></div>'; }).join("")+
       '</div></div>';
   }
@@ -642,8 +629,8 @@ function profileHTML(b){
   if(b.type==="venue") return venueProfileHTML(b);
   var f=followersAt(b,S.di), ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
   var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
-  var h='<div class="sec"><div class="prof-head"><div class="prof-ava'+(b.you?" you":"")+'">'+esc(ini)+'</div>'+
-    '<div><h2>'+esc(b.name)+(b.you?'<span class="youbadge">You</span>':"")+'</h2>'+
+  var h='<div class="sec"><div class="prof-head"><div class="prof-ava">'+esc(ini)+'</div>'+
+    '<div><h2>'+esc(b.name)+'</h2>'+
     '<div class="sub">'+esc(b.town)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+(b.region==="slc"?" · St. Lawrence Co":"")+'</div></div></div>';
 
   /* You vs market median — always visible */
@@ -689,19 +676,11 @@ function profileHTML(b){
   }
   if(!igRows&&!priceRows&&!wrows) h+='<div class="sub">No public stats tracked yet.</div>';
 
-  if(ADMIN){
-    h+='<h3>Trend</h3>';
-    h+='<div class="trendgrid"><div class="stat"><div class="v pct '+(ch7==null?"fl":ch7>=0?"up":"dn")+'">'+pctStr(ch7)+'</div><div class="l">7-day</div></div>'+
-       '<div class="stat"><div class="v pct '+(ch30==null?"fl":ch30>=0?"up":"dn")+'">'+pctStr(ch30)+'</div><div class="l">30-day</div></div></div>';
-    h+=sparkline(b.followHist);
-    h+='<div class="sub" style="margin-top:6px">Indexed to 100 at first tracked point · '+b.followHist.length+' snapshots</div>';
-    if(b.followHist.length){
-      h+='<div class="sub">History</div><div style="font-size:12px;color:var(--mut)">'+
-        b.followHist.slice(-8).map(function(r){return dstr(r.date)+' — <b style="color:var(--txt)">'+fmt(r.count)+'</b>';}).join("<br>")+'</div>';
-    }
-  } else {
-    h+='<div class="locknote">Per-business trend history is private. Sign in as admin to see follower trends.</div>';
-  }
+  h+='<h3>Follower trend</h3>';
+  h+='<div class="trendgrid"><div class="stat"><div class="v pct '+(ch7==null?"fl":ch7>=0?"up":"dn")+'">'+pctStr(ch7)+'</div><div class="l">7-day</div></div>'+
+     '<div class="stat"><div class="v pct '+(ch30==null?"fl":ch30>=0?"up":"dn")+'">'+pctStr(ch30)+'</div><div class="l">30-day</div></div></div>';
+  h+=sparkline(b.followHist);
+  h+='<div class="sub" style="margin-top:6px;opacity:.65">Public Instagram follower counts, updated daily.</div>';
   h+='</div>';
   return h;
 }
@@ -827,7 +806,7 @@ function labelFor(b){
   var f=followersAt(b,S.di);
   var loc=b.townShort+((b.region==="adjacent"&&b.county)?" · "+b.county+" Co (adjacent)":
     ((b.region==="unconfirmed"||(b.flags||[]).indexOf("location-unverified")>=0)?" · location unverified":""));
-  return "<b>"+esc(b.name)+"</b>"+(b.you?' <span style="color:#e8b34b">(you)</span>':"")+
+  return "<b>"+esc(b.name)+"</b>"+
     '<br><span style="color:#9aa3b2;font-weight:400">'+esc(loc)+"</span>"+
     (f!=null?'<br><span style="color:#9aa3b2;font-weight:400">'+fmt(f)+" followers</span>":"");
 }
@@ -852,7 +831,7 @@ function refreshLabels(){
     if(m._lbl===show) return; m._lbl=show;
     m.unbindTooltip();
     m.bindTooltip(labelFor(b),{permanent:show,direction:"top",offset:pills?[0,-16]:[0,-13],
-      opacity:.97,className:"mklabel"+(b.you?" you":"")});
+      opacity:.97,className:"mklabel"});
   });
 }
 function postedOn(b,di){ /* did this business post on/around the scrub date? */
@@ -875,15 +854,15 @@ function renderPins(){
     var hollow=b.type==="venue"?false:(f==null||!b.hasPrice);
     var dim=(selId&&b.id!==selId)?" dim":"";
     var live=postedOn(b,S.di)?" live":"";
-    var sel=b.id===selId?" sel":"", you=b.you?" you":"";
+    var sel=b.id===selId?" sel":"";
     var html, icon;
     if(pinMode==="pills"){
       var txt=f!=null?fmt(f):"—";
-      html='<div class="zpin'+sel+you+live+dim+'" style="--lc:'+(LANE_COLOR[b.specialty]||"#888")+'">'+
+      html='<div class="zpin'+sel+live+dim+'" style="--lc:'+(LANE_COLOR[b.specialty]||"#888")+'">'+
         "<i></i><span>"+txt+"</span></div>";
       icon=L.divIcon({className:"zwrap",html:html});
     }else{
-      var cls="mkpin"+(hollow?" hollow":"")+sel+you+live+dim;
+      var cls="mkpin"+(hollow?" hollow":"")+sel+live+dim;
       html='<div class="'+cls+'" style="width:'+(r*2)+'px;height:'+(r*2)+'px;'+
         (hollow?"":"background:"+LANE_COLOR[b.specialty]+";")+
         (newIds[b.id]?"opacity:0;":"")+'"></div>';
@@ -950,7 +929,7 @@ function renderRankings(){
     return '<div class="rk-row'+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'">'+
       '<span class="rk-rank">'+(i+1)+'</span>'+
       '<span class="rk-dot" style="background:'+(LANE_COLOR[b.specialty]||"#888")+'"></span>'+
-      '<div class="rk-main"><div class="rk-top"><b>'+esc(b.name)+(b.you?'<span class="youbadge">You</span>':"")+'</b>'+
+      '<div class="rk-main"><div class="rk-top"><b>'+esc(b.name)+'</b>'+
       '<span class="rk-val '+r.cls+'">'+esc(r.val)+'</span></div>'+
       '<div class="rk-bar"><i style="width:'+w.toFixed(1)+'%;background:'+(LANE_COLOR[b.specialty]||"#888")+'"></i></div>'+
       '<div class="rk-sub">'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+
@@ -1018,32 +997,6 @@ function onScrub(){
   if(S.view==="rankings") renderRankings();
   if(S.tab==="today") renderLeft();
   renderRight();
-}
-
-/* ---------- admin ---------- */
-function askAdmin(){
-  if(ADMIN){ setAdmin(false); return; }
-  var back=document.createElement("div"); back.className="mback";
-  back.innerHTML='<div class="modal"><h2>Admin</h2><p>Per-business trend detail is private. Enter the admin password to unlock it on this device.</p>'+
-    '<input type="password" id="apw" placeholder="Password" autocomplete="off">'+
-    '<div class="mrow"><button class="btn ghost" id="acancel">Cancel</button><button class="btn" id="aok">Unlock</button></div></div>';
-  document.body.appendChild(back);
-  var inp=$("#apw",back); inp.focus();
-  function close(){ back.remove(); }
-  $("#acancel",back).onclick=close; back.onclick=function(e){ if(e.target===back) close(); };
-  $("#aok",back).onclick=function(){
-    if(inp.value==="admin"){ setAdmin(true); close(); }
-    else { inp.value=""; inp.placeholder="Try again"; inp.focus(); }
-  };
-  inp.onkeydown=function(e){ if(e.key==="Enter") $("#aok",back).click(); };
-}
-function setAdmin(on){
-  ADMIN=on;
-  try{ sessionStorage.setItem("pulse_admin",on?"1":"0"); }catch(e){}
-  $("#adminBtn").classList.toggle("on",on);
-  $("#adminBtn").textContent=on?"Admin ✓":"Admin";
-  renderRight(); renderLeft();
-  toast(on?"Admin mode on — trend detail unlocked.":"Admin mode off.");
 }
 
 /* ---------- view toggle ---------- */
@@ -1115,7 +1068,6 @@ $("#fq").addEventListener("input",function(e){
 function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); renderLeft(); }
 timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
 $("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
-$("#adminBtn").addEventListener("click",askAdmin);
 $("#rightclose").addEventListener("click",function(){ $("#right").classList.remove("open"); S.sel=null; renderPins(); renderRight(); });
 $("#sheetgrab").addEventListener("click",function(){ $("#left").classList.toggle("open"); });
 document.addEventListener("keydown",function(e){
@@ -1132,7 +1084,6 @@ try{ if(typeof L==="undefined") throw new Error("leaflet");
 }catch(err){
   $("#map").innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6b7484;font-size:13px">Map tiles unavailable — switch to Bubbles view.</div>';
 }
-if(ADMIN){ $("#adminBtn").classList.add("on"); $("#adminBtn").textContent="Admin ✓"; }
 /* Airbnb-style hover sync between directory rows and map pins */
 $("#leftbody").addEventListener("mouseover",function(e){
   var row=e.target.closest?e.target.closest(".row"):null; if(!row||!row.dataset.open) return;
