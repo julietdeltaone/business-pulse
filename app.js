@@ -75,6 +75,10 @@ var CONF=D.confidence||{}; /* per-business info confidence, rebuilt by scripts/s
 var B=(D.competitors||[]).map(function(c){
   var e=Object.assign({},c);
   e.price=priceFloors(c.pricing);
+  /* roster services sometimes arrive as a raw string; the profile renderer
+     calls .map on this, so normalize once here. */
+  if(typeof e.services==="string")
+    e.services=e.services.split(/[,;]+/).map(function(x){return x.trim();}).filter(Boolean);
   var h=c.ig_handle&&IGH[c.ig_handle];
   if(h&&h.length){ e.followHist=h.slice().sort(function(a,b){return a.date<b.date?-1:1;});
     e.followers=e.followHist[e.followHist.length-1].count; }
@@ -520,10 +524,19 @@ function revScore(b){
   return {score:s,band:band,r:r,
     why:r.count+" "+r.src+" reviews"+(r.rating?" · "+r.rating+" / 5":"")+"."};
 }
+function engScore(b){
+  var e=b.engagement;
+  if(!e||e.rate_pct==null) return {score:null,band:"Unknown",
+    why:"No Instagram engagement data — not in the API pull roster or too few recent posts."};
+  var s=Math.max(2,Math.min(100,Math.round(e.rate_pct/5*100)));
+  var band=s>=60?"Strong":s>=30?"Solid":s>=12?"Quiet":"Faint";
+  return {score:s,band:band,e:e,
+    why:e.posts+" recent posts · "+e.rate_pct+"% mean engagement · "+e.avg_likes+" avg likes"};
+}
 /* compact score strip under the profile header: information meter (governing, highlighted)
-   + four chips. Clicking any of them opens the full scorecard. */
+   + five chips. Clicking any of them opens the full scorecard. */
 function scoreStrip(b){
-  var a=actScore(b), m=momScore(b), v=valScore(b), r=revScore(b);
+  var a=actScore(b), m=momScore(b), e=engScore(b), v=valScore(b), r=revScore(b);
   function chip(label,val,res){
     var cls=res&&res.score!=null?confBand(res.score):"unk";
     var disp=(res&&res.score!=null)?val:"—";
@@ -532,41 +545,56 @@ function scoreStrip(b){
       '<span class="scl">'+label+'</span><span class="scv">'+disp+'</span></button>';
   }
   var mv=m.score!=null?((m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):"";
+  var ev=e.score!=null?(e.e.rate_pct+"%"):"";
   var vv=v.score!=null?money(b.price.wedding):"";
   var rv=r.r?fmt(r.r.count):"";
   return confMeter(b)+'<div class="scorerow" role="group" aria-label="Business scores">'+
-    chip("Activity",a.band,a)+chip("Momentum",mv,m)+chip("Price position",vv,v)+chip("Reviews",rv,r)+'</div>';
+    chip("Activity",a.band,a)+chip("Momentum",mv,m)+chip("Engagement",ev,e)+chip("Price position",vv,v)+chip("Reviews",rv,r)+'</div>';
 }
 /* clickable explainer: what the percentage measures, in plain language */
 function openScoreDash(id){
   var b=BY_ID[id]||B_BY_ID[id]||V_BY_ID[id]; if(!b||b.type==="venue") return;
   var s=confOf(b); if(s==null) return;
   var cfd=CONF[id], cls=confBand(s);
-  var a=actScore(b), m=momScore(b), v=valScore(b), r=revScore(b);
+  var a=actScore(b), m=momScore(b), e=engScore(b), v=valScore(b), r=revScore(b);
   var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   function dstr(ds){ if(!ds) return "—"; var d=new Date(ds+"T12:00:00"); return isNaN(d)?ds:MO[d.getMonth()]+" "+d.getDate(); }
   function pill(res){
-    if(res.score==null) return '<span class="dpill unk">'+esc(res.band)+'</span>';
-    return '<span class="dpill '+confBand(res.score)+'">'+res.score+' · '+esc(res.band)+'</span>';
+    if(res.score==null) return '<span class="dpill unk">'+esc(res.band)+"</span>";
+    return '<span class="dpill '+confBand(res.score)+'">'+res.score+" · "+esc(res.band)+"</span>";
   }
   function ext(url,label){
     if(!url) return "";
     var u=/^https?:/i.test(url)?url:"https://"+url;
-    return '<a class="dsrc" href="'+esc(u)+'" target="_blank" rel="noopener">'+label+' ↗</a>';
+    return '<a class="dsrc" href="'+esc(u)+'" target="_blank" rel="noopener">'+label+" ↗</a>";
   }
   function gradeBar(score){
     if(score==null) return "";
-    return '<div class="dgrade" title="'+score+' / 100"><i style="width:'+score+'%"></i></div>';
+    return '<div class="dgrade"><i data-w="'+score+'"></i></div>';
   }
-  function wdg(label,res,measures,big,graph,detail,link){
-    return '<div class="dwidget"><div class="dhead"><span class="dlabel">'+label+'</span>'+pill(res)+'</div>'+
-      (big?'<div class="dbig">'+big+'</div>':"")+gradeBar(res.score)+(graph||"")+
-      '<p class="dmeas">'+measures+'</p>'+(detail?'<div class="dnums">'+detail+'</div>':"")+
-      (link?'<div class="dlink">'+link+'</div>':"")+'</div>';
+  function engBars(en){
+    if(!en||!en.bars||!en.bars.length) return "";
+    var mx=Math.max.apply(null,en.bars.concat([1]));
+    var bars=en.bars.map(function(x,i){
+      return '<span class="dbar" style="--d:'+(i*55)+'ms" title="'+x+'% engagement on this post"><i style="height:'+Math.max(5,Math.round(x/mx*100))+'%"></i></span>';
+    }).join("");
+    return '<div class="dgraph"><div class="dbars">'+bars+'</div>'+
+      '<div class="dscale-lbl"><span>oldest</span><span>per-post engagement</span><span>latest</span></div></div>';
   }
-  /* ---- information: per-factor points bars + links to the confirmable sources ---- */
-  var parts=(cfd&&cfd.parts)||{};
+  var _wi=0;
+  function wdg(label,res,measures,graph,detail,link){
+    var i=_wi++;
+    return '<section class="dwidget" style="--d:'+(i*85)+'ms">'+
+      '<div class="dhead"><span class="dlabel">'+label+"</span>"+pill(res)+"</div>"+
+      (res.score!=null?'<div class="dscore"><span class="dnum" data-n="'+res.score+'">0</span><span class="dmax">/100</span></div>':"")+
+      gradeBar(res.score)+(graph||"")+
+      '<p class="dmeas">'+measures+"</p>"+
+      (detail?'<div class="dnums">'+detail+"</div>":"")+
+      (link?'<div class="dlink">'+link+"</div>":"")+"</section>";
+  }
   var igUrl=b.ig_handle?("https://instagram.com/"+b.ig_handle):null;
+  /* ---- information factors: compact segmented bar; full breakdown expands upward ---- */
+  var parts=(cfd&&cfd.parts)||{};
   var FACTORS=[
     ["website","Website",25,"the business site loads and was actually read","site never loaded in a sweep",b.website,"site"],
     ["prices","Prices",15,"a starting price was parsed from their published pricing","no starting price found",b.pricing_url,"pricing"],
@@ -576,38 +604,34 @@ function openScoreDash(id){
     ["years","History",10,"years in business known","years in business unknown",null,null],
     ["corroboration","Third source",10,"at least one source beyond their own site","no outside source found yet",b.review_url,"listing"]
   ];
-  var verified=0, frows="";
+  var verified=0, frows="", segs="";
   FACTORS.forEach(function(f){
-    var e=parts[f[0]]||0, got=e>0; if(got) verified++;
-    frows+='<div class="dfactor'+(got?"":" missed")+'"><span class="dfm '+(got?"ok":"no")+'">'+(got?"✓":"✗")+'</span>'+
-      '<div class="dffull"><div class="dfrow"><b>'+f[1]+'</b><span class="dfpts">'+e+'/'+f[2]+'</span>'+
-      (got&&f[5]?ext(f[5],f[6]):"")+'</div>'+
-      (got?'<div class="dfbar"><i style="width:'+Math.round(100*e/f[2])+'%"></i></div>':"")+
-      '<span>'+(got?f[3]:"Not verified — "+f[4])+'</span></div></div>';
+    var er=parts[f[0]]||0, got=er>0; if(got) verified++;
+    segs+='<span class="dcseg" style="flex:'+f[2]+' 1 0%" title="'+f[1]+": "+er+"/"+f[2]+'"><i data-w="'+Math.round(100*er/f[2])+'"></i></span>';
+    frows+='<div class="dfactor'+(got?"":" missed")+'"><span class="dfm '+(got?"ok":"no")+'">'+(got?"✓":"✗")+"</span>"+
+      '<div class="dffull"><div class="dfrow"><b>'+f[1]+'</b><span class="dfpts">'+er+"/"+f[2]+"</span>"+
+      (got&&f[5]?ext(f[5],f[6]):"")+"</div>"+
+      (got?'<div class="dfbar"><i style="width:'+Math.round(100*er/f[2])+'%"></i></div>':"")+
+      "<span>"+(got?f[3]:"Not verified — "+f[4])+"</span></div></div>";
   });
-  var infoSec='<div class="dinfo"><div class="dhead"><span class="dlabel">Information confidence</span>'+
-    '<span class="dpill '+cls+'">'+s+' · '+(cls==="hi"?"High":cls==="mid"?"Medium":"Low")+'</span></div>'+
-    '<p class="dmeas">The governing score — every score below is only as reliable as the data behind it.</p>'+
-    '<div class="dsum">'+verified+' of '+FACTORS.length+' factors verified</div>'+
-    '<div class="dfactors">'+frows+
-    (cfd&&cfd.conflict?'<div class="dfactor full missed"><span class="dfm no">−20</span><div class="dffull"><div class="dfrow"><b>Price conflict</b></div><span>'+
-      cfd.conflict.values.map(function(x){ return esc(x.label)+": "+esc(x.text); }).join(" vs ")+
-      ' — flagged for human review</span></div></div>':"")+'</div></div>';
+  var conflictRow=(cfd&&cfd.conflict)?'<div class="dfactor full missed"><span class="dfm no">−20</span><div class="dffull"><div class="dfrow"><b>Price conflict</b></div><span>'+
+    cfd.conflict.values.map(function(x){ return esc(x.label)+": "+esc(x.text); }).join(" vs ")+
+    " — flagged for human review</span></div></div>":"";
   /* ---- activity: recency bracket scale ---- */
   var aBrk=a.days!=null?(a.days<=7?"≤ 7":a.days<=14?"≤ 14":a.days<=30?"≤ 30":a.days<=60?"≤ 60":a.days<=90?"≤ 90":"180+")+" days":null;
-  var aGraph="", aDetail=esc(a.why), aLink=ext(igUrl,"Instagram");
+  var aGraph="", aDetail=esc(a.why);
   if(a.days!=null){
     aGraph='<div class="dgraph"><div class="dscale"><em class="dmark" style="left:'+Math.min(100,a.days/180*100).toFixed(1)+'%"></em></div>'+
       '<div class="dscale-lbl"><span>today</span><span>90d</span><span>180d+</span></div></div>';
     aDetail="Last post "+dstr(b.last_post_date)+" ("+a.days+(a.days===1?" day":" days")+" ago) · bracket "+aBrk+" → "+a.score+" pts";
   }
   /* ---- momentum: real follower line graph + 7d/30d sub-scores ---- */
-  var mGraph="", mDetail=esc(m.why), mLink=ext(igUrl,"Instagram");
+  var mGraph="", mDetail=esc(m.why);
   (function(){
     var cut=new Date(DATES[S.di]+"T12:00:00"); cut.setDate(cut.getDate()-90);
     var cutS=cut.getFullYear()+"-"+("0"+(cut.getMonth()+1)).slice(-2)+"-"+("0"+cut.getDate()).slice(-2);
     var hist=(b.followHist||[]).filter(function(r){ return r.date>=cutS; });
-    if(hist.length>1) mGraph='<div class="dgraph">'+sparkline(hist,300,54)+'</div>';
+    if(hist.length>1) mGraph='<div class="dgraph">'+sparkline(hist,300,54)+"</div>";
   })();
   if(m.ch30!=null){
     var s7=Math.max(5,Math.min(100,Math.round(50+(m.ch7||0)*8)));
@@ -615,44 +639,76 @@ function openScoreDash(id){
     mDetail="7-day "+(m.ch7>=0?"+":"")+m.ch7.toFixed(1)+"% → "+s7+" pts · 30-day "+(m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"% → "+m.score+" pts"+
       (f0!=null&&f1!=null?" · "+fmt(f0)+" → "+fmt(f1)+" followers":"");
   }
+  /* ---- engagement: per-post bars + averages ---- */
+  var eGraph=engBars(e.e), eDetail=esc(e.why);
   /* ---- price position: market scale with median tick + rank granularity ---- */
-  var pGraph="", pDetail=esc(v.why), pLink=ext(b.pricing_url,"Pricing");
+  var pGraph="", pDetail=esc(v.why);
   if(v.r){
     var arr=_wedArr, mn=arr[0].price.wedding, mx=arr[arr.length-1].price.wedding, sp=Math.max(1,mx-mn);
     pGraph='<div class="dgraph"><div class="dscale"><i class="dmed" style="left:'+((v.r.med-mn)/sp*100).toFixed(1)+'%"></i>'+
       '<em class="dmark" style="left:'+((b.price.wedding-mn)/sp*100).toFixed(1)+'%"></em></div>'+
-      '<div class="dscale-lbl"><span>'+money(mn)+'</span><span>median '+money(v.r.med)+'</span><span>'+money(mx)+'</span></div></div>';
+      '<div class="dscale-lbl"><span>'+money(mn)+"</span><span>median "+money(v.r.med)+"</span><span>"+money(mx)+"</span></div></div>";
     pDetail="Floor "+money(b.price.wedding)+" · #"+v.r.rank+" of "+v.r.n+" tracked · cheaper than "+v.r.pct+"% of the market";
   }
   /* ---- reviews: log-scale position + live listing link ---- */
-  var rGraph="", rDetail=esc(r.why), rLink=ext(b.review_url,"Live listing");
+  var rGraph="", rDetail=esc(r.why);
   if(r.r){
     rGraph='<div class="dgraph"><div class="dscale"><em class="dmark" style="left:'+(100*Math.log10(1+r.r.count)/Math.log10(201)).toFixed(1)+'%"></em></div>'+
       '<div class="dscale-lbl"><span>0</span><span>log scale · cap 200</span><span>200</span></div></div>';
     rDetail=r.r.count+" "+r.r.src+" reviews"+(r.r.rating?" · "+r.r.rating+" / 5":"")+" → "+r.score+" pts";
   }
+  /* ---- animated flow: five streams converging into the confidence bar ---- */
+  var flowXs=[100,300,500,700,900].map(function(x){
+    return '<path d="M '+x+" 2 C "+x+' 26, 500 18, 500 42"/>';
+  }).join("");
   var h='<div class="mback" id="cfback"><div class="modal fulldash" role="dialog" aria-label="Scorecard">'+
     '<div class="dash-head"><div><div class="dtitle">Scorecard</div>'+
-    '<div class="dsub">'+esc(b.name)+'</div></div>'+
+    '<div class="dsub">'+esc(b.name)+(b.services&&b.services.length?" · "+esc(b.services.slice(0,3).join(" · ")):"")+"</div></div>"+
     '<button class="dbtn-x" id="cfx" aria-label="Close scorecard">✕</button></div>'+
-    '<div class="dash-body">'+infoSec+
+    '<div class="dash-body">'+
     '<div class="dash-widgets">'+
-    wdg("Activity",a,"How recently they posted — an active competitor is a different animal than a dormant one.",
-      a.score!=null?esc(a.band):null,aGraph,aDetail,aLink)+
-    wdg("Momentum",m,"Week-to-month follower movement — who is gaining on you and who is slipping.",
-      m.ch30!=null?((m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):null,mGraph,mDetail,mLink)+
-    wdg("Price position",v,"Where their wedding floor sits against the market, by actual published prices.",
-      v.score!=null?esc(v.band):null,pGraph,pDetail,pLink)+
-    wdg("Reviews",r,"Social proof — review counts and ratings from live listings.",
-      r.r?fmt(r.r.count):null,rGraph,rDetail,rLink)+
-    '</div>'+
-    '<div class="dash-foot">A rotating deep-dive pass re-researches every business weekly to raise these scores.</div>'+
-    '</div></div></div>';
+    wdg("Activity",a,"How recently they posted — an active competitor is a different animal than a dormant one.",aGraph,aDetail,ext(igUrl,"Instagram"))+
+    wdg("Momentum",m,"Week-to-month follower movement — who is gaining and who is slipping.",mGraph,mDetail,ext(igUrl,"Instagram"))+
+    wdg("Engagement",e,"Whether their audience actually responds — mean likes and comments per post.",eGraph,eDetail,ext(igUrl,"Instagram"))+
+    wdg("Price position",v,"Where their wedding floor sits against the market, by published prices.",pGraph,pDetail,ext(b.pricing_url,"Pricing"))+
+    wdg("Reviews",r,"Social proof — review counts and ratings from live listings.",rGraph,rDetail,ext(b.review_url,"Live listing"))+
+    "</div>"+
+    '<div class="dash-flow" aria-hidden="true"><svg viewBox="0 0 1000 44" preserveAspectRatio="none">'+flowXs+"</svg>"+
+    '<div class="flow-cap">Information confidence feeds every score above</div></div>'+
+    '<footer class="dconf" style="--d:460ms">'+
+    '<button class="dconf-main" id="cfdet" aria-expanded="false">'+
+    '<span class="dcl">Information confidence</span>'+
+    '<span class="dcnum '+cls+'">'+s+'%</span>'+
+    '<span class="dcsegs">'+segs+"</span>"+
+    '<span class="dcver">'+verified+" of "+FACTORS.length+' verified</span>'+
+    '<span class="dctog">Details ▾</span></button>'+
+    '<div class="dcfactors" id="cffactors"><div class="dcfactors-in"><div class="dfactors">'+frows+conflictRow+"</div>"+
+    '<p class="dmeas dcn">The governing score — every score above is only as reliable as the data behind it. Tap a source link to open the confirming page.</p></div></div></footer>'+
+    '<div class="dash-foot"><span>A rotating deep-dive pass re-researches every business weekly to raise these scores.</span><button class="dbtn-ok" id="cfok">Got it</button></div>'+
+    "</div></div></div>";
   document.body.insertAdjacentHTML("beforeend",h);
+  requestAnimationFrame(function(){
+    var root=document.getElementById("cfback"); if(!root) return;
+    root.querySelectorAll(".dgrade i").forEach(function(el){ el.style.width=el.getAttribute("data-w")+"%"; });
+    root.querySelectorAll(".dcseg i").forEach(function(el){ el.style.width=el.getAttribute("data-w")+"%"; });
+    root.querySelectorAll(".dnum").forEach(function(el){
+      var target=+el.getAttribute("data-n"), t0=null;
+      function tick(t){ if(t0==null) t0=t; var p=Math.min(1,(t-t0)/850), ez=1-Math.pow(1-p,3);
+        el.textContent=Math.round(target*ez); if(p<1) requestAnimationFrame(tick); }
+      requestAnimationFrame(tick);
+    });
+  });
   function close(){ var m=$("#cfback"); if(m) m.remove(); document.removeEventListener("keydown",onKey); }
   function onKey(e){ if(e.key==="Escape") close(); }
   document.addEventListener("keydown",onKey);
-  $("#cfback").addEventListener("click",function(e){ if(e.target.id==="cfback"||e.target.id==="cfx") close(); });
+  $("#cfback").addEventListener("click",function(ev){
+    if(ev.target.id==="cfback"||ev.target.id==="cfx"||ev.target.id==="cfok") close();
+  });
+  $("#cfdet").addEventListener("click",function(){
+    var c=this.closest(".dconf"), open=c.classList.toggle("open");
+    this.setAttribute("aria-expanded",open?"true":"false");
+    this.querySelector(".dctog").textContent=open?"Hide ▴":"Details ▾";
+  });
 }
 /* ---------- directory ---------- */
 function venueRow(b,i){
