@@ -512,6 +512,20 @@ a{color:var(--blue)}
 /* ---------- market question cards (right rail) ---------- */
 .qcard{margin-bottom:22px}
 .qbars{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+/* chart strip at the foot of a glance card: donut or histogram filling the whitespace */
+.qchart{margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft)}
+.qchartlab{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.qhist{display:block;width:100%;height:78px}
+.qhnum{font-size:9.5px;font-weight:700;fill:#9aa4b5}
+.qhlab{font-size:8.5px;fill:#6b7484}
+.qdonutwrap{display:flex;align-items:center;gap:14px}
+.qdonut{flex:none}
+.qdnum{font-size:17px;font-weight:700;fill:var(--txt)}
+.qdleg{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--mut);min-width:0;flex:1}
+.qdleg div{display:flex;align-items:center;white-space:nowrap}
+.qdleg i{width:8px;height:8px;border-radius:2px;margin-right:7px;flex:none}
+.qdleg b{color:var(--txt);margin-left:auto;padding-left:8px;font-variant-numeric:tabular-nums}
+.qchart .spark{display:block;width:100%;height:72px}
 .qrow{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center;padding:2px}
 .qrow[data-open]{cursor:pointer}
 .qrow[data-open]:hover .qn{color:var(--amber)}
@@ -601,8 +615,21 @@ body.panelexp #map{filter:brightness(.82)}
 .pcol{flex:1;min-height:0;display:flex;flex-direction:column}
 .pcol .pspace{flex:1;min-height:12px}
 .plab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:10px 0 6px}
-.footprint{margin:0 0 2px}
+.footprint{position:relative;overflow:hidden;margin:0 0 2px}
 .footprint p{font-size:12px;color:var(--mut);line-height:1.5;margin:0 0 8px}
+/* one-time scan: a gold sweep line + "indexing" tag, then the confidence bar fills.
+   Plays once per page load (the builder only adds .scan on the first render). */
+.footprint.scan::after{content:"";position:absolute;left:-4px;right:-4px;top:-12px;height:10px;
+  background:linear-gradient(180deg,transparent,rgba(232,179,75,.55) 55%,rgba(232,179,75,.95));
+  filter:blur(1px);pointer-events:none;animation:fpscan 1.7s ease-in-out .1s 1 both}
+@keyframes fpscan{0%{top:-12px;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:102%;opacity:0}}
+.footprint .fpstat{position:absolute;top:0;right:2px;font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--amber);pointer-events:none;animation:fpstat 1.9s ease .1s 1 both}
+@keyframes fpstat{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
+.footprint .scanfill{display:block;height:100%;border-radius:4px;background:#6db3f2;
+  animation:fpfill 1.1s cubic-bezier(.3,.7,.3,1) .5s 1 both}
+@keyframes fpfill{from{width:0}to{width:var(--w)}}
+@media (prefers-reduced-motion:reduce){.footprint.scan::after,.footprint .fpstat,.footprint .scanfill{animation:none}}
 .pbars{display:flex;flex-direction:column;gap:9px;margin:2px 0}
 .pbar{display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:10px;align-items:center}
 .pbar[data-cf]{cursor:pointer}
