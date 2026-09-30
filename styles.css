@@ -384,6 +384,24 @@ a{color:var(--blue)}
 .dwidget{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .dbig{font-size:30px;font-weight:800;color:var(--txt);margin:2px 0 6px;font-variant-numeric:tabular-nums;line-height:1.1}
 .dash-foot{flex:none;font-size:11.5px;color:var(--dim);text-align:center}
+/* scorecard graphs + granular breakdowns */
+.dgrade{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin:8px 0 2px}
+.dgrade i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#6db3f2,#e8b34b)}
+.dgraph{margin:2px 0 4px}
+.dgraph .spark{width:100%;height:54px;display:block}
+.dscale{height:8px;border-radius:4px;background:rgba(255,255,255,.08);position:relative;margin:10px 0 3px}
+.dscale .dmed{position:absolute;top:-3px;bottom:-3px;width:2px;background:rgba(232,179,75,.75)}
+.dscale .dmark{position:absolute;top:-4px;width:10px;height:16px;margin-left:-5px;border-radius:3px;background:#6db3f2;box-shadow:0 0 8px rgba(109,179,242,.8)}
+.dscale-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums}
+.dlink{margin-top:auto;padding-top:8px}
+.dsrc{font-size:11.5px;color:#6db3f2;text-decoration:none;white-space:nowrap}
+.dsrc:hover{text-decoration:underline}
+.dffull{flex:1;min-width:0}
+.dfrow{display:flex;align-items:center;gap:8px}
+.dfpts{margin-left:auto;font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums;flex:none}
+.dfbar{height:4px;border-radius:2px;background:rgba(255,255,255,.07);margin:4px 0 3px}
+.dfbar i{display:block;height:100%;border-radius:2px;background:#6db3f2}
+.dfactor .dfrow .dsrc{margin-left:2px}
 @media (max-width:760px){
   .dash-body{overflow-y:auto}
   .dash-head{padding:14px 16px 10px}
