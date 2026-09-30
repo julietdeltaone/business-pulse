@@ -43,19 +43,22 @@ function priceFloors(p){
   return {wedding:wedding,session:small.length?Math.min.apply(null,small):null};
 }
 
-/* ---------- JD injection (permanent "You") ---------- */
-var JD_ID="jd-meyers-productions";
+/* ---------- JD Meyers Productions as a regular data point ----------
+   Not in the roster file; appended here with the same fields as every
+   other business. No special flags, no special rendering, no feed
+   exclusions: it appears in rankings, feeds, and the map like any entry. */
 (function(){
   var jdHist=(D.ownAccounts||[]).filter(function(r){return r.account==="jdmeyersproductions"&&/^\d{4}-\d{2}-\d{2}$/.test(r.date);})
     .map(function(r){return {date:r.date,count:r.follower_count};})
     .sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
   (D.igFollowersHistory=D.igFollowersHistory||{})["jdmeyersproductions"]=jdHist;
-  var has=(D.competitors||[]).some(function(c){return c.id===JD_ID;});
+  var has=(D.competitors||[]).some(function(c){return c.id==="jd-meyers-productions";});
   if(!has) (D.competitors=D.competitors||[]).push({
-    id:JD_ID,name:"JD Meyers Productions",specialty:"both",town:"Potsdam, NY (SLC)",
+    id:"jd-meyers-productions",name:"JD Meyers Productions",specialty:"both",town:"Potsdam, NY (SLC)",
     region:"slc",county:"St. Lawrence",website:"jdmeyersjr.com",ig_handle:"jdmeyersproductions",
+    services:"Weddings, Portraits, Drone, Real Estate, Video",est_year:2016,
     pricing:"Wedding $1,400 starting",pricing_url:"https://jdmeyersjr.com",notes:"",
-    status:"active",flags:[],source:"directory",source_label:"Directory",you:true});
+    status:"active",flags:[],source:"directory",source_label:"Directory"});
 })();
 
 /* ---------- town coords ---------- */
@@ -294,7 +297,6 @@ function todayChanges(){
   var di=S.di, ydi=Math.max(0,di-1), today=DATES[di], yd=DATES[ydi];
   var out={date:today,prev:yd,newBiz:[],jumps:[],small:[],prices:[],promo:[],quiet:[]};
   C.forEach(function(b){
-    if(b.you) return; /* JD never appears in the change feed */
     var first=b.followHist.length?b.followHist[0].date:null;
     if(first&&first>=yd){ out.newBiz.push(b); return; }
     var ch=pctChange(b,ydi,di), from=followersAt(b,ydi), to=followersAt(b,di);
@@ -320,13 +322,13 @@ function todayChanges(){
     if(r.date!==today) return;
     if(/promo|sale|minis|booking now|giveaway|discount|limited/i.test(r.activity||"")){
       var comp=C.filter(function(c){return c.ig_handle===r.handle;})[0];
-      if(comp&&!comp.you) out.promo.push({b:comp,note:r.activity});
+      if(comp) out.promo.push({b:comp,note:r.activity});
     }});
   /* gone quiet: last post exactly 30 or 90 days ago */
   var d30=new Date(today+"T12:00:00"), d90=new Date(today+"T12:00:00");
   d30.setDate(d30.getDate()-30); d90.setDate(d90.getDate()-90);
   function iso(d){ return d.toISOString().slice(0,10); }
-  C.forEach(function(b){ if(b.you) return;
+  C.forEach(function(b){
     if(b.last_post_date===iso(d30)) out.quiet.push({b:b,band:"30 days"});
     else if(b.last_post_date===iso(d90)) out.quiet.push({b:b,band:"90 days"});
   });
@@ -1160,25 +1162,80 @@ function profileHTML(b){
   return h;
 }
 function marketGlanceHTML(){
-  if(S.mode==="venues"){
-    var caps=V.filter(function(b){return b.capacity_num!=null;}).map(function(b){return b.capacity_num;}).sort(function(a,b){return a-b;});
-    var vmed=caps.length?caps[Math.floor(caps.length/2)]:null;
-    return '<div class="sec"><h3>Venues at a glance</h3><div class="sub">Researched Sep 29, 2026</div>'+
-      '<div class="statgrid">'+
-      '<div class="stat"><div class="v" data-count="'+V.length+'">0</div><div class="l">Venues</div></div>'+
-      '<div class="stat"><div class="v" data-count="'+(vmed||0)+'">0</div><div class="l">Median max guests</div></div>'+
-      '<div class="stat"><div class="v">'+V.filter(function(b){return b.ig_handle;}).length+'</div><div class="l">On Instagram</div></div></div>'+
-      '<div class="sub">Pick any venue — here, on the map, or in the directory — to open its profile.</div></div>';
+  /* The three questions our data answers best, as full-height cards. */
+  function qCard(q,sub,bars,answer){
+    return '<div class="sec qcard"><h3>'+q+'</h3><div class="sub">'+sub+'</div><div class="qbars">'+
+      bars.map(function(r){ return '<div class="qrow"'+(r.id?' data-open="'+r.id+'"':"")+'>'+
+        '<span class="qn">'+esc(r.label)+'</span><span class="qv">'+r.val+'</span>'+
+        '<span class="qtrack"><i style="width:'+r.pct+'%;background:'+r.color+'"></i></span></div>'; }).join("")+
+      '</div><div class="qans">'+answer+'</div></div>';
   }
-  var h='<div class="sec"><h3>Market at a glance</h3><div class="sub">As of '+esc(dstr(DATES[S.di]))+'</div>';
-  var f=C.filter(function(b){return b.followers!=null;}).map(function(b){return b.followers;}).sort(function(a,b){return a-b;});
-  var mF=f.length?f[Math.floor(f.length/2)]:null;
-  h+='<div class="statgrid">'+
-    '<div class="stat"><div class="v" data-count="'+C.length+'">0</div><div class="l">Businesses</div></div>'+
-    '<div class="stat"><div class="v" data-count="'+(mF||0)+'">0</div><div class="l">Median followers</div></div>'+
-    '<div class="stat"><div class="v">'+C.filter(function(b){return b.postAge!=null&&b.postAge<=30;}).length+'</div><div class="l">Posted ≤30d</div></div></div>';
-  h+='<div class="sub">Pick any business — here, on the map, or in the directory — to open its profile.</div></div>';
-  return h;
+  if(S.mode==="venues"){
+    var cards=[];
+    /* Q1: where are the venues? */
+    var co={}; V.forEach(function(v){ var c=v.county||"Unknown"; co[c]=(co[c]||0)+1; });
+    var ckeys=Object.keys(co).sort(function(a,b){return co[b]-co[a];});
+    var cmax=co[ckeys[0]]||1, ccols=["#e8b34b","#6db3f2","#6fd3e7","#b48ce8","#e06c6c","#8a94a6"];
+    cards.push(qCard("Where are the venues?","All "+V.length+" venues by county",
+      ckeys.map(function(k,i){ return {label:k,val:co[k],pct:Math.round(co[k]/cmax*100),color:ccols[i%ccols.length]}; }),
+      "St. Lawrence County holds <b>"+co["St. Lawrence County"]+"</b> of "+V.length+" — the rest spread across "+(ckeys.length-1)+" nearby counties."));
+    /* Q2: how big are they? */
+    var cb=[["Up to 100",0],["101–200",0],["201–300",0],["300+",0],["Unknown",0]];
+    V.forEach(function(v){ var c=v.capacity_num;
+      if(c==null)cb[4][1]++; else if(c<=100)cb[0][1]++; else if(c<=200)cb[1][1]++; else if(c<=300)cb[2][1]++; else cb[3][1]++; });
+    var bmax=Math.max.apply(null,cb.map(function(x){return x[1];}))||1;
+    var bcols=["#6fd3e7","#6db3f2","#e8b34b","#e06c6c","#3a4353"];
+    cards.push(qCard("How big are they?","Max guest capacity, "+(V.length-cb[4][1])+" of "+V.length+" known",
+      cb.map(function(x,i){ return {label:x[0]+" guests",val:x[1],pct:Math.round(x[1]/bmax*100),color:bcols[i]}; }),
+      "The sweet spot is <b>101–300 guests</b> — mid-size barns dominate the market."));
+    /* Q3: are they on Instagram? */
+    var ia=0,idm=0,inone=0;
+    V.forEach(function(v){ if(!v.ig_handle)inone++;
+      else{ var a=v.last_post_date?Math.floor((Date.now()-new Date(v.last_post_date+"T12:00:00"))/864e5):1e9;
+        if(a<=90)ia++; else idm++; } });
+    var imax=Math.max(ia,idm,inone,1);
+    cards.push(qCard("Are they on Instagram?","Verified venue accounts only — never guessed",
+      [{label:"Active (posted ≤90d)",val:ia,pct:Math.round(ia/imax*100),color:"#e8b34b"},
+       {label:"Dormant",val:idm,pct:Math.round(idm/imax*100),color:"#6db3f2"},
+       {label:"No verified account",val:inone,pct:Math.round(inone/imax*100),color:"#3a4353"}],
+      "<b>"+inone+" of "+V.length+"</b> venues have no verified Instagram — the outreach gap is wide open."));
+    return cards.join("");
+  }
+  var list=C, cards=[];
+  /* Q1: who is actually posting? */
+  var ab=[["Active · ≤30 days",0,"#e8b34b"],["Steady · 31–90 days",0,"#6db3f2"],
+          ["Quiet · 91–180 days",0,"#6fd3e7"],["Dormant · 180+ days",0,"#e06c6c"],["Unknown",0,"#3a4353"]];
+  list.forEach(function(b){ var a=b.postAge;
+    if(a==null)ab[4][1]++; else if(a<=30)ab[0][1]++; else if(a<=90)ab[1][1]++;
+    else if(a<=180)ab[2][1]++; else ab[3][1]++; });
+  var amax=Math.max.apply(null,ab.map(function(x){return x[1];}))||1;
+  var knownPosters=ab[0][1]+ab[1][1];
+  cards.push(qCard("Who is actually posting?","Last post recency across "+list.length+" businesses",
+    ab.map(function(x){ return {label:x[0],val:x[1],pct:Math.round(x[1]/amax*100),color:x[2]}; }),
+    "<b>"+ab[0][1]+" of "+list.length+"</b> posted in the last 30 days — a small active set carries the market's feed."));
+  /* Q2: where does the audience sit? */
+  var aud=list.filter(function(b){return b.followers!=null;})
+    .sort(function(a,b){return b.followers-a.followers;}).slice(0,8);
+  var totAud=list.reduce(function(s,b){return s+(b.followers||0);},0);
+  var topAud=aud.reduce(function(s,b){return s+b.followers;},0);
+  var fmax=aud.length?aud[0].followers:1;
+  var acols=["#e8b34b","#6db3f2","#6fd3e7","#b48ce8","#8a94a6"];
+  cards.push(qCard("Where does the audience sit?","Top 8 by Instagram followers",
+    aud.map(function(b,i){ return {label:b.name,val:fmt(b.followers),id:b.id,
+      pct:Math.round(b.followers/fmax*100),color:acols[i%acols.length]}; }),
+    "The top 8 hold <b>"+(totAud?Math.round(topAud/totAud*100):0)+"%</b> of all "+fmt(totAud)+" tracked followers."));
+  /* Q3: what does it cost? */
+  var pb=[["Under $1k",0,"#6fd3e7"],["$1k–$2k",0,"#6db3f2"],["$2k–$3.5k",0,"#e8b34b"],
+          ["$3.5k+",0,"#e06c6c"],["Not published",0,"#3a4353"]];
+  list.forEach(function(b){ var w=b.price.wedding;
+    if(w==null)pb[4][1]++; else if(w<1000)pb[0][1]++; else if(w<2000)pb[1][1]++;
+    else if(w<3500)pb[2][1]++; else pb[3][1]++; });
+  var pmax=Math.max.apply(null,pb.map(function(x){return x[1];}))||1;
+  var pub=pb[0][1]+pb[1][1]+pb[2][1]+pb[3][1];
+  cards.push(qCard("What does it cost?","Starting wedding price, where published",
+    pb.map(function(x){ return {label:x[0],val:x[1],pct:Math.round(x[1]/pmax*100),color:x[2]}; }),
+    "<b>"+pub+" of "+list.length+"</b> publish a starting wedding price — "+pb[4][1]+" keep it hidden."));
+  return cards.join("");
 }
 function renderRight(){
   var el=$("#rightbody");
