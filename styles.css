@@ -514,23 +514,23 @@ a{color:var(--blue)}
 
 /* ---------- market glance: wide kickout, roomy cards, no scroll ---------- */
 #right.wide{width:700px;bottom:12px}
-#right.wide #rightbody{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-content:start;align-items:start;
-  padding:16px 18px;overflow-y:visible}
+#right.wide #rightbody{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start;align-items:start;
+  padding:12px 14px;overflow-y:visible}
 #right.wide .railhead{grid-column:1/-1;margin:2px 2px 0}
-#right.wide .railhint{grid-column:1/-1;font-size:12px;color:var(--dim);margin:-10px 2px 0}
+#right.wide .railhint{grid-column:1/-1;font-size:12px;color:var(--dim);margin:-8px 2px 0}
 #right.wide .qcard{margin-bottom:0;min-width:0;background:rgba(255,255,255,.025);
-  border:1px solid var(--line-soft);border-radius:14px;padding:15px 16px 13px}
-#right.wide .qcard>h3{font-size:17px;margin:0 0 4px}
-#right.wide .qcard>.sub{font-size:12.5px;margin:0 0 10px}
-#right.wide .qbars{gap:9px;margin-top:2px}
-#right.wide .qrow{padding:2px;border-radius:8px;gap:3px 10px}
+  border:1px solid var(--line-soft);border-radius:14px;padding:11px 13px 10px}
+#right.wide .qcard>h3{font-size:16px;margin:0 0 2px}
+#right.wide .qcard>.sub{font-size:12px;margin:0 0 7px}
+#right.wide .qbars{gap:5px;margin-top:2px}
+#right.wide .qrow{padding:1px 2px;border-radius:8px;gap:2px 8px}
 #right.wide .qrow.qx{cursor:pointer}
 #right.wide .qrow.qx:hover{background:rgba(255,255,255,.045)}
 #right.wide .qrow.qx:hover .qn{color:var(--amber)}
-#right.wide .qn,#right.wide .qv{font-size:13.5px}
+#right.wide .qn,#right.wide .qv{font-size:13px;line-height:1.25}
 #right.wide .qchev{color:var(--dim);font-size:10px;margin-left:5px}
-#right.wide .qtrack{height:7px}
-#right.wide .qans{font-size:12.5px;line-height:1.5;margin-top:10px;padding-top:9px}
+#right.wide .qtrack{height:6px}
+#right.wide .qans{font-size:12px;line-height:1.4;margin-top:7px;padding-top:6px}
 #right.wide .qmem{max-height:228px;overflow-y:auto;margin:4px -4px 2px;padding:0 4px;
   scrollbar-width:thin;scrollbar-color:#39424f transparent}
 #right.wide .qmem::-webkit-scrollbar{width:8px}
@@ -541,7 +541,8 @@ a{color:var(--blue)}
 #right.wide .qmemrow:hover .qn{color:var(--txt)}
 #right.wide .qmemrow .qn{flex:1;min-width:0;font-size:12.5px}
 #right.wide .qmemrow .qv{font-size:12px;color:var(--mut);flex:none}
-#right.wide .qmore{font-size:11.5px;color:var(--dim);padding:5px 8px}
+#right.wide .qmore{font-size:11.5px;color:var(--dim);padding:4px 8px;cursor:pointer}
+#right.wide .qmore:hover{color:var(--amber)}
 @media (max-width:640px){
   #right.wide{width:auto;bottom:196px}
   #right.wide #rightbody{display:block;overflow-y:auto}
