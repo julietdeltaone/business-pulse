@@ -573,6 +573,22 @@ function profHead(b){
     '<div class="sub">'+esc(b.town)+locTag(b)+" · "+(LANE_LABEL[b.specialty]||b.specialty)+
     (b.region==="slc"?" · St. Lawrence Co":"")+"</div></div></div>";
 }
+/* ---------- right panel: one shared header in every state ----------
+   Title left, one chevron control right, same height and padding whether the
+   panel shows the market glance or a business profile, collapsed or expanded.
+   The chevron points where the panel edge moves: ⟨ expands left, ⟩ collapses right. */
+function pheadHTML(title,px){
+  var btn="";
+  if(px==="glance")
+    btn='<button class="pxbtn" data-px="glance" title="'+(S.glanceX?"Collapse the market glance":"Expand the market glance")+'">'+(S.glanceX?"\u27E9":"\u27E8")+"</button>";
+  else if(px==="profile")
+    btn='<button class="pxbtn" data-px="profile" title="'+(S.expanded?"Collapse the profile":"Expand the profile")+'">'+(S.expanded?"\u27E9":"\u27E8")+"</button>";
+  return '<div class="phead"><span class="pt">'+title+"</span>"+btn+"</div>";
+}
+function pheadTitle(b){
+  var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
+  return '<span class="pava">'+esc(ini)+'</span><span class="pname">'+esc(b.name)+"</span>";
+}
 function linkChips(b){
   var h='<div class="chiprow">';
   if(b.ig_handle) h+='<span class="chip">@'+esc(b.ig_handle)+"</span>";
@@ -644,10 +660,11 @@ function ovBioHTML(b){
   var sv=servicesOf2(b);
   if(sv) h+='<div class="chiprow">'+sv.map(function(s){return '<span class="chip">'+esc(s)+"</span>";}).join(" ")+"</div>";
   var cov=coverageOf(b), yrs=yearsStr(b);
-  if(cov||yrs){
+  /* long coverage lists left-align on their own lines instead of wrapping ragged on the right */
+  if(cov) h+='<div class="cov"><span>Coverage</span><b>'+esc(cov)+"</b></div>";
+  if(yrs){
     h+='<dl class="kv">';
-    if(cov) h+="<dt>Coverage</dt><dd>"+esc(cov)+"</dd>";
-    if(yrs) h+="<dt>In business</dt><dd><b>"+esc(yrs)+"</b></dd>";
+    h+="<dt>In business</dt><dd><b>"+esc(yrs)+"</b></dd>";
     h+="</dl>";
   }
   return h;
@@ -657,24 +674,28 @@ function scoreBarsHTML(b,clickable){
   var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
   return '<div class="pbars">'+defs.map(function(d){
     var r=d[1], s=r.score, pct=s==null?0:Math.max(0,Math.min(100,s));
+    /* hourly-only pricing isn't ranked — label it instead of showing an empty row; no pricing at all hides the row */
+    if(s==null){
+      if(d[0]==="Price position"&&b.price.weddingHourly!=null)
+        return '<div class="pbar"><span class="pbl">Price position</span>'+
+          '<span class="pbtrack"><i style="width:0%;background:rgba(255,255,255,.14)"></i></span>'+
+          '<span class="pbv"><small>Hourly</small> '+money(b.price.weddingHourly)+"/hr</span></div>";
+      return "";
+    }
     return '<div class="pbar"'+(clickable?' data-cf="'+b.id+'" title="'+esc(r.band+(r.why?" — "+r.why:"")+" — expand for everything")+'"':"")+'>'+
       '<span class="pbl">'+d[0]+'</span>'+
-      '<span class="pbtrack"><i style="width:'+pct+'%'+(s==null?";background:rgba(255,255,255,.14)":"")+'"></i></span>'+
-      '<span class="pbv">'+(s==null?"—":s+' <small>'+esc(r.band)+"</small>")+"</span></div>";
+      '<span class="pbtrack"><i style="width:'+pct+'%"></i></span>'+
+      '<span class="pbv">'+s+' <small>'+esc(r.band)+"</small></span></div>";
   }).join("")+"</div>";
 }
-/* collapsed: overview + headline numbers + score bars, rail top to bottom */
+/* collapsed: headline numbers first, then score bars, then links — fits the rail, no scrolling */
 function profileCollapsedHTML(b){
   return '<div class="pcol">'+
-    profHead(b)+
-    '<div class="pspace"></div>'+
-    ovBioHTML(b)+
     '<div class="plab">Headline numbers</div>'+snapRowsHTML(b)+
     '<div class="pspace"></div>'+
     '<div class="plab">Scores</div>'+scoreBarsHTML(b,true)+
     '<div class="pspace"></div>'+
     linkChips(b)+
-    '<div class="sub expandhint">Expand <b>⟨</b> on the panel edge for everything at once.</div>'+
   "</div>";
 }
 /* ---------- expanded: everything at once, no tabs, no scrolling ---------- */
@@ -694,25 +715,19 @@ function xsecAbout(b){
   return '<section class="xsec"><h4>About</h4>'+(h||'<div class="xdim">No overview data yet.</div>')+"</section>";
 }
 function xsecSocial(b){
-  var f=followersAt(b,S.di);
-  var ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
-  var medF=C.map(function(x){return x.followers;}).filter(function(v){return v!=null;}).sort(function(a,c){return a-c;});
-  var mF=medF.length?medF[Math.floor(medF.length/2)]:null;
-  var rF=b.followers!=null?rankOf(b,"followers",true):null;
   var rows="";
-  if(f!=null) rows+="<dt>Followers</dt><dd><b>"+fmt(f)+"</b>"+(rF?' <span class="xdim">#'+rF.rank+" of "+rF.of+"</span>":"")+"</dd>";
-  if(f!=null&&mF!=null) rows+="<dt>vs median</dt><dd>"+(f>=mF?'<b style="color:var(--up)">'+pctStr((f-mF)/mF*100)+" above</b>":'<b style="color:var(--red)">'+pctStr((f-mF)/mF*100)+" below</b>")+"</dd>";
   if(b.last_post_date) rows+="<dt>Last post</dt><dd><b>"+dstr(b.last_post_date)+"</b>"+(b.postAge!=null?' <span class="xdim">('+b.postAge+"d ago)</span>":"")+"</dd>";
   if(b.last_post_type) rows+="<dt>Format</dt><dd>"+esc(b.last_post_type)+"</dd>";
   if(b.last_post_topic) rows+="<dt>Topic</dt><dd>"+esc(b.last_post_topic)+"</dd>";
   var igAct=latestIgAct(b);
   if(igAct&&igAct.media_count!=null) rows+="<dt>Posts</dt><dd><b>"+fmt(igAct.media_count)+"</b></dd>";
-  var h='<section class="xsec"><h4>Instagram</h4>';
+  var ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
+  function chRow(l,c){ return '<div class="xkv"><span>'+l+'</span><b class="pct '+(c==null?"fl":c>=0?"up":"dn")+'">'+pctStr(c)+"</b></div>"; }
+  var h='<section class="xsec"><h4>Instagram'+
+    (b.ig_handle?'<a class="dsrc" href="https://instagram.com/'+esc(b.ig_handle)+'" target="_blank" rel="noopener">Instagram ↗</a>':"")+"</h4>";
   if(rows) h+='<dl class="kv">'+rows+"</dl>";
-  h+='<div class="x2stat"><span class="pct '+(ch7==null?"fl":ch7>=0?"up":"dn")+'">'+pctStr(ch7)+'</span><span class="xdim">7-day</span>'+
-     '<span class="pct '+(ch30==null?"fl":ch30>=0?"up":"dn")+'">'+pctStr(ch30)+'</span><span class="xdim">30-day</span></div>';
+  h+=chRow("7-day change",ch7)+chRow("30-day change",ch30);
   h+=(b.followHist&&b.followHist.length>=2)?sparkline(b.followHist,300,46):'<div class="xdim">Not enough history for a trend yet.</div>';
-  if(b.ig_handle) h+='<div class="sc-link"><a class="dsrc" href="https://instagram.com/'+esc(b.ig_handle)+'" target="_blank" rel="noopener">Instagram ↗</a></div>';
   return h+"</section>";
 }
 function xsecPricing(b){
@@ -743,20 +758,37 @@ function xsecWebsite(b){
     h+='<dl class="kv">'+rows+"</dl>";
     if(wOk&&wi.site_note) h+='<div class="xdim clamp3">'+esc(wi.site_note)+"</div>";
     h+='<div class="xdim">Checked '+esc((wi&&wi.fetched)||"Sep 2026")+"</div>";
-  } else h+='<div class="xdim">No website intel on record.</div>';
+  } else if(b.website) h+='<div class="xdim">Site not analyzed.</div>';
+  else h+='<div class="xdim">No website on record.</div>';
   if(b.website) h+='<div class="sc-link"><a class="dsrc" href="'+esc(/^https?:/i.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a></div>';
   return h+"</section>";
 }
-/* one-line raw evidence behind each score */
-function scoreRawLine(b,label,res){
-  var t="";
-  if(label==="Activity") t=res.days!=null?("Last post "+dstr(b.last_post_date)+" · "+(res.days===0?"today":res.days+"d ago")):"no post date on record";
-  else if(label==="Momentum"){ var f1=followersAt(b,S.di);
-    t=f1!=null?(fmt(f1)+" followers"+(res.ch30!=null?" · "+(res.ch30>=0?"+":"")+res.ch30.toFixed(1)+"% / 30d":"")):"no follower history"; }
-  else if(label==="Engagement") t=res.e?(res.e.rate_pct+"% mean engagement"+(res.rank?" · #"+res.rank+" of "+res.of:"")):"no engagement data";
-  else if(label==="Price position") t=res.r?(money(b.price.wedding)+" wedding floor · #"+res.r.rank+" of "+res.r.n+" · cheaper than "+res.r.pct+"%"):(b.price.weddingHourly!=null?(money(b.price.weddingHourly)+"/hr hourly wedding rate"):"no pricing on record");
-  else if(label==="Reviews") t=res.r?(fmt(res.r.count)+" "+(res.r.src||"Google").toLowerCase()+" reviews"+(res.r.rating?" · "+res.r.rating+" / 5":"")+(typeof REV_MED!=="undefined"&&REV_MED!=null?" · peer median "+REV_MED:"")):"not yet collected";
-  return '<div class="xraw"><b>'+label+':</b> '+esc(t)+"</div>";
+/* compact raw evidence shown inline in each expanded score row */
+function scoreRaw(b,label,res){
+  if(label==="Activity") return b.last_post_date?dstrShort(b.last_post_date):"no post date";
+  if(label==="Momentum"){ var c=pctChange(b,Math.max(0,S.di-30),S.di);
+    return c!=null?((c>=0?"+":"")+c.toFixed(1)+"% / 30d"):"no trend"; }
+  if(label==="Engagement") return res.e?res.e.rate_pct+"% mean":"no data";
+  if(label==="Price position")
+    return b.price.wedding!=null?(money(b.price.wedding)+" floor")
+      :(b.price.weddingHourly!=null?(money(b.price.weddingHourly)+"/hr hourly"):"no pricing");
+  if(label==="Reviews"){ var ri=reviewInfo(b);
+    return ri?(fmt(ri.count)+(ri.rating!=null?" · "+ri.rating+" / 5":"")):"not collected"; }
+  return "";
+}
+/* expanded score bars: label, bar, and the raw figure right-aligned in the row */
+function xscoreBarsHTML(b){
+  var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
+  var rows="";
+  defs.forEach(function(d){
+    var r=d[1], s=r.score;
+    if(s==null&&!(d[0]==="Price position"&&b.price.weddingHourly!=null)) return;
+    var pct=s==null?0:Math.max(0,Math.min(100,s));
+    rows+='<div class="pbar"><span class="pbl">'+d[0]+'</span>'+
+      '<span class="pbtrack"><i style="width:'+pct+'%'+(s==null?";background:rgba(255,255,255,.14)":"")+'"></i></span>'+
+      '<span class="pbv">'+(s==null?"—":s)+' <span class="praw">'+esc(scoreRaw(b,d[0],r))+"</span></span></div>";
+  });
+  return '<div class="pbars">'+rows+"</div>";
 }
 function xsecScores(b){
   var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
@@ -768,8 +800,7 @@ function xsecScores(b){
     var worst=parts.slice().sort(function(x,y){return x[1].score-y[1].score;})[0];
     h+='<div class="xcomp"><b>'+comp+'</b><span>Composite · '+parts.length+" of 5 signals reporting · strongest "+esc(best[0])+" ("+best[1].score+") · weakest "+esc(worst[0])+" ("+worst[1].score+")</span></div>";
   } else h+='<div class="xdim">No scored signals yet.</div>';
-  h+=scoreBarsHTML(b,false);
-  h+='<div class="xraws">'+defs.map(function(d){ return scoreRawLine(b,d[0],d[1]); }).join("")+"</div>";
+  h+=xscoreBarsHTML(b);
   return h+"</section>";
 }
 function xsecConf(b){
@@ -785,30 +816,24 @@ function xsecConf(b){
     ["years","History",10,null,null],
     ["corroboration","Third source",10,b.review_url,"listing"]
   ];
-  var verified=0, segs="", rows="";
+  var verified=0, segs="", missed="";
   FACTORS.forEach(function(f){
     var er=parts[f[0]]||0, got=er>0; if(got) verified++;
     segs+='<span class="dcseg" style="flex:'+f[2]+' 1 0%" title="'+f[1]+": "+er+"/"+f[2]+'"><i style="width:'+Math.round(100*er/f[2])+'%"></i></span>';
-    rows+='<div class="xkv'+(got?"":" missed")+'"><span>'+f[1]+'</span><b>'+er+"/"+f[2]+(got?"":" · missing")+"</b></div>";
+    if(!got) missed+='<div class="xkv missed"><span>'+f[1]+'</span><b>missing</b></div>';
   });
   var h='<section class="xsec"><h4>Information confidence</h4>'+
     '<div class="cf2-bar"><span class="dcsegs wide">'+segs+'</span></div>'+
-    '<div class="xkv"><span>Score</span><b>'+s+"% · "+verified+" of "+FACTORS.length+" factors verified</b></div>"+rows;
-  if(cfd.conflict) h+='<div class="xkv missed"><span>Price conflict</span><b>−20 penalty applied</b></div>';
+    '<div class="xkv"><span>Score</span><b>'+s+"% · "+verified+" of "+FACTORS.length+" verified</b></div>"+missed;
+  if(cfd.conflict) h+='<div class="xkv missed"><span>Price conflict</span><b>−20 penalty</b></div>';
   return h+"</section>";
 }
 function profileExpandedHTML(b){
-  return '<div class="sec xall"><div class="xhead">'+profHead(b)+
-    '<button id="panelcollapse" class="ghostbtn" title="Collapse (Esc)">⟩ Collapse</button></div>'+
+  return '<div class="sec xall">'+
     estat6HTML(b)+
     '<div class="xgrid">'+xsecAbout(b)+xsecSocial(b)+xsecPricing(b)+xsecWebsite(b)+"</div>"+
     '<div class="xgrid2">'+xsecScores(b)+xsecConf(b)+"</div>"+
     linkChips(b)+"</div>";
-}
-/* expand / collapse the detail panel */
-function toggleExpand(){
-  S.expanded=!S.expanded;
-  renderRight(); pushHist();
 }
 
 /* ---------- directory ---------- */
@@ -1126,21 +1151,24 @@ function sparkline(hist, w, h){
   if(!hist||hist.length<2) return '<div class="empty-note">Not enough history for a trend yet.</div>';
   var pts=hist.map(function(r){return r.count||0;});
   var dMn=Math.min.apply(null,pts), dMx=Math.max.apply(null,pts);
+  var d0=hist[0].date||null, d1=hist[hist.length-1].date||null;
   var X=function(i){return 6+i*(w-12)/(pts.length-1);};
   function albl(yv,txt){ return '<text class="al" x="6" y="'+yv+'">'+esc(txt)+'</text>'; }
+  function xlbl(xv,txt,anchor){ return '<text class="sx" x="'+xv+'" y="'+(h-3)+'"'+(anchor?' text-anchor="'+anchor+'"':"")+'>'+esc(txt)+'</text>'; }
+  function xaxis(){ return (d0?xlbl(6,dstrShort(d0)):"")+(d1?xlbl(w-6,dstrShort(d1),"end"):""); }
   if(dMx===dMn){
     var Y0=Math.round(h/2);
     return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
       '<line x1="6" y1="'+Y0+'" x2="'+(w-6)+'" y2="'+Y0+'" stroke="#e8b34b" stroke-width="2"/>'+
-      '<circle cx="'+(w-6)+'" cy="'+Y0+'" r="3.5" fill="#e8b34b"/>'+albl(12,fmt(dMx)+" (flat)")+'</svg>';
+      '<circle cx="'+(w-6)+'" cy="'+Y0+'" r="3.5" fill="#e8b34b"/>'+albl(12,fmt(dMx)+" (flat)")+xaxis()+'</svg>';
   }
   var pad=(dMx-dMn)*0.15, mn=dMn-pad, mx=dMx+pad;
-  var Y=function(v){return h-14-(v-mn)/(mx-mn)*(h-26);};
+  var Y=function(v){return h-18-(v-mn)/(mx-mn)*(h-32);};
   var d="M"+pts.map(function(v,i){return X(i).toFixed(1)+" "+Y(v).toFixed(1);}).join(" L");
   return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
     '<path d="'+d+'" fill="none" stroke="#e8b34b" stroke-width="2"/>'+
     '<circle cx="'+X(pts.length-1).toFixed(1)+'" cy="'+Y(pts[pts.length-1]).toFixed(1)+'" r="3.5" fill="#e8b34b"/>'+
-    albl(12,fmt(dMx))+albl(h-4,fmt(dMn))+'</svg>';
+    albl(12,fmt(dMx))+xaxis()+'</svg>';
 }
 
 /* ---------- right panel ---------- */
@@ -1200,21 +1228,27 @@ function marketGlanceHTML(){
   /* The questions our data answers best, as roomy cards in a no-scroll grid.
      Every bucket row expands inline to list the businesses inside it.
      Collapsed state: each question also records a one-line glance stat for the
-     slim sidebar (stat + label), collected in parallel with the cards. */
+     slim sidebar (stat + label), collected in parallel with the cards.
+     Bar rule, everywhere: length is relative to the card's biggest bucket.
+     Color rule: one blue hue for plain counts; gold/red reserved for status
+     (Active/strong, Dormant/weak/declining); no-data buckets are muted and
+     always shown as the last row so the buckets add up to the total. */
   var glances=[];
-  function qCardG(q,sub,bars,answer,ci,g){
+  function qCardG(q,sub,bars,ci,g){
     glances.push(g||null);
-    return qCard(q,sub,bars,answer,ci);
+    return qCard(q,sub,bars,ci);
   }
-  function qCard(q,sub,bars,answer,ci){
+  function qCard(q,sub,bars,ci){
     var showAll=S.qall[ci];
+    var visCount=0;
     var rows=bars.map(function(r,oi){
-      if(!showAll&&oi>=4) return "";
+      if(!showAll&&oi>=4&&!r.nodata) return "";
+      visCount++;
       var key=ci+":"+oi, open=S.qx[key];
       var attrs=r.id?' data-open="'+r.id+'"':(r.members?' data-qx="'+key+'"':"");
-      var h='<div class="qrow'+(r.members?" qx":"")+'"'+attrs+'>'+
+      var h='<div class="qrow'+(r.members?" qx":"")+(r.nodata?" nodata":"")+'"'+attrs+'>'+
         '<span class="qn"'+(r.full?' title="'+esc(r.full)+'"':"")+'>'+esc(r.label)+'</span>'+
-        '<span class="qv">'+r.val+(r.members?'<span class="qchev">'+(open?"\u25BE":"\u25B8")+"</span>":"")+"</span>"+
+        '<span class="qv"'+(r.vcol?' style="color:'+r.vcol+'"':"")+'>'+r.val+(r.members?'<span class="qchev">'+(open?"\u25BE":"\u25B8")+"</span>":"")+"</span>"+
         '<span class="qtrack"><i style="width:'+r.pct+"%;background:"+r.color+'"></i></span></div>';
       if(r.members&&open){
         var ms=r.members.slice(0,12);
@@ -1225,11 +1259,11 @@ function marketGlanceHTML(){
       }
       return h;
     }).join("");
-    if(bars.length>4){
-      rows+='<div class="qmore" data-qall="'+ci+'">'+(showAll?"Show fewer":"Show all "+bars.length+" \u25B8")+"</div>";
+    if(bars.length>visCount||showAll){
+      rows+='<div class="qmore" data-qall="'+ci+'">'+(showAll?"Show fewer \u25B4":"Show all "+bars.length+" rows \u25B8")+"</div>";
     }
     return '<div class="sec qcard"><h3>'+q+'</h3><div class="sub">'+sub+'</div><div class="qbars">'+
-      rows+'</div><div class="qans">'+answer+"</div></div>";
+      rows+"</div></div>";
   }
   /* members: sorted business/venue list backing an expandable bucket row */
   function bmem(arr,sortFn,subFn){
@@ -1242,21 +1276,21 @@ function marketGlanceHTML(){
     var co={},com={};
     V.forEach(function(v){ var c=v.county||"Unknown"; co[c]=(co[c]||0)+1; (com[c]=com[c]||[]).push(v); });
     var ckeys=Object.keys(co).sort(function(a,b){return co[b]-co[a];});
-    var cmax=co[ckeys[0]]||1, ccols=["#e8b34b","#6db3f2","#6fd3e7","#b48ce8","#e06c6c","#8a94a6"];
+    var cmax=co[ckeys[0]]||1;
     cards.push(qCardG("Locations","All "+V.length+" venues by county",
-      ckeys.map(function(k,i){ return {label:k,full:k,val:co[k],pct:Math.round(co[k]/cmax*100),color:ccols[i%ccols.length],
+      ckeys.map(function(k,i){ return {label:k,full:k,val:co[k],pct:Math.round(co[k]/cmax*100),color:"#6db3f2",
         members:bmem(com[k],byName,function(v){return v.town||""})}; }),
-      "St. Lawrence County holds <b>"+(co["St. Lawrence"]||0)+"</b> of "+V.length+" \u2014 the rest spread across "+(ckeys.length-1)+" nearby counties.",0,
+      0,
       {stat:(co["St. Lawrence"]||0)+" of "+V.length,label:"venues in St. Lawrence Co"}));
     /* Q2: how big are they? */
-    var cb=[["Up to 100",[],"#6fd3e7"],["101\u2013200",[],"#6db3f2"],["201\u2013300",[],"#e8b34b"],["300+",[],"#e06c6c"],["Unknown",[],"#3a4353"]];
+    var cb=[["Up to 100",[],"#6db3f2"],["101\u2013200",[],"#6db3f2"],["201\u2013300",[],"#6db3f2"],["300+",[],"#6db3f2"],["Unknown",[],"#3a4353"]];
     V.forEach(function(v){ var c=v.capacity_num,bi=c==null?4:(c<=100?0:(c<=200?1:(c<=300?2:3))); cb[bi][1].push(v); });
     var bmax=Math.max.apply(null,cb.map(function(x){return x[1].length;}))||1;
     cards.push(qCardG("Capacity","Max guest capacity, "+(V.length-cb[4][1].length)+" of "+V.length+" known",
-      cb.map(function(x){ return {label:x[0]+" guests",val:x[1].length,pct:Math.round(x[1].length/bmax*100),color:x[2],
+      cb.map(function(x,i){ return {label:x[0]+" guests",val:x[1].length,pct:Math.round(x[1].length/bmax*100),color:x[2],nodata:i===4,
         members:bmem(x[1],function(a,b){return (b.capacity_num||0)-(a.capacity_num||0);},
           function(v){return v.capacity_num?v.capacity_num+" guests":"";})}; }),
-      "The sweet spot is <b>101\u2013300 guests</b> \u2014 mid-size barns dominate the market.",1,
+      1,
       {stat:(V.length-cb[4][1].length)+" of "+V.length,label:"venues with known capacity"}));
     /* Q3: are they on Instagram? */
     var ia=[],idm=[],inone=[];
@@ -1266,35 +1300,34 @@ function marketGlanceHTML(){
     var imax=Math.max(ia.length,idm.length,inone.length,1);
     function vsub(v){ return v.ig_handle?"@"+v.ig_handle:""; }
     cards.push(qCardG("Instagram","Verified venue accounts only \u2014 never guessed",
-      [{label:"Active (posted \u226490d)",val:ia.length,pct:Math.round(ia.length/imax*100),color:"#e8b34b",members:bmem(ia,byName,vsub)},
-       {label:"Dormant",val:idm.length,pct:Math.round(idm.length/imax*100),color:"#6db3f2",members:bmem(idm,byName,vsub)},
-       {label:"No verified account",val:inone.length,pct:Math.round(inone.length/imax*100),color:"#3a4353",members:bmem(inone,byName,vsub)}],
-      "<b>"+inone.length+" of "+V.length+"</b> venues have no verified Instagram \u2014 the outreach gap is wide open.",2,
+      [{label:"Active (posted \u226490d)",val:ia.length,pct:Math.round(ia.length/imax*100),color:"#e8b34b",vcol:"#e8b34b",members:bmem(ia,byName,vsub)},
+       {label:"Dormant",val:idm.length,pct:Math.round(idm.length/imax*100),color:"#e06c6c",vcol:"#e06c6c",members:bmem(idm,byName,vsub)},
+       {label:"No verified account",val:inone.length,pct:Math.round(inone.length/imax*100),color:"#3a4353",nodata:true,members:bmem(inone,byName,vsub)}],
+      2,
       {stat:inone.length+" of "+V.length,label:"venues with no verified Instagram"}));
     /* Q4: what style of venue? */
     var st={},stm={};
     V.forEach(function(v){ var s=v.setting||"Unknown"; st[s]=(st[s]||0)+1; (stm[s]=stm[s]||[]).push(v); });
     var skeys=Object.keys(st).sort(function(a,b){return st[b]-st[a];}).slice(0,7);
-    var smax=st[skeys[0]]||1, scols=["#e8b34b","#6db3f2","#6fd3e7","#b9c2cf","#e06c6c","#8a94a6","#3a4353"];
+    var smax=st[skeys[0]]||1;
     cards.push(qCardG("Settings","Venue style, as listed",
-      skeys.map(function(k,i){ return {label:k,full:k,val:st[k],pct:Math.round(st[k]/smax*100),color:scols[i%scols.length],
+      skeys.map(function(k,i){ return {label:k,full:k,val:st[k],pct:Math.round(st[k]/smax*100),color:"#6db3f2",
         members:bmem(stm[k],byName,function(v){return v.town||""})}; }),
-      "Settings vary \u2014 <b>"+skeys.length+"</b> distinct styles across "+V.length+" venues"+(st[skeys[0]]>1?"; <b>"+esc(skeys[0])+"</b> leads ("+st[skeys[0]]+")":"; no single style dominates")+".",3,
+      3,
       {stat:skeys.length+" styles",label:"across "+V.length+" venues"}));
-    return railHead()+(S.glanceX?cards.join(""):glanceCollapsedHTML(glances));
+    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):glanceCollapsedHTML(glances));
   }
   var list=C, cards=[];
   /* Q1: who is actually posting? */
-  var ab=[["Active \u00b7 \u226430 days",[],"#e8b34b"],["Steady \u00b7 31\u201390 days",[],"#6db3f2"],
-          ["Quiet \u00b7 91\u2013180 days",[],"#6fd3e7"],["Dormant \u00b7 180+ days",[],"#e06c6c"],["Unknown",[],"#3a4353"]];
+  var ab=[["Active \u00b7 \u226430 days",[],"#e8b34b","#e8b34b"],["Steady \u00b7 31\u201390 days",[],"#6db3f2"],["Quiet \u00b7 91\u2013180 days",[],"#6db3f2"],["Dormant \u00b7 180+ days",[],"#e06c6c","#e06c6c"],["No post data",[],"#3a4353"]];
   list.forEach(function(b){ var a=b.postAge,bi=a==null?4:(a<=30?0:(a<=90?1:(a<=180?2:3))); ab[bi][1].push(b); });
   var amax=Math.max.apply(null,ab.map(function(x){return x[1].length;}))||1;
   cards.push(qCardG("Posting activity","Last post recency across "+list.length+" businesses",
-    ab.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/amax*100),color:x[2],
+    ab.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/amax*100),color:x[2],vcol:x[3]||null,nodata:i===4,
       members:bmem(x[1],
         function(a,b){return (a.postAge==null?1e9:a.postAge)-(b.postAge==null?1e9:b.postAge);},
         function(b){return b.postAge!=null?b.postAge+"d ago":"";})}; }),
-    "<b>"+ab[0][1].length+" of "+list.length+"</b> posted in the last 30 days \u2014 a small active set carries the market's feed.",0,
+    0,
     {stat:ab[0][1].length+" of "+list.length,label:"posted in the last 30 days"}));
   /* Q2: where does the audience sit? */
   var aud=list.filter(function(b){return b.followers!=null;})
@@ -1302,23 +1335,22 @@ function marketGlanceHTML(){
   var totAud=list.reduce(function(s,b){return s+(b.followers||0);},0);
   var topAud=aud.reduce(function(s,b){return s+b.followers;},0);
   var fmax=aud.length?aud[0].followers:1;
-  var acols=["#e8b34b","#6db3f2","#6fd3e7","#b48ce8","#8a94a6"];
   cards.push(qCardG("Audience","Top 6 by Instagram followers",
     aud.map(function(b,i){ return {label:b.name,full:b.name,val:fmt(b.followers),id:b.id,
-      pct:Math.round(b.followers/fmax*100),color:acols[i%acols.length]}; }),
-    "The top 6 hold <b>"+(totAud?Math.round(topAud/totAud*100):0)+"%</b> of all "+fmt(totAud)+" tracked followers.",1,
+      pct:Math.round(b.followers/fmax*100),color:"#6db3f2"}; }),
+    1,
     {stat:(totAud?Math.round(topAud/totAud*100):0)+"%",label:"of "+fmt(totAud)+" followers sit in the top 6"}));
   /* Q3: what does it cost? */
-  var pb=[["Under $1k",[],"#6fd3e7"],["$1k\u2013$2k",[],"#6db3f2"],["$2k\u2013$3.5k",[],"#e8b34b"],
-          ["$3.5k+",[],"#e06c6c"],["Not published",[],"#3a4353"]];
+  var pb=[["Under $1k",[],"#6db3f2"],["$1k\u2013$2k",[],"#6db3f2"],["$2k\u2013$3.5k",[],"#6db3f2"],
+          ["$3.5k+",[],"#6db3f2"],["Not published",[],"#3a4353"]];
   list.forEach(function(b){ var w=b.price.wedding,bi=w==null?4:(w<1000?0:(w<2000?1:(w<3500?2:3))); pb[bi][1].push(b); });
   var pmax=Math.max.apply(null,pb.map(function(x){return x[1].length;}))||1;
   var pub=pb[0][1].length+pb[1][1].length+pb[2][1].length+pb[3][1].length;
   cards.push(qCardG("Cost","Starting wedding price, where published",
-    pb.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/pmax*100),color:x[2],
+    pb.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/pmax*100),color:x[2],nodata:i===4,
       members:bmem(x[1],function(a,b){return (a.price.wedding||1e9)-(b.price.wedding||1e9);},
         function(b){return b.price.wedding!=null?money(b.price.wedding):"";})}; }),
-    "<b>"+pub+" of "+list.length+"</b> publish a starting wedding price \u2014 "+pb[4][1].length+" keep it hidden.",2,
+    2,
     {stat:pub+" of "+list.length,label:"publish a starting wedding price"}));
   /* Q4: who's gaining followers? */
   var gr=list.map(function(b){ return {b:b,ch:pctChange(b,Math.max(0,S.di-30),S.di)}; })
@@ -1328,52 +1360,44 @@ function marketGlanceHTML(){
     var gm=gr[0];
     cards.push(qCardG("Follower growth","30-day follower change, top movers",
       gr.map(function(x){ return {id:x.b.id,full:x.b.name,label:x.b.name,val:(x.ch>=0?"+":"")+x.ch.toFixed(1)+"%",
-        pct:Math.min(100,Math.round(Math.abs(x.ch)/gmax*100)),color:x.ch>=0?"#6db3f2":"#e06c6c"}; }),
-      "Biggest 30-day mover: <b>"+esc(gm.b.name)+"</b> ("+(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%).",3,
-      {stat:(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%",label:"best 30-day mover \u00b7 "+gm.b.name}));
+        pct:Math.min(100,Math.round(Math.abs(x.ch)/gmax*100)),color:x.ch>=0?"#6db3f2":"#e06c6c",vcol:x.ch>=0?null:"#e06c6c"}; }),
+      3,
+      {stat:(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%",label:"best 30-day mover · "+gm.b.name}));
   }
   /* Q5: how long have they been around? */
-  var yb=[["Under 3 yrs",[],"#6fd3e7"],["3\u20135 yrs",[],"#6db3f2"],["6\u201310 yrs",[],"#e8b34b"],
-          ["10+ yrs",[],"#b9c2cf"],["Unknown",[],"#3a4353"]];
+  var yb=[["Under 3 yrs",[],"#6db3f2"],["3\u20135 yrs",[],"#6db3f2"],["6\u201310 yrs",[],"#6db3f2"],
+          ["10+ yrs",[],"#6db3f2"],["Unknown",[],"#3a4353"]];
   list.forEach(function(b){ var y=yearsNum(b),bi=y==null?4:(y<3?0:(y<=5?1:(y<=10?2:3))); yb[bi][1].push(b); });
   var ymax=Math.max.apply(null,yb.map(function(x){return x[1].length;}))||1,
       yk=yb[0][1].length+yb[1][1].length+yb[2][1].length+yb[3][1].length;
   cards.push(qCardG("Years in business","Track record, "+yk+" of "+list.length+" known",
-    yb.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/ymax*100),color:x[2],
+    yb.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/ymax*100),color:x[2],nodata:i===4,
       members:bmem(x[1],function(a,b){return (yearsNum(b)||0)-(yearsNum(a)||0);},
         function(b){var y=yearsNum(b);return y!=null?y+" yrs":"";})}; }),
-    "The market skews <b>established</b> \u2014 "+yb[3][1].length+" businesses are 10+ years in.",4,
+    4,
     {stat:String(yb[3][1].length),label:"businesses at 10+ years"}));
   /* Q6: how solid is each profile? */
-  var sb=[["80\u2013100 \u00b7 strong",[],"#6db3f2"],["60\u201379 \u00b7 decent",[],"#6fd3e7"],["40\u201359 \u00b7 thin",[],"#e8b34b"],
-          ["Under 40 \u00b7 weak",[],"#e06c6c"]];
-  list.forEach(function(b){ var s=confOf(b); if(s==null)return;
+  var sb=[["80\u2013100 \u00b7 strong",[],"#e8b34b","#e8b34b"],["60\u201379 \u00b7 decent",[],"#6db3f2"],["40\u201359 \u00b7 thin",[],"#6db3f2"],
+          ["Under 40 \u00b7 weak",[],"#e06c6c","#e06c6c"],["Unknown",[],"#3a4353"]];
+  list.forEach(function(b){ var s=confOf(b); if(s==null){ sb[4][1].push(b); return; }
     var bi=s>=80?0:(s>=60?1:(s>=40?2:3)); sb[bi][1].push(b); });
   var smax2=Math.max.apply(null,sb.map(function(x){return x[1].length;}))||1;
   cards.push(qCardG("Profile strength","Information confidence across "+list.length+" businesses",
-    sb.map(function(x){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/smax2*100),color:x[2],
+    sb.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/smax2*100),color:x[2],vcol:x[3]||null,nodata:i===4,
       members:bmem(x[1],function(a,b){return (confOf(b)||0)-(confOf(a)||0);},
         function(b){var s=confOf(b);return s!=null?s+"%":"";})}; }),
-    "<b>"+sb[0][1].length+" of "+list.length+"</b> profiles score 80+ \u2014 the deep-dive pass keeps raising the rest.",5,
+    5,
     {stat:sb[0][1].length+" of "+list.length,label:"profiles score 80+ (strong)"}));
-  return railHead()+(S.glanceX?cards.join(""):glanceCollapsedHTML(glances));
-}
-function railHead(){
-  var btn=S.glanceX
-    ?'<button class="ghostbtn" data-gexpand title="Collapse to the slim sidebar">\u27E8 Collapse</button>'
-    :'<button class="ghostbtn" data-gexpand title="Expand \u2014 full market view">\u2912 Expand</button>';
-  return '<div class="railhead"><span>Market glance</span>'+btn+"</div>"+
-    (S.glanceX?'<div class="railhint">Tap a bucket to see who\u2019s inside \u2014 tap a name to open the profile.</div>'
-              :'<div class="railhint">Tap a row for the full market view.</div>');
+  return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):glanceCollapsedHTML(glances));
 }
 /* collapsed market glance: one glanceable row per question, each expanding
    the full view on tap */
 function glanceCollapsedHTML(glances){
   return '<div class="gqrows">'+glances.map(function(g){
     if(!g) return "";
-    return '<button class="gqrow" data-gexpand title="Open the full market view">'+
+    return '<button class="gqrow" data-gexpand title="'+esc(g.stat+" \u00b7 "+g.label+" \u2014 open the full market view")+'">'+
       '<span class="gqstat">'+esc(g.stat)+'</span>'+
-      '<span class="gqlabel">'+esc(g.label)+'</span>'+
+      '<span class="gqlabel" title="'+esc(g.label)+'">'+esc(g.label)+'</span>'+
       '<span class="gqchev">\u25B8</span></button>';
   }).join("")+"</div>";
 }
@@ -1384,14 +1408,10 @@ function renderRight(){
   $("#right").classList.toggle("expanded",!!(S.expanded&&b));
   $("#right").classList.toggle("hassel",!!b);
   document.body.classList.toggle("panelexp",!!(S.expanded&&b));
-  var px=$("#panelex");
-  if(px){
-    px.innerHTML=S.expanded?"⟩":"⟨";
-    px.setAttribute("aria-label",S.expanded?"Collapse detail panel":"Expand detail panel");
-    px.title=S.expanded?"Collapse — back to scan view":"Expand — study this business";
-  }
   el.innerHTML=(window.innerWidth<=900?'<button class="mclose" data-mclose>Close</button>':"")+
-    (b?(b.type==="venue"?venueProfileHTML(b):(S.expanded?profileExpandedHTML(b):profileCollapsedHTML(b))):marketGlanceHTML());
+    (b?(b.type==="venue"?venueProfileHTML(b)
+        :pheadHTML(pheadTitle(b),"profile")+(S.expanded?profileExpandedHTML(b):profileCollapsedHTML(b)))
+      :marketGlanceHTML());
   $$("[data-count]",el).forEach(function(n){
     var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
     if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
@@ -1790,12 +1810,12 @@ function setMode(m){
 
 /* ---------- events ---------- */
 document.addEventListener("click",function(e){
-  var px=e.target.closest("#panelex");
-  if(px){ toggleExpand(); return; }
+  var pxb=e.target.closest("[data-px]");
+  if(pxb){ var k=pxb.getAttribute("data-px");
+    if(k==="glance") S.glanceX=!S.glanceX; else S.expanded=!S.expanded;
+    renderRight(); pushHist(); return; }
   var mc=e.target.closest("[data-mclose]");
   if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
-  var pc=e.target.closest("#panelcollapse");
-  if(pc){ S.expanded=false; renderRight(); pushHist(); return; }
   var gx=e.target.closest("[data-gexpand]");
   if(gx){ S.glanceX=!S.glanceX; renderRight(); pushHist(); return; }
   var cf=e.target.closest("[data-cf]");
