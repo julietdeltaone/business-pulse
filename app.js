@@ -647,8 +647,19 @@ function snapRowsHTML(b){
   return row("Followers",d.f!=null?fmt(d.f):"—",d.f!=null?("Followers: "+d.f):"")+
     row("Last post",esc(d.last),d.lastT)+
     row("Starting price",esc(d.price),d.priceT)+
-    row("Reviews",d.ri?fmt(d.ri.count):"—",d.ri?("Reviews: "+d.ri.count):"")+
-    row("Confidence",d.s!=null?d.s+"%":"—",d.s!=null?("Information confidence: "+d.s+"%"):"");
+    row("Reviews",d.ri?fmt(d.ri.count):"—",d.ri?("Reviews: "+d.ri.count):"");
+}
+/* how-AI-sees-it framing: the digital footprint, with confidence as its headline metric */
+function footprintHTML(b){
+  var s=confOf(b), pct=s==null?0:Math.max(0,Math.min(100,s));
+  var band=s==null?null:(s>=80?"strong":s>=60?"decent":s>=40?"thin":"weak");
+  var h='<div class="plab">How AI sees this business</div>'+
+    '<div class="footprint"><p>This business\u2019s digital footprint \u2014 what AI assistants and search engines see when they look it up.</p>';
+  if(s!=null) h+='<div class="pbar" data-cf="'+b.id+'" title="Information confidence \u2014 '+band+' \u2014 expand for everything">'+
+    '<span class="pbl">Confidence</span>'+
+    '<span class="pbtrack"><i style="width:'+pct+'%"></i></span>'+
+    '<span class="pbv">'+s+' <small>'+band+"</small></span></div>";
+  return h+"</div>";
 }
 /* overview: bio, services, coverage, years */
 function ovBioHTML(b){
@@ -693,6 +704,7 @@ function profileCollapsedHTML(b){
   return '<div class="pcol">'+
     '<div class="plab">Headline numbers</div>'+snapRowsHTML(b)+
     '<div class="pspace"></div>'+
+    footprintHTML(b)+
     '<div class="plab">Scores</div>'+scoreBarsHTML(b,true)+
     '<div class="pspace"></div>'+
     linkChips(b)+
