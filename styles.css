@@ -138,17 +138,20 @@ button{font-family:var(--sans)}
 .modetoggle{display:flex;background:rgba(255,255,255,.06);border:1px solid var(--line-soft);border-radius:10px;padding:3px}
 .modetoggle button{background:transparent;border:0;color:var(--mut);font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:7px;cursor:pointer}
 .modetoggle button.on{background:rgba(217,142,74,.2);color:#e8a45c}
-/* per-source freshness cluster (replaces the old single "Data as of" label) */
-#fresh{display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:11px;color:var(--mut);white-space:nowrap;line-height:1.4}
-#fresh .frow{display:flex;align-items:center;gap:10px}
-#fresh .frow.dim{color:var(--dim);font-size:10.5px}
-#fresh .fsrc{display:inline-flex;align-items:center;gap:4px;cursor:default}
-#fresh .fdot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
-#fresh .fdot.stale{background:var(--red)}
-#fresh b{color:var(--txt);font-weight:600}
-#fresh .fl{color:var(--mut)}
-#fresh .fap{color:var(--dim)}
-#fresh .fstale{color:var(--red);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+/* slim page footer: sync timestamps + build hash (moved out of the top bar) */
+#pagefoot{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;z-index:20;
+  display:flex;align-items:center;gap:14px;padding:7px 16px;border-radius:12px;
+  font-size:11px;color:var(--mut);white-space:nowrap;max-width:calc(100vw - 24px)}
+#pagefoot .frow{display:flex;align-items:center;gap:10px}
+#pagefoot .fsrc{display:inline-flex;align-items:center;gap:5px;cursor:default}
+#pagefoot .fdot{width:7px;height:7px;border-radius:50%;background:var(--amber);flex:none}
+#pagefoot .fdot.stale{background:var(--red)}
+#pagefoot b{color:var(--txt);font-weight:600}
+#pagefoot .fl{color:var(--mut)}
+#pagefoot .fap{color:var(--dim)}
+#pagefoot .fstale{color:var(--red);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+#footmeta{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
+#footbuild{color:var(--dim);font-size:10.5px;border-left:1px solid var(--line);padding-left:14px;flex:none}
 /* explicit threshold notes on change-feed headers */
 .thr{font-size:10px;font-weight:500;color:var(--dim);text-transform:none;letter-spacing:0}
 /* venue rows wrap to multiple lines — never cut mid-word */
@@ -323,11 +326,12 @@ a{color:var(--blue)}
   .brand-text h1{font-size:17px}
   .filters{order:3;flex-basis:100%;justify-content:flex-start;overflow-x:auto}
   .filters input{flex:1;min-width:140px}
-  #fresh{display:none}
+  #pagefoot{display:none}
   .panel{top:auto;bottom:0;left:0;right:0;width:auto;max-height:46vh;border-radius:18px 18px 0 0;transform:translateY(calc(100% - 118px));transition:transform .3s ease}
   #left.open{transform:none}
-  #right,#right.wide{width:auto;top:120px;bottom:196px;left:8px;right:8px;max-height:none;transform:translateY(12px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
+  #right,#right.wide,#right.expanded{width:auto;top:120px;bottom:196px;left:8px;right:8px;max-height:none;transform:translateY(12px);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
   #right.open{transform:none;opacity:1;pointer-events:auto}
+  #panelex{display:none!important}
   #rightclose{display:block;position:absolute;top:8px;right:12px;background:none;border:0;color:var(--mut);font-size:22px;cursor:pointer;z-index:2}
   #sheetgrab{display:flex;justify-content:center;padding:8px 0 2px;background:none;border:0;width:100%;cursor:pointer}
   #sheetgrab span{width:44px;height:4px;border-radius:3px;background:rgba(255,255,255,.25)}
@@ -480,13 +484,6 @@ a{color:var(--blue)}
 .cfpct{font-family:var(--serif);font-size:34px;line-height:1;margin:2px 0 4px}
 
 /* ---------- persistent nav buttons: home / back / forward ---------- */
-.navbtns{display:flex;gap:6px;align-items:center}
-.nbtn{background:rgba(255,255,255,.06);border:1px solid var(--line-soft);color:var(--txt);
-  width:32px;height:32px;border-radius:9px;font-size:16px;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;padding:0}
-.nbtn:hover:not(:disabled){border-color:rgba(232,179,75,.55);color:var(--amber)}
-.nbtn:disabled{opacity:.28;cursor:default}
-.nbtn.home{font-size:17px}
 
 /* ---------- data tab ---------- */
 .dfilter{width:100%;box-sizing:border-box;margin:10px 0 4px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt);font-size:13px;font-family:inherit}
@@ -537,3 +534,93 @@ a{color:var(--blue)}
 @media (prefers-reduced-motion:reduce){
   #right{transition:none}
 }
+
+/* ---------- detail panel two-state redesign (collapsed scan / expanded study) ---------- */
+#right{overflow:visible}
+#right.expanded{width:min(54vw,780px)}
+body.panelexp #map{filter:brightness(.82)}
+#map{transition:filter .38s}
+/* expand button on the panel's edge — gold, the state accent */
+#panelex{position:absolute;top:50%;left:-17px;transform:translateY(-50%);z-index:5;display:none;
+  width:32px;height:76px;border-radius:10px 0 0 10px;cursor:pointer;
+  background:rgba(232,179,75,.13);border:1px solid rgba(232,179,75,.5);border-right:0;
+  color:var(--amber);font-size:17px;line-height:1;font-family:inherit}
+#panelex:hover{background:rgba(232,179,75,.26)}
+#right.hassel #panelex{display:block}
+/* collapsed: score badges — score in blue (data), band in gold (state) */
+.schip .scl{color:var(--dim)}
+.schip.hi .scv,.schip.mid .scv,.schip.lo .scv{color:var(--blue)}
+.schip.unk .scv{color:var(--dim)}
+.schip .scb{font-size:10px;font-weight:600;color:var(--amber);letter-spacing:.04em;white-space:nowrap}
+/* collapsed: five headline numbers */
+.hstats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0 4px}
+.hstat{background:rgba(255,255,255,.03);border:1px solid var(--line-soft);border-radius:10px;padding:8px 4px;text-align:center;min-width:0}
+.hstat .v{font-size:15px;font-weight:700;color:var(--txt);white-space:nowrap;font-variant-numeric:tabular-nums}
+.hstat .l{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.expandhint{margin-top:10px;font-size:12px}
+.expandhint b{color:var(--amber)}
+/* expanded: header + tabs */
+.xhead{display:flex;align-items:flex-start;gap:8px}
+.xhead .prof-head{flex:1;min-width:0;padding-right:0}
+#panelcollapse{flex:none;margin:2px 34px 0 0}
+.ptabs{display:flex;gap:2px;margin:12px -14px 0;padding:0 14px;border-bottom:1px solid var(--line)}
+.ptabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--mut);
+  font-size:13px;font-weight:600;padding:9px 10px;cursor:pointer;font-family:inherit}
+.ptabs button:hover{color:var(--txt)}
+.ptabs button.on{color:var(--amber);border-bottom-color:var(--amber)}
+.ptab-body{padding-top:4px}
+.bio{font-style:italic}
+/* ---------- scorecard as a tab: raw figures lead, scores are annotations ---------- */
+.sc-comp{display:flex;align-items:center;gap:14px;background:rgba(232,179,75,.07);
+  border:1px solid rgba(232,179,75,.3);border-radius:12px;padding:12px 16px;margin:10px 0 12px}
+.sc-comp-n{font-size:34px;font-weight:700;color:var(--amber);font-variant-numeric:tabular-nums;line-height:1}
+.sc-comp-t b{display:block;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--amber)}
+.sc-comp-t span{font-size:12.5px;color:var(--mut)}
+.sc-card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.sc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.sc-label{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}
+.sc-badge{display:inline-flex;align-items:baseline;gap:6px;font-size:12.5px;white-space:nowrap}
+.sc-badge .n{color:var(--blue);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.sc-badge .sep{color:var(--dim)}
+.sc-badge .b{color:var(--amber);font-weight:600}
+.sc-badge.unk{color:var(--dim)}
+.sc-raw{font-size:32px;font-weight:700;color:var(--txt);font-variant-numeric:tabular-nums;line-height:1.15}
+.sc-raw small{display:block;font-size:12.5px;font-weight:500;color:var(--mut);margin-top:3px;line-height:1.4}
+.sc-raw small b{font-weight:700}
+.sc-raw small b.up{color:var(--up)}
+.sc-chart{margin:12px 0 4px}
+.sc-line{width:100%;height:auto;display:block}
+.sc-grid{stroke:rgba(255,255,255,.09);stroke-width:1}
+.sc-poly{fill:none;stroke:var(--blue);stroke-width:2.5}
+.sc-dot{fill:var(--blue)}
+.sc-axis{fill:var(--mut);font-size:12px;font-family:var(--sans)}
+.sc-detail{font-size:12.5px;color:var(--mut);margin-top:8px;line-height:1.5}
+.sc-detail b{color:var(--txt);font-weight:600}
+.sc-link{margin-top:8px}
+/* hourly-only price: slim row, not a full card */
+.sc-slim{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;
+  padding:12px 16px;margin-bottom:10px;background:rgba(255,255,255,.03)}
+.sc-slim b{font-size:20px;color:var(--txt);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sc-slim span{font-size:12.5px;color:var(--mut);flex:1;line-height:1.45}
+/* bigger engagement bars with per-post value labels */
+.dbars.big{height:118px;gap:6px}
+.dbar.big{flex-direction:column;align-items:center;justify-content:flex-end}
+.dbar.big .vlab{display:block;font-size:10px;color:var(--mut);margin-bottom:3px;font-variant-numeric:tabular-nums;font-style:normal}
+.dbar.big .bfill{display:block;width:100%;border-radius:4px 4px 2px 2px;
+  background:linear-gradient(180deg,#6db3f2,rgba(109,179,242,.3));
+  transform:scaleY(0);transform-origin:bottom;animation:barUp .7s cubic-bezier(.22,.8,.28,1) forwards}
+.dscale-lbl.big{font-size:12px;color:var(--mut)}
+/* confidence: collapsed to bar + one-liner; unverified surfaced, rest behind expander */
+.cf2-bar{margin:10px 0 4px}
+.dcsegs.wide{display:flex;height:12px}
+.cf2-missed{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+.dfactor.slim{display:flex;gap:6px;align-items:baseline;font-size:12px;line-height:1.45}
+.dfactor.slim b{color:var(--amber);font-weight:600;flex:none}
+.dfactor.slim.missed span{color:var(--mut)}
+.cf2-all{margin-top:10px}
+.cf2-all summary{cursor:pointer;font-size:12.5px;color:var(--blue);font-weight:600;outline:none}
+.cf2-all .dfactors{margin-top:8px}
+.infoq{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex:none;
+  border-radius:50%;border:1px solid var(--line);color:var(--dim);font-size:11px;cursor:help;margin-left:6px}
+.sc-head .infoq{margin-left:0}
