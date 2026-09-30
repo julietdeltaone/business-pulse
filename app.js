@@ -553,7 +553,7 @@ function renderMarket(){
   if(wkeys.length){
     var maxc=1; wkeys.forEach(function(k){weeks[k].forEach(function(v){if(v>maxc)maxc=v;});});
     var dows=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-    h+='<div class="sec"><h3>Posting cadence</h3><div class="sub">Posts per weekday × week, from accumulated snapshots</div>'+
+    h+='<div class="sec"><h3>Posting cadence</h3><div class="sub">Posts per weekday × week, from accumulated daily data</div>'+
       '<div class="hm" style="--hmcols:'+wkeys.length+'">'+
       dows.map(function(dn,di2){
         return '<div class="hmr"><span class="dow">'+dn+'</span>'+wkeys.map(function(k){
@@ -967,7 +967,7 @@ var timeEl=$("#time");
 function renderScrub(){
   timeEl.min=0; timeEl.max=DATES.length-1; timeEl.value=S.di;
   timeEl.style.setProperty("--fill",(DATES.length>1?S.di/(DATES.length-1)*100:100)+"%");
-  $("#timelabel").innerHTML=dstr(DATES[S.di])+"<small>"+DATES.length+" daily snapshots</small>";
+  $("#timelabel").innerHTML=dstr(DATES[S.di])+"<small>"+DATES.length+" daily updates</small>";
   $("#datelabel").innerHTML="Data as of <b>"+dstr(DATES[S.di])+"</b>";
   $("#freshnote").textContent="History from "+dstr(DATES[0]);
 }
@@ -975,7 +975,7 @@ var playTimer=null;
 function setPlaying(on){
   S.playing=on;
   $("#playbtn").textContent=on?"⏸":"▶";
-  $("#playbtn").setAttribute("aria-label",on?"Pause replay":"Replay daily snapshots");
+  $("#playbtn").setAttribute("aria-label",on?"Pause replay":"Replay daily updates");
   clearInterval(playTimer); playTimer=null;
   if(on){
     if(REDUCED){ toast("Replay is off with reduced motion — drag the slider instead."); setPlaying(false); return; }
