@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=9ddab5bf">
+<link rel="stylesheet" href="styles.css?v=9354b886">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -15,6 +15,11 @@
 <section id="rankings" hidden aria-label="Rankings"></section>
 
 <header id="topbar" class="glass">
+  <div class="topnav" role="navigation" aria-label="History">
+    <button id="navback" title="Back" aria-label="Back">‹</button>
+    <button id="navfwd" title="Forward" aria-label="Forward">›</button>
+    <button id="navhome" title="Home — clear selection and filters" aria-label="Home">⌂</button>
+  </div>
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">◈</span>
     <div class="brand-text"><h1>Business Pulse</h1><small>North Country photo market</small></div>
@@ -67,14 +72,13 @@
 </aside>
 
 <aside id="right" class="glass panel" aria-label="Detail panel">
-  <button id="rightclose" aria-label="Close detail panel">×</button>
   <button id="panelex" aria-label="Expand detail panel" title="Expand — study this business">⟨</button>
   <div id="rightbody"></div>
 </aside>
 
 <footer id="pagefoot" class="glass" aria-label="Data freshness">
   <span id="footfresh"></span>
-  <span id="footbuild" title="Deployed build">build 707d9b54 &middot; Sep 30 17:08 UTC</span>
+  <span id="footbuild" title="Deployed build">build eb4aaf88 &middot; Sep 30 17:36 UTC</span>
 </footer>
 
 <footer id="scrub" class="glass" aria-label="Time scrubber">
@@ -92,6 +96,6 @@
 <script src="data/details-enrichment.js?v=93151786"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=707d9b54"></script>
+<script src="app.js?v=eb4aaf88"></script>
 </body>
 </html>
