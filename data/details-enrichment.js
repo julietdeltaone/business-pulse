@@ -780,7 +780,7 @@ window.PULSE_DETAILS = {
       "Vermont"
     ],
     "years_in_business": 13,
-    "pricing_note": "Weddings from $4,800 (The Knot / WeddingWire, 2026)",
+    "pricing_note": "Weddings from $4,800 (The Knot / WeddingWire, 2026) Own site (2026-09-30) shows wedding collections from $5,400 (01 $5,400 / 02 $6,800 / 03 $8,300 / bespoke $8,900) vs The Knot 'Starting at $4,800' — both preserved, not resolved.",
     "site_note": "5.0 stars across 48 reviews on The Knot; 20+ years behind the lens per her site.",
     "sources": [
       "https://www.pamelaperrinphotography.com/about/",
@@ -847,7 +847,8 @@ window.PULSE_DETAILS = {
     "since": 2008,
     "sources": [
       "https://marydougherty.com/speculator-wedding-at-oak-mountain/speculator-oak-mountain-wedding-mary-dougherty071/"
-    ]
+    ],
+    "site_note": "Review counts by platform (2026-09-30): Google 5.0 (48) vs The Knot 5.0 (18) — separate sources, both preserved."
   },
   "lake-placid-photography-sandy-payne-huber": {
     "blurb": "Sandy Payne Huber has been photographing weddings in Lake Placid since 2005, accepting only a few weddings per year; also offers portrait and event photography.",
@@ -980,7 +981,8 @@ window.PULSE_DETAILS = {
       "https://www.makenzieleighphotography.com/",
       "https://www.makenzieleighphotography.com/experience/",
       "https://www.makenzieleighphotography.com/about/"
-    ]
+    ],
+    "pricing_note": "Live site (2026-09-30) lists storytelling sessions from $350 / mini stories from $200 — likely session/mini product lines vs the banked wedding packages ($1,600+); preserved, not resolved."
   },
   "butterfly-photography-nny": {
     "blurb": "Butterfly Photography NNY is Sara's Watertown-based wedding and portrait photography business, focused on romantic, storytelling, candid imagery.",
@@ -1270,7 +1272,8 @@ window.PULSE_DETAILS = {
       "https://www.theknot.com/marketplace/wedding-photographers-tupper-lake-ny?page=2",
       "https://www.eventective.com/lyon-mountain-ny/fairytale-dreams-photography-730935.html",
       "https://www.thumbtack.com/ny/lyon-mountain/portrait-photographers/fairytale-dreams-photography/service/98808076664570944"
-    ]
+    ],
+    "pricing_note": "The Knot Potsdam card (2026-09-30) shows 'Starting at $1,800' but a Tupper Lake snippet shows 'Starting at $2,700', which agrees with the own-site wedding floor ($2,700) — preserved, not resolved."
   },
   "jd-meyers-productions": {
     "blurb": "Photographer, videographer, and FAA Part 107 drone operator based in Potsdam, NY. Founded 2018; 74+ clients served, 26+ weddings shot (site, 2026).",
@@ -1294,5 +1297,11 @@ window.PULSE_DETAILS = {
       "https://jdmeyersjr.com/availability",
       "https://www.zola.com/wedding-vendors/search/west-chazy-ny--wedding-photographers"
     ]
+  },
+  "la-belle-amour-photography": {
+    "pricing_note": "The Knot Potsdam card (2026-09-30) shows 'Starting at $250' but a Shelburne-VT snippet shows 'Starting at $300' — preserved, not resolved."
+  },
+  "daydreams-by-kimmi-sue": {
+    "site_note": "Rebranded site live at kimberlydoerrphotography.mypixieset.com with new session menu (30min $175 / 1hr $300 / 1.5hr $450 / 2hr $800 + tax, 2026-09-30); old pre-rebrand pricing retired."
   }
 };
