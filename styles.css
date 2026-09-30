@@ -720,3 +720,5 @@ body.panelexp #map{filter:brightness(.82)}
 .cf2-bar{margin:6px 0 2px}
 .dcsegs.wide{display:flex;height:12px}
 @media(max-width:900px){.xgrid,.xgrid2{grid-template-columns:1fr}#right.expanded #rightbody{overflow-y:auto}.hstats6{grid-template-columns:repeat(3,1fr)}}
+
+/* pages rebuild tick 2026-09-30 */
