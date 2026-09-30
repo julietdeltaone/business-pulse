@@ -583,7 +583,7 @@ function dCellHTML(b,k){
     case "price": return v==null?"—":money(v);
     case "website": return v?'<a href="'+esc(/^https?:/.test(v)?v:"https://"+v)+'" target="_blank" rel="noopener">site ↗</a>':"—";
     case "ig": return v?"@"+esc(v):"—";
-    case "conf": return v==null?"—":v+"%";
+    case "conf": return v==null?"—":confBadge(b);
     case "name": return "<b>"+esc(v)+"</b>";
     default: return esc(v==null||v===""?"—":v);
   }
