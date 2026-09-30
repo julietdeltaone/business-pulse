@@ -192,9 +192,11 @@ window.PULSE_DETAILS = {
     ],
     "platform": "WordPress",
     "years_in_business": 17,
-    "site_note": "Studio at 213 Main St, Ste 104, Massena (inside BRKK Tees); annual Santa/holiday sessions offered.",
+    "site_note": "Studio at 213 Main St, Ste 104, Massena (inside BRKK Tees); annual Santa/holiday sessions offered. Deep-dive 2026-09-30: site ALIVE (loads 'Forevermore Studio Photography' title; right-click disabled) — the Sep 30 bulk-sweep HTTP 500 was likely a bot block, not a dead site. (315) 514-0379, info@forevermorestudio.com. Facebook facebook.com/ForevermoreStudio (3,477 likes). WeddingWire 5.0 (5 reviews). No published pricing (video = call for quote). Google reviews 4.9/143.",
     "sources": [
-      "http://www.myforevermore.com/"
+      "http://www.myforevermore.com/",
+      "https://myforevermore.com/",
+      "https://www.weddingwire.com/biz/forevermore-studio-photography-massena/c7a566570e16e343.html"
     ]
   },
   "thousand-words-photography-marina-ben": {
@@ -434,9 +436,10 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Pixieset",
     "pricing_note": "$75 non-refundable retainer; payment plans available (site, 2026)",
-    "site_note": "Based in Massena, NY; travel fees apply beyond 30 miles. The photographer works full-time as an ED registered nurse; she also maintains a client wardrobe.",
+    "site_note": "Based in Massena, NY; travel fees apply beyond 30 miles. The photographer works full-time as an ED registered nurse; she also maintains a client wardrobe. Highlighted work in Alexandria Bay, Albany, Plattsburgh, Buffalo NY.",
     "sources": [
-      "https://ericacartyphoto.mypixieset.com/"
+      "https://ericacartyphoto.mypixieset.com/",
+      "https://ericacartyphoto.mypixieset.com/pricing/"
     ]
   },
   "jessica-evans-photography": {
@@ -447,11 +450,14 @@ window.PULSE_DETAILS = {
     ],
     "since": 2022,
     "pricing_note": "Weddings $1,750 (4h) / $2,500 (6h) / $3,250 (8h) (site, 2026); Zola lists 'starts at $3,000', 5.0 from 5 reviews",
-    "site_note": "Zola describes her style as photojournalistic. Package 03 includes 50% off an engagement session.",
+    "site_note": "Zola describes her style as photojournalistic. Package 03 includes 50% off an engagement session. Deep-dive 2026-09-30 identity caution: jessicaevansphoto.com (Showit site, Michigan area code (269), Grand Rapids references) is a DIFFERENT photographer — its pricing must NOT be attributed to this business. Roster IG handle 'jessicaevansphoto' may belong to the Michigan business, so IG data on this entry may be misattributed. Lisbon LLC corroborated: Jessica Evans Photography LLC, NY DOS doc 6593263, filed 9/20/2022, 210 Randall Rd, Lisbon NY 13658, active. NNY TikTok @jessicaevansphotography ('Jess Evans, NNY Photographer', couples/family content) corroborates local identity.",
     "sources": [
       "https://www.jessicaevansphotographyllc.com/weddings/",
       "https://www.bizprofile.net/ny/lisbon/jessica-evans-photography-llc",
-      "https://www.zola.com/wedding-vendors/search/burnips-mi--wedding-photographers"
+      "https://www.zola.com/wedding-vendors/search/burnips-mi--wedding-photographers",
+      "https://jessicaevansphoto.com/services",
+      "https://jessicaevansphoto.com/contact",
+      "https://www.tiktok.com/@jessicaevansphotography/video/7505951779415166251"
     ]
   },
   "brynlee-thomas-photography": {
@@ -564,19 +570,27 @@ window.PULSE_DETAILS = {
       "Senior portraits",
       "Family portraits",
       "Newborns",
-      "Weddings"
+      "Weddings",
+      "Engagement shoots",
+      "Boudoir shoots",
+      "Albums",
+      "Prints",
+      "Save-the-date/thank-you cards"
     ],
     "coverage": [
       "Watertown",
       "Ogdensburg",
       "Thousand Islands"
     ],
-    "platform": "GoDaddy",
+    "platform": "GoDaddy Website Builder",
     "since": 1989,
-    "site_note": "Google listing shows 4.7 stars across 244 reviews; owner describes over 34 years photographing North Country families.",
+    "site_note": "Google listing shows 4.7 stars across 244 reviews; owner describes over 34 years photographing North Country families. WeddingWire listing shows 4.9 rating, 8 reviews, 99% recommend, wedding most-popular price $1,850. The Knot listing exists (43395 NYS Route 37) with 0 reviews. Facebook page facebook.com/HeathPhotography (~3.9k likes).",
     "sources": [
       "https://heathphotography.net/",
-      "http://www.heathphotography.net/"
+      "http://www.heathphotography.net/",
+      "https://heathphotography.net/about-us",
+      "http://weddingwire.com/biz/heath-photography-redwood/f10743cb7df9648d.html",
+      "https://www.theknot.com/marketplace/heath-photography-redwood-ny-968528"
     ]
   },
   "horizon-aerial-media-services": {
@@ -598,15 +612,19 @@ window.PULSE_DETAILS = {
       "Lake Placid"
     ],
     "pricing_note": "Real estate Basic Shoot from $210; Standard Shoot $360; Premium $495; Platinum $595; The Works $995; aerial images from $155 (site pricing page).",
-    "site_note": "Claims to be the largest-volume real estate photography provider in its area, working regularly with 50+ top-producing Realtors.",
+    "site_note": "Claims to be the largest-volume real estate photography provider in its area, working regularly with 50+ top-producing Realtors. Founded June 2014 per BBB profile (business started 6/11/2014) and a May 2014 Kathryn's Report article on the Desjardins couple founding Horizon Aerial Media Services in Glen Park. BBB rating A+, not BBB accredited. Site platform could not be determined. Own contact page mirrors Google data (5.0, 25 reviews) but per the never-from-own-pages rule no review seed was set.",
     "sources": [
       "https://www.horizonaerialmediany.com/contact",
       "https://horizonaerialmediaNY.com/",
       "https://www.horizonaerialmediany.com/real-estate",
       "https://www.horizonaerialmediany.com/services",
       "https://www.horizonaerialmediany.com/about-us",
-      "https://www.mapquest.com/us/new-york/horizon-aerial-media-service-651824600"
-    ]
+      "https://www.mapquest.com/us/new-york/horizon-aerial-media-service-651824600",
+      "https://www.bbb.org/us/ny/glen-park/profile/videographers/horizon-aerial-media-services-0041-235992209",
+      "http://www.kathrynsreport.com/2014/05/glen-park-new-york-couple-embracing-new.html",
+      "https://www.1000islands-clayton.com/member-directory/name/horizon-aerial-media-services/"
+    ],
+    "since": 2014
   },
   "chelsea-m-walts-photography": {
     "blurb": "Portrait and wedding photographer based in Watertown, NY, specializing in family portraits and high school seniors plus weddings and maternity, with a vibrant, colorful style and 14 years of experience.",
@@ -894,20 +912,29 @@ window.PULSE_DETAILS = {
       "Bridal portraits",
       "Boudoir",
       "Trash the dress",
-      "Albums and prints"
+      "Albums and prints",
+      "Second shooter",
+      "Albums",
+      "Canvas prints",
+      "Digital files",
+      "Save-the-date/thank-you cards",
+      "Online proofing",
+      "Destination/travel"
     ],
     "coverage": [
       "Jay",
       "New England",
       "New York",
-      "Destinations"
+      "Destinations",
+      "Adirondacks"
     ],
     "since": 2022,
-    "site_note": "LLC filed April 2022 (NY Dept. of State); 5.0 stars across 6 reviews on The Knot, 1x Best of Weddings award.",
+    "site_note": "LLC filed April 2022 (NY Dept. of State); 5.0 stars across 6 reviews on The Knot, 1x Best of Weddings award. Official site: fortunatesoulphotography.com; +1 603-903-2722. A 2026 directory page lists her under Lake Placid, NY rather than Jay, NY. Woman-owned; destination wedding packages offered. WeddingWire 'most popular' wedding package $4,297; Zola 'weddings from' floor $3,600, elopements from $1,700 (no conflict).",
     "sources": [
       "https://qa-beta.theknot.com/marketplace/fortunate-soul-photography-jay-ny-2059861",
       "https://www.weddingwire.com/biz/fortunate-soul-photography/9958136bd154589f.html",
-      "https://www.bizprofile.net/ny/jay/fortunate-soul-photography-llc"
+      "https://www.bizprofile.net/ny/jay/fortunate-soul-photography-llc",
+      "https://www.photography1000.com/US/Lake-Placid/104126621186308/Fortunate-Soul-Photography"
     ]
   },
   "adirondack-drone-corey-james": {
@@ -1050,16 +1077,19 @@ window.PULSE_DETAILS = {
     "blurb": "Jayden Dates is a sports photographer based in the Adirondacks, specializing in capturing raw emotion — high-intensity competition moments and close-up portraits.",
     "services": [
       "Sports photography",
-      "Portraits"
+      "Portraits",
+      "Athlete portraits"
     ],
     "coverage": [
-      "Adirondacks"
+      "Adirondacks",
+      "Lake Placid NY"
     ],
     "platform": "Pixieset",
-    "site_note": "Portfolio shows sports game galleries (e.g. AVCS vs Moriah); the main site page blocked loading (403) so details come from the indexed site summary.",
+    "site_note": "Portfolio shows sports game galleries (e.g. AVCS vs Moriah); the main site page blocked loading (403) so details come from the indexed site summary. Deep-dive 2026-09-30: no pricing published on site; no third-party directory listings, The Knot/WeddingPro/Yelp presence, or review listings found. Active portfolio (recent game post April 2026). IG handle jaydendatesmedia matches the site.",
     "sources": [
       "https://jaydendatesmedia.pixieset.com/",
-      "https://jaydendatesmedia.mypixieset.com/portfolio/"
+      "https://jaydendatesmedia.mypixieset.com/portfolio/",
+      "https://jaydendatesmedia.mypixieset.com/"
     ]
   },
   "adirondack-wedding-photography-tomas-flint": {
@@ -1180,6 +1210,89 @@ window.PULSE_DETAILS = {
     "platform": "WordPress",
     "sources": [
       "http://granviewogdensburg.com/ (fetched page HTML; wp-content asset paths)"
+    ]
+  },
+  "eve-taverne-photography": {
+    "blurb": "Boutique portrait studio in Poland, NY specializing in high school seniors, teens/tweens, branding/headshots, women's glamour, families and children. Work nationally featured in print and online.",
+    "services": [
+      "High school seniors",
+      "Teens/tweens",
+      "Professional branding/headshots",
+      "Women's modern glamour",
+      "Families",
+      "Children",
+      "Relationships"
+    ],
+    "coverage": [
+      "Utica, NY",
+      "New Hartford",
+      "Whitesboro",
+      "Clinton",
+      "Holland Patent",
+      "West Canada",
+      "Poland (based)",
+      "Central New York"
+    ],
+    "platform": "Squarespace",
+    "site_note": "Official site evetaverne.com (roster previously had no website). 95 Cold Brook St, Poland, NY 13431; (315) 826-3322. Facebook page facebook.com/evetavernephotography (2,048 likes). Senior-portrait specialist; weddings not a listed service. Superpages lists 18 years in business (unverified by primary source). Google reviews: 5.0 across 35 (listing data surfaced via search, place_id 591422052627650; listing page not opened directly; Birdeye corroborates 5.0/37).",
+    "sources": [
+      "https://www.evetaverne.com/",
+      "https://www.facebook.com/evetavernephotography",
+      "https://reviews.birdeye.com/eve-taverne-photography-167591220843414",
+      "https://www.superpages.com/frankfort-ny/photography-videography"
+    ]
+  },
+  "fairytale-dreams-photography": {
+    "blurb": "Lyon Mountain, NY photographer (Cass) specializing in relaxed, candid wedding and portrait photography for camera-shy clients; 15+ years in the Adirondacks.",
+    "services": [
+      "Weddings",
+      "Elopements",
+      "Senior portraits",
+      "Family sessions",
+      "Engagements"
+    ],
+    "coverage": [
+      "Lyon Mountain, NY (based, 85 Mill St)",
+      "Whiteface Mountain",
+      "Wilmington",
+      "Lake Placid",
+      "Plattsburgh",
+      "Malone",
+      "Lake Champlain area",
+      "Adirondacks year-round"
+    ],
+    "platform": "Wix",
+    "since": 2010,
+    "site_note": "Est. 2010, booking 2026 & 2027. 'PHOTOGRAPHY FOR PEOPLE WHO DREAD BEING PHOTOGRAPHED.' Featured on Northern Bride, WeddingPro, NCPR, WeddingWire, Unscripted, The Knot, Zola. IG @fairytaledreamsphotography linked from site (roster had it blank). Site claims '5/5 Over 50 Google Reviews' but that is her own page, not the live listing, so no review seed.",
+    "sources": [
+      "https://www.fairytaledreamsphotography.com/",
+      "https://www.weddingwire.com/biz/fairytale-dreams-photography-burke/0879420e38edab0d.html",
+      "https://www.theknot.com/marketplace/wedding-photographers-tupper-lake-ny?page=2",
+      "https://www.eventective.com/lyon-mountain-ny/fairytale-dreams-photography-730935.html",
+      "https://www.thumbtack.com/ny/lyon-mountain/portrait-photographers/fairytale-dreams-photography/service/98808076664570944"
+    ]
+  },
+  "jd-meyers-productions": {
+    "blurb": "Photographer, videographer, and FAA Part 107 drone operator based in Potsdam, NY. Founded 2018; 74+ clients served, 26+ weddings shot (site, 2026).",
+    "services": [
+      "Weddings",
+      "Portraits",
+      "Family sessions",
+      "Real estate",
+      "Drone/aerial",
+      "Video production"
+    ],
+    "coverage": [
+      "St. Lawrence County",
+      "North Country"
+    ],
+    "platform": "Squarespace",
+    "since": 2018,
+    "site_note": "Own business (runtime-injected in app.js, not in roster). Site states 5.0 stars across 15 Google reviews; Zola vendor profile shows 5.0 across 18 reviews (Zola + Google aggregate). Deep-dive 2026-09-30: fresh crawl shows video production from $900 and drone Signature $675 / Premiere $1,200 vs bulk sweep earlier today (video from $1,600, drone from $450) — site may have been updated between captures, or crawl variance.",
+    "sources": [
+      "https://jdmeyersjr.com/about",
+      "https://jdmeyersjr.com/availability",
+      "https://www.zola.com/wedding-vendors/search/west-chazy-ny--wedding-photographers"
     ]
   }
 };
