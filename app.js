@@ -275,8 +275,7 @@ function applyState(st){
   }finally{ HIST.busy=false; }
   updNav();
 }
-/* home: back to the map, default framing, selection + filters cleared */
-function goHome(){
+/* home: back to the map, default framing, selection + filters cleared */function goHome(){
   S.sel=null; S.q=""; S.lane=""; S.mom=""; S.reg=""; S.view="map";
   C=(S.mode==="venues"?V:B); BY_ID=(S.mode==="venues"?V_BY_ID:B_BY_ID);
   computeModeStats();
@@ -290,6 +289,9 @@ function goHome(){
   pushHist();
   toast("Back home — selection cleared.");
 }
+/* history back / forward — driven by the persistent topbar arrows */
+function goBack(){ if(HIST.i>0){ HIST.i--; applyState(HIST.stack[HIST.i]); } }
+function goFwd(){ if(HIST.i<HIST.stack.length-1){ HIST.i++; applyState(HIST.stack[HIST.i]); } }
 
 /* ---------- filtering ---------- */
 function norm(s){ return (s||"").toLowerCase(); }
@@ -562,39 +564,8 @@ function engStats(){
   REV_MED=rc.length?rc[Math.floor(rc.length/2)]:null;
   HOURLY_N=B.filter(function(b){return b.price.weddingHourly!=null;}).length;
 }
-/* four score badges for the collapsed panel: score in blue (data), band in gold (state) */
-function scoreChips4(b){
-  var a=actScore(b), m=momScore(b), e=engScore(b), r=revScore(b);
-  function chip(label,res){
-    var cls=res&&res.score!=null?confBand(res.score):"unk";
-    var d=res&&res.score!=null?res.score:"—";
-    var title=res?esc(res.band+" — "+res.why+" Open the Scorecard tab for the full breakdown."):"";
-    return '<button class="schip '+cls+'" data-cf="'+b.id+'" title="'+title+'">'+
-      '<span class="scl">'+label+'</span><span class="scv">'+d+'</span>'+
-      '<span class="scb">'+esc(res?res.band:"")+"</span></button>";
-  }
-  return '<div class="scorerow" role="group" aria-label="Business scores">'+
-    chip("Activity",a)+chip("Momentum",m)+chip("Engagement",e)+chip("Reviews",r)+"</div>";
-}
-/* five headline numbers for the collapsed panel */
 function dstrShort(ds){ if(!ds) return "\u2014"; var d=new Date(ds+"T12:00:00");
   return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
-function headStats(b){
-  var f=followersAt(b,S.di), ri=reviewInfo(b), s=confOf(b);
-  var price=b.price.wedding!=null?money(b.price.wedding)
-    :b.price.session!=null?money(b.price.session)
-    :b.price.weddingHourly!=null?money(b.price.weddingHourly)+"/hr":"\u2014";
-  var lastFull=b.last_post_date?dstr(b.last_post_date):null;
-  var last=lastFull?dstrShort(b.last_post_date):(b.postAge!=null?b.postAge+"d ago":"\u2014");
-  /* Nuclear overflow rule: values never wrap and never spill; full value lives in title. */
-  function stat(v,l,t){ return '<div class="hstat"><div class="v"'+(t?' title="'+esc(t)+'"':"")+'>'+v+'</div><div class="l">'+l+"</div></div>"; }
-  return '<div class="hstats">'+
-    stat(f!=null?fmt(f):"\u2014","Followers",f!=null?("Followers: "+f):"")+
-    stat(last,"Last post",lastFull?("Last post: "+lastFull):(b.postAge!=null?("Last post: "+b.postAge+" days ago"):""))+
-    stat(price,"Starting price",price!=="\u2014"?("Starting price: "+price):"")+
-    stat(ri?fmt(ri.count):"\u2014","Reviews",ri?("Reviews: "+ri.count):"")+
-    stat(s!=null?s+"%":"\u2014","Confidence",s!=null?("Information confidence: "+s+"%"):"")+"</div>";
-}
 function profHead(b){
   var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
   return '<div class="prof-head"><div class="prof-ava">'+esc(ini)+"</div>"+
@@ -609,46 +580,12 @@ function linkChips(b){
   if(b.pricing_url) h+='<a class="chip extlink" href="'+esc(b.pricing_url)+'" target="_blank" rel="noopener">Pricing ↗</a>';
   return h+"</div>";
 }
-/* collapsed: scan state — name, badges, headline numbers, links */
-function profileCollapsedHTML(b){
-  return '<div class="sec">'+profHead(b)+scoreChips4(b)+headStats(b)+linkChips(b)+
-    '<div class="sub expandhint">Expand <b>⟨</b> on the panel edge to study this business — overview, social, pricing, website, scorecard.</div></div>';
-}
-/* expanded: study state — wide dossier panel. Tabs live in the left column;
-   a sticky snapshot rail on the right keeps the headline numbers, scores and
-   links visible on every tab so the panel never reads as empty space. */
-function xsideHTML(b){
-  var f=followersAt(b,S.di), ri=reviewInfo(b), s=confOf(b);
-  var price=b.price.wedding!=null?money(b.price.wedding)
-    :b.price.session!=null?money(b.price.session)
-    :b.price.weddingHourly!=null?money(b.price.weddingHourly)+"/hr":"\u2014";
-  var lastFull=b.last_post_date?dstr(b.last_post_date):null;
-  var last=lastFull?dstrShort(b.last_post_date):(b.postAge!=null?b.postAge+"d ago":"\u2014");
-  function row(l,v,t){ return '<div class="xkv"><span>'+l+'</span><b'+(t?' title="'+esc(t)+'"':"")+'>'+v+"</b></div>"; }
-  var yrs=yearsStr(b);
-  return '<div class="xsnap">Snapshot</div>'+
-    row("Followers",f!=null?fmt(f):"\u2014",f!=null?("Followers: "+f):"")+
-    row("Last post",esc(last),lastFull?("Last post: "+lastFull):(b.postAge!=null?("Last post: "+b.postAge+" days ago"):""))+
-    row("Starting price",esc(price),price!=="\u2014"?("Starting price: "+price):"")+
-    row("Reviews",ri?fmt(ri.count):"\u2014",ri?("Reviews: "+ri.count):"")+
-    row("Confidence",s!=null?s+"%":"\u2014",s!=null?("Information confidence: "+s+"%"):"")+
-    (yrs?row("In business",esc(yrs)):"")+
-    '<div class="xsnap" style="margin-top:12px">Scores</div>'+scoreChips4(b)+linkChips(b);
-}
-function profileExpandedHTML(b){
-  var tabs=[["overview","Overview"],["social","Social"],["pricing","Pricing"],["website","Website"],["scorecard","Scorecard"]];
-  var h='<div class="sec"><div class="xhead">'+profHead(b)+
-    '<button id="panelcollapse" class="ghostbtn" title="Collapse (Esc)">\u27E9 Collapse</button></div>'+
-    '<div class="xmain"><div class="xleft">'+
-    '<div class="ptabs" role="tablist" aria-label="Detail sections">'+tabs.map(function(t){
-      var on=S.ptab===t[0];
-      return '<button role="tab" aria-selected="'+(on?"true":"false")+'" class="'+(on?"on":"")+'" data-ptab="'+t[0]+'">'+t[1]+"</button>";
-    }).join("")+"</div>"+
-    '<div class="ptab-body">'+
-    (S.ptab==="overview"?tabOverview(b):S.ptab==="social"?tabSocial(b):S.ptab==="pricing"?tabPricing(b):S.ptab==="website"?tabWebsite(b):scorecardHTML(b))+
-    '</div></div><aside class="xside">'+xsideHTML(b)+"</aside></div></div>";
-  return h;
-}
+/* ---------- business profile: simple two-state panel ----------
+   Collapsed: overview info + score bar charts, spread across the full
+   vertical rail, top to bottom. Expanded: EVERYTHING at once — no tabs,
+   no scrolling. One click opens, one click (⟩ Collapse or Esc) closes.
+   Both states live in the same footprints as the market glance
+   (348px collapsed / 700px expanded). */
 /* latest IG activity row (media_count + biography) */
 function latestIgAct(b){
   var best=null;
@@ -674,242 +611,203 @@ function coverageOf(b){
   var w=WI[b.id];
   return (w&&!w.unreachable&&w.coverage&&w.coverage.length)?w.coverage.join(" · "):null;
 }
-function tabOverview(b){
-  var h="", igAct=latestIgAct(b), wi=WI[b.id], wOk=wi&&!wi.unreachable;
+/* headline numbers, shared by the collapsed rows and the expanded strip */
+function snapData(b){
+  var f=followersAt(b,S.di), ri=reviewInfo(b), s=confOf(b);
+  var price=b.price.wedding!=null?money(b.price.wedding)
+    :b.price.session!=null?money(b.price.session)
+    :b.price.weddingHourly!=null?money(b.price.weddingHourly)+"/hr":"—";
+  var lastFull=b.last_post_date?dstr(b.last_post_date):null;
+  var last=lastFull?dstrShort(b.last_post_date):(b.postAge!=null?b.postAge+"d ago":"—");
+  return {f:f,ri:ri,s:s,price:price,
+    priceT:price!=="—"?("Starting price: "+price):"",
+    last:last,
+    lastT:lastFull?("Last post: "+lastFull):(b.postAge!=null?("Last post: "+b.postAge+" days ago"):""),
+    lastFull:lastFull,yrs:yearsStr(b)};
+}
+function snapRowsHTML(b){
+  var d=snapData(b);
+  function row(l,v,t){ return '<div class="xkv"><span>'+l+'</span><b'+(t?' title="'+esc(t)+'"':"")+'>'+v+"</b></div>"; }
+  return row("Followers",d.f!=null?fmt(d.f):"—",d.f!=null?("Followers: "+d.f):"")+
+    row("Last post",esc(d.last),d.lastT)+
+    row("Starting price",esc(d.price),d.priceT)+
+    row("Reviews",d.ri?fmt(d.ri.count):"—",d.ri?("Reviews: "+d.ri.count):"")+
+    row("Confidence",d.s!=null?d.s+"%":"—",d.s!=null?("Information confidence: "+d.s+"%"):"");
+}
+/* overview: bio, services, coverage, years */
+function ovBioHTML(b){
+  var igAct=latestIgAct(b), wi=WI[b.id], wOk=wi&&!wi.unreachable;
   var bio=igAct&&igAct.biography;
-  if(bio||(wOk&&wi.site_note)){
-    h+="<h3>About</h3>";
-    if(bio) h+='<div class="sub bio">“'+esc(bio)+"”</div>";
-    if(wOk&&wi.site_note) h+='<div class="sub">'+esc(wi.site_note)+"</div>";
-  }
+  var h="";
+  if(bio) h+='<div class="sub bio clamp3">“'+esc(bio)+"”</div>";
+  if(wOk&&wi.site_note) h+='<div class="sub clamp3">'+esc(wi.site_note)+"</div>";
   var sv=servicesOf2(b);
-  if(sv) h+="<h3>Services</h3>"+'<div class="chiprow">'+sv.map(function(s){return '<span class="chip">'+esc(s)+"</span>";}).join(" ")+"</div>";
+  if(sv) h+='<div class="chiprow">'+sv.map(function(s){return '<span class="chip">'+esc(s)+"</span>";}).join(" ")+"</div>";
   var cov=coverageOf(b), yrs=yearsStr(b);
   if(cov||yrs){
-    h+="<h3>Coverage & history</h3>"+'<dl class="kv">';
+    h+='<dl class="kv">';
     if(cov) h+="<dt>Coverage</dt><dd>"+esc(cov)+"</dd>";
     if(yrs) h+="<dt>In business</dt><dd><b>"+esc(yrs)+"</b></dd>";
     h+="</dl>";
   }
-  return h||'<div class="sub">No overview data yet.</div>';
+  return h;
 }
-function tabSocial(b){
+/* score bar charts — blue fill is data, gold band is state */
+function scoreBarsHTML(b,clickable){
+  var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
+  return '<div class="pbars">'+defs.map(function(d){
+    var r=d[1], s=r.score, pct=s==null?0:Math.max(0,Math.min(100,s));
+    return '<div class="pbar"'+(clickable?' data-cf="'+b.id+'" title="'+esc(r.band+(r.why?" — "+r.why:"")+" — expand for everything")+'"':"")+'>'+
+      '<span class="pbl">'+d[0]+'</span>'+
+      '<span class="pbtrack"><i style="width:'+pct+'%'+(s==null?";background:rgba(255,255,255,.14)":"")+'"></i></span>'+
+      '<span class="pbv">'+(s==null?"—":s+' <small>'+esc(r.band)+"</small>")+"</span></div>";
+  }).join("")+"</div>";
+}
+/* collapsed: overview + headline numbers + score bars, rail top to bottom */
+function profileCollapsedHTML(b){
+  return '<div class="pcol">'+
+    profHead(b)+
+    '<div class="pspace"></div>'+
+    ovBioHTML(b)+
+    '<div class="plab">Headline numbers</div>'+snapRowsHTML(b)+
+    '<div class="pspace"></div>'+
+    '<div class="plab">Scores</div>'+scoreBarsHTML(b,true)+
+    '<div class="pspace"></div>'+
+    linkChips(b)+
+    '<div class="sub expandhint">Expand <b>⟨</b> on the panel edge for everything at once.</div>'+
+  "</div>";
+}
+/* ---------- expanded: everything at once, no tabs, no scrolling ---------- */
+function estat6HTML(b){
+  var d=snapData(b);
+  function stat(v,l,t){ return '<div class="hstat"><div class="v"'+(t?' title="'+esc(t)+'"':"")+'>'+v+'</div><div class="l">'+l+"</div></div>"; }
+  return '<div class="hstats6">'+
+    stat(d.f!=null?fmt(d.f):"—","Followers",d.f!=null?("Followers: "+d.f):"")+
+    stat(esc(d.last),"Last post",d.lastT)+
+    stat(esc(d.price),"Starting price",d.priceT)+
+    stat(d.ri?fmt(d.ri.count):"—","Reviews",d.ri?("Reviews: "+d.ri.count):"")+
+    stat(d.s!=null?d.s+"%":"—","Confidence",d.s!=null?("Information confidence: "+d.s+"%"):"")+
+    stat(d.yrs?esc(d.yrs):"—","In business",d.yrs?("In business: "+d.yrs):"")+"</div>";
+}
+function xsecAbout(b){
+  var h=ovBioHTML(b);
+  return '<section class="xsec"><h4>About</h4>'+(h||'<div class="xdim">No overview data yet.</div>')+"</section>";
+}
+function xsecSocial(b){
   var f=followersAt(b,S.di);
   var ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
   var medF=C.map(function(x){return x.followers;}).filter(function(v){return v!=null;}).sort(function(a,c){return a-c;});
   var mF=medF.length?medF[Math.floor(medF.length/2)]:null;
   var rF=b.followers!=null?rankOf(b,"followers",true):null;
-  var h="";
   var rows="";
-  if(f!=null) rows+="<dt>Followers</dt><dd><b>"+fmt(f)+"</b>"+(rF?' <span style="color:var(--dim)">#'+rF.rank+" of "+rF.of+"</span>":"")+"</dd>";
+  if(f!=null) rows+="<dt>Followers</dt><dd><b>"+fmt(f)+"</b>"+(rF?' <span class="xdim">#'+rF.rank+" of "+rF.of+"</span>":"")+"</dd>";
   if(f!=null&&mF!=null) rows+="<dt>vs median</dt><dd>"+(f>=mF?'<b style="color:var(--up)">'+pctStr((f-mF)/mF*100)+" above</b>":'<b style="color:var(--red)">'+pctStr((f-mF)/mF*100)+" below</b>")+"</dd>";
-  if(b.last_post_date) rows+="<dt>Last post</dt><dd><b>"+dstr(b.last_post_date)+"</b>"+(b.postAge!=null?' <span style="color:var(--dim)">('+b.postAge+"d ago)</span>":"")+"</dd>";
+  if(b.last_post_date) rows+="<dt>Last post</dt><dd><b>"+dstr(b.last_post_date)+"</b>"+(b.postAge!=null?' <span class="xdim">('+b.postAge+"d ago)</span>":"")+"</dd>";
   if(b.last_post_type) rows+="<dt>Format</dt><dd>"+esc(b.last_post_type)+"</dd>";
   if(b.last_post_topic) rows+="<dt>Topic</dt><dd>"+esc(b.last_post_topic)+"</dd>";
   var igAct=latestIgAct(b);
   if(igAct&&igAct.media_count!=null) rows+="<dt>Posts</dt><dd><b>"+fmt(igAct.media_count)+"</b></dd>";
-  if(rows){
-    h+="<h3>Instagram</h3>"+'<dl class="kv">'+rows+"</dl>";
-    if(igAct&&igAct.biography) h+='<div class="sub bio">“'+esc(igAct.biography)+"”</div>";
-  }
-  h+="<h3>Follower trend</h3>";
-  h+='<div class="trendgrid"><div class="stat"><div class="v pct '+(ch7==null?"fl":ch7>=0?"up":"dn")+'">'+pctStr(ch7)+'</div><div class="l">7-day</div></div>'+
-     '<div class="stat"><div class="v pct '+(ch30==null?"fl":ch30>=0?"up":"dn")+'">'+pctStr(ch30)+'</div><div class="l">30-day</div></div></div>';
-  h+=sparkline(b.followHist);
-  h+='<div class="sub" style="margin-top:6px;opacity:.65">Public Instagram follower counts, updated daily.</div>';
+  var h='<section class="xsec"><h4>Instagram</h4>';
+  if(rows) h+='<dl class="kv">'+rows+"</dl>";
+  h+='<div class="x2stat"><span class="pct '+(ch7==null?"fl":ch7>=0?"up":"dn")+'">'+pctStr(ch7)+'</span><span class="xdim">7-day</span>'+
+     '<span class="pct '+(ch30==null?"fl":ch30>=0?"up":"dn")+'">'+pctStr(ch30)+'</span><span class="xdim">30-day</span></div>';
+  h+=(b.followHist&&b.followHist.length>=2)?sparkline(b.followHist,300,46):'<div class="xdim">Not enough history for a trend yet.</div>';
   if(b.ig_handle) h+='<div class="sc-link"><a class="dsrc" href="https://instagram.com/'+esc(b.ig_handle)+'" target="_blank" rel="noopener">Instagram ↗</a></div>';
-  return h||'<div class="sub">No Instagram data on record.</div>';
+  return h+"</section>";
 }
-function tabPricing(b){
+function xsecPricing(b){
   var wArr=C.filter(function(x){return x.price.wedding!=null;}).sort(function(a,c){return a.price.wedding-c.price.wedding;});
   var rW=b.price.wedding!=null?wArr.indexOf(b)+1:null;
   var rows="";
-  if(b.price.wedding!=null) rows+="<dt>Wedding from</dt><dd><b>"+money(b.price.wedding)+"</b>"+(rW?' <span style="color:var(--dim)">#'+rW+" of "+wArr.length+"</span>":"")+"</dd>";
+  if(b.price.wedding!=null) rows+="<dt>Wedding from</dt><dd><b>"+money(b.price.wedding)+"</b>"+(rW?' <span class="xdim">#'+rW+" of "+wArr.length+"</span>":"")+"</dd>";
   if(b.price.weddingHourly!=null) rows+="<dt>Wedding rate</dt><dd><b>"+money(b.price.weddingHourly)+"/hr</b></dd>";
   if(b.price.session!=null) rows+="<dt>Session from</dt><dd><b>"+money(b.price.session)+"</b></dd>";
   var cfd=CONF[b.id];
   if(cfd&&cfd.conflict) rows+='<dt>Price conflict</dt><dd><span class="pcflag">needs review</span><br>'+
-    cfd.conflict.values.map(function(v){ return '<span style="color:var(--dim)">'+esc(v.label)+":</span> <b>"+esc(v.text)+"</b>"; }).join("<br>")+"</dd>";
-  var h="";
+    cfd.conflict.values.map(function(v){ return '<span class="xdim">'+esc(v.label)+":</span> <b>"+esc(v.text)+"</b>"; }).join("<br>")+"</dd>";
+  var h='<section class="xsec"><h4>Pricing</h4>';
   if(rows){
-    h+="<h3>Rates</h3>"+'<dl class="kv">'+rows+"</dl>";
+    h+='<dl class="kv">'+rows+"</dl>";
     var r=wedRank(b);
-    if(r) h+='<div class="sub">Cheaper than <b>'+r.pct+'%</b> of '+r.n+' tracked businesses · market median '+money(r.med)+".</div>";
-  } else h+='<div class="sub">No published pricing found.</div>';
+    if(r) h+='<div class="xdim">Cheaper than <b>'+r.pct+'%</b> of '+r.n+" · median "+money(r.med)+".</div>";
+  } else h+='<div class="xdim">No published pricing found.</div>';
   if(b.pricing_url) h+='<div class="sc-link"><a class="dsrc" href="'+esc(/^https?:/i.test(b.pricing_url)?b.pricing_url:"https://"+b.pricing_url)+'" target="_blank" rel="noopener">Pricing source ↗</a></div>';
-  return h;
+  return h+"</section>";
 }
-function tabWebsite(b){
+function xsecWebsite(b){
   var wi=WI[b.id], wOk=wi&&!wi.unreachable;
   var sv=servicesOf2(b), cov=coverageOf(b), yrs=yearsStr(b);
   var rows="";
-  if(sv) rows+="<dt>Services</dt><dd>"+sv.map(function(s){return '<span class="chip">'+esc(s)+"</span>";}).join(" ")+"</dd>";
   if(yrs) rows+="<dt>In business</dt><dd><b>"+esc(yrs)+"</b></dd>";
   if(cov) rows+="<dt>Coverage</dt><dd>"+esc(cov)+"</dd>";
   if(wOk&&wi.platform) rows+="<dt>Site built on</dt><dd>"+esc(wi.platform)+"</dd>";
-  var h="";
+  var h='<section class="xsec"><h4>Website</h4>';
   if(rows){
-    h+="<h3>Website</h3>"+'<dl class="kv">'+rows+"</dl>";
-    if(wOk&&wi.site_note) h+='<div class="sub">'+esc(wi.site_note)+"</div>";
-    h+='<div class="sub" style="opacity:.65">Checked '+esc((wi&&wi.fetched)||"Sep 2026")+"</div>";
-  } else h+='<div class="sub">No website intel on record.</div>';
+    h+='<dl class="kv">'+rows+"</dl>";
+    if(wOk&&wi.site_note) h+='<div class="xdim clamp3">'+esc(wi.site_note)+"</div>";
+    h+='<div class="xdim">Checked '+esc((wi&&wi.fetched)||"Sep 2026")+"</div>";
+  } else h+='<div class="xdim">No website intel on record.</div>';
+  if(sv) h+='<div class="chiprow">'+sv.map(function(s){return '<span class="chip">'+esc(s)+"</span>";}).join(" ")+"</div>";
   if(b.website) h+='<div class="sc-link"><a class="dsrc" href="'+esc(/^https?:/i.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a></div>';
-  return h;
+  return h+"</section>";
 }
-/* ---------- scorecard as a tab: raw figures lead, scores are small badges ---------- */
-function scBadge(res){
-  if(res.score==null) return '<span class="sc-badge unk">'+esc(res.band)+"</span>";
-  return '<span class="sc-badge"><span class="n">'+res.score+'</span><span class="sep">·</span><span class="b">'+esc(res.band)+"</span></span>";
+/* one-line raw evidence behind each score */
+function scoreRawLine(b,label,res){
+  var t="";
+  if(label==="Activity") t=res.days!=null?("Last post "+dstr(b.last_post_date)+" · "+(res.days===0?"today":res.days+"d ago")):"no post date on record";
+  else if(label==="Momentum"){ var f1=followersAt(b,S.di);
+    t=f1!=null?(fmt(f1)+" followers"+(res.ch30!=null?" · "+(res.ch30>=0?"+":"")+res.ch30.toFixed(1)+"% / 30d":"")):"no follower history"; }
+  else if(label==="Engagement") t=res.e?(res.e.rate_pct+"% mean engagement"+(res.rank?" · #"+res.rank+" of "+res.of:"")):"no engagement data";
+  else if(label==="Price position") t=res.r?(money(b.price.wedding)+" wedding floor · #"+res.r.rank+" of "+res.r.n+" · cheaper than "+res.r.pct+"%"):(b.price.weddingHourly!=null?(money(b.price.weddingHourly)+"/hr hourly wedding rate"):"no pricing on record");
+  else if(label==="Reviews") t=res.r?(fmt(res.r.count)+" "+(res.r.src||"Google").toLowerCase()+" reviews"+(res.r.rating?" · "+res.r.rating+" / 5":"")+(typeof REV_MED!=="undefined"&&REV_MED!=null?" · peer median "+REV_MED:"")):"not yet collected";
+  return '<div class="xraw"><b>'+label+':</b> '+esc(t)+"</div>";
 }
-function scCard(label,res,rawBig,rawSub,chart,detail,link){
-  return '<section class="sc-card"><div class="sc-head"><span class="sc-label">'+label+"</span>"+scBadge(res)+"</div>"+
-    '<div class="sc-raw">'+rawBig+(rawSub?'<small>'+rawSub+"</small>":"")+"</div>"+
-    (chart||"")+(detail?'<div class="sc-detail">'+detail+"</div>":"")+
-    (link?'<div class="sc-link">'+link+"</div>":"")+"</section>";
-}
-function ext2(url,label){
-  if(!url) return "";
-  var u=/^https?:/i.test(url)?url:"https://"+url;
-  return '<a class="dsrc" href="'+esc(u)+'" target="_blank" rel="noopener">'+label+" ↗</a>";
-}
-/* momentum: full labeled line chart (bigger than the old sparkline) */
-function labeledLine(hist){
-  if(!hist||hist.length<2) return "";
-  var W=360,H=160,pl=46,pb=24,pt=10,pr=10;
-  var vals=hist.map(function(r){return r.f;});
-  var mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals);
-  if(mx===mn) mx=mn+1;
-  function X(i){return pl+i/(hist.length-1)*(W-pl-pr);}
-  function Y(v){return pt+(1-(v-mn)/(mx-mn))*(H-pt-pb);}
-  var pts=hist.map(function(r,i){return X(i).toFixed(1)+","+Y(r.f).toFixed(1);}).join(" ");
-  var mid=Math.round((mn+mx)/2), out="";
-  [[mx,"top"],[mid,"mid"],[mn,"bot"]].forEach(function(g){
-    var y=Y(g[0]);
-    out+='<line x1="'+pl+'" y1="'+y.toFixed(1)+'" x2="'+(W-pr)+'" y2="'+y.toFixed(1)+'" class="sc-grid"/>';
-    out+='<text x="'+(pl-6)+'" y="'+(y+4).toFixed(1)+'" class="sc-axis" text-anchor="end">'+fmt(g[0])+"</text>";
-  });
-  out+='<polyline points="'+pts+'" class="sc-poly"/>';
-  out+='<circle cx="'+X(hist.length-1).toFixed(1)+'" cy="'+Y(vals[vals.length-1]).toFixed(1)+'" r="4" class="sc-dot"/>';
-  out+='<text x="'+pl+'" y="'+(H-6)+'" class="sc-axis">'+dstr(hist[0].date)+"</text>";
-  out+='<text x="'+(W-pr)+'" y="'+(H-6)+'" class="sc-axis" text-anchor="end">'+dstr(hist[hist.length-1].date)+"</text>";
-  return '<svg class="sc-line" viewBox="0 0 '+W+" "+H+'">'+out+"</svg>";
-}
-/* engagement: bigger bars with per-post value labels + labeled ends */
-function engBarsBig(en){
-  if(!en||!en.bars||!en.bars.length) return "";
-  var mx=Math.max.apply(null,en.bars.concat([1]));
-  var bars=en.bars.map(function(x){
-    return '<span class="dbar big"><span class="vlab">'+x+'%</span><span class="bfill" style="height:'+Math.max(6,Math.round(x/mx*100))+'%"></span></span>';
-  }).join("");
-  return '<div class="sc-chart"><div class="dbars big">'+bars+"</div>"+
-    '<div class="dscale-lbl big"><span>oldest</span><span>per-post engagement · peak '+mx+'%</span><span>latest</span></div></div>';
-}
-function scorecardHTML(b){
-  var a=actScore(b), m=momScore(b), e=engScore(b), v=valScore(b), r=revScore(b);
-  var igUrl=b.ig_handle?("https://instagram.com/"+b.ig_handle):null;
-  /* composite: one summary line above the cards */
-  var parts=[["Activity",a],["Momentum",m],["Engagement",e],["Price position",v],["Reviews",r]]
-    .filter(function(x){return x[1].score!=null;});
-  var h='<div class="sc-comp">';
+function xsecScores(b){
+  var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
+  var parts=defs.filter(function(d){return d[1].score!=null;});
+  var h='<section class="xsec"><h4>Scores</h4>';
   if(parts.length){
-    var comp=Math.round(parts.reduce(function(s,x){return s+x[1].score;},0)/parts.length);
+    var comp=Math.round(parts.reduce(function(s,d){return s+d[1].score;},0)/parts.length);
     var best=parts.slice().sort(function(x,y){return y[1].score-x[1].score;})[0];
     var worst=parts.slice().sort(function(x,y){return x[1].score-y[1].score;})[0];
-    h+='<div class="sc-comp-n">'+comp+'</div><div class="sc-comp-t"><b>Composite score</b><span>'+
-      parts.length+" of 5 signals reporting · strongest "+esc(best[0])+" ("+best[1].score+") · weakest "+esc(worst[0])+" ("+worst[1].score+")</span></div>";
-  } else h+='<div class="sc-comp-t"><b>Composite score</b><span>No scored signals yet.</span></div>';
-  h+="</div>";
-  /* score cards tile two-up so the tab fills the wider dossier panel */
-  var cards="";
-  /* activity: raw figure is days since last post */
-  var aRaw=a.days!=null?(a.days===0?"Today":a.days+"d"):"—";
-  var aSub=a.days!=null?(a.days===0?"posted today":"since last post"):"no post date on record";
-  var aChart="", aDetail=esc(a.why);
-  if(a.days!=null){
-    aChart='<div class="sc-chart"><div class="dscale"><em class="dmark" style="left:'+Math.min(100,a.days/180*100).toFixed(1)+'%"></em></div>'+
-      '<div class="dscale-lbl big"><span>today</span><span>90d</span><span>180d+</span></div></div>';
-    var aBrk=a.days<=7?"≤ 7":a.days<=14?"≤ 14":a.days<=30?"≤ 30":a.days<=60?"≤ 60":a.days<=90?"≤ 90":"180+";
-    aDetail="Last post "+dstr(b.last_post_date)+" · bracket "+aBrk+" days";
-  }
-  cards+=scCard("Activity",a,aRaw,aSub,aChart,aDetail,ext2(igUrl,"Instagram"));
-  /* momentum: raw figure is the follower count */
-  var f0=followersAt(b,Math.max(0,S.di-30)), f1=followersAt(b,S.di);
-  var mRaw=f1!=null?fmt(f1):"—";
-  var mSub=f1!=null?("followers"+(m.ch30!=null?" · "+(m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"% / 30d":"")):"no follower history";
-  var mChart=(function(){
-    var cut=new Date(DATES[S.di]+"T12:00:00"); cut.setDate(cut.getDate()-90);
-    var cutS=cut.getFullYear()+"-"+("0"+(cut.getMonth()+1)).slice(-2)+"-"+("0"+cut.getDate()).slice(-2);
-    var hist=(b.followHist||[]).filter(function(r){ return r.date>=cutS; });
-    return labeledLine(hist);
-  })();
-  var mDetail=m.ch30!=null?("7-day "+(m.ch7>=0?"+":"")+m.ch7.toFixed(1)+"% · 30-day "+(m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"+(f0!=null&&f1!=null?" · "+fmt(f0)+" → "+fmt(f1):"")):esc(m.why);
-  cards+=scCard("Momentum",m,mRaw,mSub,mChart,mDetail,ext2(igUrl,"Instagram"));
-  /* engagement: raw figure is the mean rate; rank + vs median so it can distinguish */
-  var eRaw=e.e?e.e.rate_pct+"%":"—";
-  var eSub=e.e?("mean engagement"+(e.rank?" · #"+e.rank+" of "+e.of:"")+(ENG_MED!=null?" · "+(e.e.rate_pct>=ENG_MED?'<b class="up">+':"<b>")+Math.round((e.e.rate_pct-ENG_MED)/Math.max(ENG_MED,0.01)*100)+"% vs median</b>":"")):"no engagement data";
-  cards+=scCard("Engagement",e,eRaw,eSub,engBarsBig(e.e),esc(e.why),ext2(igUrl,"Instagram"));
-  /* price: raw figure is the floor; hourly-only gets a slim row, not a card */
-  if(v.r){
-    var pRaw=money(b.price.wedding);
-    var pSub="wedding floor · #"+v.r.rank+" of "+v.r.n+" · cheaper than "+v.r.pct+"%";
-    var arr=_wedArr, mn=arr[0].price.wedding, mx=arr[arr.length-1].price.wedding, sp=Math.max(1,mx-mn);
-    var pChart='<div class="sc-chart"><div class="dscale"><i class="dmed" style="left:'+((v.r.med-mn)/sp*100).toFixed(1)+'%"></i>'+
-      '<em class="dmark" style="left:'+((b.price.wedding-mn)/sp*100).toFixed(1)+'%"></em></div>'+
-      '<div class="dscale-lbl big"><span>'+money(mn)+"</span><span>median "+money(v.r.med)+"</span><span>"+money(mx)+"</span></div></div>";
-    cards+=scCard("Price position",v,pRaw,pSub,pChart,esc(v.why),ext2(b.pricing_url,"Pricing"));
-  } else if(b.price.weddingHourly!=null){
-    var pmed=_wedArr&&_wedArr.length?_wedArr[Math.floor(_wedArr.length/2)].price.wedding:null;
-    cards+='<div class="sc-slim"><b>'+money(b.price.weddingHourly)+'/hr</b><span>hourly wedding rate · '+
-      HOURLY_N+" of "+B.length+" businesses price hourly"+
-      (pmed!=null?" · package floors median "+money(pmed):"")+"</span>"+scBadge(v)+"</div>";
-  }
-  /* reviews: plain number + peer median, no log slider */
-  var rRaw=r.r?fmt(r.r.count):"—";
-  var rSub=r.r?((r.r.src||"Google").toLowerCase()+" reviews"+(r.r.rating?" · "+r.r.rating+" / 5":"")+
-    (REV_MED!=null?" · peer median "+REV_MED:"")):"not yet collected";
-  var rDetail=r.r?((r.r.count>=REV_MED?"Above":"Below")+" the peer median of "+REV_MED+" reviews"):esc(r.why);
-  cards+=scCard("Reviews",r,rRaw,rSub,"",rDetail,ext2(b.review_url,"Live listing"));
-  h+='<div class="sc-grid2">'+cards+confSection(b)+"</div>";
-  return h;
+    h+='<div class="xcomp"><b>'+comp+'</b><span>Composite · '+parts.length+" of 5 signals reporting · strongest "+esc(best[0])+" ("+best[1].score+") · weakest "+esc(worst[0])+" ("+worst[1].score+")</span></div>";
+  } else h+='<div class="xdim">No scored signals yet.</div>';
+  h+=scoreBarsHTML(b,false);
+  h+='<div class="xraws">'+defs.map(function(d){ return scoreRawLine(b,d[0],d[1]); }).join("")+"</div>";
+  return h+"</section>";
 }
-/* information confidence: segmented bar + one-line summary; unverified items
-   surface by default, full seven-factor breakdown behind an expander */
-function confSection(b){
+function xsecConf(b){
   var s=confOf(b); if(s==null) return "";
   var cfd=CONF[b.id]||{}, parts=cfd.parts||{};
   var igUrl=b.ig_handle?("https://instagram.com/"+b.ig_handle):null;
   var FACTORS=[
-    ["website","Website",25,"the business site loads and was actually read","site never loaded in a sweep",b.website,"site"],
-    ["prices","Prices",15,"a starting price was parsed from their published pricing","no starting price found",b.pricing_url,"pricing"],
-    ["services","Services",15,"their service list is on record","no service list found",null,null],
-    ["ig","Instagram",15,"the handle resolves to a tracked profile","no tracked Instagram handle",igUrl,"profile"],
-    ["location","Location",10,"town/county corroborated beyond the roster","location not corroborated",null,null],
-    ["years","History",10,"years in business known","years in business unknown",null,null],
-    ["corroboration","Third source",10,"at least one source beyond their own site","no outside source found yet",b.review_url,"listing"]
+    ["website","Website",25,b.website,"site"],
+    ["prices","Prices",15,b.pricing_url,"pricing"],
+    ["services","Services",15,null,null],
+    ["ig","Instagram",15,igUrl,"profile"],
+    ["location","Location",10,null,null],
+    ["years","History",10,null,null],
+    ["corroboration","Third source",10,b.review_url,"listing"]
   ];
-  var verified=0, segs="", missed="", all="";
+  var verified=0, segs="", rows="";
   FACTORS.forEach(function(f){
     var er=parts[f[0]]||0, got=er>0; if(got) verified++;
     segs+='<span class="dcseg" style="flex:'+f[2]+' 1 0%" title="'+f[1]+": "+er+"/"+f[2]+'"><i style="width:'+Math.round(100*er/f[2])+'%"></i></span>';
-    var row='<div class="dfactor'+(got?"":" missed")+'"><b>'+f[1]+'</b><span class="dfpts">'+er+"/"+f[2]+"</span>"+
-      "<span>"+(got?f[3]:"Not verified — "+f[4])+"</span></div>";
-    all+=row;
-    if(!got) missed+='<div class="dfactor missed slim"><b>'+f[1]+':</b><span>not verified — '+f[4]+"</span></div>";
+    rows+='<div class="xkv'+(got?"":" missed")+'"><span>'+f[1]+'</span><b>'+er+"/"+f[2]+(got?"":" · missing")+"</b></div>";
   });
-  /* a price conflict docks 20 points off the factor sum — show it so the
-     total always reconciles with the breakdown above */
-  if(cfd.conflict) all+='<div class="dfactor missed"><b>Price conflict</b><span class="dfpts">−20</span>'+
-    "<span>Conflicting wedding floors across sources — total reduced by 20.</span></div>";
-  var cls=confBand(s);
-  var note="The governing score — every score above is only as reliable as the data behind it. A rotating deep-dive pass re-researches every business weekly to raise these scores.";
-  return '<section class="sc-card conf"><div class="sc-head"><span class="sc-label">Information confidence</span>'+
-    '<span class="sc-badge"><span class="n">'+s+'%</span></span>'+
-    '<span class="infoq" title="'+esc(note)+'">?</span></div>'+
+  var h='<section class="xsec"><h4>Information confidence</h4>'+
     '<div class="cf2-bar"><span class="dcsegs wide">'+segs+'</span></div>'+
-    '<div class="sc-detail"><b>'+verified+" of "+FACTORS.length+"</b> factors verified"+(cfd.conflict?'; <b>−20</b> price-conflict penalty applied':"")+".</div>"+
-    (missed?'<div class="cf2-missed">'+missed+"</div>":"")+
-    '<details class="cf2-all"><summary>Full seven-factor breakdown</summary><div class="dfactors">'+all+"</div></details>"+
-    "</section>";
+    '<div class="xkv"><span>Score</span><b>'+s+"% · "+verified+" of "+FACTORS.length+" factors verified</b></div>"+rows;
+  if(cfd.conflict) h+='<div class="xkv missed"><span>Price conflict</span><b>−20 penalty applied</b></div>';
+  return h+"</section>";
+}
+function profileExpandedHTML(b){
+  return '<div class="sec xall"><div class="xhead">'+profHead(b)+
+    '<button id="panelcollapse" class="ghostbtn" title="Collapse (Esc)">⟩ Collapse</button></div>'+
+    estat6HTML(b)+
+    '<div class="xgrid">'+xsecAbout(b)+xsecSocial(b)+xsecPricing(b)+xsecWebsite(b)+"</div>"+
+    '<div class="xgrid2">'+xsecScores(b)+xsecConf(b)+"</div>"+
+    linkChips(b)+"</div>";
 }
 /* expand / collapse the detail panel */
 function toggleExpand(){
@@ -1496,7 +1394,8 @@ function renderRight(){
     px.setAttribute("aria-label",S.expanded?"Collapse detail panel":"Expand detail panel");
     px.title=S.expanded?"Collapse — back to scan view":"Expand — study this business";
   }
-  el.innerHTML=b?(b.type==="venue"?venueProfileHTML(b):(S.expanded?profileExpandedHTML(b):profileCollapsedHTML(b))):marketGlanceHTML();
+  el.innerHTML=(window.innerWidth<=900?'<button class="mclose" data-mclose>Close</button>':"")+
+    (b?(b.type==="venue"?venueProfileHTML(b):(S.expanded?profileExpandedHTML(b):profileCollapsedHTML(b))):marketGlanceHTML());
   $$("[data-count]",el).forEach(function(n){
     var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
     if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
@@ -1742,7 +1641,7 @@ function clearSel(){
 }
 function select(id,opts){
   opts=opts||{};
-  S.sel=id; S.expanded=false; S.ptab="overview";
+  S.sel=id; S.expanded=false;
   var b=BY_ID[id];
   renderPins(); renderRight();
   if(S.view==="rankings") renderRankings();  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
@@ -1897,8 +1796,8 @@ function setMode(m){
 document.addEventListener("click",function(e){
   var px=e.target.closest("#panelex");
   if(px){ toggleExpand(); return; }
-  var ptab=e.target.closest(".ptabs button");
-  if(ptab){ S.ptab=ptab.getAttribute("data-ptab"); renderRight(); pushHist(); return; }
+  var mc=e.target.closest("[data-mclose]");
+  if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
   var pc=e.target.closest("#panelcollapse");
   if(pc){ S.expanded=false; renderRight(); pushHist(); return; }
   var gx=e.target.closest("[data-gexpand]");
@@ -1906,7 +1805,7 @@ document.addEventListener("click",function(e){
   var cf=e.target.closest("[data-cf]");
   if(cf){ var id=cf.getAttribute("data-cf");
     if(id!==S.sel) select(id,{fly:false});
-    S.expanded=true; S.ptab="scorecard"; renderRight(); pushHist(); return; }
+    S.expanded=true; renderRight(); pushHist(); return; }
   var t=e.target.closest("[data-open]");
   if(t){ select(t.getAttribute("data-open")); return; }
   var qx=e.target.closest("[data-qx]");
@@ -1949,8 +1848,11 @@ document.addEventListener("input",function(e){
 function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); renderLeft(); }
 timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
 $("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
-$("#rightclose").addEventListener("click",function(){ $("#right").classList.remove("open"); clearSel(); });
+
 $("#sheetgrab").addEventListener("click",function(){ $("#left").classList.toggle("open"); });
+$("#navback").addEventListener("click",goBack);
+$("#navfwd").addEventListener("click",goFwd);
+$("#navhome").addEventListener("click",goHome);
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){
     if(S.expanded){ S.expanded=false; renderRight(); pushHist(); return; }
