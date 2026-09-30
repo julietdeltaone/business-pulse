@@ -1577,6 +1577,7 @@ function renderRight(){
   $("#right").classList.toggle("wide",!S.sel&&S.glanceX);
   $("#right").classList.toggle("expanded",!!(S.expanded&&b));
   $("#right").classList.toggle("hassel",!!b);
+  $("#right").classList.toggle("showgfoot",!b&&!S.glanceX);
   document.body.classList.toggle("panelexp",!!(S.expanded&&b));
   el.innerHTML=(window.innerWidth<=900?'<button class="mclose" data-mclose>Close</button>':"")+
     (b?(b.type==="venue"?venueProfileHTML(b)
@@ -1903,7 +1904,7 @@ function nextET(hm){
   return today?"today":"tomorrow";
 }
 function buildFresh(){
-  var el=$("#footfresh"); if(!el) return;
+  var el=$("#glancefoot"); if(!el) return;
   var igD=newestIgDate(), webD=lastDate(D.webSweepHistory||[],"date"),
       aiD=lastDate(D.aiVisibility||[],"date");
   function src(label,d,approx,nom){
@@ -1918,11 +1919,11 @@ function buildFresh(){
   var g=(D.meta||{}).generated_at, built="—";
   if(g){ try{ built=new Date(g).toLocaleString("en-US",{timeZone:"America/New_York",
     month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" ET"; }catch(e){} }
-  el.innerHTML='<span class="frow">'+src("IG",igD,"6:40 AM","06:40")+
-    src("Web",webD,"morning","08:00")+src("AI",aiD,"morning","08:00")+"</span>";
-  var fm=$("#footmeta");
-  if(fm) fm.textContent="Built "+built+
-    " · next IG pull ~6:40 AM "+nextET("06:40")+" · site sync ~7:54 AM "+nextET("07:54");
+  var bh=((el.dataset&&el.dataset.build)||"").replace(/^build /,"").split(" ")[0];
+  el.innerHTML='<div class="frow">'+src("IG",igD,"6:40 AM","06:40")+
+    src("Web",webD,"morning","08:00")+src("AI",aiD,"morning","08:00")+"</div>"+
+    '<div class="fmeta">Data built '+esc(built)+' · next sync ~7:54 AM ET'+
+    (bh?' · <span class="fbuild" title="Deployed build">build '+esc(bh)+"</span>":"")+"</div>";
 }
 
 /* ---------- scrubber ---------- */
