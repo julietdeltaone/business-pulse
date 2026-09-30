@@ -187,6 +187,90 @@ var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unc
 var S={ view:"map", mode:"businesses", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
         sel:null, playing:false, dsort:null, dq:"" };
 
+/* ---------- undo / redo history (back-forward) + home ----------
+   Every meaningful action pushes a full snapshot; back/forward restore it.
+   pushHist is a no-op while a snapshot is being applied (HIST.busy) or while
+   a programmatic map move is in flight (HIST.noPush, cleared on moveend). */
+var HIST={stack:[],i:-1,busy:false,noPush:false};
+function snapState(){
+  var c=null; try{ if(map){ var ll=map.getCenter(); c={lat:ll.lat,lng:ll.lng}; } }catch(e){}
+  return {view:S.view,mode:S.mode,tab:S.tab,sel:S.sel,q:S.q,lane:S.lane,mom:S.mom,reg:S.reg,
+    rankMode:S.rankMode,dq:S.dq,dsort:S.dsort?{key:S.dsort.key,dir:S.dsort.dir}:null,
+    z:map?map.getZoom():null,c:c};
+}
+function statesEq(a,b){ return JSON.stringify(a)===JSON.stringify(b); }
+function pushHist(){
+  if(HIST.busy||!map) return;
+  var s=snapState(), cur=HIST.stack[HIST.i];
+  if(cur&&statesEq(cur,s)) return;
+  HIST.stack=HIST.stack.slice(0,HIST.i+1);
+  HIST.stack.push(s);
+  if(HIST.stack.length>60) HIST.stack.shift();
+  HIST.i=HIST.stack.length-1;
+  updNav();
+}
+function updNav(){
+  var b=$("#navback"), f=$("#navfwd");
+  if(b) b.disabled=HIST.i<=0;
+  if(f) f.disabled=HIST.i>=HIST.stack.length-1;
+}
+function syncChrome(){
+  /* view + mode toggles */
+  $$(".viewtoggle button").forEach(function(x){ var on=x.getAttribute("data-view")===S.view;
+    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
+  $$(".modetoggle button").forEach(function(x){ var on=x.getAttribute("data-mode")===S.mode;
+    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
+  /* filters */
+  $("#flane").value=S.lane; $("#fmom").value=S.mom; $("#freg").value=S.reg; $("#fq").value=S.q;
+  var biz=S.mode!=="venues";
+  $("#flane").style.display=biz?"":"none";
+  $("#fmom").style.display=biz?"":"none";
+  $("#fq").setAttribute("placeholder",biz?"Search businesses…":"Search venues…");
+  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo market":"North Country venue watch";
+  document.title=biz?"Business Pulse · North Country photo market":"Business Pulse · North Country venues";
+  /* tabs */
+  $$(".tabs button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
+    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
+  /* rankings vs map visibility */
+  var rk=S.view==="rankings";
+  $("#rankings").hidden=!rk;
+  $("#map").style.visibility=rk?"hidden":"visible";
+}
+function applyState(st){
+  HIST.busy=true;
+  try{
+    S.view=st.view; S.mode=st.mode; S.tab=st.tab; S.sel=st.sel;
+    S.q=st.q; S.lane=st.lane; S.mom=st.mom; S.reg=st.reg;
+    S.rankMode=st.rankMode; S.dq=st.dq;
+    S.dsort=st.dsort?{key:st.dsort.key,dir:st.dsort.dir}:null;
+    C=(S.mode==="venues"?V:B); BY_ID=(S.mode==="venues"?V_BY_ID:B_BY_ID);
+    computeModeStats();
+    syncChrome();
+    if(map&&st.c){ HIST.noPush=true; map.setView([st.c.lat,st.c.lng],st.z,{animate:false}); }
+    renderPins();
+    if(S.view==="rankings") renderRankings();
+    renderLeft(); renderRight();
+    $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
+    if(S.sel){ var row=$('#leftbody .row[data-open="'+S.sel+'"]'); if(row) row.classList.add("sel"); }
+  }finally{ HIST.busy=false; }
+  updNav();
+}
+/* home: back to the map, default framing, selection + filters cleared */
+function goHome(){
+  S.sel=null; S.q=""; S.lane=""; S.mom=""; S.reg=""; S.view="map";
+  C=(S.mode==="venues"?V:B); BY_ID=(S.mode==="venues"?V_BY_ID:B_BY_ID);
+  computeModeStats();
+  syncChrome();
+  var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
+  if(map&&pts.length){ HIST.noPush=true;
+    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts),{paddingTopLeft:L.point(400,90),paddingBottomRight:L.point(380,90)});
+    else map.fitBounds(L.latLngBounds(pts).pad(0.15)); }
+  renderPins(); renderLeft(); renderRight();
+  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
+  pushHist();
+  toast("Back home — selection cleared.");
+}
+
 /* ---------- filtering ---------- */
 function norm(s){ return (s||"").toLowerCase(); }
 function passes(b){
@@ -365,14 +449,58 @@ function renderToday(){
 
 /* ---------- confidence badges + price-conflict flags ---------- */
 function confOf(b){ var c=CONF[b.id]; return c?c.score:null; }
+function confBand(s){ return s>=70?"hi":s>=40?"mid":"lo"; }
 function pcTitle(b){ var c=CONF[b.id]; if(!c||!c.conflict) return "";
   return "Price conflict — "+c.conflict.values.map(function(v){ return v.label+": "+v.text; }).join(" vs "); }
 function confBadge(b){
   var s=confOf(b); if(s==null) return "";
-  var cls=s>=70?"hi":s>=40?"mid":"lo";
-  var t="Information confidence "+s+"% — cross-referenced across website, Instagram, and directory sources. Low scores need quality control.";
+  var cls=confBand(s);
+  var t="Information confidence "+s+"% — click to see what this measures.";
   var cf=(CONF[b.id]&&CONF[b.id].conflict)?' <span class="pcflag" title="'+esc(pcTitle(b))+'">price conflict</span>':"";
-  return ' <span class="cf '+cls+'" title="'+t+'">'+s+'%</span>'+cf;
+  return ' <span class="cf '+cls+'" data-cf="'+b.id+'" title="'+t+'">'+s+'%</span>'+cf;
+}
+/* profile meter: color-coded bar, full-width row under the header (never near the X) */
+function confMeter(b){
+  var s=confOf(b); if(s==null) return "";
+  var cls=confBand(s);
+  return '<button class="cfmeter '+cls+'" data-cf="'+b.id+'" aria-label="Information confidence '+s+' percent — tap for an explanation">'+
+    '<span class="cfl">Confidence</span>'+
+    '<span class="cfbar"><i style="width:'+Math.max(3,s)+'%"></i></span>'+
+    '<span class="cfv">'+s+'%</span><span class="cfaq">?</span></button>';
+}
+/* clickable explainer: what the percentage measures, in plain language */
+function openConfModal(id){
+  var b=BY_ID[id]||B_BY_ID[id]||V_BY_ID[id]; if(!b) return;
+  var s=confOf(b); if(s==null) return;
+  var cfd=CONF[id], cls=confBand(s);
+  var bandTxt=cls==="hi"?"High — this profile is well cross-referenced across multiple sources.":
+    cls==="mid"?"Medium — partly verified. Some fields are still missing or single-sourced.":
+    "Low — thin or single-sourced. Treat the details as provisional until the deep-dive pass fills them in.";
+  var h='<div class="mback" id="cfback"><div class="modal" role="dialog" aria-label="Information confidence">'+
+    '<div class="cfpct" style="color:'+(cls==="lo"?"#e06c6c":cls==="mid"?"#e8b34b":"#6db3f2")+'">'+s+'%</div>'+
+    '<h2 style="font-size:20px">Information confidence</h2>'+
+    '<p style="margin-bottom:4px"><b style="color:var(--txt)">'+esc(b.name)+'</b></p>'+
+    '<p>'+esc(bandTxt)+'</p>'+
+    '<ul class="cfrub">'+
+    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Website (25)</b> — the business site loads and was actually read.</span></li>'+
+    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Prices (15)</b> — a starting price could be parsed from their published pricing.</span></li>'+
+    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Services (15)</b> — their service list is on record.</span></li>'+
+    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Instagram (15)</b> — the handle resolves to a tracked profile.</span></li>'+
+    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Location (10)</b> — town/county corroborated beyond the roster.</span></li>'+
+    '<li><span class="sw" style="background:#6db3f2"></span><span><b>History (10)</b> — years in business known.</span></li>'+
+    '<li><span class="sw" style="background:#6db3f2"></span><span><b>Third source (10)</b> — at least one source beyond their own site (directory, Knot, Facebook…).</span></li>'+
+    '<li><span class="sw" style="background:#e06c6c"></span><span><b>Price conflict (−20)</b> — two sources state different prices; flagged for human review.</span></li>'+
+    '</ul>';
+  if(cfd&&cfd.conflict)
+    h+='<p style="color:#e08a8a"><b>Price conflict on this profile:</b><br>'+
+      cfd.conflict.values.map(function(v){ return esc(v.label)+": <b>"+esc(v.text)+"</b>"; }).join("<br>")+'</p>';
+  h+='<p style="font-size:12px">A rotating deep-dive pass re-researches every business and venue weekly to raise these scores.</p>'+
+    '<div class="mrow"><button class="btn" id="cfok">Got it</button></div></div></div>';
+  document.body.insertAdjacentHTML("beforeend",h);
+  function close(){ var m=$("#cfback"); if(m) m.remove(); document.removeEventListener("keydown",onKey); }
+  function onKey(e){ if(e.key==="Escape") close(); }
+  document.addEventListener("keydown",onKey);
+  $("#cfback").addEventListener("click",function(e){ if(e.target.id==="cfback"||e.target.id==="cfok") close(); });
 }
 /* ---------- directory ---------- */
 function venueRow(b,i){
@@ -752,8 +880,9 @@ function profileHTML(b){
   var f=followersAt(b,S.di), ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
   var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
   var h='<div class="sec"><div class="prof-head"><div class="prof-ava">'+esc(ini)+'</div>'+
-    '<div><h2>'+esc(b.name)+confBadge(b)+'</h2>'+
-    '<div class="sub">'+esc(b.town)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+(b.region==="slc"?" · St. Lawrence Co":"")+'</div></div></div>';
+    '<div><h2>'+esc(b.name)+'</h2>'+
+    '<div class="sub">'+esc(b.town)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+(b.region==="slc"?" · St. Lawrence Co":"")+'</div></div></div>'+
+    confMeter(b);
 
   /* You vs market median — always visible */
   var medF=C.map(function(x){return x.followers;}).filter(function(v){return v!=null;}).sort(function(a,c){return a-c;});
@@ -872,6 +1001,10 @@ function initMap(){
   pinLayer=L.layerGroup().addTo(map);
   map.on("zoomend",refreshLabels);
   map.on("zoom",refreshHeat); map.on("zoomend",refreshHeat); map.on("moveend",refreshHeat);
+  map.on("moveend",function(){
+    if(HIST.busy||HIST.noPush){ HIST.noPush=false; return; } /* programmatic move: skip */
+    pushHist(); /* user panned/zoomed: record it */
+  });
   map.on("click",function(e){ /* click-away on empty map deselects */
     var t=e.originalEvent&&e.originalEvent.target;
     if(t&&t.closest&&t.closest(".leaflet-marker-icon")) return;
@@ -1021,9 +1154,9 @@ function renderPins(){
   refreshHeat();
   if(!map._fitDone){ map._fitDone=true;
     var pts=geoList.map(function(b){return [b.lat,b.lng];});
-    if(pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.12)); }
+    if(pts.length){ HIST.noPush=true; map.fitBounds(L.latLngBounds(pts).pad(0.12)); } }
 }
-function flyTo(b){ if(map&&b.lat!=null) map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); }
+function flyTo(b){ if(map&&b.lat!=null){ HIST.noPush=true; map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); } }
 
 /* ---------- rankings: stupid-simple leaderboard (replaces the old bubble field) ---------- */
 var RANK_MODES=[{id:"audience",label:"Audience"},{id:"activity",label:"Activity"},{id:"momentum",label:"Momentum"}];
@@ -1082,6 +1215,7 @@ function clearSel(){
   renderPins(); renderRight();
   $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
   if(S.view==="rankings") renderRankings();
+  pushHist();
 }
 function select(id,opts){
   opts=opts||{};
@@ -1092,6 +1226,7 @@ function select(id,opts){
   var row=$('#leftbody .row[data-open="'+id+'"]'); if(row) row.classList.add("sel");
   if(b&&opts.fly!==false&&S.view==="map") flyTo(b);
   if(b&&window.innerWidth<=900){ $("#right").classList.add("open"); }
+  pushHist();
 }
 
 /* ---------- left body ---------- */
@@ -1200,6 +1335,7 @@ function setView(v){
   $("#rankings").hidden=!rk;
   $("#map").style.visibility=rk?"hidden":"visible";
   if(rk) renderRankings();
+  pushHist();
 }
 
 /* ---------- businesses / venues hard switch ----------
@@ -1223,16 +1359,20 @@ function setMode(m){
   renderPins();
   var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
   if(pts.length&&map){
+    HIST.noPush=true; /* programmatic reframe: not a user move */
     /* account for the fixed side panels so edge pins (e.g. Altona) don't sit underneath them */
     if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts), {paddingTopLeft:L.point(400,90), paddingBottomRight:L.point(380,90)});
     else map.fitBounds(L.latLngBounds(pts).pad(0.15));
   }
   if(S.view==="rankings") renderRankings();
   renderLeft(); renderRight();
+  pushHist();
 }
 
 /* ---------- events ---------- */
 document.addEventListener("click",function(e){
+  var cf=e.target.closest("[data-cf]");
+  if(cf){ openConfModal(cf.getAttribute("data-cf")); return; }
   var t=e.target.closest("[data-open]");
   if(t){ select(t.getAttribute("data-open")); return; }
   var vt=e.target.closest(".viewtoggle button");
@@ -1240,41 +1380,45 @@ document.addEventListener("click",function(e){
   var mt=e.target.closest(".modetoggle button");
   if(mt){ setMode(mt.getAttribute("data-mode")); return; }
   var rb=e.target.closest("[data-rank]");
-  if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); return; }
+  if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); pushHist(); return; }
   var th=e.target.closest("th[data-dk]");
   if(th){ var k=th.getAttribute("data-dk"), s2=S.dsort||{key:"followers",dir:-1};
     if(s2.key===k) s2.dir=-s2.dir;
     else s2={key:k,dir:/^(followers|ch7|ch30|posts|conf)$/.test(k)?-1:1};
-    S.dsort=s2; renderLeft(); return; }
+    S.dsort=s2; renderLeft(); pushHist(); return; }
   var tb=e.target.closest(".tabs button");
   if(tb){ S.tab=tb.getAttribute("data-tab");
     $$(".tabs button").forEach(function(b){ var on=b===tb;
       b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
-    renderLeft(); return; }
+    renderLeft(); pushHist(); return; }
 });
 var fqT=null;
 $("#fq").addEventListener("input",function(e){
-  clearTimeout(fqT); fqT=setTimeout(function(){ S.q=e.target.value.trim(); refreshFiltered(); },160);
+  clearTimeout(fqT); fqT=setTimeout(function(){ S.q=e.target.value.trim(); refreshFiltered(); pushHist(); },160);
 });
 var dqT=null;
 document.addEventListener("input",function(e){
   if(e.target&&e.target.id==="dq"){
-    clearTimeout(dqT); dqT=setTimeout(function(){ S.dq=e.target.value.trim(); renderLeft();
+    clearTimeout(dqT); dqT=setTimeout(function(){ S.dq=e.target.value.trim(); renderLeft(); pushHist();
       var n=$("#dq"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },160);
   }
 });
 [["#flane","lane"],["#fmom","mom"],["#freg","reg"]].forEach(function(p){
-  $(p[0]).addEventListener("change",function(e){ S[p[1]]=e.target.value; refreshFiltered(); });
+  $(p[0]).addEventListener("change",function(e){ S[p[1]]=e.target.value; refreshFiltered(); pushHist(); });
 });
+/* persistent nav: back / forward / home */
+$("#navback").addEventListener("click",function(){ if(HIST.i>0){ HIST.i--; applyState(HIST.stack[HIST.i]); } });
+$("#navfwd").addEventListener("click",function(){ if(HIST.i<HIST.stack.length-1){ HIST.i++; applyState(HIST.stack[HIST.i]); } });
+$("#navhome").addEventListener("click",goHome);
 function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); renderLeft(); }
 timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
 $("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
-$("#rightclose").addEventListener("click",function(){ $("#right").classList.remove("open"); S.sel=null; renderPins(); renderRight(); });
+$("#rightclose").addEventListener("click",function(){ $("#right").classList.remove("open"); clearSel(); });
 $("#sheetgrab").addEventListener("click",function(){ $("#left").classList.toggle("open"); });
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){ setPlaying(false);
     if(window.innerWidth<=900){ $("#right").classList.remove("open"); }
-    else if(S.sel){ S.sel=null; renderPins(); renderRight(); } }
+    else clearSel(); }
   if(e.key==="/"&&document.activeElement!==$("#fq")){ e.preventDefault(); $("#fq").focus(); }
 });
 window.addEventListener("resize",function(){ /* rankings view flows with layout */ });
@@ -1297,4 +1441,5 @@ $("#leftbody").addEventListener("mouseout",function(e){
   if(el&&el.firstChild) el.firstChild.classList.remove("hot");
 });
 renderScrub(); renderLeft(); renderRight(); buildFresh();
+pushHist(); /* seed undo history with the initial view */
 })();
