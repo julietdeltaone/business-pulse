@@ -930,7 +930,7 @@ function svcList(b){ var out=[],seen={};
     var n=SVC_NORM[s]||null;
     if(n&&!seen[n]){ seen[n]=1; out.push(n); } });
   return out; }
-function landscapeHTML(list){
+function landscapeData(list){
   var withSvc=0, svcCount={}, svcFol={}, svcCounty={}, totFol=0;
   list.forEach(function(b){
     var f=followersAt(b,S.di); if(f!=null) totFol+=f;
@@ -943,33 +943,55 @@ function landscapeHTML(list){
     });
   });
   var svcs=Object.keys(svcCount).sort(function(a,b2){ return svcCount[b2]-svcCount[a]; });
-  if(!svcs.length) return "";
-  var h='<div class="sec ls"><h3>Service landscape</h3><div class="sub">Where the market\u2019s services run deep \u2014 and where coverage thins. Based on services businesses list publicly ('+withSvc+' of '+list.length+' disclose a list).</div>';
-  h+='<div class="ls-bars">'+svcs.map(function(s){
-    var n=svcCount[s], pct=Math.round(n/list.length*100),
-        share=totFol?Math.round((svcFol[s]||0)/totFol*100):0;
-    return '<div class="ls-brow"><div class="ls-blab" title="'+esc(s)+'">'+esc(s)+'</div>'+
-      '<div class="ls-btrack"><i style="width:'+Math.max(2,Math.round(n/svcCount[svcs[0]]*100))+'%"></i></div>'+
-      '<div class="ls-bmeta"><b>'+n+'</b> \u00b7 '+pct+'% of market \u00b7 '+share+'% of audience</div></div>';
-  }).join("")+'</div>';
-  var top=svcs.slice(0,12), mx=1;
-  top.forEach(function(s){ LS_COUNTIES.forEach(function(c){ mx=Math.max(mx,((svcCounty[s]||{})[c])||0); }); });
-  h+='<h3 class="ls-h">Service \u00d7 county map</h3><div class="sub">Providers per service in each county \u2014 deeper color means deeper coverage.</div><div class="ls-mx">';
+  return {withSvc:withSvc,total:list.length,svcCount:svcCount,svcFol:svcFol,svcCounty:svcCounty,totFol:totFol,svcs:svcs};
+}
+function lsMatrixHTML(d,all){
+  var svcs=all?d.svcs:d.svcs.slice(0,12), mx=1;
+  svcs.forEach(function(s){ LS_COUNTIES.forEach(function(c){ mx=Math.max(mx,((d.svcCounty[s]||{})[c])||0); }); });
+  var h='<div class="ls-mx">';
   h+='<div class="ls-mxlab"></div>'+LS_COUNTIES.map(function(c){ return '<div class="ls-mxch" title="'+esc(c)+' County">'+esc(LS_CSHORT[c])+'</div>'; }).join("");
-  top.forEach(function(s){
+  svcs.forEach(function(s){
     h+='<div class="ls-mxlab" title="'+esc(s)+'">'+esc(s)+'</div>';
-    LS_COUNTIES.forEach(function(c){ var v=((svcCounty[s]||{})[c])||0, a=v?0.12+0.55*(v/mx):0;
+    LS_COUNTIES.forEach(function(c){ var v=((d.svcCounty[s]||{})[c])||0, a=v?0.12+0.55*(v/mx):0;
       h+='<div class="ls-mxc" title="'+esc(s)+' \u00b7 '+esc(c)+' Co: '+v+' provider'+(v===1?'':'s')+'" style="background:rgba(232,179,75,'+a.toFixed(2)+')">'+(v||'<span class="ls-zero">\u2014</span>')+'</div>'; });
   });
-  h+='</div>';
-  var thin=svcs.slice().sort(function(a,b2){ return svcCount[a]-svcCount[b2]; }).slice(0,4);
-  h+='<h3 class="ls-h">Thinner coverage</h3><div class="sub">The least-served offerings \u2014 potential openings.</div>'+
-    thin.map(function(s){
-      var missing=LS_COUNTIES.filter(function(c){ return !((svcCounty[s]||{})[c]); });
-      return '<div class="ls-open"><b>'+esc(s)+'</b> \u2014 '+svcCount[s]+' provider'+(svcCount[s]===1?'':'s')+' market-wide'+
-        (missing.length?'; no listed providers in '+missing.map(function(c){ return esc(LS_CSHORT[c]); }).join(', '):'')+'.</div>';
-    }).join("")+'</div>';
+  return h+'</div>';
+}
+var LS_LAST=null; /* snapshot of the landscape data behind the current Market render */
+function landscapeHTML(list){
+  var d=landscapeData(list);
+  LS_LAST=d.svcs.length?d:null;
+  if(!d.svcs.length) return "";
+  var h='<div class="sec ls"><h3>Service landscape</h3><div class="sub">Where the market\u2019s services run deep. Based on services businesses list publicly ('+d.withSvc+' of '+d.total+' disclose a list).</div>';
+  h+='<div class="ls-bars">'+d.svcs.map(function(s){
+    var n=d.svcCount[s], pct=Math.round(n/d.total*100),
+        share=d.totFol?Math.round((d.svcFol[s]||0)/d.totFol*100):0;
+    return '<div class="ls-brow"><div class="ls-blab" title="'+esc(s)+'">'+esc(s)+'</div>'+
+      '<div class="ls-btrack"><i style="width:'+Math.max(2,Math.round(n/d.svcCount[d.svcs[0]]*100))+'%"></i></div>'+
+      '<div class="ls-bmeta"><b>'+n+'</b> \u00b7 '+pct+'% of market \u00b7 '+share+'% of audience</div></div>';
+  }).join("")+'</div>';
+  h+='<div class="ls-mxhead"><div><h3 class="ls-h">Service \u00d7 county map</h3><div class="sub">Providers per service in each county \u2014 deeper color means deeper coverage.</div></div>'+
+    '<button class="ls-xbtn" data-lsopen>Expand</button></div>'+
+    lsMatrixHTML(d,false)+'</div>';
   return h;
+}
+/* full-size Service x county overlay: kicks out toward the center of the screen */
+function openLsBox(){
+  if(!LS_LAST||!LS_LAST.svcs.length) return;
+  closeLsBox();
+  var d=LS_LAST, n=d.svcs.length;
+  var box=document.createElement("div");
+  box.id="lsbox";
+  box.innerHTML='<div class="lsbox-back" data-lsclose></div>'+
+    '<div class="lsbox-card" role="dialog" aria-label="Service by county, full size">'+
+    '<div class="lsbox-head"><div><h3>Service \u00d7 county map</h3>'+
+    '<div class="sub">'+n+' services \u00d7 7 counties \u2014 providers per service in each county.</div></div>'+
+    '<button class="lsbox-x" data-lsclose aria-label="Close">\u00d7</button></div>'+
+    '<div class="lsbox-body">'+lsMatrixHTML(d,true)+'</div></div>';
+  document.body.appendChild(box);
+}
+function closeLsBox(){
+  var b=$("#lsbox"); if(b) b.parentNode.removeChild(b);
 }
 var DCOLS=[
   ["name","Name","str"],["town","Town/County","str"],["followers","IG followers","num"],
@@ -2011,6 +2033,10 @@ document.addEventListener("click",function(e){
   if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
   var gx=e.target.closest("[data-gexpand]");
   if(gx){ S.glanceX=!S.glanceX; renderRight(); pushHist(); return; }
+  var lso=e.target.closest("[data-lsopen]");
+  if(lso){ openLsBox(); return; }
+  var lsc=e.target.closest("[data-lsclose]");
+  if(lsc){ closeLsBox(); return; }
   var cf=e.target.closest("[data-cf]");
   if(cf){ var id=cf.getAttribute("data-cf");
     if(id!==S.sel) select(id,{fly:false});
@@ -2066,6 +2092,7 @@ $("#navfwd").addEventListener("click",goFwd);
 $("#navhome").addEventListener("click",goHome);
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){
+    if($("#lsbox")){ closeLsBox(); return; }
     if(S.expanded){ S.expanded=false; renderRight(); pushHist(); return; }
     if(S.glanceX&&!S.sel){ S.glanceX=false; renderRight(); pushHist(); return; }
     setPlaying(false);
