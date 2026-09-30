@@ -549,36 +549,88 @@ function openScoreDash(id){
     if(res.score==null) return '<span class="dpill unk">'+esc(res.band)+'</span>';
     return '<span class="dpill '+confBand(res.score)+'">'+res.score+' · '+esc(res.band)+'</span>';
   }
-  function wdg(label,res,measures,big,detail){
-    return '<div class="dwidget"><div class="dhead"><span class="dlabel">'+label+'</span>'+pill(res)+'</div>'+
-      (big?'<div class="dbig">'+big+'</div>':"")+
-      '<p class="dmeas">'+measures+'</p>'+(detail?'<div class="dnums">'+detail+'</div>':"")+'</div>';
+  function ext(url,label){
+    if(!url) return "";
+    var u=/^https?:/i.test(url)?url:"https://"+url;
+    return '<a class="dsrc" href="'+esc(u)+'" target="_blank" rel="noopener">'+label+' ↗</a>';
   }
-  /* information: the actual grading for THIS profile — verified factors bright, missed dimmed */
+  function gradeBar(score){
+    if(score==null) return "";
+    return '<div class="dgrade" title="'+score+' / 100"><i style="width:'+score+'%"></i></div>';
+  }
+  function wdg(label,res,measures,big,graph,detail,link){
+    return '<div class="dwidget"><div class="dhead"><span class="dlabel">'+label+'</span>'+pill(res)+'</div>'+
+      (big?'<div class="dbig">'+big+'</div>':"")+gradeBar(res.score)+(graph||"")+
+      '<p class="dmeas">'+measures+'</p>'+(detail?'<div class="dnums">'+detail+'</div>':"")+
+      (link?'<div class="dlink">'+link+'</div>':"")+'</div>';
+  }
+  /* ---- information: per-factor points bars + links to the confirmable sources ---- */
   var parts=(cfd&&cfd.parts)||{};
+  var igUrl=b.ig_handle?("https://instagram.com/"+b.ig_handle):null;
   var FACTORS=[
-    ["website","Website",25,"the business site loads and was actually read","site never loaded in a sweep"],
-    ["prices","Prices",15,"a starting price was parsed from their published pricing","no starting price found"],
-    ["services","Services",15,"their service list is on record","no service list found"],
-    ["ig","Instagram",15,"the handle resolves to a tracked profile","no tracked Instagram handle"],
-    ["location","Location",10,"town/county corroborated beyond the roster","location not corroborated"],
-    ["history","History",10,"years in business known","years in business unknown"],
-    ["corroboration","Third source",10,"at least one source beyond their own site","no outside source found yet"]
+    ["website","Website",25,"the business site loads and was actually read","site never loaded in a sweep",b.website,"site"],
+    ["prices","Prices",15,"a starting price was parsed from their published pricing","no starting price found",b.pricing_url,"pricing"],
+    ["services","Services",15,"their service list is on record","no service list found",null,null],
+    ["ig","Instagram",15,"the handle resolves to a tracked profile","no tracked Instagram handle",igUrl,"profile"],
+    ["location","Location",10,"town/county corroborated beyond the roster","location not corroborated",null,null],
+    ["years","History",10,"years in business known","years in business unknown",null,null],
+    ["corroboration","Third source",10,"at least one source beyond their own site","no outside source found yet",b.review_url,"listing"]
   ];
   var verified=0, frows="";
   FACTORS.forEach(function(f){
     var e=parts[f[0]]||0, got=e>0; if(got) verified++;
     frows+='<div class="dfactor'+(got?"":" missed")+'"><span class="dfm '+(got?"ok":"no")+'">'+(got?"✓":"✗")+'</span>'+
-      '<div><b>'+f[1]+' — '+e+'/'+f[2]+'</b><span>'+(got?f[3]:"Not verified — "+f[4])+'</span></div></div>';
+      '<div class="dffull"><div class="dfrow"><b>'+f[1]+'</b><span class="dfpts">'+e+'/'+f[2]+'</span>'+
+      (got&&f[5]?ext(f[5],f[6]):"")+'</div>'+
+      (got?'<div class="dfbar"><i style="width:'+Math.round(100*e/f[2])+'%"></i></div>':"")+
+      '<span>'+(got?f[3]:"Not verified — "+f[4])+'</span></div></div>';
   });
   var infoSec='<div class="dinfo"><div class="dhead"><span class="dlabel">Information confidence</span>'+
     '<span class="dpill '+cls+'">'+s+' · '+(cls==="hi"?"High":cls==="mid"?"Medium":"Low")+'</span></div>'+
     '<p class="dmeas">The governing score — every score below is only as reliable as the data behind it.</p>'+
     '<div class="dsum">'+verified+' of '+FACTORS.length+' factors verified</div>'+
     '<div class="dfactors">'+frows+
-    (cfd&&cfd.conflict?'<div class="dfactor full missed"><span class="dfm no">−20</span><div><b>Price conflict</b><span>'+
+    (cfd&&cfd.conflict?'<div class="dfactor full missed"><span class="dfm no">−20</span><div class="dffull"><div class="dfrow"><b>Price conflict</b></div><span>'+
       cfd.conflict.values.map(function(x){ return esc(x.label)+": "+esc(x.text); }).join(" vs ")+
       ' — flagged for human review</span></div></div>':"")+'</div></div>';
+  /* ---- activity: recency bracket scale ---- */
+  var aBrk=a.days!=null?(a.days<=7?"≤ 7":a.days<=14?"≤ 14":a.days<=30?"≤ 30":a.days<=60?"≤ 60":a.days<=90?"≤ 90":"180+")+" days":null;
+  var aGraph="", aDetail=esc(a.why), aLink=ext(igUrl,"Instagram");
+  if(a.days!=null){
+    aGraph='<div class="dgraph"><div class="dscale"><em class="dmark" style="left:'+Math.min(100,a.days/180*100).toFixed(1)+'%"></em></div>'+
+      '<div class="dscale-lbl"><span>today</span><span>90d</span><span>180d+</span></div></div>';
+    aDetail="Last post "+dstr(b.last_post_date)+" ("+a.days+(a.days===1?" day":" days")+" ago) · bracket "+aBrk+" → "+a.score+" pts";
+  }
+  /* ---- momentum: real follower line graph + 7d/30d sub-scores ---- */
+  var mGraph="", mDetail=esc(m.why), mLink=ext(igUrl,"Instagram");
+  (function(){
+    var cut=new Date(DATES[S.di]+"T12:00:00"); cut.setDate(cut.getDate()-90);
+    var cutS=cut.getFullYear()+"-"+("0"+(cut.getMonth()+1)).slice(-2)+"-"+("0"+cut.getDate()).slice(-2);
+    var hist=(b.followHist||[]).filter(function(r){ return r.date>=cutS; });
+    if(hist.length>1) mGraph='<div class="dgraph">'+sparkline(hist,300,54)+'</div>';
+  })();
+  if(m.ch30!=null){
+    var s7=Math.max(5,Math.min(100,Math.round(50+(m.ch7||0)*8)));
+    var f0=followersAt(b,Math.max(0,S.di-30)), f1=followersAt(b,S.di);
+    mDetail="7-day "+(m.ch7>=0?"+":"")+m.ch7.toFixed(1)+"% → "+s7+" pts · 30-day "+(m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"% → "+m.score+" pts"+
+      (f0!=null&&f1!=null?" · "+fmt(f0)+" → "+fmt(f1)+" followers":"");
+  }
+  /* ---- price position: market scale with median tick + rank granularity ---- */
+  var pGraph="", pDetail=esc(v.why), pLink=ext(b.pricing_url,"Pricing");
+  if(v.r){
+    var arr=_wedArr, mn=arr[0].price.wedding, mx=arr[arr.length-1].price.wedding, sp=Math.max(1,mx-mn);
+    pGraph='<div class="dgraph"><div class="dscale"><i class="dmed" style="left:'+((v.r.med-mn)/sp*100).toFixed(1)+'%"></i>'+
+      '<em class="dmark" style="left:'+((b.price.wedding-mn)/sp*100).toFixed(1)+'%"></em></div>'+
+      '<div class="dscale-lbl"><span>'+money(mn)+'</span><span>median '+money(v.r.med)+'</span><span>'+money(mx)+'</span></div></div>';
+    pDetail="Floor "+money(b.price.wedding)+" · #"+v.r.rank+" of "+v.r.n+" tracked · cheaper than "+v.r.pct+"% of the market";
+  }
+  /* ---- reviews: log-scale position + live listing link ---- */
+  var rGraph="", rDetail=esc(r.why), rLink=ext(b.review_url,"Live listing");
+  if(r.r){
+    rGraph='<div class="dgraph"><div class="dscale"><em class="dmark" style="left:'+(100*Math.log10(1+r.r.count)/Math.log10(201)).toFixed(1)+'%"></em></div>'+
+      '<div class="dscale-lbl"><span>0</span><span>log scale · cap 200</span><span>200</span></div></div>';
+    rDetail=r.r.count+" "+r.r.src+" reviews"+(r.r.rating?" · "+r.r.rating+" / 5":"")+" → "+r.score+" pts";
+  }
   var h='<div class="mback" id="cfback"><div class="modal fulldash" role="dialog" aria-label="Scorecard">'+
     '<div class="dash-head"><div><div class="dtitle">Scorecard</div>'+
     '<div class="dsub">'+esc(b.name)+'</div></div>'+
@@ -586,17 +638,13 @@ function openScoreDash(id){
     '<div class="dash-body">'+infoSec+
     '<div class="dash-widgets">'+
     wdg("Activity",a,"How recently they posted — an active competitor is a different animal than a dormant one.",
-      a.score!=null?esc(a.band):null,
-      a.days!=null?("Last post "+dstr(b.last_post_date)+" ("+a.days+(a.days===1?" day":" days")+" ago)"):esc(a.why))+
+      a.score!=null?esc(a.band):null,aGraph,aDetail,aLink)+
     wdg("Momentum",m,"Week-to-month follower movement — who is gaining on you and who is slipping.",
-      m.ch30!=null?((m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):null,
-      m.ch30!=null?("7-day "+(m.ch7>=0?"+":"")+m.ch7.toFixed(1)+"% · 30-day "+(m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):esc(m.why))+
+      m.ch30!=null?((m.ch30>=0?"+":"")+m.ch30.toFixed(1)+"%"):null,mGraph,mDetail,mLink)+
     wdg("Price position",v,"Where their wedding floor sits against the market, by actual published prices.",
-      v.score!=null?esc(v.band):null,
-      v.r?("Floor "+money(b.price.wedding)+" · #"+v.r.rank+" of "+v.r.n+" · median "+money(v.r.med)):esc(v.why))+
+      v.score!=null?esc(v.band):null,pGraph,pDetail,pLink)+
     wdg("Reviews",r,"Social proof — review counts and ratings from live listings.",
-      r.r?fmt(r.r.count):null,
-      r.r?(r.r.src+" reviews"+(r.r.rating?" · "+r.r.rating+" / 5":"")):esc(r.why))+
+      r.r?fmt(r.r.count):null,rGraph,rDetail,rLink)+
     '</div>'+
     '<div class="dash-foot">A rotating deep-dive pass re-researches every business weekly to raise these scores.</div>'+
     '</div></div></div>';
