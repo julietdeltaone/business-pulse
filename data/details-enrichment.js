@@ -32,13 +32,26 @@ window.PULSE_DETAILS = {
   "laura-wells-photography": {
     "blurb": "Laura Wells Photography is a documentary-style wedding photographer with an editorial flair, centered on capturing human connection and how a moment felt.",
     "services": [
-      "Weddings"
+      "Weddings",
+      "Couples",
+      "Families",
+      "Senior portraits",
+      "Newborns",
+      "Businesses & branding",
+      "Live music & events",
+      "Sports",
+      "Travel",
+      "Portraits"
     ],
     "platform": "Pixieset",
     "pricing_note": "Wedding packages range from $2,800 to $6,500 (site, 2026)",
-    "site_note": "Site images are served from images-pw.pixieset.com, indicating a Pixieset-hosted site behind the custom domain.",
+    "site_note": "Site images are served from images-pw.pixieset.com, indicating a Pixieset-hosted site behind the custom domain. Deep-dive 2026-10-01: SLU '23 graduate (B.A. Sociology & Business, cum laude); works as SLU women's lacrosse assistant coach and Content/Outreach Coordinator for INTENT; recent weddings Sept 2026 (Lilly + Hoyt, Grace + Phil, Emily + Mitch). No The Knot, WeddingPro, or confirmed Facebook storefront found.",
     "sources": [
-      "https://lauracwellsphotography.com"
+      "https://lauracwellsphotography.com",
+      "https://saintsathletics.com/sports/womens-lacrosse/roster/coaches/laura-wells/7615"
+    ],
+    "coverage": [
+      "Canton NY (St. Lawrence County)"
     ]
   },
   "mccluskey-photography": {
@@ -65,14 +78,17 @@ window.PULSE_DETAILS = {
   "jsc-photography-media": {
     "blurb": "JSC Photography & Media is a North Country-born artistic photographer with a creative, color-forward style spanning themes, set building and special effects, alongside family, lifestyle, and studio work.",
     "services": [
+      "Artistic/themed shoots (set building, special effects)",
       "Family portraits",
       "Lifestyle photography",
       "Studio sessions"
     ],
-    "site_note": "States she has been photographing for over ten years; business is fully insured.",
+    "site_note": "States she has been photographing for over ten years; business is fully insured. Deep-dive 2026-10-01: no pricing published on the single-page live site; no review presence on Knot/WeddingPro/WeddingWire/Yelp/Zola. Phone differs by one digit: own site (503) 444-0513 vs SLC Chamber listing (503) 443-0513. CAUTION: jsc-photography.com (Cambridge, ON) is a DIFFERENT business — its packages must not be attributed here. Email lovejscphotography@gmail.com; 8 Church St, Canton, NY 13617.",
     "sources": [
-      "https://lovejscphotography.com/"
-    ]
+      "https://lovejscphotography.com/",
+      "http://visitstl-gzcms.preview.gochambermaster.com/list/category/photographer-1274?o=&"
+    ],
+    "platform": "Pixieset"
   },
   "two-guys-and-a-camera": {
     "blurb": "Two Guys and a Camera is a Canton-based photography service specializing in weddings, senior pictures, children, pets, and family portraits, with a studio but a focus on on-location shoots; the operator is also a longtime wedding DJ.",
@@ -114,19 +130,22 @@ window.PULSE_DETAILS = {
   "julia-kia-photography": {
     "blurb": "Northern NY photographer (Julia Tomford) specializing in couples/weddings, families, and individual portraits; past work spans Watertown, Lake Placid, the St. Lawrence River, Potsdam, Norfolk, and Massena.",
     "services": [
-      "Weddings",
       "Couples",
       "Family portraits",
-      "Individual portraits"
+      "Individual portraits",
+      "Seniors",
+      "Weddings"
     ],
     "coverage": [
-      "Northern NY"
+      "Northern NY and beyond (Watertown, Lake Placid, St. Lawrence River, Lampson Falls, Norfolk, Potsdam, Massena, Colton)"
     ],
     "since": 2024,
-    "site_note": "Julia Kia Photography LLC filed May 15, 2024 (St. Lawrence County, active); site brand/web by 'lady b creative'.",
+    "site_note": "Julia Kia Photography LLC filed May 15, 2024 (St. Lawrence County, active); site brand/web by 'lady b creative'. Deep-dive 2026-10-01: roster pricing (weddings $500/hr; couples from $450; families from $500; seniors from $300) could NOT be re-verified — live site has no pricing page ('Investment' nav links to /contact; footer investment link resolves to a gallery page). Treat pricing as unverified until confirmed. Start-date conflict: SUNY Potsdam profile says established 2022; NY DOS shows LLC filed May 15, 2024 (DOS #7329073, Colton NY). Credited by Gavin Law Films (YouTube, Canaras wedding) and The Stables at Windy Point listing; no Knot/WeddingWire/Zola presence.",
     "sources": [
       "https://juliakia.com/my-work",
-      "https://juliakia.com/contact"
+      "https://juliakia.com/contact",
+      "https://www.juliakia.com/",
+      "https://www.potsdam.edu/academics/SOEPS/BusinessAdmin/JessicaEvans"
     ]
   },
   "frisina-s-photography": {
@@ -150,8 +169,8 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Squarespace",
     "since": 2022,
-    "pricing_note": "Sessions from $250; weddings from $1,000 (3 hr) / $2,000 (6 hr); events from $300/hr (site, 2026)",
-    "site_note": "Business founded officially in 2022; SUNY Potsdam graduate (Graphic Design & New Media). Town conflict (2026-09-30): roster lists Potsdam area (SLC); SUNY Potsdam records list Liv Gonia of North Bangor, NY (Franklin Co). Roster town NOT changed; both preserved.",
+    "pricing_note": "Film minis $250 (1 roll 35mm, 20-36 scans, 1 Polaroid); portraits $250 (1 hr, 75+ images); engagements from $300 (1 hr, 75+ images); elopements from $1,000 (3 hr, 250+ images); weddings from $2,000 (6 hr, 500+ images, 2nd photographer); events from $300/hr (site, 2026-10-01)",
+    "site_note": "Business founded officially in 2022; SUNY Potsdam graduate (Graphic Design & New Media). Town conflict (2026-09-30): roster lists Potsdam area (SLC); SUNY Potsdam records list Liv Gonia of North Bangor, NY (Franklin Co). Roster town NOT changed; both preserved. Platform confirmed Squarespace (images.squarespace-cdn.com) 2026-10-01.",
     "sources": [
       "https://livgoniaphotography.com",
       "https://www.livgoniaphotography.com/about"
@@ -687,12 +706,13 @@ window.PULSE_DETAILS = {
       "St. Regis Falls"
     ],
     "platform": "SmugMug",
-    "pricing_note": "On-location outdoor sessions $350; on-site garden sessions $300; small sessions $200; studio sessions $300/$150 (site pricing page).",
-    "site_note": "Mini sessions run frequently (e.g., 2026 Country Garden minis $125 child / $175 family); a $75 deposit is required on all sessions.",
+    "pricing_note": "Outdoor on-location $350 (45-60 min, min 15 images); on-site garden $300; small on-site $200 (20-30 min); extended family from $450; studio $300 (45-60) / $150 (15-20 small); minis $75-$175; $75 deposit all sessions (site, 2026-10-01)",
+    "site_note": "Mini sessions run frequently (e.g., 2026 Country Garden minis $125 child / $175 family); a $75 deposit is required on all sessions. Blog archive runs 2016-2026; no founding year stated. 443 NY-11B, Dickinson Center, NY 12930; (518) 319-0940; kathychapphoto@gmail.com; mileage over 20 miles at federal rate. Platform: SmugMug CDN asset paths; a 2026-10-01 run suggested Zenfolio heuristically but the /img/s/v-12/u... paths match SmugMug — kept as SmugMug.",
     "sources": [
       "https://kathleenchapmanphotography.com/kathleen-chapman-photography-investment",
       "https://kathleenchapmanphotography.com/blog?first=334414751",
-      "https://reviews.birdeye.com/kathleen-chapman-photography-170411629430518"
+      "https://reviews.birdeye.com/kathleen-chapman-photography-170411629430518",
+      "https://kathleenchapmanphotography.com/blog/2026/9/spidey-mini-sessions-dickinson-center-child-and-family-photographer"
     ]
   },
   "bella-memoria-photography": {
@@ -741,31 +761,41 @@ window.PULSE_DETAILS = {
   "jordan-craig-media-llc": {
     "blurb": "Lake Placid, NY photographer and filmmaker specializing in wedding photography/videography, engagement and family portraits, and athletic/brand content; brands worked with include NBC Sports, Lexus, and the NCAA.",
     "services": [
-      "Wedding photography",
-      "Wedding videography",
+      "Athlete/race photography",
+      "Brand videography",
+      "Drone photography",
+      "Elopements",
       "Engagement shoots",
       "Family portraits",
-      "Athlete/race photography",
-      "Drone photography",
+      "Online gallery",
+      "Same-day edits",
+      "Second photographer",
       "Social media content",
-      "Brand videography"
+      "Videographer services",
+      "Wedding album",
+      "Wedding photography",
+      "Wedding videography"
     ],
     "coverage": [
-      "Lake Placid",
       "Adirondack Park",
+      "Destination / international",
+      "Lake Placid",
       "Northeastern US"
     ],
     "platform": "Pixieset",
     "pricing_note": "The Knot lists videography 'Starting at $2,697'.",
-    "site_note": "Zola rating 5.0 from 40 reviews; site notes 'photographed hundreds of magic moments' over the past decade and no travel fee within 10 miles of Lake Placid.",
+    "site_note": "Zola rating 5.0 from 40 reviews; site notes 'photographed hundreds of magic moments' over the past decade and no travel fee within 10 miles of Lake Placid. Deep-dive 2026-10-01: wedding collections begin at $3,000, most couples $4,000-$6,000+ (own site, re-verified); The Knot/WeddingWire list 'Starting at $2,697' (likely videography or an older floor). Owner Jordan Craig; 2591 Main St, Lake Placid, NY 12946; +1 518-314-9046.",
     "sources": [
       "https://www.jordancraigmedia.com/",
       "https://www.lakeplacid.com/weddings/jordan-craig-media-llc",
       "https://WWW.ZOLA.COM/wedding-vendors/wedding-photographers/jordan-craig-media-llc",
       "https://www.theknot.com/marketplace/wedding-photographers-wanakena-ny",
       "https://www.jordancraigmedia.com/lake-placid-family-photographer/",
-      "https://www.jordancraigmedia.com/contact/"
-    ]
+      "https://www.jordancraigmedia.com/contact/",
+      "https://www.jordancraigmedia.com/lake-placid-ny-wedding-photography/",
+      "https://www.theknot.com/marketplace/wedding-photographers-lake-placid-ny"
+    ],
+    "since": 2016
   },
   "pamela-perrin-photography": {
     "blurb": "Lake Placid-based wedding photographer specializing in weddings and milestone moments with a story-driven, fine-art approach; owner Pamela Perrin studied visual arts at the Art Institute of Miami and began in fine-art film photography.",
@@ -858,17 +888,21 @@ window.PULSE_DETAILS = {
       "Events"
     ],
     "coverage": [
+      "Adirondacks",
       "Lake Placid",
-      "Adirondacks"
+      "Vermont",
+      "Will travel"
     ],
     "since": 2005,
     "pricing_note": "Weddings from $3,000 (The Knot, 2026)",
-    "site_note": "5.0 stars across 58 reviews on The Knot (6x award winner); previously an art/photography teacher at Lake Placid Middle/High School.",
+    "site_note": "5.0 stars across 58 reviews on The Knot (6x award winner); previously an art/photography teacher at Lake Placid Middle/High School. Address 100 Patch Lane, Lake Placid, NY 12946; 518-524-4663. Own site publishes no package pricing (verified via The Knot: $3,000 starting). Knot award count 6x on current pages vs 7x on older cached pages.",
     "sources": [
       "https://www.lakeplacidphotography.com",
       "https://www.theknot.com/marketplace/wedding-photographers-tupper-lake-ny?page=2",
-      "https://www.weddingwire.com/biz/lake-placid-photography-lake-placid/3af35d867170f483.html"
-    ]
+      "https://www.weddingwire.com/biz/lake-placid-photography-lake-placid/3af35d867170f483.html",
+      "https://www.theknot.com/marketplace/wedding-photographers-ticonderoga-ny?page=2"
+    ],
+    "platform": "Wix"
   },
   "elise-ruocco-photography": {
     "blurb": "Lake Placid-based wedding photographer on Spring Street offering wedding and engagement photography; 5.0 rating on The Knot from one review.",
@@ -1055,8 +1089,11 @@ window.PULSE_DETAILS = {
     "pricing_note": "Elopements from $2,000; intimate weddings from $5,500 (6 hr); couples sessions from $650 (site, 2026)",
     "sources": [
       "https://www.kleighophotos.com/",
-      "https://www.kleighophotos.com/koppackages"
-    ]
+      "https://www.kleighophotos.com/koppackages",
+      "https://www.golden-arrow.com/groups/lake-placid-weddings/photo-gallery/"
+    ],
+    "platform": "Squarespace",
+    "site_note": "Deep-dive 2026-10-01: packages page re-verified (elopements $2,000 / intimate weddings $5,500 / couples sessions $650); includes online gallery, timeline assistance, location scouting, vendor recommendations; client 'love notes' on homepage; listed as recommended photographer by Golden Arrow Lakeside Resort, Lake Placid."
   },
   "hannah-brogan-photography": {
     "blurb": "H. Saranac Photography is Hannah Brogan's photography business, advertising 'affordable and quality services' for weddings, couples, and family sessions.",
@@ -1299,12 +1336,79 @@ window.PULSE_DETAILS = {
     ]
   },
   "la-belle-amour-photography": {
-    "pricing_note": "The Knot Potsdam card (2026-09-30) shows 'Starting at $250' but a Shelburne-VT snippet shows 'Starting at $300' — preserved, not resolved."
+    "pricing_note": "Starting at $250 (The Knot storefront); WeddingWire: starting at $300, couples usually spend ~$1,800 (verified 2026-10-01). Own-site pricing NOT verifiable (Pixieset site rendered almost no text). Price conflict preserved: The Knot 'starting at $250' vs WeddingWire 'starting at $300 / usually ~$1,800' vs Knot avg-price estimate $1,200 vs prior unverified own-site text '$300-$2,400'.",
+    "blurb": "Wedding photography studio in Plattsburgh NY, founder Isabelle Flora-Miller; light-filled photography and honest, unposed moments.",
+    "services": [
+      "Weddings",
+      "Engagement sessions",
+      "Additional hours",
+      "One-event-per-day policy",
+      "Multiple locations",
+      "Destination photoshoots",
+      "Digital files / high-res images"
+    ],
+    "coverage": [
+      "Plattsburgh NY",
+      "Lake Champlain area (NY + VT)",
+      "Upstate New York and Vermont"
+    ],
+    "platform": "Pixieset",
+    "since": 2019,
+    "site_note": "WeddingWire lists 7 years in business (implies ~2019 founding). No confirmed Facebook page found.",
+    "sources": [
+      "https://www.theknot.com/marketplace/la-belle-amour-photography-plattsburgh-ny-2031254",
+      "https://www.weddingwire.com/biz/la-belle-amour-photography/ffb1cbccc6531033.html",
+      "https://labelleamourphotography.mypixieset.com/"
+    ]
   },
   "daydreams-by-kimmi-sue": {
     "site_note": "Rebranded site live at kimberlydoerrphotography.mypixieset.com with new session menu (30min $175 / 1hr $300 / 1.5hr $450 / 2hr $800 + tax, 2026-09-30); old pre-rebrand pricing retired."
   },
   "noxon-photography-britt-witt-noxon": {
     "site_note": "CLOSED 2026-09-30: own site banner reads 'No longer accepting bookings' (identity sweep)."
+  },
+  "kyla-williamson-photography": {
+    "blurb": "Wedding and family photographer with photojournalistic style, based in Rouses Point, NY; started in film, returned to film for select clients. Graduated University of Vermont with a B.A. in Photography and Mathematics.",
+    "services": [
+      "Weddings",
+      "Engagement sessions",
+      "Family portraits",
+      "Film photography"
+    ],
+    "coverage": [
+      "Rouses Point NY",
+      "Plattsburgh NY",
+      "Lake Champlain area (grew up in Charlotte VT)"
+    ],
+    "site_note": "Travel: within 10 miles of Rouses Point free, $0.70/mile beyond. Third-source: Zola vendor listing (5.0, 9 reviews, starts at $2,500). Location conflict (2026-10-01): Zola profile describes her as based in Plattsburgh NY; own site/about says she lives in Rouses Point NY. No The Knot, WeddingPro, or confirmed Facebook storefront found.",
+    "sources": [
+      "https://www.kylawilliamson.com/investment/",
+      "https://WWW.ZOLA.COM/wedding-vendors/wedding-photographers/kyla-williamson-photography"
+    ]
+  },
+  "lavender-lullabies": {
+    "blurb": "Boutique photography studio based in Hogansburg, NY, specializing in weddings and other events; takes a limited number of weddings per year, book well in advance.",
+    "services": [
+      "Weddings",
+      "Events",
+      "Pre-wedding consultations",
+      "Second photographer",
+      "Digital files",
+      "Prints",
+      "Boudoir shoots"
+    ],
+    "coverage": [
+      "Hogansburg, NY",
+      "Destination weddings (per WeddingPro)"
+    ],
+    "site_note": "No own website found; listed only on wedding directories (The Knot shows 'No reviews yet!'). Phone (518) 651-1930 per WeddingPro. No published pricing anywhere. Despite the name, directories frame it as a wedding/event studio ('from newborns to newlyweds'), not a newborn specialist.",
+    "sources": [
+      "https://www.theknot.com/marketplace/lavender-lullabies-photo-hogansburg-ny-2054139",
+      "https://www.weddingwire.com/biz/lavender-lullabies-photo/db5e92f9ff2a7fb2.html"
+    ]
+  },
+  "kaylee-gilbert": {
+    "site_note": "Deep-dive 2026-10-01: UNREACHABLE — no website, IG handle, town, or directory listing found after 3 searches ('Kaylee Gilbert' + photographer/northern NY/North Country variants); 'Kaylee Gilbert' is a common name and no photography business matched. Prior pricing ($50 mini / $100 basic / $150 premium, posted Sep 2026) could not be re-verified (likely originated from an FB/IG post not accessible via web search). Recommend downgrading or removing the roster entry.",
+    "sources": []
   }
 };
