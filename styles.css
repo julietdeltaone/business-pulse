@@ -872,6 +872,7 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .pg-today>.sec>h3{font-size:24px}
 .pg-ai>.sec{grid-template-columns:1fr 1.45fr 1fr}
 .pg-data .dtable td:first-child{max-width:none;white-space:nowrap;min-width:210px}
+.pg.pg-data{max-width:none}
 .pg-data .dtable{min-width:1180px;font-size:13px}
 .pg-data .dtable td{padding:10px 12px}
 .pg-data .dtable td:nth-child(7){min-width:260px}
