@@ -1173,10 +1173,20 @@ function computeAI(){
     var ds={}; rows.forEach(function(r){if(r.engine===e)ds[r.date]=1;});
     engChecks[e]=Object.keys(ds).length;
   });
-  var idDays={};
+  var idDaySets={}, idEng={};
   Object.keys(nameDays).forEach(function(n){
-    var id=nameDays[n].id; if(id) idDays[id]=Object.keys(nameDays[n].days).length;
+    var e=nameDays[n], id=e.id;
+    if(!id) return;
+    var s=idDaySets[id]=idDaySets[id]||{};
+    Object.keys(e.days).forEach(function(k){s[k]=1;});
+    var ie=idEng[id]=idEng[id]||{}, ne=nameEng[n]||{};
+    Object.keys(ne).forEach(function(eng){
+      var se=ie[eng]=ie[eng]||{};
+      Object.keys(ne[eng]).forEach(function(k){se[k]=1;});
+    });
   });
+  var idDays={};
+  Object.keys(idDaySets).forEach(function(id){idDays[id]=Object.keys(idDaySets[id]).length;});
   var board=B.map(function(b){return {name:b.name,id:b.id,days:idDays[b.id]||0};});
   Object.keys(nameDays).forEach(function(n){
     if(!nameDays[n].id) board.push({name:n,id:null,days:Object.keys(nameDays[n].days).length});
@@ -1189,7 +1199,7 @@ function computeAI(){
   var rest=B.filter(function(b){return !idDays[b.id];});
   AI={rows:rows,dates:dates,cov:dates.length?dates[0]+" → "+dates[dates.length-1]:"",
     engines:engines,engOK:engOK,prompts:prompts,perpDead:perpDead,
-    board:board,nDays:nDays,nameEng:nameEng,engChecks:engChecks,
+    board:board,nDays:nDays,nameEng:nameEng,idEng:idEng,engChecks:engChecks,
     webPct:pct(heavy,function(b){return !!b.website;}),
     medYrs:aiMed(heavy.map(function(b){return b.est_year?2026-b.est_year:null;})),
     medRev:aiMed(heavy.map(function(b){return b.review_count;})),
@@ -1261,9 +1271,9 @@ function renderAIDetail(){
     '<span class="lb-bar"><i style="width:'+Math.max(4,AI.nDays?t.days/AI.nDays*100:0)+'%"></i></span></div></div>';
   h+='<div class="ai-big">By assistant</div><div class="stagger">'+
     AI.engines.map(function(e){
-      var ec=AI.engChecks[e]||0, nd=0;
-      var ne=AI.nameEng[t.name];
-      if(ne&&ne[e]) nd=Object.keys(ne[e]).length;
+      var ec=AI.engChecks[e]||0;
+      var engSets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
+      var se=engSets[e], nd=se?Object.keys(se).length:0;
       var right=ec===0?'<span class="ai-miss">unreachable</span>':'<span class="lb-v">'+nd+' of '+ec+'</span>';
       return '<div class="lb-row"><span class="lb-nm">'+esc(e)+'</span>'+right+
         '<span class="lb-bar"><i style="width:'+(ec?Math.max(4,nd/ec*100):0)+'%"></i></span></div>';
