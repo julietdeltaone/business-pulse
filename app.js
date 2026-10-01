@@ -1508,6 +1508,14 @@ function renderAI(){
     AI.engOK.length+' of '+AI.engines.length+' assistants reachable · '+
     AI.prompts.length+' prompts tested'+
     (AI.perpDead?' · <span title="Perplexity put answers behind sign-in on Sep 26">Perplexity unreachable since Sep 26</span>':"")+'</div>';
+  h+='<div class="ai-promptbar"><span class="ai-promptbar-l">Prompt</span><select id="aiPromptSel">'+
+    '<option value="">All prompts · market-wide</option>'+
+    AI.promptCatalog.map(function(p){
+      var pc=AI.promptChecks[p.text], cc=pc?Object.keys(pc).length:0;
+      return '<option value="'+esc(p.text)+'"'+(S.aiPrompt===p.text?" selected":"")+'>'+
+        esc(p.text.length>64?p.text.slice(0,64)+"…":p.text)+
+        (cc?" · "+cc+" checks":" · new, no history yet")+'</option>';
+    }).join("")+'</select></div>';
   h+='<div class="statgrid">'+
     '<div class="stat"><div class="v">'+AI.rows.length+'</div><div class="l">Checks run</div></div>'+
     '<div class="stat"><div class="v">'+AI.nNamed+'</div><div class="l">Businesses named</div></div>'+
@@ -1533,16 +1541,6 @@ function renderAI(){
       '<span class="bar"><i style="width:'+Math.max(3,sN?t.days/sN*100:0)+'%"></i></span></div>';
   });
   h+='</div>';
-  h+='<div class="ai-sec-t ai-toggle" data-aip>Prompt set ('+AI.promptCatalog.length+')<span class="ai-tog">'+(S.aiPrompts?"▾":"▸")+'</span></div>';
-  if(S.aiPrompts){
-    h+='<div class="ai-prompts">'+AI.promptCatalog.map(function(p){
-      var pc=AI.promptChecks[p.text], cc=pc?Object.keys(pc).length:0;
-      var tags=p.services.map(aiSvcLabel).join(" + ");
-      var isNew=p.added&&p.added>"2026-09-23";
-      return '<div class="ai-prompt'+(S.aiPrompt===p.text?" sel":"")+'" data-aipp="'+esc(p.text)+'"><div class="ai-prompt-t">“'+esc(p.text)+'”</div>'+
-        '<div class="ai-prompt-s">'+esc(tags)+' · '+(cc?cc+' checks so far':'<span class="ai-miss">no history yet</span>')+(isNew?' · <span class="ai-new">new</span>':"")+'</div></div>';
-    }).join("")+'</div>';
-  }
   h+='</div>';
   h+='<div class="ai-right" id="aiDetail">'+renderAIDetail()+'</div>';
   h+='</div>';
@@ -2464,11 +2462,6 @@ document.addEventListener("click",function(e){
     renderRight(); pushHist(); return; }
   var apx=e.target.closest("[data-aipx]");
   if(apx){ S.aiPrompt=null; renderLeft(); return; }
-  var app=e.target.closest("[data-aipp]");
-  if(app){ var pp=app.getAttribute("data-aipp");
-    S.aiPrompt=(S.aiPrompt===pp?null:pp); renderLeft(); return; }
-  var ap=e.target.closest("[data-aip]");
-  if(ap){ S.aiPrompts=!S.aiPrompts; renderLeft(); return; }
   var ar=e.target.closest("[data-ai]");
   if(ar){ S.aiSel=ar.getAttribute("data-ai");
     var ad=$("#aiDetail");
@@ -2512,6 +2505,11 @@ document.addEventListener("click",function(e){
   if(cfb){ S.q=""; S.lane=""; S.mom=""; S.reg=""; syncChrome(); refreshFiltered(); pushHist(); return; }
   var tb=e.target.closest(".pagenav button");
   if(tb){ setTab(tb.getAttribute("data-tab")); return; }
+});
+document.addEventListener("change",function(e){
+  if(e.target&&e.target.id==="aiPromptSel"){
+    S.aiPrompt=e.target.value||null; renderLeft();
+  }
 });
 var fqT=null;
 $("#fq").addEventListener("input",function(e){
