@@ -1257,7 +1257,7 @@ function renderAI(){
   var board=Object.keys(inDays).map(function(n){
     return {name:n, id:RIVAL2ID[n]||null, days:Object.keys(inDays[n]).length};
   });
-  board.push({name:"JD Meyers Productions", id:"jd-meyers-productions", days:Object.keys(jdDays).length, jd:true});
+  board.push({name:"JD Meyers Productions", id:"jd-meyers-productions", days:Object.keys(jdDays).length});
   board.sort(function(a,b){return b.days-a.days;});
   var top=board.slice(0,12);
   var bizMeta=function(id){
@@ -1273,7 +1273,7 @@ function renderAI(){
     top.map(function(t){
       var open=t.id?(' data-open="'+t.id+'"'):"";
       return '<div class="ai-biz"'+open+'><div class="ai-biz-top"><span class="lb-nm">'+
-        (t.jd?"<b>":"")+esc(t.name)+(t.jd?"</b>":"")+'</span>'+
+        esc(t.name)+'</span>'+
         '<span class="lb-v">'+t.days+' of '+nDays+'</span></div>'+
         '<div class="lb-bar"><i style="width:'+Math.max(4,t.days/nDays*100)+'%"></i></div>'+
         (t.id?'<div class="ai-biz-meta">'+esc(bizMeta(t.id))+'</div>':"")+
@@ -1281,7 +1281,7 @@ function renderAI(){
     }).join("")+"</div></div>";
 
   /* ---- named but not tracked ---- */
-  var untracked=board.filter(function(t){return !t.id&&!t.jd;}).slice(0,8);
+  var untracked=board.filter(function(t){return !t.id;}).slice(0,8);
   if(untracked.length){
     h+='<div class="sec"><h3>Named by AIs, not in our market</h3>'+
       '<div class="sub">The assistants cite these names, but they aren\u2019t in our '+B.length+
@@ -1295,13 +1295,13 @@ function renderAI(){
 
   /* ---- why: what the most-named businesses have in common ---- */
   var idDays={}, mappedIds={};
-  board.forEach(function(t){ if(!t.id||t.jd) return;
+  board.forEach(function(t){ if(!t.id) return;
     mappedIds[t.id]=1; idDays[t.id]=Math.max(idDays[t.id]||0,t.days); });
   var heavyIds={};
   Object.keys(idDays).sort(function(a,b){return idDays[b]-idDays[a];}).slice(0,10)
     .forEach(function(id){heavyIds[id]=1;});
   var heavy=B.filter(function(b){return heavyIds[b.id];});
-  var rest=B.filter(function(b){return !mappedIds[b.id]&&b.id!=="jd-meyers-productions";});
+  var rest=B.filter(function(b){return !mappedIds[b.id];});
   var pct=function(rows,f){ return rows.length?Math.round(100*rows.filter(f).length/rows.length):0; };
   var wHeavy=heavy, wRest=rest;
   h+='<div class="sec"><h3>Why these businesses get cited</h3>'+
