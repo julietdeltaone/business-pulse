@@ -862,8 +862,18 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .pg-ai>.sec .sec{background:var(--card);border:1px solid var(--card-line);border-radius:18px;padding:20px 22px;margin:0}
 .pg-ai>.sec .sec>h3{font-size:20px}
 /* AI page hero: who + why lead the tab */
-.ai-hero{grid-column:1/-1;display:grid;grid-template-columns:1.08fr 1fr;gap:16px;align-items:start}
+.ai-hero{grid-column:1/-1;display:grid;grid-template-columns:1.08fr 1fr;gap:18px;align-items:start}
+.ai-hero>.sec>h3{font-size:22px}
 @media(max-width:1100px){.ai-hero{grid-template-columns:1fr}}
+.pg-ai>.sec{gap:18px}
+/* latest-check name chips */
+.ai-eng{margin-bottom:14px}
+.ai-eng:last-child{margin-bottom:2px}
+.ai-eng>b{font-size:13.5px;letter-spacing:.01em}
+.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ai-chip{font-size:12px;line-height:1.45;padding:4px 11px;border-radius:999px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);color:var(--txt)}
+.ai-chip[data-open]{cursor:pointer}
+.ai-chip[data-open]:hover{border-color:var(--acc);color:#fff}
 
 /* Data page */
 .pg-data .dtable-wrap{max-height:none;border-radius:14px}
@@ -891,7 +901,6 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 
 .pg-today>.sec>.hl-grid{grid-column:1/-1}
 .pg-today>.sec>h3{font-size:24px}
-.pg-ai>.sec{grid-template-columns:1fr 1.45fr 1fr}
 .pg-data .dtable td:first-child{max-width:none;white-space:nowrap;min-width:210px}
 .pg.pg-data{max-width:none}
 .pg-data .dtable{min-width:1180px;font-size:13px}
@@ -900,7 +909,6 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .pg-data .dfilter{margin:0 0 6px;max-width:420px}
 .pg-data>.sec{padding:0;border:0;background:none}
 .pg-data .dsub{margin-top:14px}
-@media(max-width:1100px){.pg-ai>.sec{grid-template-columns:1fr 1fr}}
 
 #fsort{max-width:none;flex:none}
 .lh-filters select{font-size:12.5px;padding:7px 6px}
