@@ -357,17 +357,29 @@ function todayChanges(){
 }
 
 /* ---------- week's highlights: top businesses + why ---------- */
+/* The daily IG activity notes are free text from the sweep ("Pull failed — carried
+   last-known count.", "last post Jul 12 ...", "6 posts in one burst", ...).
+   Count explicit posts only; status notes are 0. Deliberately conservative:
+   ambiguous phrasing counts as nothing rather than an invented post. */
+function postCount(r){
+  var t=String((r&&r.activity)||"");
+  if(/quiet|no new|pull failed|not pulled|private account|carried last-known|\blast post\b/i.test(t)) return 0;
+  var m=t.match(/(\d+)\s+(posts?|reels?)\b/i);
+  if(m) return parseInt(m[1],10);
+  if(/posted today|new post/i.test(t)) return 1;
+  return 0;
+}
 function weekHighlights(){
   var di=S.di, d0=Math.max(0,di-7), list=scopeList(), cards=[];
   function norm(h){ return String(h||"").replace(/^@/,"").toLowerCase(); }
   /* activity per handle over the last 7 days */
   var actBy={};
   (D.igActivity||[]).forEach(function(r){
-    if(/quiet|no new/i.test(r.activity||"")) return;
+    var n=postCount(r); if(!n) return;
     var age=(new Date(DATES[di]+"T12:00:00")-new Date((r.date||"")+"T12:00:00"))/864e5;
     if(isNaN(age)||age<0||age>7) return;
     var h=norm(r.handle); if(!h) return;
-    (actBy[h]=actBy[h]||[]).push(r);
+    actBy[h]=(actBy[h]||0)+n;
   });
   var byHandle={};
   list.forEach(function(b){ var h=norm(b.ig_handle); if(h) byHandle[h]=b; });
@@ -382,7 +394,7 @@ function weekHighlights(){
   }
   /* most active */
   var act=list.map(function(b){ var h=norm(b.ig_handle);
-      return {b:b,n:h&&actBy[h]?actBy[h].length:0}; })
+      return {b:b,n:(h&&actBy[h])||0}; })
     .filter(function(x){ return x.n>0; }).sort(function(a,c){ return c.n-a.n; });
   if(act.length){
     cards.push({k:"Most active",b:act[0].b,
@@ -1392,8 +1404,8 @@ function renderAI(){
 function postEvents(){
   var ev=[];
   (D.igActivity||[]).forEach(function(r){
-    if(/quiet|no new/i.test(r.activity||"")) return;
-    ev.push({handle:r.handle,date:r.date});
+    var n=postCount(r);
+    for(var i=0;i<n;i++) ev.push({handle:r.handle,date:r.date});
   });
   return ev;
 }
