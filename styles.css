@@ -960,3 +960,10 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 
 #fsort{max-width:none;flex:none}
 .lh-filters select{font-size:12.5px;padding:7px 6px}
+.ai-prompt{cursor:pointer;transition:border-color .18s,background .18s,transform .12s}
+.ai-prompt:hover{border-color:var(--amber);transform:translateX(2px)}
+.ai-prompt.sel{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 9%,var(--card));box-shadow:0 0 0 1px var(--amber)}
+.ai-scope{display:flex;align-items:center;gap:10px;margin:2px 0 10px;padding:8px 12px;background:color-mix(in srgb,var(--amber) 8%,var(--card));border:1px solid var(--amber);border-radius:12px;font-size:12.5px}
+.ai-scope-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-scope-x{cursor:pointer;flex:none;font-size:12px;color:var(--amber);border:1px solid var(--amber);border-radius:20px;padding:2px 10px;transition:background .15s}
+.ai-scope-x:hover{background:color-mix(in srgb,var(--amber) 18%,transparent)}
