@@ -7,7 +7,7 @@ window.PULSE_DETAILS = {
   "emily-murphy-photography": {
     "blurb": "Emily Murphy Photography is a North Country portrait photographer focused on genuine, emotion-driven sessions; her site emphasizes capturing personalities 'from the inside out' with natural, prompted smiles.",
     "platform": "Pixieset",
-    "site_note": "Site content is thin (intro only); official presence appears to be the Pixieset-hosted site mirrored on the custom domain. Facebook page shows active wedding work in the Ogdensburg, NY area.",
+    "site_note": "Site content is thin (intro only); official presence appears to be the Pixieset-hosted site mirrored on the custom domain. Facebook page shows active wedding work in the Ogdensburg, NY area. Town conflict (2026-09-30): roster lists Canton, NY; Facebook evidence points to Ogdensburg/West Chazy. Roster town NOT changed; both preserved.",
     "sources": [
       "http://emilymurphyphoto.com/",
       "https://emilymurphyphotography34.mypixieset.com/"
@@ -151,7 +151,7 @@ window.PULSE_DETAILS = {
     "platform": "Squarespace",
     "since": 2022,
     "pricing_note": "Sessions from $250; weddings from $1,000 (3 hr) / $2,000 (6 hr); events from $300/hr (site, 2026)",
-    "site_note": "Business founded officially in 2022; SUNY Potsdam graduate (Graphic Design & New Media).",
+    "site_note": "Business founded officially in 2022; SUNY Potsdam graduate (Graphic Design & New Media). Town conflict (2026-09-30): roster lists Potsdam area (SLC); SUNY Potsdam records list Liv Gonia of North Bangor, NY (Franklin Co). Roster town NOT changed; both preserved.",
     "sources": [
       "https://livgoniaphotography.com",
       "https://www.livgoniaphotography.com/about"
@@ -1070,7 +1070,7 @@ window.PULSE_DETAILS = {
       "Paul Smiths"
     ],
     "platform": "Squarespace",
-    "site_note": "She travels: one testimonial describes her driving to Buffalo for a rain-soaked engagement session.",
+    "site_note": "She travels: one testimonial describes her driving to Buffalo for a rain-soaked engagement session. Brands as 'H. Saranac Photography' on hsaranacphotography.com (2026-09-30); roster display name kept to preserve seed/id keys.",
     "sources": [
       "https://hsaranacphotography.com/"
     ]
@@ -1303,5 +1303,8 @@ window.PULSE_DETAILS = {
   },
   "daydreams-by-kimmi-sue": {
     "site_note": "Rebranded site live at kimberlydoerrphotography.mypixieset.com with new session menu (30min $175 / 1hr $300 / 1.5hr $450 / 2hr $800 + tax, 2026-09-30); old pre-rebrand pricing retired."
+  },
+  "noxon-photography-britt-witt-noxon": {
+    "site_note": "CLOSED 2026-09-30: own site banner reads 'No longer accepting bookings' (identity sweep)."
   }
 };
