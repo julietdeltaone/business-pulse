@@ -207,7 +207,7 @@ var MOM_LABEL={gaining:"Gaining",slipping:"Slipping",active:"Active",quiet:"Quie
 var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unconfirmed"};
 
 /* ---------- state ---------- */
-var S={ view:"map", mode:"businesses", tab:"today", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
+var S={ view:"map", mode:"businesses", tab:"explore", sortBy:"audience", shareBy:"providers", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
         sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, glanceX:false, lsWide:false, ptab:"overview", qx:{}, qall:{} };
 
 /* ---------- undo / redo history (back-forward) + home ----------
@@ -251,13 +251,15 @@ function syncChrome(){
   $("#fq").setAttribute("placeholder",biz?"Search businesses…":"Search venues…");
   var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo, video & drone market":"North Country venue watch";
   document.title=biz?"Business Pulse · North Country photo, video & drone market":"Business Pulse · North Country venues";
-  /* tabs */
-  $$(".tabs button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
+  /* sections */
+  $$(".pagenav button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
     x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
-  /* rankings vs map visibility */
-  var rk=S.view==="rankings";
+  var ex=S.tab==="explore", rk=ex&&S.view==="rankings";
+  document.body.classList.toggle("pgmode",!ex);
+  $("#page").hidden=ex;
   $("#rankings").hidden=!rk;
-  $("#map").style.visibility=rk?"hidden":"visible";
+  $("#map").style.visibility=(ex&&!rk)?"visible":"hidden";
+  syncSort();
 }
 function applyState(st){
   HIST.busy=true;
@@ -279,13 +281,13 @@ function applyState(st){
   updNav();
 }
 /* home: back to the map, default framing, selection + filters cleared */function goHome(){
-  S.sel=null; S.q=""; S.lane=""; S.mom=""; S.reg=""; S.view="map";
+  S.tab="explore"; S.sel=null; S.q=""; S.lane=""; S.mom=""; S.reg=""; S.view="map";
   C=(S.mode==="venues"?V:B); BY_ID=(S.mode==="venues"?V_BY_ID:B_BY_ID);
   computeModeStats();
   syncChrome();
   var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
   if(map&&pts.length){ HIST.noPush=true;
-    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts),{paddingTopLeft:L.point(400,90),paddingBottomRight:L.point(380,90)});
+    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts),{paddingTopLeft:L.point(450,90),paddingBottomRight:L.point(380,90)});
     else map.fitBounds(L.latLngBounds(pts).pad(0.15)); }
   renderPins(); renderLeft(); renderRight();
   $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
@@ -309,6 +311,7 @@ function passes(b){
   return true;
 }
 function filtered(){ return C.filter(passes); }
+function scopeList(){ return S.tab==="explore"?filtered():C.slice(); }
 
 /* ---------- "what changed since yesterday" ---------- */
 function todayChanges(){
@@ -355,7 +358,7 @@ function todayChanges(){
 
 /* ---------- week's highlights: top businesses + why ---------- */
 function weekHighlights(){
-  var di=S.di, d0=Math.max(0,di-7), list=filtered(), cards=[];
+  var di=S.di, d0=Math.max(0,di-7), list=scopeList(), cards=[];
   function norm(h){ return String(h||"").replace(/^@/,"").toLowerCase(); }
   /* activity per handle over the last 7 days */
   var actBy={};
@@ -583,7 +586,7 @@ function profHead(b){
 function pheadHTML(title,px){
   var btn="";
   if(px==="glance")
-    btn='<button class="pxbtn" data-px="glance" title="'+(S.glanceX?"Collapse the market glance":"Expand the market glance")+'">'+(S.glanceX?"\u27E9":"\u27E8")+"</button>";
+    btn='<button class="pxlink" data-gexpand title="Open the full market landscape">Landscape &rarr;</button>';
   else if(px==="profile")
     btn='<button class="pxbtn" data-px="profile" title="'+(S.expanded?"Collapse the profile":"Expand the profile")+'">'+(S.expanded?"\u27E9":"\u27E8")+"</button>";
   return '<div class="phead"><span class="pt">'+title+"</span>"+btn+"</div>";
@@ -881,13 +884,27 @@ function locTag(b){
   if(b.region==="unconfirmed"||(b.flags||[]).indexOf("location-unverified")>=0) return ' <span class="unv">· location unverified</span>';
   return "";
 }
+function sortDir(list){
+  var by=S.sortBy||"audience";
+  function nul(x,y,fn){ if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return fn(x,y); }
+  var key={
+    audience:function(b){return b.followers;}, capacity:function(b){return b.capacity_num;},
+    growth:function(b){return pctChange(b,Math.max(0,S.di-7),S.di);},
+    recent:function(b){return b.postAge;},
+    price:function(b){return b.price.wedding!=null?b.price.wedding:(b.price.session!=null?b.price.session:null);},
+    name:function(b){return b.name.toLowerCase();}
+  }[by]||function(b){return b.followers;};
+  var dir=(by==="recent"||by==="price"||by==="name")?1:-1;
+  return list.slice().sort(function(a,b){
+    var r=nul(key(a),key(b),function(x,y){ return (typeof x==="string"?x.localeCompare(y):(x-y))*dir; });
+    return r||a.name.localeCompare(b.name);
+  });
+}
 function renderDir(){
-  var list=filtered().slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);});
+  var list=sortDir(filtered());
   var noun=S.mode==="venues"?"venues":"businesses";
-  var h='<div class="sec"><h3>Directory</h3><div class="sub">'+list.length+' of '+C.length+' '+noun+'</div>';
-  if(!list.length) return h+'<div class="empty-note">No '+noun+' match these filters.</div></div>';
-  h+='<div class="stagger">'+list.map(dirRow).join("")+"</div></div>";
-  return h;
+  if(!list.length) return '<div class="empty-note">No '+noun+' match these filters.<br><button class="ghostbtn" id="clearf">Clear filters</button></div>';
+  return '<div class="stagger dirlist">'+list.map(dirRow).join("")+"</div>";
 }
 
 /* ---------- data tab: every gathered data point, sortable + filterable ---------- */
@@ -930,49 +947,99 @@ function svcList(b){ var out=[],seen={};
     var n=SVC_NORM[s]||null;
     if(n&&!seen[n]){ seen[n]=1; out.push(n); } });
   return out; }
+/* ---------- market landscape: consolidated categories ----------
+   Hundreds of raw service strings collapse into six groups. A business counts in
+   every group it offers, so shares overlap; that is stated on the page. */
+var SVC_GROUPS=[
+  {k:"wed",label:"Weddings & couples",color:"#e8b34b"},
+  {k:"port",label:"Portraits & family",color:"#b48ce8"},
+  {k:"evt",label:"Events & commercial",color:"#d98e4a"},
+  {k:"vid",label:"Video",color:"#6db3f2"},
+  {k:"re",label:"Real estate",color:"#c7d2e0"},
+  {k:"dr",label:"Drone & aerial",color:"#6fd3e7"}];
+var GRP_RX=[
+  ["dr",/drone|aerial|\bfaa\b|\buav\b/],
+  ["re",/real estate|matterport|floor plan|inspection|street view|\b360\b|architectur|video tours/],
+  ["vid",/video|cinematic|motion graphics|voiceover|vhs|\bdvd\b|\btape\b|documentary|filming|pre-production|post-production|color grading/],
+  ["wed",/wedding|nuptial|elop|bridal|engage|couple|proposal|trash.{0,3}the.{0,3}dress|intimate celebration|save-the-date|second shooter/],
+  ["evt",/\bevents?\b|party|parties|birthday|photo ?booth|\bdj\b|corporate|commercial|brand|business|marketing|product|social|concert|athlete|\brace\b|sports photography/],
+  ["port",/portrait|senior|famil|child|newborn|infant|baby|babies|maternity|motherhood|prenatal|birth|boudoir|\bpets?\b|mini|milestone|cake smash|tween|teen|\bgrads?\b|graduation|prom\b|school|\bteam\b|headshot|lifestyle|studio|fashion|model|editorial|glamour|relationship|holiday|session/]];
+function svcGroupsOf(b){
+  var raw=(Array.isArray(b.services)?b.services:[]).map(String);
+  var w=WI[b.id]; if(w&&!w.unreachable&&w.services) w.services.forEach(function(x){ raw.push(String(x)); });
+  var out={}, listed=false;
+  raw.forEach(function(x){
+    var t=x.toLowerCase(), m=[];
+    GRP_RX.forEach(function(p){ if(p[1].test(t)) m.push(p[0]); });
+    if(!m.length) return;
+    (m.indexOf("dr")>=0&&m.indexOf("re")>=0?["dr","re"]:[m[0]]).forEach(function(k){ out[k]=1; listed=true; });
+  });
+  if(!listed){ if(b.specialty==="video"||b.specialty==="both") out.vid=1; if(b.specialty==="drone") out.dr=1; }
+  return {groups:Object.keys(out),listed:listed};
+}
+function hexRGB(h){ return parseInt(h.slice(1,3),16)+","+parseInt(h.slice(3,5),16)+","+parseInt(h.slice(5,7),16); }
 function landscapeData(list){
-  var withSvc=0, svcCount={}, svcFol={}, svcCounty={}, totFol=0;
+  var g={}; SVC_GROUPS.forEach(function(x){ g[x.k]={g:x,members:[],fol:0,county:{}}; });
+  var totFol=0, listed=0, none=0;
   list.forEach(function(b){
     var f=followersAt(b,S.di); if(f!=null) totFol+=f;
-    var sv=svcList(b); if(sv.length) withSvc++;
-    sv.forEach(function(s){
-      svcCount[s]=(svcCount[s]||0)+1;
-      if(f!=null) svcFol[s]=(svcFol[s]||0)+f;
-      if(b.county&&LS_COUNTIES.indexOf(b.county)>=0){
-        svcCounty[s]=svcCounty[s]||{}; svcCounty[s][b.county]=(svcCounty[s][b.county]||0)+1; }
-    });
+    var r=svcGroupsOf(b); if(r.listed) listed++;
+    if(!r.groups.length){ none++; return; }
+    r.groups.forEach(function(k){ var e=g[k]; e.members.push(b); if(f!=null) e.fol+=f;
+      if(b.county) e.county[b.county]=(e.county[b.county]||0)+1; });
   });
-  var svcs=Object.keys(svcCount).sort(function(a,b2){ return svcCount[b2]-svcCount[a]; });
-  return {withSvc:withSvc,total:list.length,svcCount:svcCount,svcFol:svcFol,svcCounty:svcCounty,totFol:totFol,svcs:svcs};
+  return {rows:SVC_GROUPS.map(function(x){return g[x.k];}),total:list.length,totFol:totFol,listed:listed,none:none};
 }
-function lsMatrixHTML(d,all){
-  var svcs=all?d.svcs:d.svcs.slice(0,12), mx=1;
-  svcs.forEach(function(s){ LS_COUNTIES.forEach(function(c){ mx=Math.max(mx,((d.svcCounty[s]||{})[c])||0); }); });
-  var h='<div class="ls-mx">';
-  h+='<div class="ls-mxlab"></div>'+LS_COUNTIES.map(function(c){ return '<div class="ls-mxch" title="'+esc(c)+' County">'+esc(LS_CSHORT[c])+'</div>'; }).join("");
-  svcs.forEach(function(s){
-    h+='<div class="ls-mxlab" title="'+esc(s)+'">'+esc(s)+'</div>';
-    LS_COUNTIES.forEach(function(c){ var v=((d.svcCounty[s]||{})[c])||0, a=v?0.12+0.55*(v/mx):0;
-      h+='<div class="ls-mxc" title="'+esc(s)+' \u00b7 '+esc(c)+' Co: '+v+' provider'+(v===1?'':'s')+'" style="background:rgba(232,179,75,'+a.toFixed(2)+')">'+(v||'<span class="ls-zero">\u2014</span>')+'</div>'; });
+function lsMatrixHTML(d,rows){
+  var mx=1; rows.forEach(function(r){ LS_COUNTIES.forEach(function(c){ mx=Math.max(mx,r.county[c]||0); }); });
+  var h='<div class="mx"><div></div>'+LS_COUNTIES.map(function(c){ return '<div class="mx-ch">'+esc(c)+'</div>'; }).join("");
+  rows.forEach(function(r){
+    h+='<div class="mx-lab"><i class="share-sw" style="background:'+r.g.color+'"></i>'+esc(r.g.label)+'</div>';
+    LS_COUNTIES.forEach(function(c){ var v=r.county[c]||0, a=v?0.14+0.62*(v/mx):0;
+      h+='<div class="mx-c" title="'+esc(r.g.label)+' \u00b7 '+esc(c)+' Co: '+v+' business'+(v===1?'':'es')+'" style="background:rgba('+hexRGB(r.g.color)+','+a.toFixed(2)+')">'+(v||'<span class="ls-zero">\u2014</span>')+'</div>'; });
   });
   return h+'</div>';
 }
 function landscapeHTML(list){
-  var d=landscapeData(list);
-  if(!d.svcs.length) return "";
-  var wide=!!S.lsWide;
-  var h='<div class="sec ls"><h3>Service landscape</h3><div class="sub">Where the market\u2019s services run deep. Based on services businesses list publicly ('+d.withSvc+' of '+d.total+' disclose a list).</div>';
-  h+='<div class="ls-bars">'+d.svcs.map(function(s){
-    var n=d.svcCount[s], pct=Math.round(n/d.total*100),
-        share=d.totFol?Math.round((d.svcFol[s]||0)/d.totFol*100):0;
-    return '<div class="ls-brow"><div class="ls-blab" title="'+esc(s)+'">'+esc(s)+'</div>'+
-      '<div class="ls-btrack"><i style="width:'+Math.max(2,Math.round(n/d.svcCount[d.svcs[0]]*100))+'%"></i></div>'+
-      '<div class="ls-bmeta"><b>'+n+'</b> \u00b7 '+pct+'% of market \u00b7 '+share+'% of audience</div></div>';
-  }).join("")+'</div>';
-  h+='<div class="ls-mxhead"><div><h3 class="ls-h">Service \u00d7 county map</h3><div class="sub">Providers per service in each county \u2014 deeper color means deeper coverage.</div></div>'+
-    '<button class="ls-xbtn" data-lsx>'+(wide?'Collapse':'Expand')+'</button></div>'+
-    lsMatrixHTML(d,wide)+'</div>';
+  var d=landscapeData(list), by=S.shareBy==="audience"?"audience":"providers";
+  var val=function(r){ return by==="audience"?r.fol:r.members.length; };
+  var rows=d.rows.slice().sort(function(a,b){ return val(b)-val(a); });
+  var sum=rows.reduce(function(a,r){return a+val(r);},0)||1;
+  var R=100, CIRC=2*Math.PI*R, off=0, segs="";
+  rows.forEach(function(r){
+    var frac=val(r)/sum; if(!frac) return;
+    var len=Math.max(1,frac*CIRC-3);
+    segs+='<circle cx="130" cy="130" r="'+R+'" fill="none" stroke="'+r.g.color+'" stroke-width="28" stroke-dasharray="'+len.toFixed(1)+' '+(CIRC-len).toFixed(1)+'" stroke-dashoffset="'+(-off*CIRC).toFixed(1)+'" transform="rotate(-90 130 130)"><title>'+esc(r.g.label)+': '+Math.round(frac*100)+'% of '+(by==="audience"?"audience reach":"service listings")+'</title></circle>';
+    off+=frac;
+  });
+  var h='<section class="sec card sharecard"><div class="card-head"><div><h3>Market share by service</h3>'+
+    '<div class="sub">Every business counts in each category it offers, so the percentages overlap. '+d.listed+' of '+d.total+' publish a services list; the rest are placed by their main lane'+(d.none?' ('+d.none+' still unclassified)':'')+'.</div></div>'+
+    '<div class="seg" role="tablist" aria-label="Measure"><button data-shareby="providers" class="'+(by==="providers"?"on":"")+'">By businesses</button><button data-shareby="audience" class="'+(by==="audience"?"on":"")+'">By audience</button></div></div>'+
+    '<div class="share"><div class="share-donut"><svg viewBox="0 0 260 260" aria-hidden="true">'+segs+'</svg>'+
+    '<div class="share-center"><b>'+d.total+'</b><span>businesses</span></div></div><div class="share-rows">';
+  rows.forEach(function(r){
+    var n=r.members.length, pctB=Math.round(n/d.total*100), pctA=d.totFol?Math.round(r.fol/d.totFol*100):0;
+    var big=by==="audience"?pctA:pctB, open=S.qx["g:"+r.g.k];
+    h+='<div class="share-row'+(open?" open":"")+'" data-gx="'+r.g.k+'">'+
+      '<i class="share-sw" style="background:'+r.g.color+'"></i>'+
+      '<div class="share-name">'+esc(r.g.label)+'<span class="share-chev">'+(open?"\u25BE":"\u25B8")+'</span></div>'+
+      '<div class="share-val">'+big+'%</div>'+
+      '<div class="share-meta">'+(by==="audience"?fmt(r.fol)+' followers \u00b7 '+n+' businesses':n+' of '+d.total+' businesses \u00b7 '+pctA+'% of audience')+'</div>'+
+      '<div class="share-track"><i style="width:'+Math.max(big?2:0,big)+'%;background:'+r.g.color+'"></i></div>';
+    if(open){
+      var ms=r.members.slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);});
+      h+='<div class="share-mem">'+ms.map(function(m){ return '<span class="share-chip" data-open="'+m.id+'">'+esc(m.name)+'</span>'; }).join("")+'</div>';
+    }
+    h+='</div>';
+  });
+  h+='</div></div></section>';
+  h+='<section class="sec card"><div class="card-head"><div><h3>Where each service is offered</h3><div class="sub">Businesses per category in each county. Deeper color means deeper coverage.</div></div></div>'+lsMatrixHTML(d,rows)+'</section>';
   return h;
+}
+function pageHeadHTML(title,sub){
+  var g=(D.meta||{}).generated_at, built="";
+  if(g){ try{ built=new Date(g).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" ET"; }catch(e){} }
+  return '<div class="pg-head"><h2>'+title+'</h2><p>'+sub+(built?' <span class="pg-fresh">Data updated '+esc(built)+'.</span>':"")+'</p></div>';
 }
 var DCOLS=[
   ["name","Name","str"],["town","Town/County","str"],["followers","IG followers","num"],
@@ -1026,7 +1093,7 @@ function renderData(){
     if(!q) return true;
     return (b.name+" "+(b.town||"")+" "+(b.ig_handle||"")+" "+(b.website||"")).toLowerCase().indexOf(q)>=0; });
   dSortRows(rows,s);
-  var h='<div class="sec"><h3>Data</h3><div class="sub">Every gathered data point · secondary view · click a column header to sort · click a row to open the profile</div>'+
+  var h='<div class="sec">'+
     '<input id="dq" class="dfilter" type="search" placeholder="Filter rows…" value="'+esc(S.dq||"")+'" aria-label="Filter data rows">';
   h+='<div class="dsub">Businesses · '+rows.length+'</div><div class="dtable-wrap"><table class="dtable"><thead><tr>'+
     DCOLS.map(function(c){ return '<th data-dk="'+c[0]+'" class="'+(s.key===c[0]?"sorted":"")+'">'+c[1]+(s.key===c[0]?(s.dir<0?" ▼":" ▲"):"")+'</th>'; }).join("")+
@@ -1052,7 +1119,7 @@ function renderAI(){
     return '<div class="sec"><h3>AI Search</h3><div class="sub">Venue visibility</div>'+
       '<div class="empty-note">No AI visibility data for venues yet.</div></div>';
   var rows=(D.aiVisibility||[]).filter(function(r){ return r.jd_named!=="unreachable"; });
-  var h='<div class="sec"><h3>AI Search</h3><div class="sub">Are the AI assistants recommending you?</div>';
+  var h='<div class="sec">';
   if(!rows.length)
     return h+'<div class="empty-note">No AI visibility data yet — the daily audit feeds this tab.</div></div>';
   var dates=rows.map(function(r){return r.date;}).sort();
@@ -1128,7 +1195,7 @@ var EVENTS=postEvents();
 
 /* venue-mode Market: venue-only aggregates, never business medians */
 function renderVenueMarket(){
-  var list=filtered(), h='<div class="sec"><h3>Market</h3><div class="sub">Aggregates across '+list.length+' venues</div>';
+  var list=C.slice(), h='<div class="mkt">'+pageHeadHTML("Venue landscape","Wedding and event venues across the North Country: size, location and reach across "+list.length+" venues.");
   var caps=list.filter(function(b){return b.capacity_num!=null;}).map(function(b){return b.capacity_num;}).sort(function(a,b){return a-b;});
   var med=caps.length?caps[Math.floor(caps.length/2)]:null;
   var ig=list.filter(function(b){return b.ig_handle;}).length;
@@ -1138,21 +1205,13 @@ function renderVenueMarket(){
     '<div class="stat"><div class="v" data-count="'+(med||0)+'">0</div><div class="l">Median max guests</div></div>'+
     '<div class="stat"><div class="v">'+ig+'</div><div class="l">On Instagram</div></div>'+
     '<div class="stat"><div class="v">'+Object.keys(counties).length+'</div><div class="l">Counties</div></div></div>';
-  var buckets=[["≤ 200 guests",0],["201–300",0],["301+",0],["Not published",0]];
-  list.forEach(function(b){ var v=b.capacity_num;
-    if(v==null) buckets[3][1]++; else if(v<=200) buckets[0][1]++; else if(v<=300) buckets[1][1]++; else buckets[2][1]++; });
-  var tot=list.length||1, cols=["#6fd3e7","#6db3f2","#e8b34b","#e06c6c"];
-  h+='<div class="sec"><h3>Capacity spread</h3><div class="sub">Largest published guest count per venue</div><div class="bar">'+
-    buckets.map(function(bk,i){ return '<i style="width:'+(bk[1]/tot*100)+'%;background:'+cols[i]+'" title="'+bk[0]+': '+bk[1]+'"></i>'; }).join("")+
-    '</div><div class="barlbl">'+buckets.map(function(bk,i){return '<span><b style="color:'+cols[i]+'">'+bk[1]+'</b> '+bk[0]+'</span>';}).join("")+'</div></div>';
-  h+="</div>";
+  h+='<div class="cardgrid">'+marketGlanceHTML(true)+'</div></div>';
   return h;
 }
 
 function renderMarket(){
   if(S.mode==="venues") return renderVenueMarket();
-  var list=filtered(), h='<div class="sec"><h3>Market</h3><div class="sub">Aggregates across '+list.length+' businesses</div>';
-  h+=landscapeHTML(list);
+  var list=C.slice(), h='<div class="mkt">'+pageHeadHTML("Market landscape","How the North Country photo, video and drone market breaks down across "+list.length+" businesses: who offers what, where, and how the audience splits.");
   var f=list.filter(function(b){return b.followers!=null;}).map(function(b){return b.followers;});
   f.sort(function(a,b){return a-b;});
   function med(a){ return a.length?a[Math.floor(a.length/2)]:null; }
@@ -1167,28 +1226,8 @@ function renderMarket(){
     '<div class="stat"><div class="v">'+(list.length?Math.round(active/list.length*100):0)+'%</div><div class="l">Posted ≤30d</div></div>'+
   '</div>';
 
-  /* pricing transparency bar */
-  var buckets=[["< $1k",0],["$1–2k",0],["$2–3.5k",0],["$3.5k+",0],["Hidden",0]];
-  w.forEach(function(v){ if(v<1000)buckets[0][1]++; else if(v<2000)buckets[1][1]++;
-    else if(v<3500)buckets[2][1]++; else buckets[3][1]++; });
-  buckets[4][1]=list.length-withPrice;
-  var tot=list.length||1, cols=["#6fd3e7","#6db3f2","#e8b34b","#e06c6c","#3a4353"];
-  h+='<div class="sec"><h3>Wedding price spread</h3><div class="sub">Starting wedding price, where published</div><div class="bar">'+
-    buckets.map(function(bk,i){ return '<i style="width:'+(bk[1]/tot*100)+'%;background:'+cols[i]+'" title="'+bk[0]+': '+bk[1]+'"></i>'; }).join("")+
-    '</div><div class="barlbl">'+buckets.map(function(bk,i){return '<span><b style="color:'+cols[i]+'">'+bk[1]+'</b> '+bk[0]+'</span>';}).join("")+'</div></div>';
-
-  /* growth leaderboard (7-day percent) */
-  var lb=list.map(function(b){return {b:b,ch:pctChange(b,Math.max(0,S.di-7),S.di)};})
-    .filter(function(x){return x.ch!=null&&x.ch>=3;})
-    .sort(function(a,b2){return b2.ch-a.ch;}).slice(0,8);
-  if(lb.length){
-    var mx=lb[0].ch;
-    h+='<div class="sec"><h3>Growth leaderboard</h3><div class="sub">7-day follower change, ≥3%</div><div class="stagger">'+
-      lb.map(function(x){ return '<div class="lb-row" data-open="'+x.b.id+'"><span class="lb-nm">'+esc(x.b.name)+
-        '</span><span class="lb-v">+'+x.ch.toFixed(1)+'%</span>'+
-        '<span class="lb-bar"><i style="width:'+Math.max(4,x.ch/mx*100)+'%"></i></span></div>'; }).join("")+
-      '</div></div>';
-  }
+  h+=landscapeHTML(list);
+  h+='<div class="cardgrid">'+marketGlanceHTML(true);
 
   /* post-type mix */
   var types={};
@@ -1233,7 +1272,7 @@ function renderMarket(){
         return '<span class="wk">'+(d.getMonth()+1)+'/'+d.getDate()+'</span>'; }).join("")+'</div>'+
       '</div></div>';
   }
-  h+="</div>";
+  h+="</div></div>";
   return h;
 }
 
@@ -1350,7 +1389,7 @@ function yearsNum(b){ var w=WI[b.id]||{}, Y=new Date().getFullYear();
   if(w.since) return Y-w.since;
   if(b.est_year!=null) return Y-b.est_year;
   return null; }
-function marketGlanceHTML(){
+function marketGlanceHTML(full){
   /* The questions our data answers best, as roomy cards in a no-scroll grid.
      Every bucket row expands inline to list the businesses inside it.
      Collapsed state: each question also records a one-line glance stat for the
@@ -1454,7 +1493,7 @@ function marketGlanceHTML(){
       histSVG(stop5.map(shortLab),stop5.map(function(k){return st[k];}),
         ["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
     var vHero=V.reduce(function(a,v){return a+(v.followers||0);},0);
-    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(vHero),"total venue followers","combined Instagram audience \u00b7 "+V.length+" North Country venues")+glanceCollapsedHTML(glances));
+    return full?cards.join(""):pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(vHero),"total venue followers","combined Instagram audience \u00b7 "+V.length+" North Country venues")+glanceCollapsedHTML(glances));
   }
   var list=C, cards=[];
   /* Q1: who is actually posting? */
@@ -1556,7 +1595,7 @@ function marketGlanceHTML(){
       [sb[0][1].length,sb[1][1].length,sb[2][1].length,sb[3][1].length,sb[4][1].length],
       ["#e8b34b","#6db3f2","#6db3f2","#e06c6c","#3a4353"])));
     var bHero=list.reduce(function(a,b){return a+(b.followers||0);},0);
-    return pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(bHero),"total market followers","combined Instagram audience \u00b7 "+list.length+" photo, video & drone businesses")+glanceCollapsedHTML(glances));
+    return full?cards.join(""):pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(bHero),"total market followers","combined Instagram audience \u00b7 "+list.length+" photo, video & drone businesses")+glanceCollapsedHTML(glances));
 }
 /* collapsed market glance: one glanceable row per question, each expanding
    the full view on tap */
@@ -1864,16 +1903,59 @@ function select(id,opts){
 }
 
 /* ---------- left body ---------- */
-function renderLeft(){
-  var el=$("#leftbody");
-  el.innerHTML=S.tab==="today"?renderToday():S.tab==="dir"?renderDir():S.tab==="ai"?renderAI():S.tab==="data"?renderData():renderMarket();
-  $("#left").classList.toggle("lswide",!!S.lsWide&&S.tab==="market");
+var PAGE_HEADS={
+  today:["Activity","What moved across the market: audience changes, new businesses, promotions and who has gone quiet."],
+  ai:["AI Visibility","How AI assistants answer local search questions, and which businesses they recommend."],
+  data:["Data","Every gathered data point, sortable. Click a column to sort and a row to open the full profile."]};
+function pageHTML(){
+  if(S.tab==="market") return renderMarket();
+  var hd=PAGE_HEADS[S.tab], body=S.tab==="today"?renderToday():S.tab==="ai"?renderAI():renderData();
+  return pageHeadHTML(hd[0],hd[1])+body;
+}
+function animateCounts(el){
   $$("[data-count]",el).forEach(function(n){
     var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
     if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
     var t0=null; (function step(t){ if(!t0)t0=t; var p=Math.min(1,(t-t0)/800), e=1-Math.pow(1-p,3);
       n.textContent=mon?money(Math.round(to*e)):fmt(Math.round(to*e)); if(p<1)requestAnimationFrame(step); })(performance.now());
   });
+}
+function renderLeft(){
+  var ex=S.tab==="explore", el=ex?$("#leftbody"):$("#page");
+  if(ex){
+    el.innerHTML=renderDir();
+    var lc=$("#lcount"); if(lc) lc.textContent=filtered().length+" of "+C.length+" "+(S.mode==="venues"?"venues":"businesses");
+  }else{
+    var sc=el.scrollTop;
+    el.innerHTML='<div class="pg pg-'+S.tab+'">'+pageHTML()+'</div>';
+    el.scrollTop=sc;
+  }
+  animateCounts(el);
+}
+function setTab(t,opts){
+  opts=opts||{};
+  if(S.tab===t) return;
+  S.tab=t;
+  if(t!=="explore") setPlaying(false);
+  syncChrome(); renderLeft(); renderRight();
+  var pg=$("#page"); if(pg) pg.scrollTop=0;
+  if(t==="explore"&&map){ setTimeout(function(){ try{ map.invalidateSize(); }catch(e){} },60); }
+  if(!opts.noPush) pushHist();
+}
+function refreshCards(){ if(S.tab==="explore") renderRight(); else renderLeft(); }
+/* directory sort options follow the dataset */
+function syncSort(){
+  var el=$("#fsort"); if(!el) return;
+  var biz=S.mode!=="venues";
+  var opts=biz?[["audience","Sort: Audience"],["growth","Sort: Growth"],["recent","Sort: Recent post"],["price","Sort: Price"],["name","Sort: A to Z"]]
+              :[["capacity","Sort: Capacity"],["name","Sort: A to Z"]];
+  var want=biz?"b":"v";
+  if(el.getAttribute("data-set")!==want){
+    el.innerHTML=opts.map(function(o){ return '<option value="'+o[0]+'">'+o[1]+'</option>'; }).join("");
+    el.setAttribute("data-set",want);
+  }
+  if(!opts.some(function(o){return o[0]===S.sortBy;})) S.sortBy=opts[0][0];
+  el.value=S.sortBy;
 }
 
 function dshort(ds){ if(!ds) return "—"; var d=new Date(ds+"T12:00:00");
@@ -1957,7 +2039,7 @@ function setPlaying(on){
 function onScrub(){
   renderScrub(); renderPins();
   if(S.view==="rankings") renderRankings();
-  if(S.tab==="today") renderLeft();
+  renderLeft();
   renderRight();
 }
 
@@ -1981,7 +2063,7 @@ function setMode(m){
   if(S.mode===m) return;
   S.mode=m; S.qx={}; S.qall={};
   C=(m==="venues"?V:B); BY_ID=(m==="venues"?V_BY_ID:B_BY_ID);
-  S.sel=null; S.lane=""; S.mom=""; S.qx={}; S.qall={};
+  S.sel=null; S.lane=""; S.mom=""; S.qx={}; S.qall={}; S.sortBy=(m==="venues"?"capacity":"audience"); syncSort();
   $("#flane").value=""; $("#fmom").value="";
   computeModeStats();
   $$(".modetoggle button").forEach(function(b){ var on=b.getAttribute("data-mode")===m;
@@ -1997,7 +2079,7 @@ function setMode(m){
   if(pts.length&&map){
     HIST.noPush=true; /* programmatic reframe: not a user move */
     /* account for the fixed side panels so edge pins (e.g. Altona) don't sit underneath them */
-    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts), {paddingTopLeft:L.point(400,90), paddingBottomRight:L.point(380,90)});
+    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts), {paddingTopLeft:L.point(450,90), paddingBottomRight:L.point(380,90)});
     else map.fitBounds(L.latLngBounds(pts).pad(0.15));
   }
   if(S.view==="rankings") renderRankings();
@@ -2014,19 +2096,23 @@ document.addEventListener("click",function(e){
   var mc=e.target.closest("[data-mclose]");
   if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
   var gx=e.target.closest("[data-gexpand]");
-  if(gx){ S.glanceX=!S.glanceX; renderRight(); pushHist(); return; }
-  var lsx=e.target.closest("[data-lsx]");
-  if(lsx){ S.lsWide=!S.lsWide; renderLeft(); pushHist(); return; }
+  if(gx){ setTab("market"); return; }
+  var sb=e.target.closest("[data-shareby]");
+  if(sb){ S.shareBy=sb.getAttribute("data-shareby"); renderLeft(); return; }
+  var sg=e.target.closest("[data-gx]");
+  if(sg&&!e.target.closest("[data-open]")){ var gk="g:"+sg.getAttribute("data-gx"); S.qx[gk]=!S.qx[gk]; renderLeft(); return; }
   var cf=e.target.closest("[data-cf]");
   if(cf){ var id=cf.getAttribute("data-cf");
     if(id!==S.sel) select(id,{fly:false});
     S.expanded=true; renderRight(); pushHist(); return; }
   var t=e.target.closest("[data-open]");
-  if(t){ select(t.getAttribute("data-open")); return; }
+  if(t){ var oid=t.getAttribute("data-open");
+    if(S.tab!=="explore"){ S.tab="explore"; syncChrome(); renderLeft(); }
+    select(oid); return; }
   var qx=e.target.closest("[data-qx]");
-  if(qx){ var k=qx.getAttribute("data-qx"); S.qx[k]=!S.qx[k]; renderRight(); return; }
+  if(qx){ var k=qx.getAttribute("data-qx"); S.qx[k]=!S.qx[k]; refreshCards(); return; }
   var qall=e.target.closest("[data-qall]");
-  if(qall){ var ka=qall.getAttribute("data-qall"); S.qall[ka]=!S.qall[ka]; renderRight(); return; }
+  if(qall){ var ka=qall.getAttribute("data-qall"); S.qall[ka]=!S.qall[ka]; refreshCards(); return; }
   var vt=e.target.closest(".viewtoggle button");
   if(vt){ setView(vt.getAttribute("data-view")); return; }
   var mt=e.target.closest(".modetoggle button");
@@ -2040,11 +2126,10 @@ document.addEventListener("click",function(e){
     if(s2.key===k) s2.dir=-s2.dir;
     else s2={key:k,dir:/^(followers|ch7|ch30|posts|conf)$/.test(k)?-1:1};
     S.dsort=s2; renderLeft(); pushHist(); return; }
-  var tb=e.target.closest(".tabs button");
-  if(tb){ S.tab=tb.getAttribute("data-tab"); S.lsWide=false;
-    $$(".tabs button").forEach(function(b){ var on=b===tb;
-      b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
-    renderLeft(); pushHist(); return; }
+  var cfb=e.target.closest("#clearf");
+  if(cfb){ S.q=""; S.lane=""; S.mom=""; S.reg=""; syncChrome(); refreshFiltered(); pushHist(); return; }
+  var tb=e.target.closest(".pagenav button");
+  if(tb){ setTab(tb.getAttribute("data-tab")); return; }
 });
 var fqT=null;
 $("#fq").addEventListener("input",function(e){
@@ -2057,6 +2142,7 @@ document.addEventListener("input",function(e){
       var n=$("#dq"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },160);
   }
 });
+$("#fsort").addEventListener("change",function(e){ S.sortBy=e.target.value; renderLeft(); });
 [["#flane","lane"],["#fmom","mom"],["#freg","reg"]].forEach(function(p){
   $(p[0]).addEventListener("change",function(e){ S[p[1]]=e.target.value; refreshFiltered(); pushHist(); });
 });
@@ -2072,13 +2158,12 @@ $("#navfwd").addEventListener("click",goFwd);
 $("#navhome").addEventListener("click",goHome);
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){
-    if(S.lsWide){ S.lsWide=false; renderLeft(); return; }
     if(S.expanded){ S.expanded=false; renderRight(); pushHist(); return; }
-    if(S.glanceX&&!S.sel){ S.glanceX=false; renderRight(); pushHist(); return; }
     setPlaying(false);
     if(window.innerWidth<=900){ $("#right").classList.remove("open"); }
     else clearSel(); }
-  if(e.key==="/"&&document.activeElement!==$("#fq")){ e.preventDefault(); $("#fq").focus(); }
+  var tg=(document.activeElement&&document.activeElement.tagName)||"";
+  if(e.key==="/"&&document.activeElement!==$("#fq")&&tg!=="INPUT"&&tg!=="SELECT"){ e.preventDefault(); if(S.tab!=="explore") setTab("explore"); $("#fq").focus(); }
 });
 window.addEventListener("resize",function(){ /* rankings view flows with layout */ });
 
@@ -2099,6 +2184,6 @@ $("#leftbody").addEventListener("mouseout",function(e){
   var m=pinById[row.dataset.open], el=m&&m.getElement();
   if(el&&el.firstChild) el.firstChild.classList.remove("hot");
 });
-renderScrub(); renderLeft(); renderRight(); buildFresh();
+syncSort(); renderScrub(); renderLeft(); renderRight(); buildFresh();
 pushHist(); /* seed undo history with the initial view */
 })();
