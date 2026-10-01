@@ -78,7 +78,6 @@ button{font-family:var(--sans)}
 .mkpin{border-radius:50%;border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 0 1.5px rgba(0,0,0,.55),0 0 12px rgba(0,0,0,.65);transition:transform .25s ease}
 .mkpin.hollow{background:transparent!important;border-style:dashed;border-color:rgba(255,255,255,.4)}
 .mkpin.sel{border-color:var(--amber);box-shadow:0 0 0 3px rgba(232,179,75,.35),0 0 14px rgba(0,0,0,.6);z-index:999!important}
-.mkpin.you{border-color:var(--amber);box-shadow:0 0 0 3px rgba(232,179,75,.4),0 0 16px rgba(232,179,75,.35)}
 .mkpin.dim{opacity:.14;filter:saturate(.4)}
 @keyframes pinpulse{0%,100%{opacity:1}50%{opacity:.45}}
 .mkpin.live{animation:pinpulse 2.2s ease-out infinite}
@@ -92,7 +91,6 @@ button{font-family:var(--sans)}
   white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.55);cursor:pointer;transition:transform .18s ease}
 .zpin i{width:8px;height:8px;border-radius:50%;background:var(--lc,#888);flex:none}
 .zpin.sel{background:#e8b34b;border-color:#e8b34b;color:#161310}
-.zpin.you{box-shadow:0 0 0 2px rgba(232,179,75,.6),0 4px 12px rgba(0,0,0,.55)}
 .zpin.live{animation:pinpulse 2.2s ease-out infinite}
 .zpin.hot{transform:translate(-50%,-50%) scale(1.2)}
 .zpin.dim{opacity:.25}
@@ -103,7 +101,6 @@ button{font-family:var(--sans)}
   font-family:var(--sans);font-size:11px;font-weight:600;padding:3px 9px;border-radius:7px;
   box-shadow:0 4px 14px rgba(0,0,0,.55);line-height:1.35;text-align:center}
 .leaflet-tooltip.mklabel::before{display:none}
-.leaflet-tooltip.mklabel.you{border-color:rgba(232,179,75,.6)}
 
 /* ---------- glass chrome ---------- */
 .glass{
@@ -200,7 +197,6 @@ button{font-family:var(--sans)}
 .row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent}
 .row:hover{background:rgba(255,255,255,.05)}
 .row.sel{background:var(--amber-dim);border-color:rgba(232,179,75,.4)}
-.row.you{background:linear-gradient(180deg,rgba(232,179,75,.14),rgba(232,179,75,.05));border-color:rgba(232,179,75,.35)}
 .row .dot{width:8px;height:8px;border-radius:50%;flex:none}
 .row .nm{flex:1;min-width:0}
 .row .nm b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -210,7 +206,6 @@ button{font-family:var(--sans)}
 .row .meta span{font-size:11px;color:var(--mut)}
 .row .pct{font-size:11.5px;font-weight:700}
 .pct.up{color:var(--up)} .pct.dn{color:var(--red)} .pct.fl{color:var(--dim)}
-.youbadge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(232,179,75,.5);border-radius:20px;padding:2px 8px;margin-left:6px;vertical-align:2px}
 .adj{color:var(--amber);font-weight:600}
 .unv{color:#8b93a3;font-style:italic}
 
@@ -243,10 +238,8 @@ button{font-family:var(--sans)}
 .hl-card{background:rgba(255,255,255,.045);border:1px solid var(--line-soft);border-radius:11px;
   padding:10px 11px;cursor:pointer;transition:border-color .18s ease,transform .18s ease}
 .hl-card:hover{border-color:rgba(232,179,75,.55);transform:translateY(-1px)}
-.hl-card.you{border-color:rgba(232,179,75,.6);background:rgba(232,179,75,.07)}
 .hl-k{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:#9aa3b2;margin-bottom:3px}
 .hl-n{font-weight:700;font-size:13.5px;margin-bottom:2px}
-.hl-card.you .hl-n{color:#e8b34b}
 .hl-w{font-size:11.5px;color:#9aa3b2;line-height:1.45}
 /* AI search tab */
 .ai-prow{padding:8px 2px;border-bottom:1px solid var(--line-soft)}
@@ -299,7 +292,6 @@ button{font-family:var(--sans)}
 .prof-head>div{min-width:0;flex:1}
 .prof-head h2{overflow-wrap:break-word}
 .prof-ava{width:52px;height:52px;border-radius:14px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;color:#0a0d13;background:linear-gradient(135deg,#e8b34b,#c98f2b)}
-.prof-ava.you{background:linear-gradient(135deg,#f5cd6d,#e8b34b);box-shadow:0 0 18px rgba(232,179,75,.4)}
 .prof-head h2{font-size:23px;margin:0;line-height:1.15}
 .prof-head .sub{font-size:12px;color:var(--mut);margin-top:3px}
 .kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 12px;font-size:13px;margin:10px 0}
