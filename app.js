@@ -1163,13 +1163,13 @@ function renderAI(){
   var engines=["ChatGPT","Claude","Gemini","Perplexity"];
   var engOK=engines.filter(function(e){ return rows.some(function(r){return r.engine===e;}); });
   var perpDead=!(D.aiVisibility||[]).some(function(r){return r.engine==="Perplexity"&&r.jd_named!=="unreachable"&&r.date>=dates[dates.length-1];});
-  h+='<div class="statgrid">'+
+  var statHTML='<div class="statgrid">'+
     '<div class="stat"><div class="v">'+rate+'%</div><div class="l">JD mention rate</div></div>'+
     '<div class="stat"><div class="v">'+(avgRank!=null?"#"+avgRank.toFixed(1):"—")+'</div><div class="l">Avg rank when named</div></div>'+
     '<div class="stat"><div class="v">'+nFirst+'</div><div class="l">Ranked #1 finishes</div></div>'+
     '<div class="stat"><div class="v">'+rows.length+'</div><div class="l">Checks run</div></div>'+
   '</div>';
-  h+='<div class="sub" style="margin:10px 0 0">'+esc(cov)+' · '+
+  var covHTML='<div class="sub" style="margin:10px 0 0">'+esc(cov)+' · '+
     engOK.length+' engines · '+
     new Set(rows.map(function(r){return r.prompt;})).size+' prompts'+
     (perpDead?' · <span title="Perplexity put answers behind sign-in on Sep 26">Perplexity unreachable since Sep 26</span>':"")+'</div>';
@@ -1184,7 +1184,7 @@ function renderAI(){
     if(m.jd_named==="no") return '<span class="ai-miss">—</span>';
     return '<span class="ai-rank">'+esc(m.jd_named)+'</span>';
   };
-  h+='<div class="sec"><h3>Latest check — JD by prompt</h3><div class="sub">What the AIs returned on '+esc(latest)+
+  var latestHTML='<div class="sec"><h3>Latest check — JD by prompt</h3><div class="sub">What the AIs returned on '+esc(latest)+
     ': JD\u2019s rank per prompt and engine. Rival names are recorded per engine-day, not per prompt.</div>'+
     '<div class="dtable-wrap"><table class="ai-latest"><thead><tr><th>Prompt</th>'+
     engines.map(function(e){return '<th>'+esc(e)+'</th>';}).join("")+'</tr></thead><tbody>'+
@@ -1195,10 +1195,10 @@ function renderAI(){
   engines.forEach(function(e){
     var day=rows.filter(function(r){return r.date===latest&&r.engine===e;})[0];
     if(!day||!(day.rivals||[]).length) return;
-    h+='<div class="ai-also"><b>'+esc(e)+' also named that day:</b> '+
+    latestHTML+='<div class="ai-also"><b>'+esc(e)+' also named that day:</b> '+
       day.rivals.slice(0,6).map(esc).join(", ")+'</div>';
   });
-  h+='</div>';
+  latestHTML+='</div>';
 
   /* ---- per-engine bars ---- */
   var eng={};
@@ -1206,7 +1206,7 @@ function renderAI(){
     (eng[r.engine]=eng[r.engine]||{n:0,hit:0});
     eng[r.engine].n++; if(r.jd_named==="yes"||r.jd_named==="partial") eng[r.engine].hit++;
   });
-  h+='<div class="sec"><h3>By assistant</h3><div class="stagger">'+
+  var engHTML='<div class="sec"><h3>By assistant</h3><div class="stagger">'+
     Object.keys(eng).sort().map(function(e){
       var p=Math.round(eng[e].hit/eng[e].n*100);
       return '<div class="lb-row"><span class="lb-nm">'+esc(e)+'</span>'+
@@ -1220,7 +1220,7 @@ function renderAI(){
     pr[r.prompt].n++; if(r.jd_named==="yes"||r.jd_named==="partial") pr[r.prompt].hit++;
     if(r.jd_rank!=null&&(pr[r.prompt].best==null||r.jd_rank<pr[r.prompt].best)) pr[r.prompt].best=r.jd_rank;
   });
-  h+='<div class="sec"><h3>By search prompt</h3><div class="stagger">'+
+  var prHTML='<div class="sec"><h3>By search prompt</h3><div class="stagger">'+
     Object.keys(pr).map(function(p){
       var r=Math.round(pr[p].hit/pr[p].n*100);
       return '<div class="ai-prow"><div class="nm"><b>'+esc(aiPromptShort(p))+'</b>'+
@@ -1235,7 +1235,7 @@ function renderAI(){
     byDate[r.date].n++; if(r.jd_named==="yes"||r.jd_named==="partial") byDate[r.date].hit++;
   });
   var dkeys=Object.keys(byDate).sort();
-  h+='<div class="sec"><h3>JD\u2019s trajectory</h3><div class="sub">Mention rate per day across all reachable checks.</div><div class="stagger">'+
+  var trajHTML='<div class="sec"><h3>JD\u2019s trajectory</h3><div class="sub">Mention rate per day across all reachable checks.</div><div class="stagger">'+
     dkeys.map(function(d){
       var p=Math.round(byDate[d].hit/byDate[d].n*100);
       return '<div class="lb-row"><span class="lb-nm">'+esc(d)+'</span>'+
@@ -1268,8 +1268,8 @@ function renderAI(){
     if(b.est_year) bits.push((2026-b.est_year)+" yrs in business");
     return bits.join(" · ");
   };
-  h+='<div class="sec"><h3>Businesses the AIs name most</h3>'+
-    '<div class="sub">Named in how many of the '+nDays+' reachable AI checks (one check = one assistant on one day). Click a tracked business to open its profile.</div><div class="stagger">'+
+  var whoHTML='<div class="sec"><h3>Who the AIs name</h3>'+
+    '<div class="sub">The businesses AI assistants cite most in local photo, video and drone searches — ranked by share of the '+nDays+' reachable AI checks. Click a tracked business to open its profile.</div><div class="stagger">'+
     top.map(function(t){
       var open=t.id?(' data-open="'+t.id+'"'):"";
       return '<div class="ai-biz"'+open+'><div class="ai-biz-top"><span class="lb-nm">'+
@@ -1282,8 +1282,9 @@ function renderAI(){
 
   /* ---- named but not tracked ---- */
   var untracked=board.filter(function(t){return !t.id;}).slice(0,8);
+  var untrHTML="";
   if(untracked.length){
-    h+='<div class="sec"><h3>Named by AIs, not in our market</h3>'+
+    untrHTML='<div class="sec"><h3>Named by AIs, not in our market</h3>'+
       '<div class="sub">The assistants cite these names, but they aren\u2019t in our '+B.length+
       '-business roster. Some may be real competitors we don\u2019t track yet; some may be AI hallucinations. Worth a look before adding.</div><div class="stagger">'+
       untracked.map(function(t){
@@ -1304,7 +1305,7 @@ function renderAI(){
   var rest=B.filter(function(b){return !mappedIds[b.id];});
   var pct=function(rows,f){ return rows.length?Math.round(100*rows.filter(f).length/rows.length):0; };
   var wHeavy=heavy, wRest=rest;
-  h+='<div class="sec"><h3>Why these businesses get cited</h3>'+
+  var whyHTML='<div class="sec"><h3>Why they get cited</h3>'+
     '<div class="sub">Comparing the 10 most-named tracked businesses against the '+rest.length+
     ' tracked businesses the AIs never name. Observed patterns, not proven causes.</div>'+
     '<div class="why-grid">'+
@@ -1327,6 +1328,9 @@ function renderAI(){
     'business that piles up mentions across the local web over years. That footprint is what the assistants are drawing on.</div>'+
     '</div>';
 
+  h+=covHTML;
+  h+='<div class="ai-hero">'+whoHTML+whyHTML+'</div>';
+  h+=statHTML+latestHTML+engHTML+prHTML+trajHTML+untrHTML;
   h+="</div>";
   return h;
 }
