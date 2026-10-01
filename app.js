@@ -1154,17 +1154,22 @@ function computeAI(){
   var engOK=engines.filter(function(e){return rows.some(function(r){return r.engine===e;});});
   var prompts=[]; rows.forEach(function(r){if(prompts.indexOf(r.prompt)<0)prompts.push(r.prompt);});
   var perpDead=!(D.aiVisibility||[]).some(function(r){return r.engine==="Perplexity"&&r.jd_named!=="unreachable";});
-  var nameDays={}, nameEng={};
-  var reg=function(n,id,key,eng){
+  var nameDays={}, nameEng={}, nameSvc={}, svcKeys={}, promptChecks={};
+  var reg=function(n,id,key,eng,svcs){
     var e=nameDays[n]=nameDays[n]||{days:{},id:id};
     e.days[key]=1;
     var ne=nameEng[n]=nameEng[n]||{};
     (ne[eng]=ne[eng]||{})[key]=1;
+    var ns=nameSvc[n]=nameSvc[n]||{};
+    (svcs||["general"]).forEach(function(g){ (ns[g]=ns[g]||{})[key]=1; });
   };
   rows.forEach(function(r){
     var key=r.date+"|"+r.engine, hit=r.jd_named==="yes"||r.jd_named==="partial";
-    (r.rivals||[]).forEach(function(n){reg(n,RIVAL2ID[n]||null,key,r.engine);});
-    if(hit) reg("JD Meyers Productions","jd-meyers-productions",key,r.engine);
+    var svcs=(r.services&&r.services.length)?r.services:["general"];
+    svcs.forEach(function(g){ (svcKeys[g]=svcKeys[g]||{})[key]=1; });
+    (promptChecks[r.prompt]=promptChecks[r.prompt]||{})[key]=1;
+    (r.rivals||[]).forEach(function(n){reg(n,RIVAL2ID[n]||null,key,r.engine,svcs);});
+    if(hit) reg("JD Meyers Productions","jd-meyers-productions",key,r.engine,svcs);
   });
   var nChecks={}; rows.forEach(function(r){nChecks[r.date+"|"+r.engine]=1;});
   var nDays=Object.keys(nChecks).length;
@@ -1187,6 +1192,17 @@ function computeAI(){
   });
   var idDays={};
   Object.keys(idDaySets).forEach(function(id){idDays[id]=Object.keys(idDaySets[id]).length;});
+  var idSvc={};
+  Object.keys(nameSvc).forEach(function(n){
+    var nid=(nameDays[n]||{}).id; if(!nid) return;
+    var is=idSvc[nid]=idSvc[nid]||{}, ns=nameSvc[n];
+    Object.keys(ns).forEach(function(g){
+      var sg=is[g]=is[g]||{};
+      Object.keys(ns[g]).forEach(function(k){sg[k]=1;});
+    });
+  });
+  var svcChecks={};
+  Object.keys(svcKeys).forEach(function(g){svcChecks[g]=Object.keys(svcKeys[g]).length;});
   var board=B.map(function(b){return {name:b.name,id:b.id,days:idDays[b.id]||0};});
   Object.keys(nameDays).forEach(function(n){
     if(!nameDays[n].id) board.push({name:n,id:null,days:Object.keys(nameDays[n].days).length});
@@ -1200,6 +1216,8 @@ function computeAI(){
   AI={rows:rows,dates:dates,cov:dates.length?dates[0]+" → "+dates[dates.length-1]:"",
     engines:engines,engOK:engOK,prompts:prompts,perpDead:perpDead,
     board:board,nDays:nDays,nameEng:nameEng,idEng:idEng,engChecks:engChecks,
+    idSvc:idSvc,nameSvc:nameSvc,svcKeys:svcKeys,svcChecks:svcChecks,
+    promptChecks:promptChecks,promptCatalog:((D.aiPrompts||{}).prompts||[]),
     webPct:pct(heavy,function(b){return !!b.website;}),
     medYrs:aiMed(heavy.map(function(b){return b.est_year?2026-b.est_year:null;})),
     medRev:aiMed(heavy.map(function(b){return b.review_count;})),
@@ -1210,10 +1228,33 @@ function computeAI(){
     restPricePct:pct(rest,function(b){return b.hasPrice;}),
     nNamed:Object.keys(nameDays).length};
 }
+function aiSvcLabel(g){
+  if(g==="general") return "General / pricing";
+  for(var i=0;i<SVC_GROUPS.length;i++) if(SVC_GROUPS[i].k===g) return SVC_GROUPS[i].label;
+  return g;
+}
+function aiOwnLane(t){
+  var b=t.id?B_BY_ID[t.id]:null; if(!b) return null;
+  var groups=svcGroupsOf(b).groups; if(!groups.length) return null;
+  var nk={}, ck={}, sets=AI.idSvc[t.id]||{};
+  groups.forEach(function(g){
+    var sg=sets[g]; if(sg) Object.keys(sg).forEach(function(k){nk[k]=1;});
+    var sk=AI.svcKeys[g]; if(sk) Object.keys(sk).forEach(function(k){ck[k]=1;});
+  });
+  return {groups:groups,named:Object.keys(nk).length,checks:Object.keys(ck).length};
+}
 function aiVerdict(t){
   var share=AI.nDays?t.days/AI.nDays:0, ps=Math.round(share*100);
   var b=t.id?B_BY_ID[t.id]:null, h="";
-  if(t.days===0) h+="The assistants have not named <b>"+esc(t.name)+"</b> in any of the "+AI.nDays+" checks so far. ";
+  var lane=t.id?aiOwnLane(t):null;
+  if(lane&&lane.checks){
+    var lp=Math.round(100*lane.named/lane.checks);
+    var lab=lane.groups.map(aiSvcLabel).join(" + ").toLowerCase();
+    if(lane.named===0) h+="The assistants have not named <b>"+esc(t.name)+"</b> on any "+lab+" prompt so far — 0 of "+lane.checks+" checks in the services it offers. ";
+    else h+="<b>"+esc(t.name)+"</b> is named in "+lane.named+" of "+lane.checks+" checks ("+lp+"%) on "+lab+" prompts — the services it actually offers. ";
+    h+="Across all "+AI.nDays+" checks market-wide, it was named "+t.days+" time"+(t.days===1?"":"s")+" ("+ps+"%). ";
+  }
+  else if(t.days===0) h+="The assistants have not named <b>"+esc(t.name)+"</b> in any of the "+AI.nDays+" checks so far. ";
   else if(share>=0.5) h+="<b>"+esc(t.name)+"</b> is one of the market\u2019s most-cited businesses — named in "+t.days+" of "+AI.nDays+" checks ("+ps+"%). ";
   else h+="<b>"+esc(t.name)+"</b> is cited in "+t.days+" of "+AI.nDays+" checks ("+ps+"%) — on the assistants\u2019 radar, but well below the leaders. ";
   if(!b){ h+="It isn\u2019t in our "+B.length+"-business roster, so there\u2019s no profile data to weigh against the most-cited group."; return h; }
@@ -1279,6 +1320,20 @@ function renderAIDetail(){
         '<span class="lb-bar"><i style="width:'+(ec?Math.max(4,nd/ec*100):0)+'%"></i></span></div>';
     }).join("")+'</div>';
   if(b){
+    var grps=svcGroupsOf(b).groups;
+    if(grps.length){
+      h+='<div class="ai-big">By service — its own lanes</div><div class="stagger">'+
+        grps.map(function(g){
+          var cc=AI.svcChecks[g]||0;
+          var sg=AI.idSvc[t.id]&&AI.idSvc[t.id][g];
+          var nd=sg?Object.keys(sg).length:0;
+          var right=cc===0?'<span class="ai-miss">no checks yet</span>':'<span class="lb-v">'+nd+' of '+cc+'</span>';
+          return '<div class="lb-row"><span class="lb-nm">'+esc(aiSvcLabel(g))+'</span>'+right+
+            '<span class="lb-bar"><i style="width:'+(cc?Math.max(4,nd/cc*100):0)+'%"></i></span></div>';
+        }).join("")+'</div>';
+    }
+  }
+  if(b){
     var yn=function(v){return v?"Yes":"No";};
     h+='<div class="ai-big">Profile vs the ten most-cited</div>'+
       '<div class="ai-attr"><span class="k">Own website</span><span class="v">'+yn(!!b.website)+'</span><span class="bm">'+AI.webPct+'% of most-cited</span></div>'+
@@ -1316,7 +1371,18 @@ function renderAI(){
       '<span class="ct">'+(t.days>0?t.days+' of '+AI.nDays:'not cited')+'</span>'+
       '<span class="bar"><i style="width:'+Math.max(3,AI.nDays?t.days/AI.nDays*100:0)+'%"></i></span></div>';
   });
-  h+='</div></div>';
+  h+='</div>';
+  h+='<div class="ai-sec-t ai-toggle" data-aip>Prompt set ('+AI.promptCatalog.length+')<span class="ai-tog">'+(S.aiPrompts?"▾":"▸")+'</span></div>';
+  if(S.aiPrompts){
+    h+='<div class="ai-prompts">'+AI.promptCatalog.map(function(p){
+      var pc=AI.promptChecks[p.text], cc=pc?Object.keys(pc).length:0;
+      var tags=p.services.map(aiSvcLabel).join(" + ");
+      var isNew=p.added&&p.added>"2026-09-23";
+      return '<div class="ai-prompt"><div class="ai-prompt-t">“'+esc(p.text)+'”</div>'+
+        '<div class="ai-prompt-s">'+esc(tags)+' · '+(cc?cc+' checks so far':'<span class="ai-miss">no history yet</span>')+(isNew?' · <span class="ai-new">new</span>':"")+'</div></div>';
+    }).join("")+'</div>';
+  }
+  h+='</div>';
   h+='<div class="ai-right" id="aiDetail">'+renderAIDetail()+'</div>';
   h+='</div>';
   return h;
@@ -2234,6 +2300,8 @@ document.addEventListener("click",function(e){
   if(pxb){ var k=pxb.getAttribute("data-px");
     if(k==="glance") S.glanceX=!S.glanceX; else S.expanded=!S.expanded;
     renderRight(); pushHist(); return; }
+  var ap=e.target.closest("[data-aip]");
+  if(ap){ S.aiPrompts=!S.aiPrompts; renderLeft(); return; }
   var ar=e.target.closest("[data-ai]");
   if(ar){ S.aiSel=ar.getAttribute("data-ai");
     var ad=$("#aiDetail"); if(ad) ad.innerHTML=renderAIDetail();
