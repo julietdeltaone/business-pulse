@@ -1299,29 +1299,75 @@ function aiVerdict(t){
 /* Plain data for the selected business's AI profile. The dashboard skeleton is built
    once per selection and fillAIDash() refills it in place, so the bar <i> elements
    persist and their CSS width transitions animate smoothly between businesses. */
+function aiPromptScope(){
+  var p=S.aiPrompt; if(!p||!AI.rows) return null;
+  var keys={}, engC={};
+  AI.rows.forEach(function(r){
+    if(r.prompt!==p) return;
+    var k=r.date+"|"+r.engine; keys[k]=1;
+    engC[r.engine]=engC[r.engine]||{}; engC[r.engine][r.date]=1;
+  });
+  var n=Object.keys(keys).length;
+  var cites={};
+  function add(nm,id,eng,key){
+    var c=cites[nm]=cites[nm]||{name:nm,id:id,days:{},eng:{}};
+    c.days[key]=1; (c.eng[eng]=c.eng[eng]||{})[key]=1;
+  }
+  AI.rows.forEach(function(r){
+    if(r.prompt!==p) return;
+    var key=r.date+"|"+r.engine;
+    (r.rivals||[]).forEach(function(nm){ add(nm,RIVAL2ID[nm]||null,r.engine,key); });
+    if(r.jd_named==="yes"||r.jd_named==="partial") add("JD Meyers Productions","jd-meyers-productions",r.engine,key);
+  });
+  var board=Object.keys(cites).map(function(nm){
+    var c=cites[nm];
+    return {name:nm,id:c.id,days:Object.keys(c.days).length,eng:c.eng};
+  }).sort(function(a,b){return b.days-a.days||(a.name<b.name?-1:1);});
+  var engChecks={}; Object.keys(engC).forEach(function(e){engChecks[e]=Object.keys(engC[e]).length;});
+  var cat=(AI.promptCatalog||[]).filter(function(x){return x.text===p;})[0]||null;
+  var byName={}; board.forEach(function(t){byName[t.name]=t;});
+  return {prompt:p,n:n,board:board,byName:byName,engChecks:engChecks,
+    services:cat?(cat.services||[]):[]};
+}
 function aiDetailData(){
   var sel=S.aiSel, t=sel?AI.board.filter(function(x){return x.name===sel;})[0]:null;
   if(!t) return null;
+  var scope=aiPromptScope();
+  var sc=scope?scope.byName[t.name]||null:null;
   var b=t.id?B_BY_ID[t.id]:null;
   var yrs=b&&b.est_year?2026-b.est_year:null;
-  var citePct=AI.nDays?Math.round(100*t.days/AI.nDays):0;
+  var sDays=scope?(sc?sc.days:0):t.days;
+  var sN=scope?scope.n:AI.nDays;
+  var citePct=sN?Math.round(100*sDays/sN):0;
   var eng=AI.engines.map(function(e){
-    var ec=AI.engChecks[e]||0;
-    var sets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
-    var se=sets[e], nd=se?Object.keys(se).length:0;
+    var ec=scope?(scope.engChecks[e]||0):(AI.engChecks[e]||0);
+    var nd, se;
+    if(scope){ se=sc&&sc.eng[e]; nd=se?Object.keys(se).length:0; }
+    else{ var sets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
+      se=sets[e]; nd=se?Object.keys(se).length:0; }
     return {e:e,nd:nd,ec:ec,color:ENG_COLORS[e]||"#6db3f2",
-      label:ec===0?"unreachable":nd+" of "+ec,
+      label:ec===0?(scope?"no checks for this assistant":"unreachable"):nd+" of "+ec,
       pct:ec?(nd>0?Math.max(3,nd/ec*100):0):0};
   });
   var myGrps=b?svcGroupsOf(b).groups:[];
-  var svc=SVC_GROUPS.map(function(g){
+  var svc;
+  if(scope){
+    svc=SVC_GROUPS.map(function(g){
+      var inPrompt=scope.services.indexOf(g.k)>=0;
+      return {k:g.k,label:g.label,color:g.color,served:inPrompt,
+        label:!inPrompt?"not in this prompt":(scope.n===0?"no checks yet":sDays+" of "+scope.n),
+        pct:inPrompt&&scope.n?(sDays>0?Math.max(3,sDays/scope.n*100):0):0};
+    });
+  }else{
+    svc=SVC_GROUPS.map(function(g){
     var served=myGrps.indexOf(g.k)>=0;
     var cc=AI.svcChecks[g.k]||0, sg=t.id&&AI.idSvc[t.id]&&AI.idSvc[t.id][g.k];
     var nd=sg?Object.keys(sg).length:0;
     return {k:g.k,label:g.label,color:g.color,served:served,
       label:!served?"not a lane":(cc===0?"no checks yet":nd+" of "+cc),
       pct:served&&cc?(nd>0?Math.max(3,nd/cc*100):0):0};
-  });
+    });
+  }
   var prof=null;
   if(b){
     var yn=function(v){return v?"Yes":"No";};
@@ -1333,14 +1379,19 @@ function aiDetailData(){
     ];
   }
   var lane=t.id?aiOwnLane(t):null;
-  var base=lane&&lane.checks?Math.round(100*lane.named/lane.checks):citePct;
+  var base=scope?citePct:(lane&&lane.checks?Math.round(100*lane.named/lane.checks):citePct);
+  var scopeNote=scope?
+    '<b>On this prompt:</b> '+(scope.n===0?"no checks have run yet — it joins the next audit.":
+      "named in "+sDays+" of "+scope.n+" ("+citePct+"%)"+(sDays===0?" — not named once on this prompt.":""))+" ":"";
   return {t:t,b:b,
+    citeSub:scope?"This prompt · named in":"AI citations · named in",
     meta:b?((b.review_count!=null?b.review_count+" Google reviews":"reviews n/a")+" · "+
       (b.hasPrice?"pricing published":"no pricing shown")+(yrs!=null?" · "+yrs+" yrs in business":""))
       :"Named by the assistants, but not in our "+B.length+"-business roster.",
-    cite:{label:t.days+" of "+AI.nDays,pct:AI.nDays?(t.days>0?Math.max(3,t.days/AI.nDays*100):0):0,
+    cite:{label:scope&&scope.n===0?"no checks yet":sDays+" of "+sN,
+      pct:sN?(sDays>0?Math.max(3,sDays/sN*100):0):0,
       color:aiTierColor(citePct)},
-    eng:eng, svc:svc, prof:prof, verdict:aiVerdict(t),
+    eng:eng, svc:svc, prof:prof, verdict:scopeNote+aiVerdict(t),
     tone:base>=70?"strong":(base>=30?"mixed":"weak")};
 }
 function aiDashSkeleton(){
@@ -1348,7 +1399,7 @@ function aiDashSkeleton(){
   h+='<div class="ai-dhead"><h3 data-k="name"></h3><span class="ai-open" data-k="open">Open profile →</span></div>';
   h+='<div class="ai-dsub" data-k="meta"></div>';
   h+='<div class="ai-tile" data-k="tile"><div class="ai-tile-v"><b data-k="citeN"></b></div>'+
-    '<div class="ai-tile-l">AI citations · named in</div>'+
+    '<div class="ai-tile-l" data-k="citeSub">AI citations · named in</div>'+
     '<div class="lb-bar ai-mainbar"><i data-k="citeBar"></i></div></div>';
   h+='<div class="ai-big"><span class="ai-tick"></span>By assistant</div><div class="stagger" data-k="eng">'+
     AI.engines.map(function(e,i){
@@ -1384,6 +1435,7 @@ function fillAIDash(){
   if(d.t.id){ op.style.display=""; op.setAttribute("data-open",d.t.id); }
   else op.style.display="none";
   q("citeN").textContent=d.cite.label;
+  q("citeSub").textContent=d.citeSub;
   var cb=q("citeBar"); cb.style.width=d.cite.pct+"%"; cb.style.background=d.cite.color;
   q("tile").style.setProperty("--tier",d.cite.color);
   d.eng.forEach(function(x,i){
@@ -1462,13 +1514,23 @@ function renderAI(){
     '<div class="stat"><div class="v">'+AI.engOK.length+'<span style="font-size:18px;color:var(--mut)">/'+AI.engines.length+'</span></div><div class="l">Assistants reachable</div></div>'+
     '<div class="stat"><div class="v">'+AI.prompts.length+'</div><div class="l">Prompts tested</div></div>'+
   '</div>';
-  h+='<div class="ai-sec-t">Businesses — ranked by AI citations</div><div class="stagger">';
-  AI.board.forEach(function(t,i){
+  var scope=aiPromptScope();
+  if(scope){
+    h+='<div class="ai-scope"><span class="ai-scope-t">Prompt: &ldquo;'+esc(scope.prompt)+'&rdquo;</span>'+
+      '<span class="ai-scope-x" data-aipx>&times; all prompts</span></div>';
+  }
+  h+='<div class="ai-sec-t">'+(scope?"Businesses — ranked for this prompt":"Businesses — ranked by AI citations")+'</div><div class="stagger">';
+  var sBoard=scope?scope.board:AI.board;
+  var sN=scope?scope.n:AI.nDays;
+  if(!sBoard.length){
+    h+='<div class="empty-note">No checks have run for this prompt yet — it joins the next audit.</div>';
+  }
+  sBoard.forEach(function(t,i){
     h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+(t.days===0?" ai-zero":"")+'" data-ai="'+esc(t.name)+'">'+
       '<span class="rk">'+(i+1)+'</span>'+
       '<span class="nm">'+esc(t.name)+'</span>'+
-      '<span class="ct">'+(t.days>0?t.days+' of '+AI.nDays:'not cited')+'</span>'+
-      '<span class="bar"><i style="width:'+Math.max(3,AI.nDays?t.days/AI.nDays*100:0)+'%"></i></span></div>';
+      '<span class="ct">'+(t.days>0&&sN>0?t.days+' of '+sN:(sN>0?'not cited':'—'))+'</span>'+
+      '<span class="bar"><i style="width:'+Math.max(3,sN?t.days/sN*100:0)+'%"></i></span></div>';
   });
   h+='</div>';
   h+='<div class="ai-sec-t ai-toggle" data-aip>Prompt set ('+AI.promptCatalog.length+')<span class="ai-tog">'+(S.aiPrompts?"▾":"▸")+'</span></div>';
@@ -1477,7 +1539,7 @@ function renderAI(){
       var pc=AI.promptChecks[p.text], cc=pc?Object.keys(pc).length:0;
       var tags=p.services.map(aiSvcLabel).join(" + ");
       var isNew=p.added&&p.added>"2026-09-23";
-      return '<div class="ai-prompt"><div class="ai-prompt-t">“'+esc(p.text)+'”</div>'+
+      return '<div class="ai-prompt'+(S.aiPrompt===p.text?" sel":"")+'" data-aipp="'+esc(p.text)+'"><div class="ai-prompt-t">“'+esc(p.text)+'”</div>'+
         '<div class="ai-prompt-s">'+esc(tags)+' · '+(cc?cc+' checks so far':'<span class="ai-miss">no history yet</span>')+(isNew?' · <span class="ai-new">new</span>':"")+'</div></div>';
     }).join("")+'</div>';
   }
@@ -2400,6 +2462,11 @@ document.addEventListener("click",function(e){
   if(pxb){ var k=pxb.getAttribute("data-px");
     if(k==="glance") S.glanceX=!S.glanceX; else S.expanded=!S.expanded;
     renderRight(); pushHist(); return; }
+  var apx=e.target.closest("[data-aipx]");
+  if(apx){ S.aiPrompt=null; renderLeft(); return; }
+  var app=e.target.closest("[data-aipp]");
+  if(app){ var pp=app.getAttribute("data-aipp");
+    S.aiPrompt=(S.aiPrompt===pp?null:pp); renderLeft(); return; }
   var ap=e.target.closest("[data-aip]");
   if(ap){ S.aiPrompts=!S.aiPrompts; renderLeft(); return; }
   var ar=e.target.closest("[data-ai]");
