@@ -969,6 +969,14 @@ var SVC_GROUPS=[
   {k:"vid",label:"Video",color:"#6db3f2"},
   {k:"re",label:"Real estate",color:"#c7d2e0"},
   {k:"dr",label:"Drone & aerial",color:"#6fd3e7"}];
+/* assistant colors + citation-tier color: applied to every business equally, data only */
+var ENG_COLORS={ChatGPT:"#34d399",Claude:"#f0a35e",Gemini:"#6db3f2",Perplexity:"#b48ce8"};
+function aiTierColor(pct){
+  if(pct>=80) return "#34d399";
+  if(pct>=50) return "#e8b34b";
+  if(pct>=25) return "#6db3f2";
+  return "#5b6472";
+}
 var GRP_RX=[
   ["dr",/drone|aerial|\bfaa\b|\buav\b/],
   ["re",/real estate|matterport|floor plan|inspection|street view|\b360\b|architectur|video tours/],
@@ -1288,6 +1296,127 @@ function aiVerdict(t){
   h+="Reviews and published pricing don\u2019t separate cited from uncited businesses in this data, so they don\u2019t explain the difference either way.";
   return h;
 }
+/* Plain data for the selected business's AI profile. The dashboard skeleton is built
+   once per selection and fillAIDash() refills it in place, so the bar <i> elements
+   persist and their CSS width transitions animate smoothly between businesses. */
+function aiDetailData(){
+  var sel=S.aiSel, t=sel?AI.board.filter(function(x){return x.name===sel;})[0]:null;
+  if(!t) return null;
+  var b=t.id?B_BY_ID[t.id]:null;
+  var yrs=b&&b.est_year?2026-b.est_year:null;
+  var citePct=AI.nDays?Math.round(100*t.days/AI.nDays):0;
+  var eng=AI.engines.map(function(e){
+    var ec=AI.engChecks[e]||0;
+    var sets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
+    var se=sets[e], nd=se?Object.keys(se).length:0;
+    return {e:e,nd:nd,ec:ec,color:ENG_COLORS[e]||"#6db3f2",
+      label:ec===0?"unreachable":nd+" of "+ec,
+      pct:ec?(nd>0?Math.max(3,nd/ec*100):0):0};
+  });
+  var myGrps=b?svcGroupsOf(b).groups:[];
+  var svc=SVC_GROUPS.map(function(g){
+    var served=myGrps.indexOf(g.k)>=0;
+    var cc=AI.svcChecks[g.k]||0, sg=t.id&&AI.idSvc[t.id]&&AI.idSvc[t.id][g.k];
+    var nd=sg?Object.keys(sg).length:0;
+    return {k:g.k,label:g.label,color:g.color,served:served,
+      label:!served?"not a lane":(cc===0?"no checks yet":nd+" of "+cc),
+      pct:served&&cc?(nd>0?Math.max(3,nd/cc*100):0):0};
+  });
+  var prof=null;
+  if(b){
+    var yn=function(v){return v?"Yes":"No";};
+    prof=[
+      {k:"Own website",v:yn(!!b.website),bm:AI.webPct+"% of most-cited"},
+      {k:"Years in business",v:yrs!=null?String(yrs):"—",bm:"median "+(AI.medYrs||"—")},
+      {k:"Google reviews",v:b.review_count!=null?String(b.review_count):"—",bm:"median "+(AI.medRev!=null?AI.medRev:"—")},
+      {k:"Pricing published",v:yn(!!b.hasPrice),bm:AI.pricePct+"% of most-cited"}
+    ];
+  }
+  var lane=t.id?aiOwnLane(t):null;
+  var base=lane&&lane.checks?Math.round(100*lane.named/lane.checks):citePct;
+  return {t:t,b:b,
+    meta:b?((b.review_count!=null?b.review_count+" Google reviews":"reviews n/a")+" · "+
+      (b.hasPrice?"pricing published":"no pricing shown")+(yrs!=null?" · "+yrs+" yrs in business":""))
+      :"Named by the assistants, but not in our "+B.length+"-business roster.",
+    cite:{label:t.days+" of "+AI.nDays,pct:AI.nDays?(t.days>0?Math.max(3,t.days/AI.nDays*100):0):0,
+      color:aiTierColor(citePct)},
+    eng:eng, svc:svc, prof:prof, verdict:aiVerdict(t),
+    tone:base>=70?"strong":(base>=30?"mixed":"weak")};
+}
+function aiDashSkeleton(){
+  var h='<div class="ai-dash" id="aiDash">';
+  h+='<div class="ai-dhead"><h3 data-k="name"></h3><span class="ai-open" data-k="open">Open profile →</span></div>';
+  h+='<div class="ai-dsub" data-k="meta"></div>';
+  h+='<div class="ai-tile" data-k="tile"><div class="ai-tile-v"><b data-k="citeN"></b></div>'+
+    '<div class="ai-tile-l">AI citations · named in</div>'+
+    '<div class="lb-bar ai-mainbar"><i data-k="citeBar"></i></div></div>';
+  h+='<div class="ai-big"><span class="ai-tick"></span>By assistant</div><div class="stagger" data-k="eng">'+
+    AI.engines.map(function(e,i){
+      var c=ENG_COLORS[e]||"#6db3f2";
+      return '<div class="lb-row ai-drow"><span class="lb-nm"><i class="ai-dot" style="background:'+c+'"></i>'+esc(e)+'</span>'+
+        '<span class="lb-v" data-ev="'+i+'"></span>'+
+        '<span class="lb-bar"><i data-eb="'+i+'" style="background:'+c+'"></i></span></div>';
+    }).join("")+'</div>';
+  h+='<div class="ai-big"><span class="ai-tick"></span>By service — its own lanes</div><div class="stagger" data-k="svc">'+
+    SVC_GROUPS.map(function(g,i){
+      return '<div class="lb-row ai-drow" data-srow="'+i+'"><span class="lb-nm"><i class="ai-dot" style="background:'+g.color+'"></i>'+esc(g.label)+'</span>'+
+        '<span class="lb-v" data-sv="'+i+'"></span>'+
+        '<span class="lb-bar"><i data-sb="'+i+'" style="background:'+g.color+'"></i></span></div>';
+    }).join("")+'</div>';
+  h+='<div class="ai-big"><span class="ai-tick"></span>Profile vs the ten most-cited</div><div data-k="prof">'+
+    [0,1,2,3].map(function(i){
+      return '<div class="ai-attr" data-prow="'+i+'"><span class="k" data-pk="'+i+'"></span><span class="v" data-pv="'+i+'"></span><span class="bm" data-pb="'+i+'"></span></div>';
+    }).join("")+'</div>';
+  h+='<div class="ai-verdict" data-k="verdict"></div>';
+  return h+'</div>';
+}
+/* Refill the persistent dashboard in place: text swaps instantly, bar widths and
+   colors transition via CSS. Sections are fixed (all 4 assistants, all 6 lanes,
+   4 profile rows) so the footprint never changes between businesses. */
+function fillAIDash(){
+  var d=aiDetailData(), root=document.getElementById("aiDash");
+  if(!d||!root) return;
+  function q(k){ return root.querySelector('[data-k="'+k+'"]'); }
+  function qa(a){ return root.querySelector('[data-'+a+']'); }
+  q("name").textContent=d.t.name;
+  q("meta").textContent=d.meta;
+  var op=q("open");
+  if(d.t.id){ op.style.display=""; op.setAttribute("data-open",d.t.id); }
+  else op.style.display="none";
+  q("citeN").textContent=d.cite.label;
+  var cb=q("citeBar"); cb.style.width=d.cite.pct+"%"; cb.style.background=d.cite.color;
+  q("tile").style.setProperty("--tier",d.cite.color);
+  d.eng.forEach(function(x,i){
+    var v=qa('ev="'+i+'"'), bar=qa('eb="'+i+'"');
+    if(!v||!bar) return;
+    v.textContent=x.label; v.className="lb-v"+(x.ec===0?" ai-miss":"");
+    bar.style.width=x.pct+"%";
+  });
+  d.svc.forEach(function(x,i){
+    var row=qa('srow="'+i+'"'), v=qa('sv="'+i+'"'), bar=qa('sb="'+i+'"');
+    if(!row||!v||!bar) return;
+    row.className="lb-row ai-drow"+(x.served?"":" off");
+    v.textContent=x.label; v.className="lb-v"+(x.served?"":" ai-miss");
+    bar.style.width=x.pct+"%";
+  });
+  if(d.prof){
+    d.prof.forEach(function(r,i){
+      var row=qa('prow="'+i+'"');
+      if(!row) return;
+      row.className="ai-attr";
+      qa('pk="'+i+'"').textContent=r.k; qa('pv="'+i+'"').textContent=r.v; qa('pb="'+i+'"').textContent=r.bm;
+    });
+  }else{
+    var off=[["Profile data","n/a","not in roster"],["—","—","—"],["—","—","—"],["—","—","—"]];
+    off.forEach(function(r,i){
+      var row=qa('prow="'+i+'"');
+      if(!row) return;
+      row.className="ai-attr off";
+      qa('pk="'+i+'"').textContent=r[0]; qa('pv="'+i+'"').textContent=r[1]; qa('pb="'+i+'"').textContent=r[2];
+    });
+  }
+  var vd=q("verdict"); vd.innerHTML=d.verdict; vd.className="ai-verdict tone-"+d.tone;
+}
 function renderAIDetail(){
   var sel=S.aiSel, t=sel?AI.board.filter(function(x){return x.name===sel;})[0]:null;
   if(!t){
@@ -1312,49 +1441,7 @@ function renderAIDetail(){
       'business that piles up mentions across the local web over years. That footprint is consistent with what the assistants draw on.</div>'+
       '<div class="ai-hint">Select a business on the left to see its AI citation profile — which assistants name it, and why or why not it gets cited.</div>';
   }
-  var b=t.id?B_BY_ID[t.id]:null;
-  var yrs=b&&b.est_year?2026-b.est_year:null;
-  var meta=b?((b.review_count!=null?b.review_count+" Google reviews":"reviews n/a")+" · "+
-    (b.hasPrice?"pricing published":"no pricing shown")+(yrs!=null?" · "+yrs+" yrs in business":"")):"";
-  var h='<div class="ai-dhead"><h3>'+esc(t.name)+'</h3>'+
-    (t.id?'<span class="ai-open" data-open="'+t.id+'">Open profile →</span>':"")+'</div>'+
-    (meta?'<div class="ai-dsub">'+esc(meta)+'</div>':'<div class="ai-dsub">Named by the assistants, but not in our '+B.length+'-business roster.</div>');
-  h+='<div class="ai-big">AI citations</div><div class="stagger"><div class="lb-row"><span class="lb-nm">Named in</span>'+
-    '<span class="lb-v">'+t.days+' of '+AI.nDays+'</span>'+
-    '<span class="lb-bar"><i style="width:'+Math.max(4,AI.nDays?t.days/AI.nDays*100:0)+'%"></i></span></div></div>';
-  h+='<div class="ai-big">By assistant</div><div class="stagger">'+
-    AI.engines.map(function(e){
-      var ec=AI.engChecks[e]||0;
-      var engSets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
-      var se=engSets[e], nd=se?Object.keys(se).length:0;
-      var right=ec===0?'<span class="ai-miss">unreachable</span>':'<span class="lb-v">'+nd+' of '+ec+'</span>';
-      return '<div class="lb-row"><span class="lb-nm">'+esc(e)+'</span>'+right+
-        '<span class="lb-bar"><i style="width:'+(ec?Math.max(4,nd/ec*100):0)+'%"></i></span></div>';
-    }).join("")+'</div>';
-  if(b){
-    var grps=svcGroupsOf(b).groups;
-    if(grps.length){
-      h+='<div class="ai-big">By service — its own lanes</div><div class="stagger">'+
-        grps.map(function(g){
-          var cc=AI.svcChecks[g]||0;
-          var sg=AI.idSvc[t.id]&&AI.idSvc[t.id][g];
-          var nd=sg?Object.keys(sg).length:0;
-          var right=cc===0?'<span class="ai-miss">no checks yet</span>':'<span class="lb-v">'+nd+' of '+cc+'</span>';
-          return '<div class="lb-row"><span class="lb-nm">'+esc(aiSvcLabel(g))+'</span>'+right+
-            '<span class="lb-bar"><i style="width:'+(cc?Math.max(4,nd/cc*100):0)+'%"></i></span></div>';
-        }).join("")+'</div>';
-    }
-  }
-  if(b){
-    var yn=function(v){return v?"Yes":"No";};
-    h+='<div class="ai-big">Profile vs the ten most-cited</div>'+
-      '<div class="ai-attr"><span class="k">Own website</span><span class="v">'+yn(!!b.website)+'</span><span class="bm">'+AI.webPct+'% of most-cited</span></div>'+
-      '<div class="ai-attr"><span class="k">Years in business</span><span class="v">'+(yrs!=null?yrs:"—")+'</span><span class="bm">median '+(AI.medYrs||"—")+'</span></div>'+
-      '<div class="ai-attr"><span class="k">Google reviews</span><span class="v">'+(b.review_count!=null?b.review_count:"—")+'</span><span class="bm">median '+(AI.medRev!=null?AI.medRev:"—")+'</span></div>'+
-      '<div class="ai-attr"><span class="k">Pricing published</span><span class="v">'+yn(!!b.hasPrice)+'</span><span class="bm">'+AI.pricePct+'% of most-cited</span></div>';
-  }
-  h+='<div class="ai-verdict">'+aiVerdict(t)+'</div>';
-  return h;
+  return aiDashSkeleton();
 }
 function renderAI(){
   if(S.mode==="venues")
@@ -2150,6 +2237,7 @@ function renderLeft(){
     el.scrollTop=sc;
   }
   animateCounts(el);
+  fillAIDash(); /* no-op unless the AI dashboard skeleton is present */
 }
 function setTab(t,opts){
   opts=opts||{};
@@ -2316,7 +2404,8 @@ document.addEventListener("click",function(e){
   if(ap){ S.aiPrompts=!S.aiPrompts; renderLeft(); return; }
   var ar=e.target.closest("[data-ai]");
   if(ar){ S.aiSel=ar.getAttribute("data-ai");
-    var ad=$("#aiDetail"); if(ad) ad.innerHTML=renderAIDetail();
+    var ad=$("#aiDetail");
+    if(ad){ if($("#aiDash")) fillAIDash(); else { ad.innerHTML=renderAIDetail(); fillAIDash(); } }
     $$(".ai-row").forEach(function(r){ r.classList.toggle("sel",r.getAttribute("data-ai")===S.aiSel); });
     return; }
   var mc=e.target.closest("[data-mclose]");
