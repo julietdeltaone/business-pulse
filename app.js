@@ -471,10 +471,11 @@ function renderToday(){
   var h='<div class="actdash">';
   /* hero */
   h+='<div class="act-hero" style="--d:0s">'+
-    '<div class="act-pulse"><span class="act-pulse-ring"></span><span class="act-pulse-dot"></span></div>'+
-    '<div class="act-hero-num" data-count="'+total+'">0</div>'+
-    '<div class="act-hero-cap">market movements</div>'+
-    '<div class="act-hero-sub">Since '+esc(dstr(ch.prev))+' · through '+esc(dstr(ch.date))+'</div>'+
+    '<div class="act-hero-line">'+
+    '<span class="act-pulse"><span class="act-pulse-ring"></span><span class="act-pulse-dot"></span></span>'+
+    '<span class="act-hero-num" data-count="'+total+'">0</span>'+
+    '<span class="act-hero-cap">market movements<em>Since '+esc(dstr(ch.prev))+' · through '+esc(dstr(ch.date))+'</em></span>'+
+    '</div>'+
     '<div class="act-tiles">'+cats.map(function(x,i){
       return '<button class="act-tile" data-actgo="'+x.k+'" style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
         '<span class="act-tile-ic">'+actIcon(x.icon)+'</span>'+
