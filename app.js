@@ -381,6 +381,10 @@ function actIcon(n){
     flame:'<path d="M12 22c4 0 7-2.8 7-6.8 0-3.8-2.8-5.9-4.3-8.7C13.4 4 12 2.5 12 2.5s-.4 2.8-2.3 4.9C7.8 9.5 5 12 5 15.2 5 19.2 8 22 12 22z"/><path d="M12 22c-2 0-3.5-1.4-3.5-3.2 0-1.9 1.4-2.9 2.2-4.3.7 1.2 3.3 2.6 3.3 4.7 0 1.6-1 2.8-2 2.8z"/>',
     mega:'<path d="M4 10.5v3h3.5L14 18V6l-6.5 4.5H4z"/><path d="M17.5 9.5a4 4 0 0 1 0 5M20 7a7.5 7.5 0 0 1 0 10"/>',
     crown:'<path d="M3 8.5 7 12l5-6.5L17 12l4-3.5L19.5 18h-15L3 8.5z"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    shield:'<path d="M12 2.5 4.5 5.5v6c0 4.5 3.2 7.8 7.5 10 4.3-2.2 7.5-5.5 7.5-10v-6L12 2.5z"/><path d="M9 12l2 2 4-4"/>',
+    users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 15.2c2.6.3 4.7 1.8 5.5 4.8"/>',
+    camera:'<path d="M4 8h3l2-2.5h6L17 8h3a1.5 1.5 0 0 1 1.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 19V9.5A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="13.5" r="3.5"/>',
     pulse:'<path d="M2 12h4l2.5-6 4 12 2.5-6H22"/>'
   };
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(P[n]||P.pulse)+'</svg>';
@@ -1839,7 +1843,11 @@ function marketGlanceHTML(full){
     if(bars.length>visCount||showAll){
       rows+='<div class="qmore" data-qall="'+ci+'">'+(showAll?"Show fewer \u25B4":"Show all "+bars.length+" rows \u25B8")+"</div>";
     }
-    return '<div class="sec qcard"><h3>'+q+'</h3><div class="sub">'+sub+'</div><div class="qbars">'+
+    var QICONS=S.mode==="venues"?
+      [["radar","#6db3f2"],["users","#f2d06d"],["camera","#e08bb8"],["tag","#c9a0f2"]]:
+      [["pulse","#6fd3e7"],["crown","#c9a0f2"],["dollar","#f2d06d"],["flame","#f5b942"],["clock","#8fd18f"],["shield","#6db3f2"]];
+    var qi=QICONS[ci]||["pulse","#6fd3e7"];
+    return '<div class="sec qcard"><div class="qcard-top"><span class="qcard-ic" style="color:'+qi[1]+'">'+actIcon(qi[0])+'</span><h3>'+q+'</h3></div><div class="sub">'+sub+'</div><div class="qbars">'+
       rows+"</div>"+(chart?'<div class="qchart">'+chart+"</div>":"")+"</div>";
   }
   /* members: sorted business/venue list backing an expandable bucket row */
