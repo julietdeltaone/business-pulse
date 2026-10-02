@@ -967,7 +967,7 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .ai-scope-x:hover{background:color-mix(in srgb,var(--amber) 18%,transparent)}
 
 /* ============ Activity dashboard (full-screen revamp) ============ */
-.actdash{max-width:1180px;margin:0 auto;padding:6px 22px 40px}
+.actdash{max-width:1280px;margin:0 auto;padding:6px 22px 40px}
 @keyframes actIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes actPulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
 .act-hero{position:relative;padding:12px 22px;border-radius:20px;overflow:hidden;
@@ -1012,7 +1012,18 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .act-tile-top3 i{font-style:normal;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .act-tile-top3 b{font-weight:700;color:var(--acc);flex:none}
 /* live feed */
-.act-feedwrap{margin-top:16px}
+.act-body{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:16px;align-items:start}
+.act-main{min-width:0}
+.act-side{position:sticky;top:88px;height:calc(100vh - 110px);overflow-y:auto;background:var(--card);border:1px solid var(--card-line);border-radius:18px;scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
+.feed-side-head{position:sticky;top:0;z-index:2;background:var(--card);padding:14px 14px 10px;border-bottom:1px solid var(--card-line)}
+#feedlist{padding:10px 14px 16px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#8fd18f;box-shadow:0 0 8px #8fd18f;animation:livePulse 2s infinite;flex:none}
+@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.live-dot{animation:none}}
+@media (max-width:1100px){
+  .act-body{grid-template-columns:1fr}
+  .act-side{position:static;height:auto;max-height:72vh}
+}
 .feed-fresh{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
 .feed-chip{font-size:11.5px;color:var(--mut);border:1px solid var(--card-line);border-radius:999px;padding:4px 12px;background:color-mix(in srgb,var(--bg) 55%,transparent)}
 .feed-chip b{color:var(--tx);font-weight:700}
