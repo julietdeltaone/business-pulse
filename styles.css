@@ -729,6 +729,12 @@ body.panelexp #map{filter:brightness(.82)}
 .xkv span{font-size:12px;color:var(--dim);flex:none}
 .xkv b{font-size:13px;color:var(--txt);font-variant-numeric:tabular-nums;font-weight:700;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+/* collapsed-profile pricing summary strip */
+.ppsum{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 7px;font-size:12.5px;color:var(--dim);padding:3px 0 5px;border-bottom:1px solid var(--line-soft)}
+.ppsum b{color:var(--txt);font-weight:700;font-variant-numeric:tabular-nums}
+.ppsum i{font-style:normal;opacity:.55}
+.ppsum .pprank{margin-left:auto;font-size:11px;color:var(--dim)}
+.ppsum.none{color:var(--dim)}
 .sc-link{margin-top:8px}
 /* confidence bar */
 .cf2-bar{margin:6px 0 2px}
@@ -773,7 +779,7 @@ body.panelexp #map{filter:brightness(.82)}
 .pxlink:hover{background:rgba(232,179,75,.2)}
 
 /* ---- full-width pages ---- */
-#page{position:fixed;top:76px;left:12px;right:12px;bottom:0;z-index:10;overflow-y:auto;padding:0 0 48px;scroll-padding-top:20px}
+#page{position:fixed;top:88px;left:12px;right:12px;bottom:0;z-index:10;overflow-y:auto;padding:0 0 48px;scroll-padding-top:20px}
 #page[hidden]{display:none}
 body.pgmode{background:radial-gradient(1100px 520px at 15% -8%,rgba(232,179,75,.075),transparent 60%),radial-gradient(900px 480px at 100% 0%,rgba(109,179,242,.07),transparent 60%),var(--ink)}
 body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{display:none!important}
