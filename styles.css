@@ -944,7 +944,7 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .ai-chip[data-open]:hover{border-color:var(--acc);color:#fff}
 
 /* ---------- AI visibility: fleshed-out two-engine explorer ---------- */
-.ai-page{max-width:1180px;margin:0 auto;padding:2px 6px 48px}
+.ai-page{padding:2px 20px 48px}
 .ai-cov{margin:0 0 4px;font-size:13px}
 .ai-eng2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:22px 0 12px}
 .ai-eng-card{position:relative;overflow:hidden;border-radius:22px;padding:30px 32px;
@@ -1021,7 +1021,7 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
   .ai-eng-bar i,.ai-tbar i,.ai-mega-bar i,.ai-bar i{transition:none}
 }
 /* AI sidebar explorer: leaderboard on the left, detail on the right */
-.ai-cols{display:grid;grid-template-columns:330px minmax(0,1fr);gap:26px;align-items:start;margin-top:20px}
+.ai-cols{display:grid;grid-template-columns:350px minmax(0,1fr);gap:28px;align-items:start;margin-top:20px}
 .ai-side{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow-y:auto;overscroll-behavior:contain;
   background:var(--card);border:1px solid var(--card-line);border-radius:18px;padding:18px;
   scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
