@@ -1047,3 +1047,79 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
   .act-cat{padding:16px}
   .act-nm span{white-space:normal}
 }
+
+/* ============ Liquid glass system: Landscape / AI Visibility / Data tabs ============ */
+/* ambient backdrop: soft color fields floating behind the frosted cards */
+.pg-market,.pg-ai,.pg-data{
+  background:
+    radial-gradient(900px 480px at 10% -6%, rgba(232,179,75,.08), transparent 62%),
+    radial-gradient(820px 520px at 90% 4%, rgba(109,179,242,.07), transparent 62%),
+    radial-gradient(760px 640px at 50% 112%, rgba(180,140,232,.055), transparent 62%);
+  border-radius:18px;
+}
+/* compact page headers: more content above the fold */
+.pg-market .pg-head h2,.pg-ai .pg-head h2,.pg-data .pg-head h2{font-size:26px;margin:2px 0 6px;letter-spacing:-.01em}
+.pg-market .pg-head p,.pg-ai .pg-head p,.pg-data .pg-head p{font-size:13.5px;margin:0 0 14px;line-height:1.5}
+.pg-ai .ai-left .pg-head h2{font-size:26px}
+/* the glass card itself: layered translucency + blur + bright top edge */
+.pg-market .sec,.pg-market .stat,
+.pg-ai .ai-right,.pg-ai .ai-promptbar,.pg-ai .stat,
+.pg-data .dtable-wrap{
+  background:linear-gradient(165deg,rgba(255,255,255,.085),rgba(255,255,255,.028) 55%,rgba(255,255,255,.05));
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  backdrop-filter:blur(22px) saturate(150%);
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:20px;
+  box-shadow:0 14px 44px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.14);
+}
+/* table wrap skips the blur so the sticky header keeps working; keeps the glass read */
+.pg-data .dtable-wrap{-webkit-backdrop-filter:none;backdrop-filter:none;
+  background:linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,.02) 60%,rgba(255,255,255,.04))}
+/* stat chips: lift on hover */
+.pg-market .stat,.pg-ai .stat{padding:12px 14px;border-radius:16px;transition:transform .18s ease,box-shadow .18s ease}
+.pg-market .stat:hover,.pg-ai .stat:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.14)}
+.pg-market .stat .v,.pg-ai .stat .v{font-size:26px}
+/* landscape: five stats in one row above the fold */
+.pg-market .statgrid{grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+/* question cards: icon chip header + tighter rhythm */
+.qcard-top{display:flex;align-items:center;gap:10px;margin:2px 0 6px}
+.qcard-ic{width:30px;height:30px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.qcard-ic svg{width:17px;height:17px}
+.qcard-top h3{font-size:16px;margin:0}
+.pg-market .qcard{margin-bottom:16px;padding:16px 18px}
+.pg-market .cardgrid{gap:14px}
+/* ai tab: tighter split view */
+.pg-ai .ai-split{gap:16px;height:calc(100vh - 128px)}
+.pg-ai .ai-right{padding:18px 20px;border-radius:20px}
+.pg-ai .ai-promptbar{margin:0 0 10px;padding:8px 12px;border-radius:14px}
+.pg-ai .statgrid{grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.pg-ai .ai-sec-t{margin:12px 0 8px}
+.pg-ai #aiPromptSel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px}
+.pg-ai #aiPromptSel:focus{border-color:var(--amber)}
+/* data tab: glass filter + table */
+.pg-data .dfilter{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+.pg-data .dtable th{background:rgba(22,28,42,.66);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.pg-data .dtable td{padding:8px 10px}
+.pg-data .dsub{margin:14px 0 8px;font-size:13px;font-weight:700}
+/* entrance motion: first paint only, staggered cards */
+@keyframes glassIn{from{opacity:0;transform:translateY(14px) scale(.996)}to{opacity:1;transform:none}}
+body.fp .pg-market .sec,body.fp .pg-market .stat,body.fp .pg-ai .ai-right,
+body.fp .pg-ai .stat,body.fp .pg-data .dtable-wrap{animation:glassIn .55s cubic-bezier(.22,.8,.3,1) backwards}
+body.fp .pg-market .cardgrid>.sec:nth-child(2){animation-delay:.07s}
+body.fp .pg-market .cardgrid>.sec:nth-child(3){animation-delay:.14s}
+body.fp .pg-market .cardgrid>.sec:nth-child(4){animation-delay:.21s}
+body.fp .pg-market .cardgrid>.sec:nth-child(5){animation-delay:.28s}
+body.fp .pg-market .cardgrid>.sec:nth-child(n+6){animation-delay:.35s}
+body.fp .pg-market .statgrid>.stat:nth-child(2){animation-delay:.05s}
+body.fp .pg-market .statgrid>.stat:nth-child(3){animation-delay:.1s}
+body.fp .pg-market .statgrid>.stat:nth-child(4){animation-delay:.15s}
+body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
+@media (prefers-reduced-motion:reduce){
+  .pg-market *,.pg-ai *,.pg-data *{animation:none!important;transition:none!important}
+}
+@media (max-width:1100px){.pg-market .statgrid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:640px){.pg-market .statgrid{grid-template-columns:repeat(2,1fr)}.pg-ai .statgrid{grid-template-columns:repeat(2,1fr)}}
