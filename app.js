@@ -1707,9 +1707,9 @@ function aiPromptList(t){
     '<div class="sub" style="margin:-2px 0 10px">Latest check per assistant across the '+n+' tested prompts.</div>'+
     '<div class="ai-plist stagger">';
   AI.promptCatalog.forEach(function(p){
-    var lanes=(p.services||[]).map(aiSvcLabel).join(" · ");
+    var lanes=(p.services||[]).map(aiLaneChip).join("");
     h+='<div class="ai-prow"><div class="ai-prow-q"><div class="ai-prow-t">'+esc(p.text)+'</div>'+
-      (lanes?'<div class="ai-prow-l">'+esc(lanes)+'</div>':"")+'</div>';
+      (lanes?'<div class="ai-prow-l">'+lanes+'</div>':"")+'</div>';
     AI.engines.forEach(function(e){
       var r=aiLatestPrompt(p.text,e), c=ENG_COLORS[e]||"#6db3f2", lab, cls;
       if(!r){ lab="no check"; cls="ai-miss"; }
@@ -1747,25 +1747,43 @@ function aiTrend(t){
   return h+'</div>';
 }
 /* fleshed-out detail for the selected business (reuses aiDetailData) */
-/* headline block for the selected business: big citation number + verdict up top */
-function aiMega(t){
+/* headline block for the selected business: name + verdict up top (numbers live in the right drawer) */
+function aiHead(t){
   var d=aiDetailData();
   if(!d) return '<div class="empty-note">Select a business to see its AI detail.</div>';
-  var h='<div class="ai-dsec"><div class="ai-sec-t">'+esc(d.t.name)+'</div>'+
+  var h='<div class="ai-dsec"><div class="ai-sec-t" style="margin-top:0">'+esc(d.t.name)+'</div>'+
     '<div class="sub" style="margin:-2px 0 12px">'+esc(d.meta)+'</div>';
   if(d.t.id) h+='<div style="margin:0 0 14px"><span class="ai-open" data-open="'+esc(d.t.id)+'">Open profile \u2192</span></div>';
-  h+='<div class="ai-mega" style="--tier:'+d.cite.color+'"><div class="ai-mega-v">'+esc(d.cite.label)+'</div>'+
-    '<div class="ai-mega-l">'+esc(d.citeSub)+'</div>'+
-    '<div class="ai-mega-bar"><i data-bw="'+d.cite.pct+'" style="width:'+d.cite.pct+'%;background:'+d.cite.color+'"></i></div></div>';
   h+='<div class="ai-verdict tone-'+d.tone+'">'+d.verdict+'</div>';
   return h+'</div>';
 }
-/* everything that follows the selected business: headline first, then engines,
-   prompt-by-prompt, then the recent-audit trend. Fluff stays out. */
+/* right-drawer hero numbers: mega citation tile + the two engine cards */
+function aiHero(t){
+  var d=aiDetailData();
+  if(!d) return '';
+  var h='<div class="ai-mega" style="--tier:'+d.cite.color+'"><div class="ai-mega-v">'+esc(d.cite.label)+'</div>'+
+    '<div class="ai-mega-l">'+esc(d.citeSub)+'</div>'+
+    '<div class="ai-mega-bar"><i data-bw="'+d.cite.pct+'" style="width:'+d.cite.pct+'%;background:'+d.cite.color+'"></i></div></div>';
+  h+=aiEngineCards(t);
+  return h;
+}
+/* lane chip, color-coded by service-lane color */
+function aiLaneChip(k){
+  var g=null;
+  for(var i=0;i<SVC_GROUPS.length;i++) if(SVC_GROUPS[i].k===k) g=SVC_GROUPS[i];
+  var label=g?g.label:aiSvcLabel(k), color=g?g.color:"#6b7484";
+  return '<span class="ai-lane" style="--lc:'+color+'">'+esc(label)+'</span>';
+}
+/* everything in the center column: headline, prompt-by-prompt, trend */
 function renderAISel(){
   var t=aiSelT();
   if(!t) return '<div class="empty-note">No AI visibility data yet.</div>';
-  return aiMega(t)+aiEngineCards(t)+aiPromptList(t)+aiTrend(t);
+  return aiHead(t)+aiPromptList(t)+aiTrend(t);
+}
+function renderAIHero(){
+  var t=aiSelT();
+  if(!t) return '';
+  return aiHero(t);
 }
 function aiLeaderboard(scope){
   var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
@@ -1774,12 +1792,12 @@ function aiLeaderboard(scope){
   if(!sBoard.length) h+='<div class="empty-note">No checks have run for this prompt yet — it joins the next audit.</div>';
   h+='<div class="ai-lead stagger">';
   sBoard.forEach(function(t,i){
-    var pct=sN?Math.round(t.days/sN*100):0;
+    var pct=sN?Math.round(t.days/sN*100):0, tier=aiTierColor(pct);
     h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+(t.days===0?" ai-zero":"")+'" data-ai="'+esc(t.name)+'">'+
       '<span class="rk">'+(i+1)+'</span>'+
       '<div class="ai-row-bd"><div class="ai-row-top"><span class="nm">'+esc(t.name)+'</span>'+
       '<span class="ct">'+(t.days>0&&sN>0?t.days+' of '+sN+' checks ('+pct+'%)':(sN>0?'not cited':'—'))+'</span></div>'+
-      '<div class="bar"><i style="width:'+Math.max(2,pct)+'%"></i></div></div></div>';
+      '<div class="bar"><i style="width:'+Math.max(2,pct)+'%;background:'+tier+'"></i></div></div></div>';
   });
   return h+'</div>';
 }
@@ -1812,7 +1830,7 @@ function renderAI(){
   h+=aiLeaderboard(scope);
   h+='</aside><div class="ai-main">';
   h+='<div id="aiSelWrap">'+renderAISel()+'</div>';
-  h+='</div></div>';
+  h+='</div><aside class="ai-hero" id="aiHeroWrap">'+renderAIHero()+'</aside></div>';
   h+='</div>';
   return h;
 }
@@ -2730,6 +2748,8 @@ document.addEventListener("click",function(e){
   if(ar){ S.aiSel=ar.getAttribute("data-ai");
     var sw=$("#aiSelWrap");
     if(sw){ sw.innerHTML=renderAISel(); aiAnimateBars(sw); animateCounts(sw); }
+    var hw=$("#aiHeroWrap");
+    if(hw){ hw.innerHTML=renderAIHero(); aiAnimateBars(hw); animateCounts(hw); }
     $$(".ai-row").forEach(function(r){ r.classList.toggle("sel",r.getAttribute("data-ai")===S.aiSel); });
     return; }
   var mc=e.target.closest("[data-mclose]");
