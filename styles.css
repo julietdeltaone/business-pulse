@@ -1020,6 +1020,21 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 @media (prefers-reduced-motion:reduce){
   .ai-eng-bar i,.ai-tbar i,.ai-mega-bar i,.ai-bar i{transition:none}
 }
+/* AI sidebar explorer: leaderboard on the left, detail on the right */
+.ai-cols{display:grid;grid-template-columns:330px minmax(0,1fr);gap:26px;align-items:start;margin-top:20px}
+.ai-side{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow-y:auto;overscroll-behavior:contain;
+  background:var(--card);border:1px solid var(--card-line);border-radius:18px;padding:18px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.ai-side .ai-sec-t{margin-top:0}
+.ai-side .ai-promptbar{margin-bottom:12px}
+.ai-side .ai-lead{margin-top:8px}
+.ai-side .ai-row{padding:11px 13px 13px}
+.ai-side .ai-row .nm{font-size:13.5px}
+.ai-main{min-width:0}
+@media(max-width:1000px){
+  .ai-cols{grid-template-columns:1fr}
+  .ai-side{position:static;max-height:none}
+}
 
 /* Data page */
 .pg-data .dtable-wrap{max-height:none;border-radius:14px}
