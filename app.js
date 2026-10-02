@@ -434,18 +434,21 @@ function feedFresh(){
   if(lr) out.push(["Site sweep",lr]);
   return out;
 }
-function feedListHTML(){
-  var di=S.di, f=S.feedf||"all", evs=feedEvents();
+function feedPillsHTML(){
+  var f=S.feedf||"all", evs=feedEvents();
   var counts={}; evs.forEach(function(e){ counts[e.kind]=(counts[e.kind]||0)+1; });
-  var shown=evs.filter(function(e){ return f==="all"||e.kind===f; }).slice(0,80);
-  var h='<div class="feed-filters"><button class="feed-pill'+(f==="all"?" on":"")+'" data-feedf="all">All · '+evs.length+'</button>'+
+  return '<div class="feed-filters"><button class="feed-pill'+(f==="all"?" on":"")+'" data-feedf="all">All · '+evs.length+'</button>'+
     FEED_CATS.map(function(c){
       return '<button class="feed-pill'+(f===c.k?" on":"")+'" data-feedf="'+c.k+'">'+c.t+' · '+(counts[c.k]||0)+'</button>';
     }).join("")+'</div>';
+}
+function feedRowsHTML(){
+  var di=S.di, f=S.feedf||"all";
+  var shown=feedEvents().filter(function(e){ return f==="all"||e.kind===f; }).slice(0,80);
   if(!shown.length)
-    return h+'<div class="act-empty"><div class="act-empty-t">Nothing here.</div>'+
+    return '<div class="act-empty"><div class="act-empty-t">Nothing here.</div>'+
       '<div class="act-empty-s">No '+(f==="all"?"activity":f)+' in the last 7 days.</div></div>';
-  var lastDay=null;
+  var h="", lastDay=null;
   shown.forEach(function(e){
     if(e.date!==lastDay){ lastDay=e.date;
       var lbl=e.date===DATES[di]?"Today":(di>0&&e.date===DATES[di-1]?"Yesterday":dstrShort(e.date));
@@ -458,6 +461,30 @@ function feedListHTML(){
       '<span class="feed-kind" style="--acc:'+fc.c+'">'+fc.t+'</span></div>';
   });
   return h;
+}
+/* live-feed sidebar auto-scroll: drifts slowly, yields to the user, resumes when idle */
+var feedTimer=null, feedHold=false, feedIdleT=null;
+function feedAutoStop(){ if(feedTimer){ clearInterval(feedTimer); feedTimer=null; } feedHold=false; clearTimeout(feedIdleT); }
+function feedUserTakeover(){ feedHold=true; clearTimeout(feedIdleT); feedIdleT=setTimeout(function(){ feedHold=false; },4000); }
+function feedAutoStart(){
+  feedAutoStop();
+  if(REDUCED) return;
+  var side=document.getElementById("feedside");
+  if(!side) return;
+  side.addEventListener("wheel",feedUserTakeover,{passive:true});
+  side.addEventListener("touchmove",feedUserTakeover,{passive:true});
+  feedTimer=setInterval(function(){
+    var s=document.getElementById("feedside");
+    if(!s||feedHold||document.hidden) return;
+    if(s.scrollTop+s.clientHeight>=s.scrollHeight-6){
+      feedHold=true; /* linger at the bottom, then loop to the top */
+      setTimeout(function(){
+        var s2=document.getElementById("feedside");
+        if(s2&&s2.scrollTop+s2.clientHeight>=s2.scrollHeight-6) s2.scrollTop=0;
+        feedHold=false;
+      },2800);
+    } else s.scrollTop+=1;
+  },60);
 }
 
 /* ---------- week's highlights: top businesses + why ---------- */
@@ -601,15 +628,9 @@ function renderToday(){
         '<span class="act-tile-l">'+x.t+'</span>'+
         (tp.length?'<span class="act-tile-top3">'+tp.join("")+'</span>':"")+'</button>';
     }).join("")+'</div></div>';
-  /* live feed */
-  h+='<div class="act-feedwrap"><div class="act-sect-h"><span>Live feed</span>'+
-    '<span class="act-sect-sub">Every post, move and change · last 7 days</span></div>'+
-    '<div class="feed-fresh">'+feedFresh().map(function(f){
-      return '<span class="feed-chip">'+esc(f[0])+' · <b>'+esc(dstrShort(f[1]))+'</b></span>';
-    }).join("")+'</div><div id="feedlist">'+feedListHTML()+'</div></div>';
-  /* highlights */
+  /* highlights back under the hero */
   h+=weekHighlights();
-  /* change feed */
+  /* change feed (main column) */
   function actRow(b,sub,meta,i){
     return '<div class="act-row" data-open="'+b.id+'" style="--d:'+(0.04*i).toFixed(2)+'s">'+
       '<span class="act-dot" style="background:'+recencyDot(b)+'"></span>'+
@@ -653,7 +674,16 @@ function renderToday(){
     feed='<div class="act-sect-h" style="--d:0s"><span>What changed</span>'+
       '<span class="act-sect-sub">Every move, by category</span></div>'+feed;
   }
-  h+='<div class="act-feed">'+feed+'</div>';
+  /* body: main column + auto-scrolling live-feed sidebar */
+  h+='<div class="act-body"><div class="act-main"><div class="act-feed">'+feed+'</div></div>'+
+    '<aside class="act-side" id="feedside" aria-label="Live activity feed">'+
+    '<div class="feed-side-head"><div class="act-sect-h" style="margin:0"><span>Live feed</span>'+
+    '<span class="live-dot" title="Auto-scrolling"></span></div>'+
+    '<div class="act-sect-sub">Every post, move and change · last 7 days</div>'+
+    '<div class="feed-fresh">'+feedFresh().map(function(f){
+      return '<span class="feed-chip">'+esc(f[0])+' · <b>'+esc(dstrShort(f[1]))+'</b></span>';
+    }).join("")+'</div>'+feedPillsHTML()+'</div>'+
+    '<div id="feedlist">'+feedRowsHTML()+'</div></aside></div>';
   h+='</div>';
   return h;
 }
@@ -2450,6 +2480,7 @@ function animateCounts(el){
   });
 }
 function renderLeft(){
+  feedAutoStop();
   var ex=S.tab==="explore", el=ex?$("#leftbody"):$("#page");
   if(ex){
     el.innerHTML=renderDir();
@@ -2461,6 +2492,7 @@ function renderLeft(){
   }
   animateCounts(el);
   fillAIDash(); /* no-op unless the AI dashboard skeleton is present */
+  if(S.tab==="today"&&S.mode!=="venues") feedAutoStart();
 }
 function setTab(t,opts){
   opts=opts||{};
@@ -2672,7 +2704,10 @@ document.addEventListener("click",function(e){
   var ff=e.target.closest("[data-feedf]");
   if(ff){ S.feedf=ff.getAttribute("data-feedf");
     var fl=document.getElementById("feedlist");
-    if(fl) fl.innerHTML=feedListHTML(); else renderLeft();
+    if(fl){ fl.innerHTML=feedRowsHTML();
+      var ph=ff.closest(".feed-filters");
+      if(ph) ph.querySelectorAll(".feed-pill").forEach(function(p){ p.classList.toggle("on",p.getAttribute("data-feedf")===S.feedf); });
+    } else renderLeft();
     return; }
   var tb=e.target.closest(".pagenav button");
   if(tb){ setTab(tb.getAttribute("data-tab")); return; }
