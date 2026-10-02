@@ -1417,6 +1417,10 @@ function computeAI(){
   var engines=["ChatGPT","Gemini"];
   var engOK=engines.filter(function(e){return rows.some(function(r){return r.engine===e;});});
   var prompts=[]; rows.forEach(function(r){if(prompts.indexOf(r.prompt)<0)prompts.push(r.prompt);});
+  /* rows don't carry services — join them from the prompt catalog so the
+     per-lane ("By service") breakdown has real checks instead of "no checks yet" */
+  var promptSvc={};
+  ((D.aiPrompts||{}).prompts||[]).forEach(function(p){ promptSvc[p.text]=(p.services&&p.services.length)?p.services:["general"]; });
   var nameDays={}, nameEng={}, nameSvc={}, svcKeys={}, promptChecks={};
   var reg=function(n,id,key,eng,svcs){
     var e=nameDays[n]=nameDays[n]||{days:{},id:id};
@@ -1428,7 +1432,7 @@ function computeAI(){
   };
   rows.forEach(function(r){
     var key=r.date+"|"+r.engine, hit=r.jd_named==="yes"||r.jd_named==="partial";
-    var svcs=(r.services&&r.services.length)?r.services:["general"];
+    var svcs=(r.services&&r.services.length)?r.services:(promptSvc[r.prompt]||["general"]);
     svcs.forEach(function(g){ (svcKeys[g]=svcKeys[g]||{})[key]=1; });
     (promptChecks[r.prompt]=promptChecks[r.prompt]||{})[key]=1;
     (r.rivals||[]).forEach(function(n){reg(n,RIVAL2ID[n]||null,key,r.engine,svcs);});
