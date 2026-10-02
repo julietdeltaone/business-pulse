@@ -1020,8 +1020,8 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 @media (prefers-reduced-motion:reduce){
   .ai-eng-bar i,.ai-tbar i,.ai-mega-bar i,.ai-bar i{transition:none}
 }
-/* AI sidebar explorer: leaderboard on the left, detail on the right */
-.ai-cols{display:grid;grid-template-columns:350px minmax(0,1fr);gap:28px;align-items:start;margin-top:20px}
+/* AI sidebar explorer: leaderboard left, content center, hero numbers right */
+.ai-cols{display:grid;grid-template-columns:350px minmax(0,1fr) 340px;gap:28px;align-items:start;margin-top:20px}
 .ai-side{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow-y:auto;overscroll-behavior:contain;
   background:var(--card);border:1px solid var(--card-line);border-radius:18px;padding:18px;
   scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
@@ -1031,9 +1031,30 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .ai-side .ai-row{padding:11px 13px 13px}
 .ai-side .ai-row .nm{font-size:13.5px}
 .ai-main{min-width:0}
+.ai-hero{position:sticky;top:14px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.ai-hero .ai-eng2{grid-template-columns:1fr;margin:0}
+.ai-hero .ai-eng-card{padding:24px 26px}
+.ai-hero .ai-eng-big{font-size:54px}
+.ai-hero .ai-mega{padding:24px 26px;margin:0}
+.ai-hero .ai-mega-v{font-size:46px}
+.ai-prow-l{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.ai-lane{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--lc);
+  border:1px solid color-mix(in srgb,var(--lc) 45%,transparent);border-radius:999px;
+  padding:3px 10px;background:color-mix(in srgb,var(--lc) 10%,transparent);white-space:nowrap}
+@media(max-width:1500px){
+  .ai-cols{grid-template-columns:320px minmax(0,1fr)}
+  .ai-side{grid-column:1;grid-row:1/span 2}
+  .ai-hero{grid-column:2;grid-row:1;position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+  .ai-hero .ai-eng2{display:contents}
+  .ai-main{grid-column:2;grid-row:2}
+}
 @media(max-width:1000px){
   .ai-cols{grid-template-columns:1fr}
-  .ai-side{position:static;max-height:none}
+  .ai-side,.ai-hero,.ai-main{grid-column:1;grid-row:auto;position:static}
+  .ai-side{order:1;max-height:none}
+  .ai-hero{order:2;display:flex;flex-direction:column}
+  .ai-hero .ai-eng2{display:grid;grid-template-columns:1fr}
+  .ai-main{order:3}
 }
 
 /* Data page */
