@@ -963,9 +963,10 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .ai-eng-ones{position:relative;margin-top:14px;font-size:14px;color:var(--mut)}
 .ai-eng-ones b{color:var(--eng)}
 .ai-plist{display:flex;flex-direction:column;gap:9px;margin:6px 0 10px}
-.ai-prow{display:grid;grid-template-columns:1fr 200px 200px;gap:12px;align-items:center;
+.ai-prow{display:grid;grid-template-columns:minmax(0,1fr) 200px 200px;gap:12px;align-items:center;
   background:var(--card);border:1px solid var(--card-line);border-radius:15px;padding:14px 18px}
-.ai-prow-t{font-size:15px;font-weight:650}
+.ai-prow-q{min-width:0}
+.ai-prow-t{font-size:15px;font-weight:650;overflow-wrap:break-word}
 .ai-prow-l{font-size:12px;color:var(--dim);margin-top:3px}
 .ai-pill{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line-soft);
   border-radius:11px;padding:10px 13px;font-size:13.5px;background:rgba(255,255,255,.02)}
@@ -1273,6 +1274,7 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .pg-market .qcard{margin-bottom:16px;padding:16px 18px}
 .pg-market .cardgrid{gap:14px}
 /* ai tab: tighter split view */
+.pg-ai{max-width:none}
 .pg-ai .ai-split{gap:16px;height:calc(100vh - 128px)}
 .pg-ai .ai-right{padding:18px 20px;border-radius:20px}
 .pg-ai .ai-promptbar{margin:0 0 10px;padding:8px 12px;border-radius:14px}
