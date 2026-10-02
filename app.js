@@ -883,8 +883,24 @@ function snapRowsHTML(b){
   function row(l,v,t){ return '<div class="xkv"><span>'+l+'</span><b'+(t?' title="'+esc(t)+'"':"")+'>'+v+"</b></div>"; }
   return row("Followers",d.f!=null?fmt(d.f):"—",d.f!=null?("Followers: "+d.f):"")+
     row("Last post",esc(d.last),d.lastT)+
-    row("Starting price",esc(d.price),d.priceT)+
     row("Reviews",d.ri?fmt(d.ri.count):"—",d.ri?("Reviews: "+d.ri.count):"");
+}
+/* pricing summary strip for the collapsed profile: every known figure plus
+   the wedding-floor rank across tracked businesses */
+function priceSummaryHTML(b){
+  var p=b.price, bits=[];
+  if(p.wedding!=null) bits.push('Wedding <b>'+money(p.wedding)+'+</b>');
+  if(p.session!=null) bits.push('Session <b>'+money(p.session)+'+</b>');
+  if(p.weddingHourly!=null) bits.push('<b>'+money(p.weddingHourly)+'/hr</b>');
+  var full=b.pricing?(' title="'+esc(b.pricing)+'"'):"";
+  if(!bits.length)
+    return '<div class="ppsum none"'+full+'>Not published</div>';
+  var rank="";
+  if(p.wedding!=null){
+    var wArr=C.filter(function(x){return x.price.wedding!=null;});
+    rank='<span class="pprank">#'+(wArr.filter(function(x){return x.price.wedding<p.wedding;}).length+1)+' of '+wArr.length+'</span>';
+  }
+  return '<div class="ppsum"'+full+'>'+bits.join('<i>·</i>')+rank+'</div>';
 }
 /* hero: the digital-footprint score as a big ring gauge at the top of the collapsed profile */
 function fpHeroHTML(b){
@@ -949,6 +965,7 @@ function profileCollapsedHTML(b){
   return '<div class="pcol">'+
     fpHeroHTML(b)+
     '<div class="plab">Headline numbers</div>'+snapRowsHTML(b)+
+    '<div class="plab">Pricing</div>'+priceSummaryHTML(b)+
     '<div class="pspace"></div>'+
     footprintHTML(b)+
     '<div class="plab">Scores</div>'+scoreBarsHTML(b,true)+
@@ -1264,7 +1281,7 @@ function landscapeHTML(list){
     var big=by==="audience"?pctA:pctB, open=S.qx["g:"+r.g.k];
     h+='<div class="share-row'+(open?" open":"")+'" data-gx="'+r.g.k+'">'+
       '<i class="share-sw" style="background:'+r.g.color+'"></i>'+
-      '<div class="share-name">'+esc(r.g.label)+'<span class="share-chev">'+(open?"\u25BE":"\u25B8")+'</span></div>'+
+      '<div class="share-name">'+esc(r.g.label)+'</div>'+
       '<div class="share-val">'+big+'%</div>'+
       '<div class="share-meta">'+(by==="audience"?fmt(r.fol)+' followers \u00b7 '+n+' businesses':n+' of '+d.total+' businesses \u00b7 '+pctA+'% of audience')+'</div>'+
       '<div class="share-track"><i style="width:'+Math.max(big?2:0,big)+'%;background:'+r.g.color+'"></i></div>';
@@ -1988,7 +2005,7 @@ function marketGlanceHTML(full){
       var attrs=r.id?' data-open="'+r.id+'"':(r.members?' data-qx="'+key+'"':"");
       var h='<div class="qrow'+(r.members?" qx":"")+(r.nodata?" nodata":"")+'"'+attrs+'>'+
         '<span class="qn"'+(r.full?' title="'+esc(r.full)+'"':"")+'>'+esc(r.label)+'</span>'+
-        '<span class="qv"'+(r.vcol?' style="color:'+r.vcol+'"':"")+'>'+r.val+(r.members?'<span class="qchev">'+(open?"\u25BE":"\u25B8")+"</span>":"")+"</span>"+
+        '<span class="qv"'+(r.vcol?' style="color:'+r.vcol+'"':"")+'>'+r.val+"</span>"+
         '<span class="qtrack"><i style="width:'+r.pct+"%;background:"+r.color+'"></i></span></div>';
       if(r.members&&open){
         var ms=r.members.slice(0,12);
