@@ -858,11 +858,11 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 
 /* AI split view: business list left, dynamic analysis right */
 .pg-ai{height:100%}
-.ai-split{display:grid;grid-template-columns:1fr 1fr;gap:22px;height:calc(100vh - 142px);min-height:520px}
+.ai-split{display:grid;grid-template-columns:1fr 1fr;gap:16px;height:calc(100vh - 142px);min-height:520px}
 .ai-left{overflow-y:auto;min-height:0;padding:2px 8px 30px 2px;scrollbar-width:thin}
-.ai-right{overflow-y:auto;min-height:0;background:var(--card);border:1px solid var(--card-line);border-radius:18px;padding:22px 24px;scrollbar-width:thin}
+.ai-right{overflow-y:auto;min-height:0;background:var(--card);border:1px solid var(--card-line);border-radius:18px;padding:18px 20px;scrollbar-width:thin}
 .ai-left .pg-head h2{font-size:32px}
-.ai-sec-t{font-size:15px;font-weight:700;margin:18px 0 8px;letter-spacing:.01em}
+.ai-sec-t{font-size:19px;font-weight:800;margin:14px 0 6px;letter-spacing:-.01em}
 .ai-toggle{cursor:pointer;display:flex;align-items:center;justify-content:space-between}
 .ai-toggle:hover{color:var(--acc)}
 .ai-tog{color:var(--dim);font-size:12px}
@@ -886,18 +886,18 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .ai-open{font-size:12.5px;color:var(--acc);cursor:pointer;white-space:nowrap;flex:none}
 .ai-open:hover{text-decoration:underline}
 .ai-dsub{font-size:12.5px;color:var(--mut);margin:4px 0 6px}
-.ai-big{font-size:14px;font-weight:700;margin:18px 0 8px;letter-spacing:.01em}
+.ai-big{font-size:16px;font-weight:800;margin:14px 0 6px;letter-spacing:-.01em}
 .ai-attr{display:grid;grid-template-columns:1fr auto auto;gap:6px 14px;align-items:center;font-size:13px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
 .ai-attr .k{color:var(--mut)}
 .ai-attr .v{font-weight:600;text-align:right}
 .ai-attr .bm{color:var(--dim);font-size:12px;text-align:right}
-.ai-verdict{font-size:13.5px;line-height:1.65;color:var(--txt);margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.ai-verdict{font-size:13.5px;line-height:1.65;color:var(--txt);margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
 /* ---------- AI dashboard: persistent skeleton, animated refills ---------- */
 #aiDash .lb-row{cursor:default}
 #aiDash .lb-row:hover .lb-nm{color:inherit}
 #aiDash .lb-bar i{transition:width .65s cubic-bezier(.22,.8,.24,1),background-color .5s ease}
 .ai-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px;flex:none}
-.ai-tile{background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.09);border-left:3px solid var(--tier,#6db3f2);border-radius:12px;padding:14px 16px 16px;margin:14px 0 6px;--tier:#6db3f2}
+.ai-tile{background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.09);border-left:3px solid var(--tier,#6db3f2);border-radius:12px;padding:12px 14px 14px;margin:10px 0 6px;--tier:#6db3f2}
 .ai-tile-v b{font-size:32px;font-weight:800;letter-spacing:-.01em;color:var(--tier);font-variant-numeric:tabular-nums;transition:color .5s ease}
 .ai-tile-l{font-size:12px;color:var(--mut);margin:2px 0 10px}
 .ai-mainbar{height:8px}
@@ -1011,6 +1011,13 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .act-tile-top3>span{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:10.5px;line-height:1.4;min-width:0}
 .act-tile-top3 i{font-style:normal;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .act-tile-top3 b{font-weight:700;color:var(--acc);flex:none}
+/* once-per-load radar sweep on the "new on the radar" tile */
+.act-tile[data-radar] .act-tile-ic{position:relative}
+.act-tile[data-radar] .act-tile-ic::after{content:"";position:absolute;inset:-7px;border-radius:50%;opacity:0;pointer-events:none;
+  background:conic-gradient(from 0deg,rgba(143,209,143,.6),transparent 30%)}
+.act-tile[data-radar].radar-on .act-tile-ic::after{opacity:1;animation:radarSweep 1.5s linear 1}
+@keyframes radarSweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.act-tile[data-radar].radar-on .act-tile-ic::after{animation:none;opacity:0}}
 /* live feed */
 .act-body{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:16px;align-items:start}
 .act-main{min-width:0}
