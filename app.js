@@ -345,15 +345,119 @@ function todayChanges(){
       var comp=C.filter(function(c){return c.ig_handle===r.handle;})[0];
       if(comp) out.promo.push({b:comp,note:r.activity});
     }});
-  /* gone quiet: last post exactly 30 or 90 days ago */
-  var d30=new Date(today+"T12:00:00"), d90=new Date(today+"T12:00:00");
-  d30.setDate(d30.getDate()-30); d90.setDate(d90.getDate()-90);
-  function iso(d){ return d.toISOString().slice(0,10); }
+  /* gone quiet: silence milestones (30/60/90/180/365 days) landing on today.
+     Exact-day matches keep this an event feed, not a static dormant list. */
+  var bands=[[30,"30 days"],[60,"60 days"],[90,"90 days"],[180,"6 months"],[365,"1 year"]];
+  var isos={};
+  bands.forEach(function(bd){ var dd=new Date(today+"T12:00:00"); dd.setDate(dd.getDate()-bd[0]); isos[dd.toISOString().slice(0,10)]=bd[1]; });
   C.forEach(function(b){
-    if(b.last_post_date===iso(d30)) out.quiet.push({b:b,band:"30 days"});
-    else if(b.last_post_date===iso(d90)) out.quiet.push({b:b,band:"90 days"});
+    var band=b.last_post_date&&isos[b.last_post_date];
+    if(band) out.quiet.push({b:b,band:band});
   });
   return out;
+}
+
+/* ---------- live feed: one chronological stream of the last 7 days ---------- */
+var FEED_CATS=[
+  {k:"post",t:"Posts",icon:"mega",c:"#6db3f2"},
+  {k:"move",t:"Moves",icon:"bolt",c:"#f5b942"},
+  {k:"new",t:"New",icon:"radar",c:"#8fd18f"},
+  {k:"promo",t:"Promos",icon:"tag",c:"#c9a0f2"},
+  {k:"price",t:"Prices",icon:"dollar",c:"#f2d06d"},
+  {k:"quiet",t:"Quiet",icon:"moon",c:"#e06c6c"}
+];
+function feedCat(k){ for(var i=0;i<FEED_CATS.length;i++) if(FEED_CATS[i].k===k) return FEED_CATS[i]; return FEED_CATS[0]; }
+function feedEvents(){
+  var di=S.di, d0=Math.max(0,di-6), lo=DATES[d0], hi=DATES[di], ev=[];
+  function compByHandle(h){
+    var hn=String(h||"").replace(/^@/,"").toLowerCase();
+    for(var i=0;i<C.length;i++) if(String(C[i].ig_handle||"").toLowerCase()===hn) return C[i];
+    return null;
+  }
+  function compById(id){ for(var i=0;i<C.length;i++) if(C[i].id===id) return C[i]; return null; }
+  /* follower moves, day by day across the window */
+  for(var d=Math.max(1,d0);d<=di;d++){
+    (function(dd){
+      C.forEach(function(b){
+        var first=b.followHist.length?b.followHist[0].date:null;
+        if(first&&first>=DATES[dd-1]) return; /* new-biz handled below */
+        var ch=pctChange(b,dd-1,dd), from=followersAt(b,dd-1), to=followersAt(b,dd);
+        if(ch!=null&&Math.abs(ch)>=3)
+          ev.push({date:DATES[dd],kind:"move",b:b,sub:fmt(from)+" \u2192 "+fmt(to),val:pctStr(ch),up:ch>=0});
+        else if(from!=null&&to!=null&&to!==from)
+          ev.push({date:DATES[dd],kind:"move",b:b,sub:fmt(from)+" \u2192 "+fmt(to),
+            val:(to>from?"+":"\u2212")+fmt(Math.abs(to-from)),up:to>from});
+      });
+    })(d);
+  }
+  /* posts + promos from the IG activity rows */
+  (D.igActivity||[]).forEach(function(r){
+    if(!r.date||r.date<lo||r.date>hi) return;
+    var comp=compByHandle(r.handle); if(!comp) return;
+    var n=postCount(r), note=String(r.activity||"").slice(0,110);
+    if(n>0) ev.push({date:r.date,kind:"post",b:comp,sub:note});
+    if(/promo|sale|minis|booking now|giveaway|discount|limited/i.test(r.activity||""))
+      ev.push({date:r.date,kind:"promo",b:comp,sub:note});
+  });
+  /* price changes from web sweep runs inside the window */
+  (D.webSweepHistory||[]).forEach(function(run){
+    if(!run.date||run.date<lo||run.date>hi) return;
+    Object.keys(run.pages||{}).forEach(function(pid){
+      var p=run.pages[pid], note=String(p.note||"");
+      if(/pric/i.test(note)&&/chang|rais|lower|cut|increas|now\s*\$|was\s*\$/i.test(note)){
+        var comp=compById(pid);
+        if(comp) ev.push({date:run.date,kind:"price",b:comp,sub:note.slice(0,110)});
+      }});
+  });
+  /* new on the radar */
+  C.forEach(function(b){
+    var first=b.followHist.length?b.followHist[0].date:null;
+    if(first&&first>=lo&&first<=hi)
+      ev.push({date:first,kind:"new",b:b,sub:(b.townShort||"")+" \u00b7 "+(LANE_LABEL[b.specialty]||"")});
+  });
+  /* quiet milestones landing today */
+  todayChanges().quiet.forEach(function(q){
+    ev.push({date:hi,kind:"quiet",b:q.b,sub:"No posts in "+q.band});
+  });
+  var ko={new:0,price:1,promo:2,post:3,move:4,quiet:5};
+  ev.sort(function(a,b2){
+    if(a.date!==b2.date) return a.date<b2.date?1:-1;
+    return (ko[a.kind]-ko[b2.kind])||(a.b.name<b2.b.name?-1:1);
+  });
+  return ev;
+}
+function feedFresh(){
+  var di=S.di, out=[["Follower data",DATES[di]]], mx=null;
+  (D.igActivity||[]).forEach(function(r){ if(r.date&&(!mx||r.date>mx)) mx=r.date; });
+  if(mx) out.push(["IG posts",mx]);
+  var runs=D.webSweepHistory||[], lr=runs.length?runs[runs.length-1].date:null;
+  if(lr) out.push(["Site sweep",lr]);
+  return out;
+}
+function feedListHTML(){
+  var di=S.di, f=S.feedf||"all", evs=feedEvents();
+  var counts={}; evs.forEach(function(e){ counts[e.kind]=(counts[e.kind]||0)+1; });
+  var shown=evs.filter(function(e){ return f==="all"||e.kind===f; }).slice(0,80);
+  var h='<div class="feed-filters"><button class="feed-pill'+(f==="all"?" on":"")+'" data-feedf="all">All · '+evs.length+'</button>'+
+    FEED_CATS.map(function(c){
+      return '<button class="feed-pill'+(f===c.k?" on":"")+'" data-feedf="'+c.k+'">'+c.t+' · '+(counts[c.k]||0)+'</button>';
+    }).join("")+'</div>';
+  if(!shown.length)
+    return h+'<div class="act-empty"><div class="act-empty-t">Nothing here.</div>'+
+      '<div class="act-empty-s">No '+(f==="all"?"activity":f)+' in the last 7 days.</div></div>';
+  var lastDay=null;
+  shown.forEach(function(e){
+    if(e.date!==lastDay){ lastDay=e.date;
+      var lbl=e.date===DATES[di]?"Today":(di>0&&e.date===DATES[di-1]?"Yesterday":dstrShort(e.date));
+      h+='<div class="feed-day">'+lbl+' · '+dstrShort(e.date)+'</div>'; }
+    var fc=feedCat(e.kind);
+    h+='<div class="feed-row" data-open="'+e.b.id+'">'+
+      '<span class="feed-ic" style="color:'+fc.c+'">'+actIcon(fc.icon)+'</span>'+
+      '<div class="feed-nm"><b>'+esc(e.b.name)+'</b><span>'+esc(e.sub||"")+'</span></div>'+
+      (e.val?'<span class="feed-val '+(e.up?"up":"dn")+'">'+esc(e.val)+'</span>':"")+
+      '<span class="feed-kind" style="--acc:'+fc.c+'">'+fc.t+'</span></div>';
+  });
+  return h;
 }
 
 /* ---------- week's highlights: top businesses + why ---------- */
@@ -472,6 +576,15 @@ function renderToday(){
     {k:"quiet",t:"Gone quiet",thr:"",icon:"moon",c:"#e06c6c",n:ch.quiet.length}
   ];
   var total=cats.reduce(function(a,x){ return a+x.n; },0);
+  function t3row(nm,val){ return '<span><i>'+esc(nm)+'</i>'+(val?'<b>'+esc(val)+'</b>':"")+'</span>'; }
+  var tops={
+    jumps:ch.jumps.slice(0,3).map(function(j){ return t3row(j.b.name,pctStr(j.ch)); }),
+    small:ch.small.slice(0,3).map(function(s){ return t3row(s.b.name,(s.delta>0?"+":"\u2212")+fmt(Math.abs(s.delta))); }),
+    new:ch.newBiz.slice(0,3).map(function(b){ return t3row(b.name,null); }),
+    promo:ch.promo.slice(0,3).map(function(p){ return t3row(p.b.name,null); }),
+    prices:ch.prices.slice(0,3).map(function(p){ return t3row(p.b.name,null); }),
+    quiet:ch.quiet.slice(0,3).map(function(q){ return t3row(q.b.name,q.band); })
+  };
   var h='<div class="actdash">';
   /* hero */
   h+='<div class="act-hero" style="--d:0s">'+
@@ -481,11 +594,19 @@ function renderToday(){
     '<span class="act-hero-cap">market movements<em>Since '+esc(dstr(ch.prev))+' · through '+esc(dstr(ch.date))+'</em></span>'+
     '</div>'+
     '<div class="act-tiles">'+cats.map(function(x,i){
+      var tp=tops[x.k]||[];
       return '<button class="act-tile" data-actgo="'+x.k+'" style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
         '<span class="act-tile-ic">'+actIcon(x.icon)+'</span>'+
         '<span class="act-tile-n" data-count="'+x.n+'">0</span>'+
-        '<span class="act-tile-l">'+x.t+'</span></button>';
+        '<span class="act-tile-l">'+x.t+'</span>'+
+        (tp.length?'<span class="act-tile-top3">'+tp.join("")+'</span>':"")+'</button>';
     }).join("")+'</div></div>';
+  /* live feed */
+  h+='<div class="act-feedwrap"><div class="act-sect-h"><span>Live feed</span>'+
+    '<span class="act-sect-sub">Every post, move and change · last 7 days</span></div>'+
+    '<div class="feed-fresh">'+feedFresh().map(function(f){
+      return '<span class="feed-chip">'+esc(f[0])+' · <b>'+esc(dstrShort(f[1]))+'</b></span>';
+    }).join("")+'</div><div id="feedlist">'+feedListHTML()+'</div></div>';
   /* highlights */
   h+=weekHighlights();
   /* change feed */
@@ -2548,6 +2669,11 @@ document.addEventListener("click",function(e){
   var ag=e.target.closest("[data-actgo]");
   if(ag){ var tgt=document.getElementById("actsec-"+ag.getAttribute("data-actgo"));
     if(tgt) tgt.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"}); return; }
+  var ff=e.target.closest("[data-feedf]");
+  if(ff){ S.feedf=ff.getAttribute("data-feedf");
+    var fl=document.getElementById("feedlist");
+    if(fl) fl.innerHTML=feedListHTML(); else renderLeft();
+    return; }
   var tb=e.target.closest(".pagenav button");
   if(tb){ setTab(tb.getAttribute("data-tab")); return; }
 });
