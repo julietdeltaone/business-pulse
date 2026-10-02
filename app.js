@@ -1747,7 +1747,8 @@ function aiTrend(t){
   return h+'</div>';
 }
 /* fleshed-out detail for the selected business (reuses aiDetailData) */
-function renderAIDetail(){
+/* headline block for the selected business: big citation number + verdict up top */
+function aiMega(t){
   var d=aiDetailData();
   if(!d) return '<div class="empty-note">Select a business to see its AI detail.</div>';
   var h='<div class="ai-dsec"><div class="ai-sec-t">'+esc(d.t.name)+'</div>'+
@@ -1756,36 +1757,15 @@ function renderAIDetail(){
   h+='<div class="ai-mega" style="--tier:'+d.cite.color+'"><div class="ai-mega-v">'+esc(d.cite.label)+'</div>'+
     '<div class="ai-mega-l">'+esc(d.citeSub)+'</div>'+
     '<div class="ai-mega-bar"><i data-bw="'+d.cite.pct+'" style="width:'+d.cite.pct+'%;background:'+d.cite.color+'"></i></div></div>';
-  h+='<div class="ai-dhead2"><span class="ai-tick"></span>By assistant</div><div class="ai-bars stagger">';
-  d.eng.forEach(function(x,i){
-    var e=AI.engines[i];
-    h+='<div class="ai-brow'+(x.ec===0?" off":"")+'"><span class="ai-bnm"><i class="ai-dot" style="background:'+x.color+'"></i>'+esc(e||"")+'</span>'+
-      '<span class="ai-bv">'+esc(x.label)+'</span>'+
-      '<span class="ai-bar"><i data-bw="'+x.pct+'" style="width:'+x.pct+'%;background:'+x.color+'"></i></span></div>';
-  });
-  h+='</div>';
-  h+='<div class="ai-dhead2"><span class="ai-tick"></span>By service — its own lanes</div><div class="ai-bars stagger">';
-  SVC_GROUPS.forEach(function(g,i){
-    var x=d.svc[i]; if(!x) return;
-    h+='<div class="ai-brow'+(x.served?"":" off")+'"><span class="ai-bnm"><i class="ai-dot" style="background:'+g.color+'"></i>'+esc(g.label)+'</span>'+
-      '<span class="ai-bv'+(x.served?"":" ai-miss")+'">'+esc(x.label)+'</span>'+
-      '<span class="ai-bar"><i data-bw="'+x.pct+'" style="width:'+x.pct+'%;background:'+g.color+'"></i></span></div>';
-  });
-  h+='</div>';
-  h+='<div class="ai-dhead2"><span class="ai-tick"></span>Profile vs the ten most-cited</div><div class="ai-prof">';
-  if(d.prof) d.prof.forEach(function(r){
-    h+='<div class="ai-attr"><span class="k">'+esc(r.k)+'</span><span class="v">'+esc(r.v)+'</span><span class="bm">'+esc(r.bm)+'</span></div>';
-  });
-  else h+='<div class="ai-attr off"><span class="k">Profile data</span><span class="v">n/a</span><span class="bm">not in roster</span></div>';
-  h+='</div>';
   h+='<div class="ai-verdict tone-'+d.tone+'">'+d.verdict+'</div>';
   return h+'</div>';
 }
-/* everything that follows the selected business */
+/* everything that follows the selected business: headline first, then engines,
+   prompt-by-prompt, then the recent-audit trend. Fluff stays out. */
 function renderAISel(){
   var t=aiSelT();
   if(!t) return '<div class="empty-note">No AI visibility data yet.</div>';
-  return aiEngineCards(t)+aiPromptList(t)+aiTrend(t)+renderAIDetail();
+  return aiMega(t)+aiEngineCards(t)+aiPromptList(t)+aiTrend(t);
 }
 function aiLeaderboard(scope){
   var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
@@ -1802,27 +1782,6 @@ function aiLeaderboard(scope){
       '<div class="bar"><i style="width:'+Math.max(2,pct)+'%"></i></div></div></div>';
   });
   return h+'</div>';
-}
-function renderAIWhy(){
-  return '<div class="ai-why"><h3 class="ai-sec-t">Why businesses get cited</h3>'+
-    '<div class="sub">Comparing the 10 most-named tracked businesses against the tracked businesses the AIs never name. Observed patterns, not proven causes.</div>'+
-    '<div class="why-grid">'+
-    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+(AI.medRev!=null?AI.medRev:"—")+'</b></div>'+
-      '<div class="w-row"><span>Never named</span><b>'+(AI.restMedRev!=null?AI.restMedRev:"—")+'</b></div>'+
-      '<div class="w-lab">Median Google reviews</div></div>'+
-    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+AI.pricePct+'%</b></div>'+
-      '<div class="w-row"><span>Never named</span><b>'+AI.restPricePct+'%</b></div>'+
-      '<div class="w-lab">Publish pricing on their site</div></div>'+
-    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+AI.webPct+'%</b></div>'+
-      '<div class="w-row"><span>Never named</span><b>'+AI.restWebPct+'%</b></div>'+
-      '<div class="w-lab">Have their own website</div></div>'+
-    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+(AI.medYrs||"—")+'</b></div>'+
-      '<div class="w-row"><span>Never named</span><b>'+(AI.restMedYrs||"—")+'</b></div>'+
-      '<div class="w-lab">Median years in business</div></div>'+
-    '</div>'+
-    '<div class="ai-take">It isn\u2019t reviews or pricing doing the work — the most-named group actually publishes pricing <b>less</b> often than everyone else. '+
-    'What they share: nearly all have their own website, and they\u2019re long-established local names — the kind of '+
-    'business that piles up mentions across the local web over years. That footprint is consistent with what the assistants draw on.</div></div>';
 }
 function renderAI(){
   if(S.mode==="venues")
@@ -1853,7 +1812,6 @@ function renderAI(){
   h+=aiLeaderboard(scope);
   h+='</aside><div class="ai-main">';
   h+='<div id="aiSelWrap">'+renderAISel()+'</div>';
-  h+=renderAIWhy();
   h+='</div></div>';
   h+='</div>';
   return h;
