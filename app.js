@@ -1208,7 +1208,7 @@ var SVC_GROUPS=[
   {k:"re",label:"Real estate",color:"#c7d2e0"},
   {k:"dr",label:"Drone & aerial",color:"#6fd3e7"}];
 /* assistant colors + citation-tier color: applied to every business equally, data only */
-var ENG_COLORS={ChatGPT:"#34d399",Claude:"#f0a35e",Gemini:"#6db3f2",Perplexity:"#b48ce8"};
+var ENG_COLORS={ChatGPT:"#34d399",Gemini:"#6db3f2"};
 function aiTierColor(pct){
   if(pct>=80) return "#34d399";
   if(pct>=50) return "#e8b34b";
@@ -1409,12 +1409,14 @@ function aiMed(xs){ var a=xs.filter(function(x){return x!=null;}).sort(function(
 /* ---------- AI visibility: 50/50 split explorer ---------- */
 var AI={};
 function computeAI(){
-  var rows=(D.aiVisibility||[]).filter(function(r){return r.jd_named!=="unreachable";});
+  /* Claude and Perplexity are cut from the tab (2026-10-02): neither offers guest
+     access for neutral audits, so their legs are permanently blocked. Historical rows
+     stay in ai-visibility.json and the log, but the tab only renders the two live engines. */
+  var rows=(D.aiVisibility||[]).filter(function(r){return r.jd_named!=="unreachable"&&(r.engine==="ChatGPT"||r.engine==="Gemini");});
   var dates=rows.map(function(r){return r.date;}).sort();
-  var engines=["ChatGPT","Claude","Gemini","Perplexity"];
+  var engines=["ChatGPT","Gemini"];
   var engOK=engines.filter(function(e){return rows.some(function(r){return r.engine===e;});});
   var prompts=[]; rows.forEach(function(r){if(prompts.indexOf(r.prompt)<0)prompts.push(r.prompt);});
-  var perpDead=!(D.aiVisibility||[]).some(function(r){return r.engine==="Perplexity"&&r.jd_named!=="unreachable";});
   var nameDays={}, nameEng={}, nameSvc={}, svcKeys={}, promptChecks={};
   var reg=function(n,id,key,eng,svcs){
     var e=nameDays[n]=nameDays[n]||{days:{},id:id};
@@ -1475,7 +1477,7 @@ function computeAI(){
   var pct=function(rs,f){return rs.length?Math.round(100*rs.filter(f).length/rs.length):0;};
   var rest=B.filter(function(b){return !idDays[b.id];});
   AI={rows:rows,dates:dates,cov:dates.length?dates[0]+" → "+dates[dates.length-1]:"",
-    engines:engines,engOK:engOK,prompts:prompts,perpDead:perpDead,
+    engines:engines,engOK:engOK,prompts:prompts,
     board:board,nDays:nDays,nameEng:nameEng,idEng:idEng,engChecks:engChecks,
     idSvc:idSvc,nameSvc:nameSvc,svcKeys:svcKeys,svcChecks:svcChecks,
     promptChecks:promptChecks,promptCatalog:((D.aiPrompts||{}).prompts||[]),
@@ -1537,9 +1539,8 @@ function aiVerdict(t){
   h+="Reviews and published pricing don\u2019t separate cited from uncited businesses in this data, so they don\u2019t explain the difference either way.";
   return h;
 }
-/* Plain data for the selected business's AI profile. The dashboard skeleton is built
-   once per selection and fillAIDash() refills it in place, so the bar <i> elements
-   persist and their CSS width transitions animate smoothly between businesses. */
+/* Plain data for the selected business's AI profile. The fleshed-out detail section
+   re-renders per selection; bar widths animate via aiAnimateBars() after insert. */
 function aiPromptScope(){
   var p=S.aiPrompt; if(!p||!AI.rows) return null;
   var keys={}, engC={};
@@ -1635,80 +1636,168 @@ function aiDetailData(){
     eng:eng, svc:svc, prof:prof, verdict:scopeNote+aiVerdict(t),
     tone:base>=70?"strong":(base>=30?"mixed":"weak")};
 }
-function aiDashSkeleton(){
-  var h='<div class="ai-dash" id="aiDash">';
-  h+='<div class="ai-dhead"><h3 data-k="name"></h3><span class="ai-open" data-k="open">Open profile →</span></div>';
-  h+='<div class="ai-dsub" data-k="meta"></div>';
-  h+='<div class="ai-tile" data-k="tile"><div class="ai-tile-v"><b data-k="citeN"></b></div>'+
-    '<div class="ai-tile-l" data-k="citeSub">AI citations · named in</div>'+
-    '<div class="lb-bar ai-mainbar"><i data-k="citeBar"></i></div></div>';
-  h+='<div class="ai-big"><span class="ai-tick"></span>By assistant</div><div class="stagger" data-k="eng">'+
-    AI.engines.map(function(e,i){
-      var c=ENG_COLORS[e]||"#6db3f2";
-      return '<div class="lb-row ai-drow"><span class="lb-nm"><i class="ai-dot" style="background:'+c+'"></i>'+esc(e)+'</span>'+
-        '<span class="lb-v" data-ev="'+i+'"></span>'+
-        '<span class="lb-bar"><i data-eb="'+i+'" style="background:'+c+'"></i></span></div>';
-    }).join("")+'</div>';
-  h+='<div class="ai-big"><span class="ai-tick"></span>By service — its own lanes</div><div class="stagger" data-k="svc">'+
-    SVC_GROUPS.map(function(g,i){
-      return '<div class="lb-row ai-drow" data-srow="'+i+'"><span class="lb-nm"><i class="ai-dot" style="background:'+g.color+'"></i>'+esc(g.label)+'</span>'+
-        '<span class="lb-v" data-sv="'+i+'"></span>'+
-        '<span class="lb-bar"><i data-sb="'+i+'" style="background:'+g.color+'"></i></span></div>';
-    }).join("")+'</div>';
-  h+='<div class="ai-big"><span class="ai-tick"></span>Profile vs the ten most-cited</div><div data-k="prof">'+
-    [0,1,2,3].map(function(i){
-      return '<div class="ai-attr" data-prow="'+i+'"><span class="k" data-pk="'+i+'"></span><span class="v" data-pv="'+i+'"></span><span class="bm" data-pb="'+i+'"></span></div>';
-    }).join("")+'</div>';
-  h+='<div class="ai-verdict" data-k="verdict"></div>';
+/* ---------- AI visibility: fleshed-out two-engine explorer (2026-10-02) ----------
+   Claude and Perplexity were cut from the tab: neither offers guest access for
+   neutral audits, so their legs are permanently blocked. Only ChatGPT + Gemini
+   render here; historical rows stay in ai-visibility.json and the log. */
+
+/* Selected business for the AI tab: defaults to the top-ranked business. */
+function aiSelT(){
+  var board=AI.board;
+  if(!board.some(function(t){return t.name===S.aiSel;})) S.aiSel=board.length?board[0].name:null;
+  return board.filter(function(x){return x.name===S.aiSel;})[0]||null;
+}
+function aiEngChecks(e){ return AI.engChecks[e]||0; }
+function aiNamedDays(t,e){
+  var sets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
+  var se=sets[e]; return se?Object.keys(se).length:0;
+}
+/* latest check for one prompt + engine */
+function aiLatestPrompt(prompt,e){
+  var best=null;
+  AI.rows.forEach(function(r){
+    if(r.engine!==e||r.prompt!==prompt) return;
+    if(!best||r.date>best.date) best=r;
+  });
+  return best;
+}
+function aiNamedInRow(t,r){
+  if(t.id==="jd-meyers-productions") return r.jd_named==="yes"||r.jd_named==="partial";
+  return (r.rivals||[]).indexOf(t.name)>=0;
+}
+/* animate [data-bw] bars from 0 to their target width */
+function aiAnimateBars(root){
+  var bars=root.querySelectorAll("[data-bw]");
+  if(REDUCED) return; /* widths are already set inline */
+  bars.forEach(function(b){ b.style.width="0%"; });
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    bars.forEach(function(b){ b.style.width=b.getAttribute("data-bw")+"%"; });
+  }); });
+}
+/* two big engine hero cards for the selected business */
+function aiEngineCards(t){
+  var h='<div class="ai-eng2 stagger">';
+  AI.engines.forEach(function(e){
+    var c=ENG_COLORS[e]||"#6db3f2", ec=aiEngChecks(e), nd=aiNamedDays(t,e);
+    var pct=ec?Math.round(100*nd/ec):0, last="", ones=0;
+    AI.rows.forEach(function(r){
+      if(r.engine!==e) return;
+      if(r.date>last) last=r.date;
+      if(t.id==="jd-meyers-productions"&&r.jd_rank===1) ones++;
+    });
+    h+='<div class="ai-eng-card" style="--eng:'+c+'">'+
+      '<div class="ai-eng-top"><span class="ai-dot" style="background:'+c+'"></span><b>'+esc(e)+'</b>'+
+      '<span class="ai-eng-last">'+(last?"last audit "+esc(last):"no checks yet")+'</span></div>'+
+      '<div class="ai-eng-big" data-count="'+nd+'">0</div>'+
+      '<div class="ai-eng-of">of '+ec+' checks · named '+pct+'% of the time</div>'+
+      '<div class="ai-eng-bar"><i data-bw="'+Math.max(2,pct)+'" style="width:'+Math.max(2,pct)+'%;background:'+c+'"></i></div>'+
+      (t.id==="jd-meyers-productions"?'<div class="ai-eng-ones">Ranked <b>#1</b> in '+ones+' of those checks</div>':"")+
+      '</div>';
+  });
   return h+'</div>';
 }
-/* Refill the persistent dashboard in place: text swaps instantly, bar widths and
-   colors transition via CSS. Sections are fixed (all 4 assistants, all 6 lanes,
-   4 profile rows) so the footprint never changes between businesses. */
-function fillAIDash(){
-  var d=aiDetailData(), root=document.getElementById("aiDash");
-  if(!d||!root) return;
-  function q(k){ return root.querySelector('[data-k="'+k+'"]'); }
-  function qa(a){ return root.querySelector('[data-'+a+']'); }
-  q("name").textContent=d.t.name;
-  q("meta").textContent=d.meta;
-  var op=q("open");
-  if(d.t.id){ op.style.display=""; op.setAttribute("data-open",d.t.id); }
-  else op.style.display="none";
-  q("citeN").textContent=d.cite.label;
-  q("citeSub").textContent=d.citeSub;
-  var cb=q("citeBar"); cb.style.width=d.cite.pct+"%"; cb.style.background=d.cite.color;
-  q("tile").style.setProperty("--tier",d.cite.color);
+/* prompt-by-prompt: latest check per assistant for each tested prompt */
+function aiPromptList(t){
+  var n=AI.promptCatalog.length;
+  var h='<div class="ai-sec-t">Prompt by prompt — '+esc(t.name)+'</div>'+
+    '<div class="sub" style="margin:-2px 0 10px">Latest check per assistant across the '+n+' tested prompts.</div>'+
+    '<div class="ai-plist stagger">';
+  AI.promptCatalog.forEach(function(p){
+    var lanes=(p.services||[]).map(aiSvcLabel).join(" · ");
+    h+='<div class="ai-prow"><div class="ai-prow-q"><div class="ai-prow-t">'+esc(p.text)+'</div>'+
+      (lanes?'<div class="ai-prow-l">'+esc(lanes)+'</div>':"")+'</div>';
+    AI.engines.forEach(function(e){
+      var r=aiLatestPrompt(p.text,e), c=ENG_COLORS[e]||"#6db3f2", lab, cls;
+      if(!r){ lab="no check"; cls="ai-miss"; }
+      else if(!aiNamedInRow(t,r)){ lab="not named"; cls="ai-miss"; }
+      else if(t.id==="jd-meyers-productions"&&r.jd_rank){ lab="#"+r.jd_rank+" of "+r.of_total; cls=r.jd_rank===1?"ai-win":"ai-hit"; }
+      else { lab="named"; cls="ai-hit"; }
+      h+='<div class="ai-pill '+cls+'" style="--eng:'+c+'"><span class="ai-pill-e">'+esc(e)+'</span><span class="ai-pill-v">'+esc(lab)+'</span></div>';
+    });
+    h+='</div>';
+  });
+  return h+'</div>';
+}
+/* recent audits: share of each day's prompts naming the business, per assistant */
+function aiTrend(t){
+  var ud=[]; AI.dates.forEach(function(d){ if(ud.indexOf(d)<0) ud.push(d); });
+  ud=ud.slice(-8);
+  var h='<div class="ai-sec-t">Recent audits — '+esc(t.name)+'</div>'+
+    '<div class="sub" style="margin:-2px 0 10px">Share of each day\u2019s prompts naming this business, per assistant.</div>'+
+    '<div class="ai-trend stagger">';
+  ud.forEach(function(d){
+    h+='<div class="ai-trow"><span class="ai-tdate">'+esc(d)+'</span>';
+    AI.engines.forEach(function(e){
+      var c=ENG_COLORS[e]||"#6db3f2", n=0, tot=0;
+      AI.rows.forEach(function(r){
+        if(r.date!==d||r.engine!==e) return;
+        tot++; if(aiNamedInRow(t,r)) n++;
+      });
+      var pct=tot?Math.round(100*n/tot):0;
+      h+='<div class="ai-tcell"><span class="ai-pill-e" style="color:'+c+'">'+esc(e)+'</span>'+
+        '<div class="ai-tbar"><i data-bw="'+Math.max(2,pct)+'" style="width:'+Math.max(2,pct)+'%;background:'+c+'"></i></div>'+
+        '<span class="ai-tv">'+(tot?n+" of "+tot:"—")+'</span></div>';
+    });
+    h+='</div>';
+  });
+  return h+'</div>';
+}
+/* fleshed-out detail for the selected business (reuses aiDetailData) */
+function renderAIDetail(){
+  var d=aiDetailData();
+  if(!d) return '<div class="empty-note">Select a business to see its AI detail.</div>';
+  var h='<div class="ai-dsec"><div class="ai-sec-t">'+esc(d.t.name)+'</div>'+
+    '<div class="sub" style="margin:-2px 0 12px">'+esc(d.meta)+'</div>';
+  if(d.t.id) h+='<div style="margin:0 0 14px"><span class="ai-open" data-open="'+esc(d.t.id)+'">Open profile \u2192</span></div>';
+  h+='<div class="ai-mega" style="--tier:'+d.cite.color+'"><div class="ai-mega-v">'+esc(d.cite.label)+'</div>'+
+    '<div class="ai-mega-l">'+esc(d.citeSub)+'</div>'+
+    '<div class="ai-mega-bar"><i data-bw="'+d.cite.pct+'" style="width:'+d.cite.pct+'%;background:'+d.cite.color+'"></i></div></div>';
+  h+='<div class="ai-dhead2"><span class="ai-tick"></span>By assistant</div><div class="ai-bars stagger">';
   d.eng.forEach(function(x,i){
-    var v=qa('ev="'+i+'"'), bar=qa('eb="'+i+'"');
-    if(!v||!bar) return;
-    v.textContent=x.label; v.className="lb-v"+(x.ec===0?" ai-miss":"");
-    bar.style.width=x.pct+"%";
+    var e=AI.engines[i];
+    h+='<div class="ai-brow'+(x.ec===0?" off":"")+'"><span class="ai-bnm"><i class="ai-dot" style="background:'+x.color+'"></i>'+esc(e||"")+'</span>'+
+      '<span class="ai-bv">'+esc(x.label)+'</span>'+
+      '<span class="ai-bar"><i data-bw="'+x.pct+'" style="width:'+x.pct+'%;background:'+x.color+'"></i></span></div>';
   });
-  d.svc.forEach(function(x,i){
-    var row=qa('srow="'+i+'"'), v=qa('sv="'+i+'"'), bar=qa('sb="'+i+'"');
-    if(!row||!v||!bar) return;
-    row.className="lb-row ai-drow"+(x.served?"":" off");
-    v.textContent=x.label; v.className="lb-v"+(x.served?"":" ai-miss");
-    bar.style.width=x.pct+"%";
+  h+='</div>';
+  h+='<div class="ai-dhead2"><span class="ai-tick"></span>By service — its own lanes</div><div class="ai-bars stagger">';
+  SVC_GROUPS.forEach(function(g,i){
+    var x=d.svc[i]; if(!x) return;
+    h+='<div class="ai-brow'+(x.served?"":" off")+'"><span class="ai-bnm"><i class="ai-dot" style="background:'+g.color+'"></i>'+esc(g.label)+'</span>'+
+      '<span class="ai-bv'+(x.served?"":" ai-miss")+'">'+esc(x.label)+'</span>'+
+      '<span class="ai-bar"><i data-bw="'+x.pct+'" style="width:'+x.pct+'%;background:'+g.color+'"></i></span></div>';
   });
-  if(d.prof){
-    d.prof.forEach(function(r,i){
-      var row=qa('prow="'+i+'"');
-      if(!row) return;
-      row.className="ai-attr";
-      qa('pk="'+i+'"').textContent=r.k; qa('pv="'+i+'"').textContent=r.v; qa('pb="'+i+'"').textContent=r.bm;
-    });
-  }else{
-    var off=[["Profile data","n/a","not in roster"],["—","—","—"],["—","—","—"],["—","—","—"]];
-    off.forEach(function(r,i){
-      var row=qa('prow="'+i+'"');
-      if(!row) return;
-      row.className="ai-attr off";
-      qa('pk="'+i+'"').textContent=r[0]; qa('pv="'+i+'"').textContent=r[1]; qa('pb="'+i+'"').textContent=r[2];
-    });
-  }
-  var vd=q("verdict"); vd.innerHTML=d.verdict; vd.className="ai-verdict tone-"+d.tone;
+  h+='</div>';
+  h+='<div class="ai-dhead2"><span class="ai-tick"></span>Profile vs the ten most-cited</div><div class="ai-prof">';
+  if(d.prof) d.prof.forEach(function(r){
+    h+='<div class="ai-attr"><span class="k">'+esc(r.k)+'</span><span class="v">'+esc(r.v)+'</span><span class="bm">'+esc(r.bm)+'</span></div>';
+  });
+  else h+='<div class="ai-attr off"><span class="k">Profile data</span><span class="v">n/a</span><span class="bm">not in roster</span></div>';
+  h+='</div>';
+  h+='<div class="ai-verdict tone-'+d.tone+'">'+d.verdict+'</div>';
+  return h+'</div>';
+}
+/* everything that follows the selected business */
+function renderAISel(){
+  var t=aiSelT();
+  if(!t) return '<div class="empty-note">No AI visibility data yet.</div>';
+  return aiEngineCards(t)+aiPromptList(t)+aiTrend(t)+renderAIDetail();
+}
+function aiLeaderboard(scope){
+  var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
+  var h='<div class="ai-sec-t" style="margin-top:26px">'+(scope?"Businesses — ranked for this prompt":"Businesses — ranked by AI citations")+'</div>'+
+    '<div class="sub" style="margin:-2px 0 10px">Click a business to inspect it above.</div>';
+  if(!sBoard.length) h+='<div class="empty-note">No checks have run for this prompt yet — it joins the next audit.</div>';
+  h+='<div class="ai-lead stagger">';
+  sBoard.forEach(function(t,i){
+    var pct=sN?Math.round(t.days/sN*100):0;
+    h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+(t.days===0?" ai-zero":"")+'" data-ai="'+esc(t.name)+'">'+
+      '<span class="rk">'+(i+1)+'</span>'+
+      '<div class="ai-row-bd"><div class="ai-row-top"><span class="nm">'+esc(t.name)+'</span>'+
+      '<span class="ct">'+(t.days>0&&sN>0?t.days+' of '+sN+' checks ('+pct+'%)':(sN>0?'not cited':'—'))+'</span></div>'+
+      '<div class="bar"><i style="width:'+Math.max(2,pct)+'%"></i></div></div></div>';
+  });
+  return h+'</div>';
 }
 function renderAIWhy(){
   return '<div class="ai-why"><h3 class="ai-sec-t">Why businesses get cited</h3>'+
@@ -1731,22 +1820,19 @@ function renderAIWhy(){
     'What they share: nearly all have their own website, and they\u2019re long-established local names — the kind of '+
     'business that piles up mentions across the local web over years. That footprint is consistent with what the assistants draw on.</div></div>';
 }
-function renderAIDetail(){
-  return aiDashSkeleton();
-}
 function renderAI(){
   if(S.mode==="venues")
     return '<div class="sec"><h3>AI Search</h3><div class="sub">Venue visibility</div>'+
       '<div class="empty-note">No AI visibility data for venues yet.</div></div>';
   computeAI();
   if(!AI.rows.length)
-    return '<div class="ai-split"><div class="ai-left"><div class="empty-note">No AI visibility data yet — the daily audit feeds this tab.</div></div><div class="ai-right"></div></div>';
-  var h='<div class="ai-split"><div class="ai-left">';
+    return '<div class="ai-page"><div class="pg-head"><h2>AI Visibility</h2>'+
+      '<div class="empty-note">No AI visibility data yet — the daily audit feeds this tab.</div></div>';
+  var h='<div class="ai-page">';
   h+='<div class="pg-head"><h2>AI Visibility</h2><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
-  h+='<div class="sub" style="margin:0 0 12px">'+esc(AI.cov)+' · '+
-    AI.engOK.length+' of '+AI.engines.length+' assistants reachable · '+
-    AI.prompts.length+' prompts tested'+
-    (AI.perpDead?' · <span title="Perplexity put answers behind sign-in on Sep 26">Perplexity unreachable since Sep 26</span>':"")+'</div>';
+  h+='<div class="sub ai-cov">'+esc(AI.cov)+' · '+AI.engines.length+' assistants · '+AI.prompts.length+' prompts tested · '+
+    'Claude and Perplexity removed — neither offers guest access for neutral audits.</div>';
+  h+='<div id="aiSelWrap">'+renderAISel()+'</div>';
   h+='<div class="ai-promptbar"><span class="ai-promptbar-l">Prompt</span><select id="aiPromptSel">'+
     '<option value="">All prompts · market-wide</option>'+
     AI.promptCatalog.map(function(p){
@@ -1755,36 +1841,13 @@ function renderAI(){
         esc(p.text.length>64?p.text.slice(0,64)+"…":p.text)+
         (cc?" · "+cc+" checks":" · new, no history yet")+'</option>';
     }).join("")+'</select></div>';
-  h+='<div class="statgrid">'+
-    '<div class="stat"><div class="v">'+AI.rows.length+'</div><div class="l">Checks run</div></div>'+
-    '<div class="stat"><div class="v">'+AI.nNamed+'</div><div class="l">Businesses named</div></div>'+
-    '<div class="stat"><div class="v">'+AI.engOK.length+'<span style="font-size:18px;color:var(--mut)">/'+AI.engines.length+'</span></div><div class="l">Assistants reachable</div></div>'+
-    '<div class="stat"><div class="v">'+AI.prompts.length+'</div><div class="l">Prompts tested</div></div>'+
-  '</div>';
   var scope=aiPromptScope();
   if(scope){
     h+='<div class="ai-scope"><span class="ai-scope-t">Prompt: &ldquo;'+esc(scope.prompt)+'&rdquo;</span>'+
       '<span class="ai-scope-x" data-aipx>&times; all prompts</span></div>';
   }
-  h+='<div class="ai-sec-t">'+(scope?"Businesses — ranked for this prompt":"Businesses — ranked by AI citations")+'</div><div class="stagger">';
-  var sBoard=scope?scope.board:AI.board;
-  var sN=scope?scope.n:AI.nDays;
-  /* default selection: the top-ranked business, so the right panel always shows a useful dashboard */
-  if(!sBoard.some(function(t){return t.name===S.aiSel;})) S.aiSel=sBoard.length?sBoard[0].name:null;
-  if(!sBoard.length){
-    h+='<div class="empty-note">No checks have run for this prompt yet — it joins the next audit.</div>';
-  }
-  sBoard.forEach(function(t,i){
-    h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+(t.days===0?" ai-zero":"")+'" data-ai="'+esc(t.name)+'">'+
-      '<span class="rk">'+(i+1)+'</span>'+
-      '<div class="ai-row-bd"><div class="ai-row-top"><span class="nm">'+esc(t.name)+'</span>'+
-      '<span class="ct">'+(t.days>0&&sN>0?t.days+' of '+sN:(sN>0?'not cited':'—'))+'</span></div>'+
-      '<div class="bar"><i style="width:'+Math.max(3,sN?t.days/sN*100:0)+'%"></i></div></div></div>';
-  });
-  h+='</div>';
+  h+=aiLeaderboard(scope);
   h+=renderAIWhy();
-  h+='</div>';
-  h+='<div class="ai-right" id="aiDetail">'+renderAIDetail()+'</div>';
   h+='</div>';
   return h;
 }
@@ -2532,7 +2595,7 @@ function renderLeft(){
     el.scrollTop=sc;
   }
   animateCounts(el);
-  fillAIDash(); /* no-op unless the AI dashboard skeleton is present */
+  if(S.tab==="ai"){ var pg=$("#page"); if(pg) aiAnimateBars(pg); }
   if(S.tab==="today"&&S.mode!=="venues"){ feedAutoStart(); radarOnce(); }
 }
 function setTab(t,opts){
@@ -2700,8 +2763,8 @@ document.addEventListener("click",function(e){
   if(apx){ S.aiPrompt=null; renderLeft(); return; }
   var ar=e.target.closest("[data-ai]");
   if(ar){ S.aiSel=ar.getAttribute("data-ai");
-    var ad=$("#aiDetail");
-    if(ad){ if($("#aiDash")) fillAIDash(); else { ad.innerHTML=renderAIDetail(); fillAIDash(); } }
+    var sw=$("#aiSelWrap");
+    if(sw){ sw.innerHTML=renderAISel(); aiAnimateBars(sw); animateCounts(sw); }
     $$(".ai-row").forEach(function(r){ r.classList.toggle("sel",r.getAttribute("data-ai")===S.aiSel); });
     return; }
   var mc=e.target.closest("[data-mclose]");
