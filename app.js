@@ -43,6 +43,8 @@ function priceFloors(p){
     if(/deposit/.test(after)||/sports/.test(before)||/^\/((hr|event))/.test(after)) continue;
     (v>=1000?big:small).push(v); }
   if(wedding==null&&big.length) wedding=Math.min.apply(null,big);
+  /* the wedding floor never doubles as the session floor */
+  if(wedding!=null) small=small.filter(function(v){ return v!==wedding; });
   return {wedding:wedding,session:small.length?Math.min.apply(null,small):null,weddingHourly:weddingHourly};
 }
 
