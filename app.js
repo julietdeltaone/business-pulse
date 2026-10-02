@@ -633,7 +633,7 @@ function renderToday(){
     prices:ch.prices.slice(0,3).map(function(p){ return t3row(p.b.name,null); }),
     quiet:ch.quiet.slice(0,3).map(function(q){ return t3row(q.b.name,q.band); })
   };
-  var h='<div class="actdash">';
+  var h='';
   /* hero */
   h+='<div class="act-hero" style="--d:0s">'+
     '<div class="act-hero-line">'+
@@ -643,7 +643,7 @@ function renderToday(){
     '</div>'+
     '<div class="act-tiles">'+cats.map(function(x,i){
       var tp=tops[x.k]||[];
-      return '<button class="act-tile" data-actgo="'+x.k+'"'+(x.k==="new"?' data-radar="1"':"")+' style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
+      return '<button class="act-tile'+(x.n===0?' zero':'')+'" data-actgo="'+x.k+'"'+(x.k==="new"?' data-radar="1"':"")+' style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
         '<span class="act-tile-ic">'+actIcon(x.icon)+'</span>'+
         '<span class="act-tile-n" data-count="'+x.n+'">0</span>'+
         '<span class="act-tile-l">'+x.t+'</span>'+
@@ -702,7 +702,6 @@ function renderToday(){
       return '<span class="feed-chip">'+esc(f[0])+' · <b>'+esc(dstrShort(f[1]))+'</b></span>';
     }).join("")+'</div>'+feedPillsHTML()+'</div>'+
     '<div id="feedlist">'+feedRowsHTML()+'</div></aside></div>';
-  h+='</div>';
   return h;
 }
 
@@ -1185,7 +1184,7 @@ function svcList(b){ var out=[],seen={};
 var SVC_GROUPS=[
   {k:"wed",label:"Weddings & couples",color:"#e8b34b"},
   {k:"port",label:"Portraits & family",color:"#b48ce8"},
-  {k:"evt",label:"Events & commercial",color:"#d98e4a"},
+  {k:"evt",label:"Events & commercial",color:"#e08bb8"},
   {k:"vid",label:"Video",color:"#6db3f2"},
   {k:"re",label:"Real estate",color:"#c7d2e0"},
   {k:"dr",label:"Drone & aerial",color:"#6fd3e7"}];
@@ -1255,8 +1254,11 @@ function landscapeHTML(list){
   var h='<section class="sec card sharecard"><div class="card-head"><div><h3>Market share by service</h3>'+
     '<div class="sub">Every business counts in each category it offers, so the percentages overlap. '+d.listed+' of '+d.total+' publish a services list; the rest are placed by their main lane'+(d.none?' ('+d.none+' still unclassified)':'')+'.</div></div>'+
     '<div class="seg" role="tablist" aria-label="Measure"><button data-shareby="providers" class="'+(by==="providers"?"on":"")+'">By businesses</button><button data-shareby="audience" class="'+(by==="audience"?"on":"")+'">By audience</button></div></div>'+
-    '<div class="share"><div class="share-donut"><svg viewBox="0 0 260 260" aria-hidden="true">'+segs+'</svg>'+
-    '<div class="share-center"><b>'+d.total+'</b><span>businesses</span></div></div><div class="share-rows">';
+    '<div class="share"><div class="share-donutcol"><div class="share-donut"><svg viewBox="0 0 260 260" aria-hidden="true">'+segs+'</svg>'+
+    '<div class="share-center"><b>'+d.total+'</b><span>businesses</span></div></div>'+
+    '<div class="share-legend">'+rows.map(function(r){
+      return '<span class="share-leg"><i style="background:'+r.g.color+'"></i>'+esc(r.g.label)+'<b>'+Math.round(val(r)/sum*100)+'%</b></span>';
+    }).join("")+'</div></div><div class="share-rows">';
   rows.forEach(function(r){
     var n=r.members.length, pctB=Math.round(n/d.total*100), pctA=d.totFol?Math.round(r.fol/d.totFol*100):0;
     var big=by==="audience"?pctA:pctB, open=S.qx["g:"+r.g.k];
@@ -1689,30 +1691,28 @@ function fillAIDash(){
   }
   var vd=q("verdict"); vd.innerHTML=d.verdict; vd.className="ai-verdict tone-"+d.tone;
 }
+function renderAIWhy(){
+  return '<div class="ai-why"><h3 class="ai-sec-t">Why businesses get cited</h3>'+
+    '<div class="sub">Comparing the 10 most-named tracked businesses against the tracked businesses the AIs never name. Observed patterns, not proven causes.</div>'+
+    '<div class="why-grid">'+
+    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+(AI.medRev!=null?AI.medRev:"—")+'</b></div>'+
+      '<div class="w-row"><span>Never named</span><b>'+(AI.restMedRev!=null?AI.restMedRev:"—")+'</b></div>'+
+      '<div class="w-lab">Median Google reviews</div></div>'+
+    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+AI.pricePct+'%</b></div>'+
+      '<div class="w-row"><span>Never named</span><b>'+AI.restPricePct+'%</b></div>'+
+      '<div class="w-lab">Publish pricing on their site</div></div>'+
+    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+AI.webPct+'%</b></div>'+
+      '<div class="w-row"><span>Never named</span><b>'+AI.restWebPct+'%</b></div>'+
+      '<div class="w-lab">Have their own website</div></div>'+
+    '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+(AI.medYrs||"—")+'</b></div>'+
+      '<div class="w-row"><span>Never named</span><b>'+(AI.restMedYrs||"—")+'</b></div>'+
+      '<div class="w-lab">Median years in business</div></div>'+
+    '</div>'+
+    '<div class="ai-take">It isn\u2019t reviews or pricing doing the work — the most-named group actually publishes pricing <b>less</b> often than everyone else. '+
+    'What they share: nearly all have their own website, and they\u2019re long-established local names — the kind of '+
+    'business that piles up mentions across the local web over years. That footprint is consistent with what the assistants draw on.</div></div>';
+}
 function renderAIDetail(){
-  var sel=S.aiSel, t=sel?AI.board.filter(function(x){return x.name===sel;})[0]:null;
-  if(!t){
-    return '<h3>Why businesses get cited</h3>'+
-      '<div class="sub">Comparing the 10 most-named tracked businesses against the tracked businesses the AIs never name. Observed patterns, not proven causes.</div>'+
-      '<div class="why-grid">'+
-      '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+(AI.medRev!=null?AI.medRev:"—")+'</b></div>'+
-        '<div class="w-row"><span>Never named</span><b>'+(AI.restMedRev!=null?AI.restMedRev:"—")+'</b></div>'+
-        '<div class="w-lab">Median Google reviews</div></div>'+
-      '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+AI.pricePct+'%</b></div>'+
-        '<div class="w-row"><span>Never named</span><b>'+AI.restPricePct+'%</b></div>'+
-        '<div class="w-lab">Publish pricing on their site</div></div>'+
-      '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+AI.webPct+'%</b></div>'+
-        '<div class="w-row"><span>Never named</span><b>'+AI.restWebPct+'%</b></div>'+
-        '<div class="w-lab">Have their own website</div></div>'+
-      '<div class="why-card"><div class="w-row"><span>Most-named</span><b>'+(AI.medYrs||"—")+'</b></div>'+
-        '<div class="w-row"><span>Never named</span><b>'+(AI.restMedYrs||"—")+'</b></div>'+
-        '<div class="w-lab">Median years in business</div></div>'+
-      '</div>'+
-      '<div class="ai-take">It isn\u2019t reviews or pricing doing the work — the most-named group actually publishes pricing <b>less</b> often than everyone else. '+
-      'What they share: nearly all have their own website, and they\u2019re long-established local names — the kind of '+
-      'business that piles up mentions across the local web over years. That footprint is consistent with what the assistants draw on.</div>'+
-      '<div class="ai-hint">Select a business on the left to see its AI citation profile — which assistants name it, and why or why not it gets cited.</div>';
-  }
   return aiDashSkeleton();
 }
 function renderAI(){
@@ -1750,17 +1750,20 @@ function renderAI(){
   h+='<div class="ai-sec-t">'+(scope?"Businesses — ranked for this prompt":"Businesses — ranked by AI citations")+'</div><div class="stagger">';
   var sBoard=scope?scope.board:AI.board;
   var sN=scope?scope.n:AI.nDays;
+  /* default selection: the top-ranked business, so the right panel always shows a useful dashboard */
+  if(!sBoard.some(function(t){return t.name===S.aiSel;})) S.aiSel=sBoard.length?sBoard[0].name:null;
   if(!sBoard.length){
     h+='<div class="empty-note">No checks have run for this prompt yet — it joins the next audit.</div>';
   }
   sBoard.forEach(function(t,i){
     h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+(t.days===0?" ai-zero":"")+'" data-ai="'+esc(t.name)+'">'+
       '<span class="rk">'+(i+1)+'</span>'+
-      '<span class="nm">'+esc(t.name)+'</span>'+
-      '<span class="ct">'+(t.days>0&&sN>0?t.days+' of '+sN:(sN>0?'not cited':'—'))+'</span>'+
-      '<span class="bar"><i style="width:'+Math.max(3,sN?t.days/sN*100:0)+'%"></i></span></div>';
+      '<div class="ai-row-bd"><div class="ai-row-top"><span class="nm">'+esc(t.name)+'</span>'+
+      '<span class="ct">'+(t.days>0&&sN>0?t.days+' of '+sN:(sN>0?'not cited':'—'))+'</span></div>'+
+      '<div class="bar"><i style="width:'+Math.max(3,sN?t.days/sN*100:0)+'%"></i></div></div></div>';
   });
   h+='</div>';
+  h+=renderAIWhy();
   h+='</div>';
   h+='<div class="ai-right" id="aiDetail">'+renderAIDetail()+'</div>';
   h+='</div>';
@@ -2487,6 +2490,7 @@ function pageHTML(){
   if(S.tab==="market") return renderMarket();
   if(S.tab==="ai") return renderAI();
   var hd=PAGE_HEADS[S.tab], body=S.tab==="today"?renderToday():renderData();
+  if(S.tab==="today") return '<div class="actdash">'+pageHeadHTML(hd[0],hd[1])+body+'</div>';
   return pageHeadHTML(hd[0],hd[1])+body;
 }
 function animateCounts(el){
