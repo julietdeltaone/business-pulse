@@ -1110,7 +1110,7 @@ function landscapeHTML(list){
 function pageHeadHTML(title,sub){
   var g=(D.meta||{}).generated_at, built="";
   if(g){ try{ built=new Date(g).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" ET"; }catch(e){} }
-  return '<div class="pg-head"><h2>'+title+'</h2><p>'+sub+(built?' <span class="pg-fresh">Data updated '+esc(built)+'.</span>':"")+'</p></div>';
+  return '<div class="pg-head"><h2>'+title+'</h2>'+(sub?'<p>'+sub+(built?' <span class="pg-fresh">Data updated '+esc(built)+'.</span>':"")+'</p>':"")+'</div>';
 }
 var DCOLS=[
   ["name","Name","str"],["town","Town/County","str"],["followers","IG followers","num"],
@@ -1627,20 +1627,7 @@ function renderVenueMarket(){
 
 function renderMarket(){
   if(S.mode==="venues") return renderVenueMarket();
-  var list=C.slice(), h='<div class="mkt">'+pageHeadHTML("Market landscape","How the North Country photo, video and drone market breaks down across "+list.length+" businesses: who offers what, where, and how the audience splits.");
-  var f=list.filter(function(b){return b.followers!=null;}).map(function(b){return b.followers;});
-  f.sort(function(a,b){return a-b;});
-  function med(a){ return a.length?a[Math.floor(a.length/2)]:null; }
-  var w=list.filter(function(b){return b.price.wedding!=null;}).map(function(b){return b.price.wedding;});
-  var withPrice=list.filter(function(b){return b.hasPrice;}).length;
-  var active=list.filter(function(b){return b.postAge!=null&&b.postAge<=30;}).length;
-  h+='<div class="statgrid">'+
-    '<div class="stat"><div class="v" data-count="'+list.length+'">0</div><div class="l">Businesses</div></div>'+
-    '<div class="stat"><div class="v" data-count="'+(med(f)||0)+'">0</div><div class="l">Median followers</div></div>'+
-    '<div class="stat"><div class="v" data-count="'+(med(w)||0)+'" data-money="1">0</div><div class="l">Median wedding $</div></div>'+
-    '<div class="stat"><div class="v">'+(list.length?Math.round(withPrice/list.length*100):0)+'%</div><div class="l">Show pricing</div></div>'+
-    '<div class="stat"><div class="v">'+(list.length?Math.round(active/list.length*100):0)+'%</div><div class="l">Posted ≤30d</div></div>'+
-  '</div>';
+  var list=C.slice(), h='<div class="mkt">'+pageHeadHTML("Market landscape",null);
 
   h+=landscapeHTML(list);
   h+='<div class="cardgrid">'+marketGlanceHTML(true);
@@ -2324,7 +2311,7 @@ function select(id,opts){
 
 /* ---------- left body ---------- */
 var PAGE_HEADS={
-  today:["Activity","What moved across the market: audience changes, new businesses, promotions and who has gone quiet."],
+  today:["Activity",null],
   ai:["AI Visibility","How AI assistants answer local search questions, and which businesses they recommend."],
   data:["Data","Every gathered data point, sortable. Click a column to sort and a row to open the full profile."]};
 function pageHTML(){
