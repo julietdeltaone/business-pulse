@@ -1789,8 +1789,8 @@ function renderAISel(){
 }
 function aiLeaderboard(scope){
   var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
-  var h='<div class="ai-sec-t" style="margin-top:26px">'+(scope?"Businesses — ranked for this prompt":"Businesses — ranked by AI citations")+'</div>'+
-    '<div class="sub" style="margin:-2px 0 10px">Click a business to inspect it above.</div>';
+  var h='<div class="ai-sec-t">'+(scope?"Businesses — ranked for this prompt":"Businesses — ranked by AI citations")+'</div>'+
+    '<div class="sub" style="margin:-2px 0 10px">Select a business to inspect it.</div>';
   if(!sBoard.length) h+='<div class="empty-note">No checks have run for this prompt yet — it joins the next audit.</div>';
   h+='<div class="ai-lead stagger">';
   sBoard.forEach(function(t,i){
@@ -1836,7 +1836,7 @@ function renderAI(){
   h+='<div class="pg-head"><h2>AI Visibility</h2><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
   h+='<div class="sub ai-cov">'+esc(AI.cov)+' · '+AI.engines.length+' assistants · '+AI.prompts.length+' prompts tested · '+
     'Claude and Perplexity removed — neither offers guest access for neutral audits.</div>';
-  h+='<div id="aiSelWrap">'+renderAISel()+'</div>';
+  h+='<div class="ai-cols"><aside class="ai-side">';
   h+='<div class="ai-promptbar"><span class="ai-promptbar-l">Prompt</span><select id="aiPromptSel">'+
     '<option value="">All prompts · market-wide</option>'+
     AI.promptCatalog.map(function(p){
@@ -1851,7 +1851,10 @@ function renderAI(){
       '<span class="ai-scope-x" data-aipx>&times; all prompts</span></div>';
   }
   h+=aiLeaderboard(scope);
+  h+='</aside><div class="ai-main">';
+  h+='<div id="aiSelWrap">'+renderAISel()+'</div>';
   h+=renderAIWhy();
+  h+='</div></div>';
   h+='</div>';
   return h;
 }
