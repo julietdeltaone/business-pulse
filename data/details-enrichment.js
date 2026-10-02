@@ -64,15 +64,31 @@ window.PULSE_DETAILS = {
       "Senior portraits"
     ],
     "coverage": [
-      "Saint Lawrence Valley",
+      "Adirondacks",
+      "Alexandria Bay",
+      "Canton",
+      "Clayton",
+      "Lake Placid",
+      "Massena",
       "North Country",
-      "Adirondacks"
+      "Ogdensburg",
+      "Plattsburgh",
+      "Potsdam",
+      "Saint Lawrence Valley",
+      "Saranac Lake",
+      "Seaway Valley",
+      "Thousand Islands",
+      "Watertown"
     ],
     "since": 2009,
-    "site_note": "Owner since 2009; FAA Part 107 licensed drone operator. Site states the studio is closed 8/13/26 through fall 2026 for shoulder surgery, hoping to resume late fall/early winter 2026.",
+    "site_note": "Owner since 2009; FAA Part 107 licensed drone operator. Site states the studio is closed 8/13/26 through fall 2026 for shoulder surgery, hoping to resume late fall/early winter 2026. Deep-dive 2026-10-02: homepage states 'Over 17 years in business' (consistent with since: 2009); FAA Part 107 drone licensed since 2021. Service towns per own site: Canton, Potsdam, Massena, Ogdensburg, Thousand Islands, Clayton, Alexandria Bay, Watertown, Lake Placid, Saranac Lake, Plattsburgh, Adirondacks & Seaway Valley. Latest published wedding pricing is the 2022-23 page ($1900 base); older 2016/17 local/travel lists still live. Corroboration: Yelp listing, The Knot storefront, facebook.com/mccluskey.photography (~1,101 likes), WeddingWire page with 0 reviews; Birdeye 17/5.0 is a non-Google aggregate.",
     "sources": [
       "https://mccluskeyphotography.net/about-me/",
-      "https://mccluskeyphotography.net"
+      "https://mccluskeyphotography.net",
+      "https://mccluskeyphotography.net/2022-wedding-packages/",
+      "https://www.yelp.com/biz/mccluskey-photography-canton",
+      "https://www.theknot.com/marketplace/mccluskey-photography-canton-ny-429594",
+      "https://www.facebook.com/mccluskey.photography"
     ]
   },
   "jsc-photography-media": {
@@ -120,12 +136,16 @@ window.PULSE_DETAILS = {
       "Family portraits",
       "Photo booth"
     ],
-    "site_note": "Blog shows wedding work across the region (Pulaski, Chaumont, Massena, Old Forge); studio address per directory listing is 160 W Parishville Rd, Parishville, NY.",
+    "site_note": "Blog shows wedding work across the region (Pulaski, Chaumont, Massena, Old Forge); studio address per directory listing is 160 W Parishville Rd, Parishville, NY. Deep-dive 2026-10-02: owner Natalie Wendig (blog tags). Self-reported on Feb 2021 blog post: 'doing this business since I was married 10 years ago' → ~2011; blog archive back to 2011. Phone (315) 212-3679. Review presence (aggregators, not Google): Birdeye 17/5.0, TrustFeed 5.0 (named reviewers). Site appears mid-redesign as of 2026-10-02 ('taking limited sessions while under construction'). No published pricing found.",
     "sources": [
       "http://www.nataliewstudio.com/",
       "https://www.nataliewstudio.com/blog/2015/12/summer-country-wedding-in-pulaski-ny",
-      "https://www.nataliewstudio.com/blog/2021/2/purple-navy-and-cream-newborn-photography"
-    ]
+      "https://www.nataliewstudio.com/blog/2021/2/purple-navy-and-cream-newborn-photography",
+      "https://www.natalieWstudio.com/blog/2021/2/reflecting-on-returning-clients-grateful",
+      "https://reviews.birdeye.com/natalies-studio-portrait-photography-170156560687030",
+      "https://www.trustfeed.com/potsdam-natalies-studio-portrait-photography-reviews-29403942"
+    ],
+    "since": 2011
   },
   "julia-kia-photography": {
     "blurb": "Northern NY photographer (Julia Tomford) specializing in couples/weddings, families, and individual portraits; past work spans Watertown, Lake Placid, the St. Lawrence River, Potsdam, Norfolk, and Massena.",
@@ -189,9 +209,10 @@ window.PULSE_DETAILS = {
       "Team portraits"
     ],
     "platform": "Weebly",
-    "site_note": "Google listing: 46 Co Rd 59, Pierrepont, NY; site states born/raised in Potsdam, now lives in Massena.",
+    "site_note": "Google listing: 46 Co Rd 59, Pierrepont, NY; site states born/raised in Potsdam, now lives in Massena. Deep-dive 2026-10-02: site confirms Weebly platform (nicolecharlesonphoto.weebly.com, opened today) — born/raised in Potsdam, now lives in Massena; site states 'contact me for an appointment to go over details and contract information' — no published pricing. WhoDoYou Massena listing corroborates (email nicolecharleson@yahoo.com). No Google listing, no founding date found.",
     "sources": [
-      "http://nicolecharlesonphoto.weebly.com/"
+      "http://nicolecharlesonphoto.weebly.com/",
+      "https://www.whodoyou.com/biz/79929/nicole-charlesons-photography-massena-ny"
     ]
   },
   "forevermore-studio-photography": {
@@ -252,11 +273,14 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Ogdensburg, NY"
     ],
-    "site_note": "Official site ohbabylovephotography.com would not load during this research (upstream fetch failure); facts verified via directory listings quoting the business.",
+    "site_note": "Official site ohbabylovephotography.com would not load during this research (upstream fetch failure); facts verified via directory listings quoting the business. Deep-dive 2026-10-02: OH BABY LOVE PHOTOGRAPHY LLC, NY DOS ID #4243798, incorporated May 8, 2012, St. Lawrence County, status Active → since 2012. Facebook page 4,083+ likes; visitogdensburg.com listing; HoneyBook profile (Misty Fishel). Own site ohbabylovephotography.com would not open in fetch (inconclusive, not proof down). No published pricing, no Google listing (only a UK namesake surfaced).",
     "sources": [
       "https://kaitphotography.com.au/o-photography/oh-baby-love-photography-ogdensburg-ny.html",
-      "https://www.matthughesphoto.com/o-photography/oh-baby-love-photography-ogdensburg-ny.html"
-    ]
+      "https://www.matthughesphoto.com/o-photography/oh-baby-love-photography-ogdensburg-ny.html",
+      "https://www.facebook.com/oh-baby-Love-Photography-244307102287052/",
+      "https://www.visitogdensburg.com/oh-baby-love-photography/"
+    ],
+    "since": 2012
   },
   "sheer-lace-photography": {
     "blurb": "Lacey Beldock, a certified professional boudoir photographer in downtown Ogdensburg, NY (215 State St), offering custom confidence-focused boudoir sessions from her studio (moved downtown Sept 2021).",
@@ -432,7 +456,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Northern New York"
     ],
-    "site_note": "Run by sole proprietor Cindy Bowen, who also tutors in computer use, photo management, graphic skills and video editing via SUNY Potsdam's SOAR program.",
+    "site_note": "Run by sole proprietor Cindy Bowen, who also tutors in computer use, photo management, graphic skills and video editing via SUNY Potsdam's SOAR program. Deep-dive 2026-10-02: still listed Active (Meta place record, Massena; phone 315-322-1728; P.O. Box 5045, Massena NY 13662). cinchwedding links www.obsidiancustomvideo.com but the domain did not resolve in fetch — inconclusive (sandbox DNS caveat), not declared dead. No pricing, founding year, or Google reviews found; 'owner Cindy Bowen since ~2001/2009' claims are unverified people-search aggregates — left out.",
     "sources": [
       "https://cinchwedding.com/obsidian-custom-video",
       "https://www.soarnorthcountry.com/presenters/spring-2014/cindy-bowen/",
@@ -513,10 +537,11 @@ window.PULSE_DETAILS = {
     "coverage": [
       "North Country NY"
     ],
-    "site_note": "Business listing confirms a Photographer in Canton, St. Lawrence County, NY with phone +1 315-212-6289. The site root could not be loaded directly at research time; service details come from indexed site content.",
+    "site_note": "Business listing confirms a Photographer in Canton, St. Lawrence County, NY with phone +1 315-212-6289. The site root could not be loaded directly at research time; service details come from indexed site content. Deep-dive 2026-10-02: AMBIGUOUS MATCH warning — marialuciaphotography.myportfolio.com ('Bridal Muse at Guild Gardens', F1 editorial) is a DIFFERENT fashion/editorial photographer; never merge with Canton M.L. Photography (senior/family/sports). Site root returned HTTP 404 on 2026-10-02 fetch (health flag, not a dead verdict per single-fetch rule). No pricing, founding year, platform, or Google listing verifiable.",
     "sources": [
       "https://www.marialuciasphotography.com/",
-      "https://meta.ai?place_id=1189521529993880"
+      "https://meta.ai?place_id=1189521529993880",
+      "https://marialuciaphotography.myportfolio.com/"
     ]
   },
   "upstate-selfie-co": {
@@ -729,18 +754,22 @@ window.PULSE_DETAILS = {
   "lost-cabin-productions": {
     "blurb": "Saranac Lake, NY documentary/video production company of Dakin (Henderson) — science, music, and documentary filmmaking; he works remotely as Associate Director of Video for the Lincoln Institute of Land Policy and was previously staff Video Producer for the San Francisco Symphony.",
     "services": [
+      "Broadcast DP/editor",
       "Documentary film",
+      "Editing",
       "Video production",
-      "Editing"
+      "Wedding videography"
     ],
     "coverage": [
       "Saranac Lake"
     ],
-    "site_note": "Not a consumer photo studio: background is broadcast/pbs documentary (Vital Pictures, NOVA short) and institutional video; no wedding or portrait services stated.",
+    "site_note": "Not a consumer photo studio: background is broadcast/pbs documentary (Vital Pictures, NOVA short) and institutional video; no wedding or portrait services stated. Deep-dive 2026-10-02: site is Wix (static.wixstatic.com); homepage title includes 'Wedding Videography' — wedding services appear offered (refines earlier note). About: Associate Director of Video, Lincoln Institute of Land Policy (remote); ex-SF Symphony staff Video Producer; DP/editor at Vital Pictures (Boston); directed feature doc 'What Time Is Left'; Stanford LDT master's 2016. Portfolio: NOVA short on reproducibility crisis, 6-part wildlife series for High Country News, 35 live-music videos for KVNF. No pricing published anywhere; no Google listing; no Knot/WeddingPro/Yelp/Facebook directory presence.",
     "sources": [
       "https://www.lost-cabin-productions.com/about",
-      "https://www.lost-cabin-productions.com/"
-    ]
+      "https://www.lost-cabin-productions.com/",
+      "https://lost-cabin-productions.com/"
+    ],
+    "platform": "Wix"
   },
   "r-h-creations": {
     "blurb": "Lowville, NY company offering professional wedding videography plus wedding decorating and decor-item rentals (centerpieces, chair covers, linens, lighted walls, ceiling designs), with over 14 years of experience.",
@@ -876,9 +905,13 @@ window.PULSE_DETAILS = {
     ],
     "since": 2008,
     "sources": [
-      "https://marydougherty.com/speculator-wedding-at-oak-mountain/speculator-oak-mountain-wedding-mary-dougherty071/"
+      "https://marydougherty.com/speculator-wedding-at-oak-mountain/speculator-oak-mountain-wedding-mary-dougherty071/",
+      "https://www.theknot.com/marketplace/mary-dougherty-photography-saranac-lake-ny-636608",
+      "https://www.weddingwire.com/reviews/mary-dougherty-photography-saranac-lake/a66c0953806e9ad0.html",
+      "https://www.lakeplacid.com/content/mary-dougherty-photography",
+      "https://caratsandcake.com/vendor/mary-dougherty-photography"
     ],
-    "site_note": "Review counts by platform (2026-09-30): Google 5.0 (48) vs The Knot 5.0 (18) — separate sources, both preserved."
+    "site_note": "Review counts by platform (2026-09-30): Google 5.0 (48) vs The Knot 5.0 (18) — separate sources, both preserved. Deep-dive 2026-10-02: own site is INQUIRE-ONLY (no published pricing found on 2026-10-02; 'Weddings from $8,000' seed could not be re-confirmed — left as-is, flag for re-verification). Signature 'Wedding Weekend'; caps at 15 weddings/year; featured-on: Vogue, NYT, CFDA, Martha Stewart, Style Me Pretty, Carats & Cake, Over the Moon, Wedding Sparrow. The Knot storefront: 5.0/18 reviews, service area Adirondacks/NYC/Vermont/Boston/Philadelphia. WeddingWire: 5.0 with CONFLICTING counts — 76 (page title) vs 72 (page body), likely stale cache; earliest review Nov 2011 → 15+ years. Google review count not obtainable via text search today."
   },
   "lake-placid-photography-sandy-payne-huber": {
     "blurb": "Sandy Payne Huber has been photographing weddings in Lake Placid since 2005, accepting only a few weddings per year; also offers portrait and event photography.",
@@ -1010,13 +1043,15 @@ window.PULSE_DETAILS = {
       "Syracuse",
       "Fort Drum"
     ],
-    "site_note": "Home studio in Watertown for winter portraits; originally from Arizona, built her business in Alaska; 4 years of college photography study including darkroom work.",
+    "site_note": "Home studio in Watertown for winter portraits; originally from Arizona, built her business in Alaska; 4 years of college photography study including darkroom work. Deep-dive 2026-10-02: site is Pixieset (images-pw.pixieset.com). Zola vendor listing: 5.0/17 reviews (BLENDED Zola+Google, not Google-only), 'Starts at $2,500', reviews 2+ yrs old (Alaska era), BFA in Photography. CONFLICT: a Meta business-page record lists 'Makenzie Leigh Photography' at Philadelphia, PA with phone +1 (520) 499-9833 — stale/wrong vs her own site (Watertown, NY); do not use the FB address. No Google review count obtainable from live listing; founding year unstated.",
     "sources": [
       "https://www.makenzieleighphotography.com/",
       "https://www.makenzieleighphotography.com/experience/",
-      "https://www.makenzieleighphotography.com/about/"
+      "https://www.makenzieleighphotography.com/about/",
+      "https://www.zola.com/wedding-vendors/search/ellisburg-ny--wedding-photographers--classic"
     ],
-    "pricing_note": "Live site (2026-09-30) lists storytelling sessions from $350 / mini stories from $200 — likely session/mini product lines vs the banked wedding packages ($1,600+); preserved, not resolved."
+    "pricing_note": "Live site (2026-09-30) lists storytelling sessions from $350 / mini stories from $200 — likely session/mini product lines vs the banked wedding packages ($1,600+); preserved, not resolved.",
+    "platform": "Pixieset"
   },
   "butterfly-photography-nny": {
     "blurb": "Butterfly Photography NNY is Sara's Watertown-based wedding and portrait photography business, focused on romantic, storytelling, candid imagery.",
@@ -1410,5 +1445,19 @@ window.PULSE_DETAILS = {
   "kaylee-gilbert": {
     "site_note": "Deep-dive 2026-10-01: UNREACHABLE — no website, IG handle, town, or directory listing found after 3 searches ('Kaylee Gilbert' + photographer/northern NY/North Country variants); 'Kaylee Gilbert' is a common name and no photography business matched. Prior pricing ($50 mini / $100 basic / $150 premium, posted Sep 2026) could not be re-verified (likely originated from an FB/IG post not accessible via web search). Recommend downgrading or removing the roster entry.",
     "sources": []
+  },
+  "naturely-inspired-photography-and-canvas": {
+    "blurb": "Canton business-listing record for 'Naturely Inspired Photography and Canvas' (low confidence: no website, no Facebook page, no owner name found — listing evidence only).",
+    "services": [
+      "Photography studio"
+    ],
+    "coverage": [
+      "Canton, NY"
+    ],
+    "site_note": "Deep-dive 2026-10-02: listed as Active, category Photographer, at 37 NY-310 Apt 106, Canton NY; phone +1 315-854-0417; hours Mon–Fri 3:00–5:00 PM (Meta business-place record). chamberofcommerce.com Canton arts directory lists it as 'Photography Studio' with 0 reviews. No owner name, website, services detail, pricing, founding year, social handles, or reviews anywhere. Flag: thin entity — recommend downgrade review if no own-site evidence surfaces.",
+    "sources": [
+      "https://meta.ai?place_id=3129971923972254",
+      "https://chamberofcommerce.com/business-directory/new-york/canton/arts-event-services/"
+    ]
   }
 };
