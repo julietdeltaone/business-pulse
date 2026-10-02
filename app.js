@@ -369,7 +369,24 @@ function postCount(r){
   if(/posted today|new post/i.test(t)) return 1;
   return 0;
 }
-function weekHighlights(){
+/* ---------- Activity dashboard: icons ---------- */
+function actIcon(n){
+  var P={
+    bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>',
+    wave:'<path d="M2 12c2.5 0 2.5-4 5-4s2.5 4 5 4 2.5-4 5-4 2.5 4 5 4"/>',
+    radar:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
+    tag:'<path d="M20.6 13.4 13.4 20.6a1 1 0 0 1-1.4 0L3 11.6V3h8.6l9 9a1 1 0 0 1 0 1.4z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/>',
+    dollar:'<circle cx="12" cy="12" r="9"/><path d="M12 6.5v11M14.8 9.2c-.6-.9-1.6-1.4-2.8-1.4-1.7 0-3 .9-3 2.4 0 3.4 6 1.6 6 4.9 0 1.5-1.3 2.4-3 2.4-1.2 0-2.2-.5-2.8-1.4"/>',
+    moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    flame:'<path d="M12 22c4 0 7-2.8 7-6.8 0-3.8-2.8-5.9-4.3-8.7C13.4 4 12 2.5 12 2.5s-.4 2.8-2.3 4.9C7.8 9.5 5 12 5 15.2 5 19.2 8 22 12 22z"/><path d="M12 22c-2 0-3.5-1.4-3.5-3.2 0-1.9 1.4-2.9 2.2-4.3.7 1.2 3.3 2.6 3.3 4.7 0 1.6-1 2.8-2 2.8z"/>',
+    mega:'<path d="M4 10.5v3h3.5L14 18V6l-6.5 4.5H4z"/><path d="M17.5 9.5a4 4 0 0 1 0 5M20 7a7.5 7.5 0 0 1 0 10"/>',
+    crown:'<path d="M3 8.5 7 12l5-6.5L17 12l4-3.5L19.5 18h-15L3 8.5z"/>',
+    pulse:'<path d="M2 12h4l2.5-6 4 12 2.5-6H22"/>'
+  };
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(P[n]||P.pulse)+'</svg>';
+}
+
+function weekHighlightCards(){
   var di=S.di, d0=Math.max(0,di-7), list=scopeList(), cards=[];
   function norm(h){ return String(h||"").replace(/^@/,"").toLowerCase(); }
   /* activity per handle over the last 7 days */
@@ -381,38 +398,46 @@ function weekHighlights(){
     var h=norm(r.handle); if(!h) return;
     actBy[h]=(actBy[h]||0)+n;
   });
-  var byHandle={};
-  list.forEach(function(b){ var h=norm(b.ig_handle); if(h) byHandle[h]=b; });
   /* fastest growing */
   var growers=list.map(function(b){ return {b:b,ch:pctChange(b,d0,di)}; })
     .filter(function(x){ return x.ch!=null&&x.ch>=3; })
     .sort(function(a,c){ return c.ch-a.ch; });
   if(growers.length){
     var g=growers[0], from=followersAt(g.b,d0), to=followersAt(g.b,di);
-    cards.push({k:"Fastest growing",b:g.b,
-      why:"+"+g.ch.toFixed(1)+"% followers this week"+(from!=null&&to!=null?" · "+fmt(from)+" → "+fmt(to):"")});
+    cards.push({k:"Fastest growing",icon:"flame",c:"#f5b942",b:g.b,
+      stat:"+"+g.ch.toFixed(1)+"%",sub:"followers this week",
+      why:(from!=null&&to!=null?fmt(from)+" → "+fmt(to):"")});
   }
   /* most active */
   var act=list.map(function(b){ var h=norm(b.ig_handle);
       return {b:b,n:(h&&actBy[h])||0}; })
     .filter(function(x){ return x.n>0; }).sort(function(a,c){ return c.n-a.n; });
   if(act.length){
-    cards.push({k:"Most active",b:act[0].b,
-      why:act[0].n+(act[0].n===1?" post":" posts")+" in the last 7 days"});
+    cards.push({k:"Most active",icon:"mega",c:"#6db3f2",b:act[0].b,
+      stat:String(act[0].n),sub:act[0].n===1?"post in 7 days":"posts in 7 days",why:""});
   }
   /* biggest audience */
   var big=list.filter(function(b){ return followersAt(b,di)!=null; })
     .sort(function(a,c){ return followersAt(c,di)-followersAt(a,di); });
   if(big.length){
-    cards.push({k:"Biggest audience",b:big[0],
-      why:fmt(followersAt(big[0],di))+" followers — largest audience tracked"});
+    cards.push({k:"Biggest audience",icon:"crown",c:"#c9a0f2",b:big[0],
+      stat:fmt(followersAt(big[0],di)),sub:"followers · largest tracked",why:""});
   }
+  return cards;
+}
+function weekHighlights(){
+  var cards=weekHighlightCards();
   if(!cards.length) return "";
-  return '<div class="sec"><h3>Week\'s highlights</h3><div class="sub">Top of the market · last 7 days</div>'+
-    '<div class="hl-grid">'+cards.map(function(c){
-      return '<div class="hl-card" data-open="'+c.b.id+'">'+
-        '<div class="hl-k">'+esc(c.k)+'</div><div class="hl-n">'+esc(c.b.name)+'</div>'+
-        '<div class="hl-w">'+esc(c.why)+'</div></div>';
+  return '<div class="act-hlwrap"><div class="act-sect-h"><span>Week&rsquo;s highlights</span>'+
+    '<span class="act-sect-sub">Top of the market · last 7 days</span></div>'+
+    '<div class="act-hl-grid">'+cards.map(function(c,i){
+      return '<div class="act-hl-card" data-open="'+c.b.id+'" style="--d:'+(0.08*i).toFixed(2)+'s;--acc:'+c.c+'">'+
+        '<div class="act-hl-ic">'+actIcon(c.icon)+'</div>'+
+        '<div class="act-hl-stat">'+esc(c.stat)+'</div>'+
+        '<div class="act-hl-sub">'+esc(c.sub)+'</div>'+
+        '<div class="act-hl-k">'+esc(c.k)+'</div>'+
+        '<div class="act-hl-n">'+esc(c.b.name)+'</div>'+
+        (c.why?'<div class="act-hl-w">'+esc(c.why)+'</div>':"")+'</div>';
     }).join("")+"</div></div>";
 }
 
@@ -433,56 +458,77 @@ function renderVenueToday(){
 
 function renderToday(){
   if(S.mode==="venues") return renderVenueToday();
-  var ch=todayChanges(), h=weekHighlights();
-  h+='<div class="sec"><h3>What changed</h3><div class="sub">Since '+esc(dstr(ch.prev))+' · '+esc(dstr(ch.date))+'</div>';
-  function rows(list,fn){ return '<div class="stagger">'+list.slice(0,8).map(fn).join("")+"</div>"; }
-  if(ch.jumps.length){
-    h+='<div class="chgcat"><h4>Follower jumps <span class="cnt">'+ch.jumps.length+'</span> <span class="thr">≥3% daily</span></h4>'+
-      rows(ch.jumps,function(j){
-        var cls=j.ch>=0?"up":"dn";
-        return '<div class="row" data-open="'+j.b.id+'"><span class="dot" style="background:'+recencyDot(j.b)+'"></span>'+
-          '<div class="nm"><b>'+esc(j.b.name)+'</b><span>'+esc(j.b.townShort)+' · '+fmt(j.from)+' → '+fmt(j.to)+'</span></div>'+
-          '<div class="meta"><span class="pct '+cls+'">'+pctStr(j.ch)+'</span></div></div>';})+'</div>';
+  var ch=todayChanges();
+  var cats=[
+    {k:"jumps",t:"Follower jumps",thr:"\u22653% daily",icon:"bolt",c:"#f5b942",n:ch.jumps.length},
+    {k:"small",t:"Smaller moves",thr:"under 3%",icon:"wave",c:"#6db3f2",n:ch.small.length},
+    {k:"new",t:"New on the radar",thr:"",icon:"radar",c:"#8fd18f",n:ch.newBiz.length},
+    {k:"promo",t:"Promotional posts",thr:"",icon:"tag",c:"#c9a0f2",n:ch.promo.length},
+    {k:"prices",t:"Price changes",thr:"",icon:"dollar",c:"#f2d06d",n:ch.prices.length},
+    {k:"quiet",t:"Gone quiet",thr:"",icon:"moon",c:"#e06c6c",n:ch.quiet.length}
+  ];
+  var total=cats.reduce(function(a,x){ return a+x.n; },0);
+  var h='<div class="actdash">';
+  /* hero */
+  h+='<div class="act-hero" style="--d:0s">'+
+    '<div class="act-pulse"><span class="act-pulse-ring"></span><span class="act-pulse-dot"></span></div>'+
+    '<div class="act-hero-num" data-count="'+total+'">0</div>'+
+    '<div class="act-hero-cap">market movements</div>'+
+    '<div class="act-hero-sub">Since '+esc(dstr(ch.prev))+' · through '+esc(dstr(ch.date))+'</div>'+
+    '<div class="act-tiles">'+cats.map(function(x,i){
+      return '<button class="act-tile" data-actgo="'+x.k+'" style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
+        '<span class="act-tile-ic">'+actIcon(x.icon)+'</span>'+
+        '<span class="act-tile-n" data-count="'+x.n+'">0</span>'+
+        '<span class="act-tile-l">'+x.t+'</span></button>';
+    }).join("")+'</div></div>';
+  /* highlights */
+  h+=weekHighlights();
+  /* change feed */
+  function actRow(b,sub,meta,i){
+    return '<div class="act-row" data-open="'+b.id+'" style="--d:'+(0.04*i).toFixed(2)+'s">'+
+      '<span class="act-dot" style="background:'+recencyDot(b)+'"></span>'+
+      '<div class="act-nm"><b>'+esc(b.name)+'</b><span>'+sub+'</span></div>'+
+      '<div class="act-meta">'+meta+'</div></div>';
   }
-  if(ch.small.length){
-    h+='<div class="chgcat"><h4>Smaller moves <span class="cnt">'+ch.small.length+'</span> <span class="thr">under 3%</span></h4>'+
-      rows(ch.small,function(s){
-        var cls=s.delta>0?"up":"dn", sign=s.delta>0?"+":"\u2212";
-        return '<div class="row" data-open="'+s.b.id+'"><span class="dot" style="background:'+recencyDot(s.b)+'"></span>'+
-          '<div class="nm"><b>'+esc(s.b.name)+'</b><span>'+esc(s.b.townShort)+' · '+fmt(s.from)+' → '+fmt(s.to)+'</span></div>'+
-          '<div class="meta"><span class="pct '+cls+'">'+sign+fmt(Math.abs(s.delta))+'</span></div></div>';})+'</div>';
+  function actCat(x,list,rowFn){
+    if(!list.length) return "";
+    return '<div class="act-cat" id="actsec-'+x.k+'">'+
+      '<div class="act-cat-h"><span class="act-cat-ic" style="color:'+x.c+'">'+actIcon(x.icon)+'</span>'+
+      '<span class="act-cat-t">'+x.t+'</span>'+(x.thr?'<span class="act-cat-thr">'+esc(x.thr)+'</span>':"")+
+      '<span class="act-cat-n" data-count="'+list.length+'">0</span></div>'+
+      '<div class="act-rows">'+list.slice(0,8).map(rowFn).join("")+'</div></div>';
   }
-  if(ch.newBiz.length){
-    h+='<div class="chgcat"><h4>New on the radar <span class="cnt">'+ch.newBiz.length+'</span></h4>'+
-      rows(ch.newBiz,function(b){
-        return '<div class="row" data-open="'+b.id+'"><span class="dot" style="background:#6db3f2"></span>'+
-          '<div class="nm"><b>'+esc(b.name)+'</b><span>'+esc(b.townShort)+' · '+LANE_LABEL[b.specialty]+'</span></div>'+
-          '<div class="meta"><span>new</span></div></div>';})+'</div>';
+  var feed="";
+  feed+=actCat(cats[0],ch.jumps,function(j,i){
+    var cls=j.ch>=0?"up":"dn";
+    return actRow(j.b,esc(j.b.townShort)+' · '+fmt(j.from)+' → '+fmt(j.to),
+      '<span class="pct '+cls+'">'+pctStr(j.ch)+'</span>',i);});
+  feed+=actCat(cats[1],ch.small,function(s,i){
+    var cls=s.delta>0?"up":"dn", sign=s.delta>0?"+":"\u2212";
+    return actRow(s.b,esc(s.b.townShort)+' · '+fmt(s.from)+' → '+fmt(s.to),
+      '<span class="pct '+cls+'">'+sign+fmt(Math.abs(s.delta))+'</span>',i);});
+  feed+=actCat(cats[2],ch.newBiz,function(b,i){
+    return actRow(b,esc(b.townShort)+' · '+esc(LANE_LABEL[b.specialty]||""),
+      '<span class="act-flag new">new</span>',i);});
+  feed+=actCat(cats[3],ch.promo,function(p,i){
+    return actRow(p.b,esc(p.note).slice(0,72),'<span class="act-flag promo">promo</span>',i);});
+  feed+=actCat(cats[4],ch.prices,function(p,i){
+    return actRow(p.b,esc(p.note).slice(0,72),'<span class="act-flag">'+esc(p.run)+'</span>',i);});
+  feed+=actCat(cats[5],ch.quiet,function(q,i){
+    return '<div class="act-row" data-open="'+q.b.id+'" style="--d:'+(0.04*i).toFixed(2)+'s">'+
+      '<span class="act-dot" style="background:#e06c6c"></span>'+
+      '<div class="act-nm"><b>'+esc(q.b.name)+'</b><span>'+esc(q.b.townShort)+'</span></div>'+
+      '<div class="act-meta"><span class="act-flag quiet">silent '+esc(q.band)+'</span></div></div>';});
+  if(!feed){
+    feed='<div class="act-empty" style="--d:.1s"><div class="act-empty-ic">'+actIcon("moon")+'</div>'+
+      '<div class="act-empty-t">The market is holding its breath.</div>'+
+      '<div class="act-empty-s">Nothing moved since '+esc(dstr(ch.prev))+'. Check back tomorrow.</div></div>';
+  }else{
+    feed='<div class="act-sect-h" style="--d:0s"><span>What changed</span>'+
+      '<span class="act-sect-sub">Every move, by category</span></div>'+feed;
   }
-  if(ch.promo.length){
-    h+='<div class="chgcat"><h4>Promotional posts <span class="cnt">'+ch.promo.length+'</span></h4>'+
-      rows(ch.promo,function(p){
-        return '<div class="row" data-open="'+p.b.id+'"><span class="dot" style="background:'+recencyDot(p.b)+'"></span>'+
-          '<div class="nm"><b>'+esc(p.b.name)+'</b><span>'+esc(p.note).slice(0,72)+'</span></div>'+
-          '<div class="meta"><span>promo</span></div></div>';})+'</div>';
-  }
-  if(ch.prices.length){
-    h+='<div class="chgcat"><h4>Price changes <span class="cnt">'+ch.prices.length+'</span></h4>'+
-      rows(ch.prices,function(p){
-        return '<div class="row" data-open="'+p.b.id+'"><span class="dot" style="background:'+recencyDot(p.b)+'"></span>'+
-          '<div class="nm"><b>'+esc(p.b.name)+'</b><span>'+esc(p.note).slice(0,72)+'</span></div>'+
-          '<div class="meta"><span>'+esc(p.run)+'</span></div></div>';})+'</div>';
-  }
-  if(ch.quiet.length){
-    h+='<div class="chgcat"><h4>Gone quiet <span class="cnt">'+ch.quiet.length+'</span></h4>'+
-      rows(ch.quiet,function(q){
-        return '<div class="row" data-open="'+q.b.id+'"><span class="dot" style="background:#e06c6c"></span>'+
-          '<div class="nm"><b>'+esc(q.b.name)+'</b><span>'+esc(q.b.townShort)+'</span></div>'+
-          '<div class="meta"><span>silent '+q.band+'</span></div></div>';})+'</div>';
-  }
-  if(!ch.jumps.length&&!ch.small.length&&!ch.newBiz.length&&!ch.promo.length&&!ch.prices.length&&!ch.quiet.length)
-    h+='<div class="empty-note">Nothing moved since yesterday. The market is holding its breath.</div>';
-  h+="</div>";
+  h+='<div class="act-feed">'+feed+'</div>';
+  h+='</div>';
   return h;
 }
 
@@ -2503,6 +2549,9 @@ document.addEventListener("click",function(e){
     S.dsort=s2; renderLeft(); pushHist(); return; }
   var cfb=e.target.closest("#clearf");
   if(cfb){ S.q=""; S.lane=""; S.mom=""; S.reg=""; syncChrome(); refreshFiltered(); pushHist(); return; }
+  var ag=e.target.closest("[data-actgo]");
+  if(ag){ var tgt=document.getElementById("actsec-"+ag.getAttribute("data-actgo"));
+    if(tgt) tgt.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"}); return; }
   var tb=e.target.closest(".pagenav button");
   if(tb){ setTab(tb.getAttribute("data-tab")); return; }
 });
