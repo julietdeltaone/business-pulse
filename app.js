@@ -319,7 +319,8 @@ function todayChanges(){
   var out={date:today,prev:yd,newBiz:[],jumps:[],small:[],prices:[],promo:[],quiet:[]};
   C.forEach(function(b){
     var first=b.followHist.length?b.followHist[0].date:null;
-    if(first&&first>=yd){ out.newBiz.push(b); return; }
+    /* the injected JD Meyers Productions entry is a permanent anchor, never a new discovery */
+    if(b.id!=="jd-meyers-productions"&&first&&first>=yd){ out.newBiz.push(b); return; }
     var ch=pctChange(b,ydi,di), from=followersAt(b,ydi), to=followersAt(b,di);
     if(ch!=null&&Math.abs(ch)>=3) out.jumps.push({b:b,ch:ch,from:from,to:to});
     /* sub-threshold moves are still moves: track them honestly instead of
@@ -357,6 +358,16 @@ function todayChanges(){
   return out;
 }
 
+/* why a business is "new on the radar": usually newly tracked on Instagram,
+   not a new business. Explain honestly from the record. */
+function newWhy(b){
+  var first=b.followHist.length?b.followHist[0].date:null, parts=[];
+  if(first) parts.push("IG tracking started "+dstrShort(first));
+  var m=/verified (\d{4}-\d{2}-\d{2})/.exec(b.notes||"");
+  if(m&&m[1]&&first&&m[1]<first) parts.push("in our records since "+dstrShort(m[1]));
+  else if(b.est_year&&first&&b.est_year<+first.slice(0,4)) parts.push("in business since "+b.est_year);
+  return parts.join(" · ")||"Recently picked up";
+}
 /* ---------- live feed: one chronological stream of the last 7 days ---------- */
 var FEED_CATS=[
   {k:"post",t:"Posts",icon:"mega",c:"#6db3f2"},
@@ -412,8 +423,8 @@ function feedEvents(){
   /* new on the radar */
   C.forEach(function(b){
     var first=b.followHist.length?b.followHist[0].date:null;
-    if(first&&first>=lo&&first<=hi)
-      ev.push({date:first,kind:"new",b:b,sub:(b.townShort||"")+" \u00b7 "+(LANE_LABEL[b.specialty]||"")});
+    if(b.id!=="jd-meyers-productions"&&first&&first>=lo&&first<=hi)
+      ev.push({date:first,kind:"new",b:b,sub:newWhy(b)});
   });
   /* quiet milestones landing today */
   todayChanges().quiet.forEach(function(q){
@@ -466,6 +477,16 @@ function feedRowsHTML(){
 var feedTimer=null, feedHold=false, feedIdleT=null;
 function feedAutoStop(){ if(feedTimer){ clearInterval(feedTimer); feedTimer=null; } feedHold=false; clearTimeout(feedIdleT); }
 function feedUserTakeover(){ feedHold=true; clearTimeout(feedIdleT); feedIdleT=setTimeout(function(){ feedHold=false; },4000); }
+var radarPlayed=false;
+function radarOnce(){
+  if(radarPlayed||REDUCED||!("IntersectionObserver" in window)) return;
+  var t=document.querySelector('.act-tile[data-radar]');
+  if(!t) return;
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ radarPlayed=true; t.classList.add("radar-on"); io.disconnect(); } });
+  },{threshold:.35});
+  io.observe(t);
+}
 function feedAutoStart(){
   feedAutoStop();
   if(REDUCED) return;
@@ -622,14 +643,12 @@ function renderToday(){
     '</div>'+
     '<div class="act-tiles">'+cats.map(function(x,i){
       var tp=tops[x.k]||[];
-      return '<button class="act-tile" data-actgo="'+x.k+'" style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
+      return '<button class="act-tile" data-actgo="'+x.k+'"'+(x.k==="new"?' data-radar="1"':"")+' style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
         '<span class="act-tile-ic">'+actIcon(x.icon)+'</span>'+
         '<span class="act-tile-n" data-count="'+x.n+'">0</span>'+
         '<span class="act-tile-l">'+x.t+'</span>'+
         (tp.length?'<span class="act-tile-top3">'+tp.join("")+'</span>':"")+'</button>';
     }).join("")+'</div></div>';
-  /* highlights back under the hero */
-  h+=weekHighlights();
   /* change feed (main column) */
   function actRow(b,sub,meta,i){
     return '<div class="act-row" data-open="'+b.id+'" style="--d:'+(0.04*i).toFixed(2)+'s">'+
@@ -655,8 +674,7 @@ function renderToday(){
     return actRow(s.b,esc(s.b.townShort)+' · '+fmt(s.from)+' → '+fmt(s.to),
       '<span class="pct '+cls+'">'+sign+fmt(Math.abs(s.delta))+'</span>',i);});
   feed+=actCat(cats[2],ch.newBiz,function(b,i){
-    return actRow(b,esc(b.townShort)+' · '+esc(LANE_LABEL[b.specialty]||""),
-      '<span class="act-flag new">new</span>',i);});
+    return actRow(b,esc(newWhy(b)),'<span class="act-flag new">new</span>',i);});
   feed+=actCat(cats[3],ch.promo,function(p,i){
     return actRow(p.b,esc(p.note).slice(0,72),'<span class="act-flag promo">promo</span>',i);});
   feed+=actCat(cats[4],ch.prices,function(p,i){
@@ -674,8 +692,8 @@ function renderToday(){
     feed='<div class="act-sect-h" style="--d:0s"><span>What changed</span>'+
       '<span class="act-sect-sub">Every move, by category</span></div>'+feed;
   }
-  /* body: main column + auto-scrolling live-feed sidebar */
-  h+='<div class="act-body"><div class="act-main"><div class="act-feed">'+feed+'</div></div>'+
+  /* body: main column (highlights + what changed) + live-feed sidebar, top-right */
+  h+='<div class="act-body"><div class="act-main">'+weekHighlights()+'<div class="act-feed">'+feed+'</div></div>'+
     '<aside class="act-side" id="feedside" aria-label="Live activity feed">'+
     '<div class="feed-side-head"><div class="act-sect-h" style="margin:0"><span>Live feed</span>'+
     '<span class="live-dot" title="Auto-scrolling"></span></div>'+
@@ -2492,7 +2510,7 @@ function renderLeft(){
   }
   animateCounts(el);
   fillAIDash(); /* no-op unless the AI dashboard skeleton is present */
-  if(S.tab==="today"&&S.mode!=="venues") feedAutoStart();
+  if(S.tab==="today"&&S.mode!=="venues"){ feedAutoStart(); radarOnce(); }
 }
 function setTab(t,opts){
   opts=opts||{};
