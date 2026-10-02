@@ -1074,7 +1074,8 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 }
 /* table wrap skips the blur so the sticky header keeps working; keeps the glass read */
 .pg-data .dtable-wrap{-webkit-backdrop-filter:none;backdrop-filter:none;
-  background:linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,.02) 60%,rgba(255,255,255,.04))}
+  background:linear-gradient(165deg,rgba(255,255,255,.06),rgba(255,255,255,.02) 60%,rgba(255,255,255,.04));
+  max-height:calc(100vh - 330px);overflow-y:auto;scrollbar-width:thin}
 /* stat chips: lift on hover */
 .pg-market .stat,.pg-ai .stat{padding:12px 14px;border-radius:16px;transition:transform .18s ease,box-shadow .18s ease}
 .pg-market .stat:hover,.pg-ai .stat:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.14)}
