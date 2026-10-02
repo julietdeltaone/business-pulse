@@ -963,19 +963,21 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .ai-eng-ones{position:relative;margin-top:14px;font-size:14px;color:var(--mut)}
 .ai-eng-ones b{color:var(--eng)}
 .ai-plist{display:flex;flex-direction:column;gap:9px;margin:6px 0 10px}
-.ai-prow{display:grid;grid-template-columns:minmax(0,1fr) 200px 200px;gap:12px;align-items:center;
-  background:var(--card);border:1px solid var(--card-line);border-radius:15px;padding:14px 18px}
+.ai-prow{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,200px) minmax(160px,200px);gap:12px;align-items:center;
+  background:var(--card);border:1px solid var(--card-line);border-radius:15px;padding:14px 18px;min-width:0}
 .ai-prow-q{min-width:0}
 .ai-prow-t{font-size:15px;font-weight:650;overflow-wrap:break-word}
 .ai-prow-l{font-size:12px;color:var(--dim);margin-top:3px}
 .ai-pill{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line-soft);
-  border-radius:11px;padding:10px 13px;font-size:13.5px;background:rgba(255,255,255,.02)}
+  border-radius:11px;padding:10px 13px;font-size:13.5px;background:rgba(255,255,255,.02);min-width:0;overflow:hidden}
 .ai-pill-e{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
 .ai-pill-v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ai-pill.ai-win{border-color:color-mix(in srgb,var(--eng) 55%,transparent);background:color-mix(in srgb,var(--eng) 11%,transparent)}
 .ai-pill.ai-win .ai-pill-v{color:var(--eng)}
-.ai-pill.ai-miss{opacity:.55}
-.ai-pill.ai-miss .ai-pill-v{color:var(--dim);font-weight:500}
+.ai-pill.ai-hit{border-color:color-mix(in srgb,var(--eng) 35%,transparent);background:color-mix(in srgb,var(--eng) 6%,transparent)}
+.ai-pill.ai-hit .ai-pill-v{color:var(--txt)}
+.ai-pill.ai-miss{border-color:rgba(224,108,108,.38);background:rgba(224,108,108,.07)}
+.ai-pill.ai-miss .ai-pill-v{color:#e08a8a;font-weight:600}
 .ai-trend{display:flex;flex-direction:column;gap:4px;margin:6px 0 10px}
 .ai-trow{display:grid;grid-template-columns:110px 1fr 1fr;gap:16px;align-items:center;padding:9px 4px;border-top:1px solid rgba(255,255,255,.05)}
 .ai-tdate{font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
