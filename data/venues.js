@@ -24,8 +24,8 @@ window.PULSE_VENUES = [
     coverage: ["Northern NY"],
     platform: "Squarespace",
     since: null,
-    site_note: "Barn-style riverfront venue less than two miles from downtown Potsdam; 5,400 sq ft main hall seating up to 300.",
-    sources: ["http://www.windypointstables.com/", "http://windypointstables.com/packages"],
+    site_note: "Barn-style riverfront venue less than two miles from downtown Potsdam; 5,400 sq ft main hall seating up to 300. The Knot: 4.8 stars (4 reviews, Potsdam, 251-300 guests). Season note: record says May-October but the venue's own Google business description says open April-November — unresolved. Founding year not verifiable (earliest reviews 2018).",
+    sources: ["http://www.windypointstables.com/", "http://windypointstables.com/packages", "https://www.theknot.com/marketplace/the-stables-at-windy-point-potsdam-ny-2007814"],
     confidence: "high"
   },
   {
@@ -393,14 +393,14 @@ window.PULSE_VENUES = [
     capacity_num: 225,
     price_note: null,
     setting: "Adirondack-style lodge on a forested mountainside with full-length outdoor veranda",
-    season: null,
+    season: "Year-round (peak May-October)",
     spaces: ["Lodge event rooms", "Outdoor veranda", "Remodeled bar area"],
     services: ["Weddings", "Banquets", "Events"],
     coverage: ["Franklin County", "Malone area"],
     platform: null,
     since: null,
-    site_note: "In-house catering team, full-service kitchen, newly remodeled bar area; indoor and outdoor event areas.",
-    sources: ["http://www.theupperlodge.com/"],
+    site_note: "In-house catering team, full-service kitchen, newly remodeled bar area; indoor and outdoor event areas. WeddingWire: 5.0 across 3 reviews, 100% recommend; books year-round, peak May-Oct (WeddingWire). Google listing: 5.0 (3 reviews), price level moderate. The Knot review-count CONFLICT (2026-10-03): a qa-beta listing URL (the-upper-lodge-at-titus-malone-ny-2065079) showed 0 reviews, while an earlier pass read 5.0 (4) on marketplace aggregate pages — unresolved; staging vs live URL may explain it. Own site shows no published pricing or founding year.",
+    sources: ["http://www.theupperlodge.com/", "https://www.weddingwire.com/biz/the-upper-lodge-at-titus/275409031efc7577.html"],
     confidence: "high"
   },
   {
