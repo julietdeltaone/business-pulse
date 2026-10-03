@@ -355,7 +355,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "railroad-productions-cory-molly-williams": {
-    "blurb": "Commercial film and photography studio ('Commercial Filmmaker & Photographer') making cinematic films for brands, communities, and industry.",
+    "blurb": "Commercial film and photography studio (\"Commercial Filmmaker & Photographer\") making cinematic films for brands, communities, and industry; co-founded by Cory Williams and his wife Molly Williams; \"over a decade of experience capturing events and crafting compelling commercials for corporations.\"",
     "services": [
       "Pre-production",
       "Video production",
@@ -367,8 +367,18 @@ window.PULSE_DETAILS = {
       "Voiceover"
     ],
     "sources": [
-      "https://railroadproductions.com"
-    ]
+      "https://railroadproductions.com",
+      "https://railroadproductions.com/about",
+      "https://railroadproductions.com/why-every-business-needs-a-brand-film-in-2025/",
+      "http://adirondack-weddings.com/vendors-2/railroad-productions",
+      "https://www.slvpaddlers.org/waterway-exploration-reports"
+    ],
+    "coverage": [
+      "Upstate New York",
+      "Nationwide"
+    ],
+    "pricing_note": "No published rates on own site; The Knot price band \"$$$$ - Luxury\" (0 Knot reviews).",
+    "site_note": " The Knot marketplace listings: \"$$$$ - Luxury\", 2x award winner, 0 reviews; legacy Adirondack Weddings vendor listing (wedding-videography era, (315) 854-0986); filmed a St. Lawrence County Chamber of Commerce promotional paddling video (Aug 2025)."
   },
   "apex-pack-media-jay-hicks": {
     "blurb": "Drone/cinematic video outfit associated with Jay Hicks; advertised work includes drone filming, cinematic video, real estate videography, and hunting/adventure film (script, drone + ground cinematography, narration, custom music + sound design, color, edit).",
@@ -440,7 +450,7 @@ window.PULSE_DETAILS = {
   "perfect-memories-photography": {
     "blurb": "Photographer listing in Potsdam, NY (phone 1-315-399-2585).",
     "platform": "Google Sites (business.site)",
-    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified.",
+    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified. Rechecked 2026-10-03: business.site still 404; Google listing Active (place_id 413083041649871, phone 1-315-399-2585); no reviews, services, or pricing verifiable. A similarly named 'Perfect Memories Photography' (perfectmemoriesphotography.godaddysites.com, Abby, Pulaski NY, (315) 391-6401) is a DIFFERENT business — excluded.",
     "sources": [
       "https://perfectmemoriesphotography.business.site/"
     ]
@@ -602,10 +612,12 @@ window.PULSE_DETAILS = {
     ],
     "since": 2021,
     "pricing_note": "Christmas minis advertised at $200 (2025)",
-    "site_note": "Price Range '$$' per listing; she runs seasonal mini sessions (e.g., beach minis, Christmas minis) and occasional 'pay what you can' sessions.",
+    "site_note": "Price Range '$$' per listing; she runs seasonal mini sessions (e.g., beach minis, Christmas minis) and occasional 'pay what you can' sessions. Rechecked 2026-10-03: homepage live; Facebook page (Rachel Roberts Photography, Watertown, NY) active; price range \"$$\" per photography1000; no The Knot/WeddingPro/Yelp vendor profile or Google review listing found.",
     "sources": [
       "https://www.findglocal.com/US/Watertown-NY/240298-22",
-      "https://www.photography1000.com/US/Watertown/133963698521467/Rachel-Roberts-Photography"
+      "https://www.photography1000.com/US/Watertown/133963698521467/Rachel-Roberts-Photography",
+      "https://www.facebook.com/rachelrobertsphotographyny/",
+      "https://www.rachrobertsphotos.com/"
     ]
   },
   "heath-photography": {
@@ -696,17 +708,29 @@ window.PULSE_DETAILS = {
   "sharon-segouin-photography": {
     "blurb": "Alexandria Bay, NY photographer (born/raised in Watertown, 1000 Islands area her whole life) capturing important moments and personalities; she is a part-time retail pharmacist with a Cornell University digital photography certification and advertises affordable pricing.",
     "services": [
-      "Portrait sessions"
+      "Portraits",
+      "Engagements",
+      "Weddings",
+      "Events",
+      "Family portraits",
+      "Baby",
+      "High school seniors",
+      "Individual portraits",
+      "Best friends",
+      "Sports banners"
     ],
     "coverage": [
       "1000 Islands",
       "Alexandria Bay"
     ],
-    "site_note": "About page: 'a year ago decided to learn a lot more about photography and got a certification in digital photography from Cornell University'; emphasizes 'prices that won't break the bank.'",
+    "site_note": "About page: 'a year ago decided to learn a lot more about photography and got a certification in digital photography from Cornell University'; emphasizes 'prices that won't break the bank.' Since ~2025 (inferred: about page ~Jan 2026 says she decided to learn photography \"a year ago\"). Services expanded from her own gallery index; no third-party directory listing found.",
     "sources": [
       "https://sharonsegouinphotography.com/about-me",
-      "https://www.sharonsegouinphotography.com/"
-    ]
+      "https://www.sharonsegouinphotography.com/",
+      "https://sharonsegouinphotography.com/contact-me",
+      "https://sharonsegouinphotography.com/pricing"
+    ],
+    "since": 2025
   },
   "kathleen-chapman-photography": {
     "blurb": "Natural and studio light child and family portrait photographer in Dickinson Center, NY, running outdoor sessions at her Country Garden and studio sessions (milestones, cake smash, headshots) in her home studio.",
@@ -782,9 +806,14 @@ window.PULSE_DETAILS = {
       "Northern New York",
       "Central New York"
     ],
-    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews.",
+    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews. Address 5560 Highland Ave, Lowville NY 13367, (315) 376-2951; The Knot (Lowville wedding rentals) 5.0 (4); Birdeye 3.7 (3 reviews, incl. COVID-era non-refund complaint). Founding-year note: own Google copy says \"over 14 years\"; an unverified directory claims roots to 2003 — not adopted.",
     "sources": [
-      "http://randhcreations.com/contact-us"
+      "http://randhcreations.com/contact-us",
+      "https://www.theknot.com/marketplace/wedding-rentals-lowville-ny",
+      "https://www.myeventpod.com/vendors/r-and-h-creations-videography-and-wedding-rental/",
+      "https://wedfolio.com/weddings/ny/canton/videographers/",
+      "https://www.nataliewstudio.com/blog/2017/10/fall-jewel-colored-wedding-in-lowville",
+      "https://reviews.birdeye.com/r-h-creations-167973089245892"
     ]
   },
   "jordan-craig-media-llc": {
@@ -839,8 +868,8 @@ window.PULSE_DETAILS = {
       "Vermont"
     ],
     "years_in_business": 13,
-    "pricing_note": "Weddings from $4,800 (The Knot / WeddingWire, 2026) Own site (2026-09-30) shows wedding collections from $5,400 (01 $5,400 / 02 $6,800 / 03 $8,300 / bespoke $8,900) vs The Knot 'Starting at $4,800' — both preserved, not resolved.",
-    "site_note": "5.0 stars across 48 reviews on The Knot; 20+ years behind the lens per her site.",
+    "pricing_note": "Weddings from $4,800 (The Knot / WeddingWire, 2026) Own site (2026-09-30) shows wedding collections from $5,400 (01 $5,400 / 02 $6,800 / 03 $8,300 / bespoke $8,900) vs The Knot 'Starting at $4,800' — both preserved, not resolved. WeddingWire (2026-10-03) repeats $4,800 starting / ~$5,300 typical — treated as ambiguous directory figure, not a replacement for own-site tiers.",
+    "site_note": "5.0 stars across 48 reviews on The Knot; 20+ years behind the lens per her site.; WeddingWire 5.0 across 8 reviews (Lake Placid, 13 years in business, starts $4,800, couples typically ~$5,300, 1936 Saranac Ave) — vs own site weddings from $5,400 (2026-09-30), both preserved, not resolved. A possible second 'Pamela Perrin Photography' listing on The Bash (Fort Lauderdale FL) is UNCONFIRMED as the same business — not merged.",
     "sources": [
       "https://www.pamelaperrinphotography.com/about/",
       "https://www.pamelaperrinphotography.com/weddings/",
@@ -1201,14 +1230,15 @@ window.PULSE_DETAILS = {
       "Upstate NY",
       "Austrian Alps"
     ],
-    "pricing_note": "Austrian Alps elopement pricing starts at $4,300 (winter mini adventures from $3,900); Adirondack package pricing not stated on pages seen (site, 2026)",
+    "pricing_note": "Austrian Alps elopements from $4,300; winter mini adventure packages from $3,900; average booked package $7,900; Adirondack package pricing not stated (own site, 2026-10-03)",
     "since": 2019,
     "site_note": "States 'over 6 years of expertise' planning and photographing elopements in Lake Placid, Keene, Lake George, Saranac Lake, and Jay; she splits time between the Adirondacks and the Austrian Alps and donates 10% of proceeds to charity.",
     "sources": [
       "https://www.outdoorchroniclesphotography.com/",
       "https://www.outdoorchroniclesphotography.com/about-molly-outdoor-chronicles",
       "https://www.outdoorchroniclesphotography.com/austrian-alps-elopement"
-    ]
+    ],
+    "platform": "Wix"
   },
   "madi-lea-photography-and-film": {
     "blurb": "Madison ('Madi Lea') is a hobby-turned-serious photographer from upstate NY offering couples, senior, wedding, family, and business sessions via her Pixieset site.",
@@ -1241,7 +1271,7 @@ window.PULSE_DETAILS = {
       "Family portraits"
     ],
     "platform": "Pixieset",
-    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated.",
+    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated. Rechecked 2026-10-03: own site and contact page state no town, pricing, service area, or founding year; no Google listing or Facebook business page found.",
     "sources": [
       "https://sharlalodico.mypixieset.com/",
       "https://sharlalodico.mypixieset.com/about/"
@@ -1458,6 +1488,39 @@ window.PULSE_DETAILS = {
     "sources": [
       "https://meta.ai?place_id=3129971923972254",
       "https://chamberofcommerce.com/business-directory/new-york/canton/arts-event-services/"
+    ]
+  },
+  "perennial-images-kursti-jacot": {
+    "blurb": "Perennial Images (Kursti Jacot) — photographer in the Parishville, St. Lawrence County NY area; sessions $175-$225, seniors $200, newborns $325 (within 20 mi).",
+    "platform": "Pixieset",
+    "site_note": "No other public web footprint as of 2026-10-03: no indexed site, about content, directory listings, or Google business listing found; town/service details unverified beyond the Pixieset pricing page.",
+    "sources": [
+      "https://perennialimages.mypixieset.com/pricing/"
+    ]
+  },
+  "photography-worx": {
+    "blurb": "Photography Worx is a Canton, NY photography studio (64 Miner Street Rd / PO Box 226, Canton NY 13617, (315) 244-1123) connected to Haenel Communication Technologies; listed categories: photographer, portrait studio, wedding photographer.",
+    "services": [
+      "Portraits",
+      "Weddings"
+    ],
+    "coverage": [
+      "Canton NY"
+    ],
+    "site_note": "photographyworx.com appears as the website on the Locable profile but could not be fetched as of 2026-10-03 (unverified, not declared dead); BestProsInTown shows zero reviews; no pricing, years in business, or Google review data found.",
+    "sources": [
+      "https://www.bestprosintown.com/ny/canton/photography-worx-/",
+      "https://photography-worx.locable.com/profile/",
+      "https://hcomtech.com/page.php?p=2",
+      "https://chamberofcommerce.com/business-directory/new-york/canton/arts-event-services/"
+    ]
+  },
+  "samarah-martin-photography": {
+    "blurb": "Samarah Martin Photography — St. Lawrence County NY area photographer with a Pixieset site (sarahmartinphoto.mypixieset.com).",
+    "platform": "Pixieset",
+    "site_note": "No public web footprint as of 2026-10-03: Pixieset site returned 403 on direct fetch; no indexed directory listings, social profiles, reviews, or about/pricing content found. Town, pricing, services, coverage, and founding year all unverified.",
+    "sources": [
+      "https://sarahmartinphoto.mypixieset.com/"
     ]
   }
 };
