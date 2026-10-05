@@ -21,8 +21,10 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Pixieset",
     "sources": [
-      "https://allisonleephotographyny.mypixieset.com/"
-    ]
+      "https://allisonleephotographyny.mypixieset.com/",
+      "https://peterthedj.com/2025/12/abby-corey-rainbow-shores-pulaski/"
+    ],
+    "site_note": "Third-source corroboration: peterthedj.com vendor blog names Allison Lee Photography as the photographer for Abby & Corey's Sept 20, 2025 wedding at Rainbow Shores, Pulaski NY. No The Knot or WeddingPro listing found; no dedicated Facebook page found for the NY business (FB hits are Austin TX / Sydney AU namesakes). No founding year published."
   },
   "laura-wells-photography": {
     "blurb": "Laura Wells Photography is a documentary-style wedding photographer with an editorial flair, centered on capturing human connection and how a moment felt.",
@@ -397,7 +399,7 @@ window.PULSE_DETAILS = {
       "Real estate videography",
       "Hunting/adventure film"
     ],
-    "site_note": "Official site apexpackmedia.com did not resolve as of Sep 2026 (HTTP 404); an 'APEX PACK MEDIA LLC' entity is registered in NY.",
+    "site_note": "Official site apexpackmedia.com still HTTP 404 as of 2026-10-05; business active per a YouTube promo ('WhoIsApex LONG v9 FINAL') showing drone/cinematic-video work near Loon Lake; an 'APEX PACK MEDIA LLC' entity is registered in NY (link to this operator unconfirmed).",
     "sources": [
       "https://www.youtube.com/watch?v=K4WAD2pO8ZA"
     ]
@@ -405,10 +407,10 @@ window.PULSE_DETAILS = {
   "airvantage-solutions": {
     "blurb": "Family-run drone photography and videography business in Ogdensburg, NY, flying a DJI Mavic 4 Pro and serving real estate and local businesses.",
     "services": [
-      "Drone photography",
-      "Drone videography",
-      "Real estate aerials",
-      "Business media"
+      "Aerial drone photography",
+      "Aerial drone videography",
+      "Real estate media",
+      "Local business/commercial media"
     ],
     "coverage": [
       "40-mile radius of Ogdensburg, NY"
@@ -417,8 +419,11 @@ window.PULSE_DETAILS = {
     "pricing_note": "Basic package intro offer $100 at scheduling; videos available at additional fee (site, 2026)",
     "sources": [
       "https://www.airvantagesolutionsllc.com",
-      "https://www.airvantagesolutionsllc.com/about.html"
-    ]
+      "https://www.airvantagesolutionsllc.com/about.html",
+      "https://www.airvantagesolutionsllc.com/services.html",
+      "https://www.bizprofile.net/ny/ogdensburg/airvantage-solutions-llc"
+    ],
+    "site_note": "Flies a DJI Mavic 4 Pro. NY Dept. of State LLC filing (doc 7278058) filed March 1, 2024, active status, St. Lawrence County - corroborates the 'Established in 2024' claim on its own site. Active YouTube channel (@airvantagesolutions) posts real-estate listing videos in Ogdensburg, Madrid, Heuvelton, Dekalb Jct. No Google review listing surfaced via search."
   },
   "cristina-fenner": {
     "blurb": "Canton, NY wedding and portrait photographer with 15 years of wedding coverage experience and 150+ weddings photographed; bright, colorful, bold style focused on genuine emotion.",
@@ -442,19 +447,22 @@ window.PULSE_DETAILS = {
     ]
   },
   "amanda-hill-photography": {
-    "blurb": "Potsdam, NY photographer with active 2026 posts showing family sessions, maternity, engagements, prom, graduation, and wedding work. No official website found.",
+    "blurb": "Pittsburgh native, mom of two, mixing posed and candid storytelling sessions. Specialties: elopement, family, maternity, senior (engagement also featured via client testimonial).",
     "services": [
-      "Family portraits",
+      "Elopement",
+      "Family",
       "Maternity",
-      "Engagements",
-      "Prom/Senior photos",
-      "Graduation",
-      "Weddings"
+      "Senior",
+      "Engagement"
     ],
     "sources": [
       "https://www.findglocal.com/XX/Unknown/106317545012612/Amanda-Hill-Photography",
-      "https://www.mapquest.com/us/new-york/amanda-hill-photography-387750358"
-    ]
+      "https://www.mapquest.com/us/new-york/amanda-hill-photography-387750358",
+      "https://amandahillphoto.mypixieset.com",
+      "https://www.stlawco.gov/node/1423"
+    ],
+    "platform": "Pixieset",
+    "site_note": "Town conflict: roster and MapQuest list Potsdam NY 13676, but the St. Lawrence County business listing gives 148 Cottage Road, Colton, NY, phone 315-212-6498, hours Fri & Sat 10am-6pm, Sun 2pm-6pm. No pricing published on her Pixieset site; no Google review count found. Beware other 'Amanda Hill Photography' businesses in Memphis TN and Pittsburgh PA - different entities."
   },
   "perfect-memories-photography": {
     "blurb": "Photographer listing in Potsdam, NY (phone 1-315-399-2585).",
@@ -785,14 +793,20 @@ window.PULSE_DETAILS = {
     ]
   },
   "bella-memoria-photography": {
-    "blurb": "Wedding and engagement photographer based in Malone, NY (82 Bruso Road).",
+    "blurb": "Husband-and-wife photography team based in Malone NY (82 Bruso Road).",
     "services": [
       "Weddings",
-      "Engagement shoots"
+      "Engagement shoots",
+      "Engagements",
+      "Family",
+      "Seniors",
+      "Infants and children"
     ],
-    "site_note": "The Knot storefront shows 5.0 stars from 1 review and no photos/story posted; no independent website found.",
+    "site_note": "Listed on The Knot and WeddingWire; Facebook page @BellaMemoriaPhotography (bio: 'Capturing beautiful and precious moments'); contact 518-483-8281. No Google Business listing/reviews found in web search. The 2019 PA 'Bella Memoria Photography, LLC' filing (bizapedia) is a different company — not used.",
     "sources": [
-      "https://www.theknot.com/marketplace/bella-memoria-photography-malone-ny-551815"
+      "https://www.theknot.com/marketplace/bella-memoria-photography-malone-ny-551815",
+      "https://www.weddingwire.com/biz/bella-memoria-photography-malone/9eb2845ef9a77feb.html",
+      "https://www.facebook.com/BellaMemoriaPhotography/"
     ]
   },
   "lost-cabin-productions": {
@@ -1064,19 +1078,27 @@ window.PULSE_DETAILS = {
       "Matterport 3D virtual tours",
       "Real estate photography",
       "Google Street View tours",
-      "Hotel and resort marketing"
+      "Hotel and resort marketing",
+      "building/roof/chimney inspections",
+      "4K promotional video",
+      "Google Trusted Street View",
+      "floor plans/DWG models",
+      "wedding photography",
+      "home aerials"
     ],
     "coverage": [
       "Adirondacks",
       "Vermont"
     ],
     "since": 2017,
-    "site_note": "Run by Corey James; described as a Google Trusted Street View photographer for NY & VT; also listed on Ticonderoga360 as a Crown Point NY business.",
+    "site_note": "Run by Corey James; described as a Google Trusted Street View photographer for NY & VT; also listed on Ticonderoga360 as a Crown Point NY business. Pricing not published anywhere on site ('affordable photography packages' only) — quote-based (verified 2026-10-05).",
     "sources": [
       "http://adirondackdrone.net/",
       "https://www.ticonderoga360.com/business/adirondack-drone/",
-      "https://adk.bar-z.com/364/location/adirondack-drone"
-    ]
+      "https://adk.bar-z.com/364/location/adirondack-drone",
+      "https://www.adirondackdrone.net/drone-services"
+    ],
+    "platform": "Wix"
   },
   "makenzie-leigh-photography": {
     "blurb": "Film-inspired storytelling photography for couples, families, and intimate celebrations; Makenzie recently relocated from Alaska to Watertown, NY, with New York books opening in 2027.",
@@ -1127,16 +1149,23 @@ window.PULSE_DETAILS = {
     ]
   },
   "abby-elizabeth-photography-abygail-clark": {
-    "blurb": "Abby Elizabeth Photography is Abygail Clark's photography portfolio site; she photographs seniors, couples, and families.",
+    "blurb": "Northern New York based Photographer. I specialize in portraits but I LOVE pets, sports, nature, cityscapes, and any kind of creative shoots you could possibly think of. I am a newer photographer but my attention to detail and desire for perfection in my portraits would (hopefully) make you think otherwise.",
     "services": [
-      "Senior portraits",
-      "Couples",
-      "Family portraits"
+      "portraits",
+      "pets",
+      "sports",
+      "nature",
+      "cityscapes",
+      "creative shoots"
     ],
     "platform": "Pixieset",
     "site_note": "Her bio says she picked up her first camera in yearbook club about six years ago and now does this as a job; no pricing, town, or coverage areas stated on the page.",
     "sources": [
-      "https://abbyelizabethphotography.mypixieset.com/"
+      "https://abbyelizabethphotography.mypixieset.com/",
+      "https://abbyelizabethphotography.mypixieset.com/about/"
+    ],
+    "coverage": [
+      "Northern NY"
     ]
   },
   "snapshots-photo-booth": {
@@ -1219,22 +1248,28 @@ window.PULSE_DETAILS = {
     ]
   },
   "adirondack-wedding-photography-tomas-flint": {
-    "blurb": "Adirondack Wedding Photography is the wedding photography business of Tomas Flint, known for Adirondack weddings at venues like Whiteface Lodge, Lake Placid Lodge, and the Ausable Club; he is originally from Utica, NY.",
+    "blurb": "Founder + Lead Photographer Tomas Flint. Freelance photographer for nearly two decades; began photographing weddings ~21 years ago; shifted focus to the Adirondack Region around 2016 (when his son was born). Top-20 Destination Wedding Photographer (Destination Weddings and Honeymoons Magazine, 2016).",
     "services": [
       "Wedding photography",
       "Elopements",
-      "Engagement sessions"
+      "Engagement sessions",
+      "weddings",
+      "destination weddings"
     ],
     "coverage": [
       "Lake Placid",
-      "Adirondacks"
+      "Adirondacks",
+      "destination weddings worldwide"
     ],
-    "site_note": "A My Event POD directory listing describes Adirondack Wedding Photography, led by Tomas Flint, as storytelling-focused wedding and event photography in the Lake Placid/Adirondack region. The supplied adkweddingphoto.com URL could not be loaded (rate-limited), so facts come from the tomasflint.com blog galleries and the directory listing.",
+    "site_note": "Site adkweddingphoto.com loads again (previously rate-limited). No live Google review count verifiable for this business name (verified 2026-10-05); no The Knot/WeddingPro listing found under this name.",
     "sources": [
       "https://tomasflint.com/gallery/adirondack-wedding-photography-ausable/",
       "https://tomasflint.com/gallery/whiteface-lodge-wedding/",
-      "https://www.myeventpod.com/vendors/adirondack-wedding-photography/"
-    ]
+      "https://www.myeventpod.com/vendors/adirondack-wedding-photography/",
+      "https://adkweddingphoto.com/about-tomas",
+      "https://adkweddingphoto.com/"
+    ],
+    "since": 2005
   },
   "outdoor-chronicles-molly": {
     "blurb": "Outdoor Chronicles is Molly's Upstate NY elopement and intimate-wedding photography business; she is an award-winning elopement photographer and licensed hiking guide, LGBTQ+-friendly, who combines elopement planning with photography.",
@@ -1562,5 +1597,72 @@ window.PULSE_DETAILS = {
       "https://pixoto.com/timothy.thornton.56",
       "https://www.photography1000.com/US/Carthage-NY/211018"
     ]
+  },
+  "a-kelly-photography": {
+    "coverage": [
+      "Whiteface/Lake Placid region",
+      "Adirondacks"
+    ],
+    "platform": "Pixieset",
+    "services": [
+      "weddings",
+      "engagements",
+      "elopements",
+      "families",
+      "couples",
+      "seniors",
+      "maternity",
+      "newborn",
+      "landscapes"
+    ],
+    "site_note": "About page conflicts on tenure: 'over 15 years ago, I traded the bustling streets of Manhattan for the serene beauty of the Adirondacks' vs 'living in Wilmington, NY for the last eight years' — founding year left unverified.",
+    "sources": [
+      "https://akellyphotography81.mypixieset.com/",
+      "https://akellyphotography81.mypixieset.com/about/"
+    ]
+  },
+  "atavia-weddings": {
+    "blurb": "Cinematic wedding films & timeless photography from a nationwide team; blends elegance, artistry, and authenticity. Featured vendor on The Knot, WeddingWire, and Zola. NC-based (336 area code), traveling teams, now booking 2026 & 2027.",
+    "coverage": [
+      "Nationwide, no travel fees (dedicated local teams per area)"
+    ],
+    "services": [
+      "Wedding photography",
+      "Videography",
+      "Combined photo+film collections",
+      "Engagement session",
+      "Drone footage (8+ hr video)",
+      "Same-day edit / next-day edit",
+      "Livestream services",
+      "Raw footage included",
+      "Online gallery, full ownership rights",
+      "Second shooter available"
+    ],
+    "site_note": "NC-based, travels to Potsdam NY; $500 retainer reserves date; editing turnaround 30-90 days; fully insured.",
+    "sources": [
+      "https://ataviaweddings.com/",
+      "https://ataviaweddings.com/packages",
+      "https://WWW.ZOLA.COM/wedding-vendors/wedding-photographers/atavia-weddings",
+      "https://firebasestorage.googleapis.com/v0/b/lazo-513ec.firebasestorage.app/o/vendors%2Fmanual-phoenix-atavia-weddings%2Fdocs%2Fpricesheet.pdf?alt=media&"
+    ]
+  },
+  "bryce-darrah": {
+    "blurb": "Bryce Darrah, a 14-year-old photographer based in Peru NY. Photography is his primary focus and passion; he also offers video. Services styled around natural, fun sessions for portraits, sports, events, and special occasions.",
+    "platform": "Carrd",
+    "services": [
+      "Portraits",
+      "Sports photography",
+      "Events",
+      "Special occasions",
+      "Video services"
+    ],
+    "site_note": "Solo teen operator; sports pricing listed as 'Sports Package @Peru' (Peru Central School games). Booked via Instagram DM or email. No Google reviews or years-in-business found in web search — left empty.",
+    "sources": [
+      "https://picturesbybryce.carrd.co"
+    ]
+  },
+  "amber-renee-photography": {
+    "site_note": "No verifiable St. Lawrence County NY web presence found (2026-10-05) beyond IG handle amberrenee.photos (not scraped). Do NOT merge data from amberreneephotography5.mypixieset.com — that is a portrait photographer based in San Luis Obispo, California. Billings MT and Fredericksburg VA listings are also different people.",
+    "sources": []
   }
 };
