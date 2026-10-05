@@ -2732,6 +2732,178 @@ function recentMutuals(){
   return out;
 }
 
+/* ---------- Relationship Ring: "New relationships forming" as a chord interface ---------- */
+function relDaysAgo(dateStr){
+  var t=new Date(dateStr+"T12:00:00").getTime();
+  return Math.max(0,Math.floor((Date.now()-t)/864e5));
+}
+function relBand(d){ return d<=7?"fresh":(d<=21?"mid":"old"); }
+function relBandLabel(b){ return b==="fresh"?"≤ 7 days":(b==="mid"?"8–21 days":"22–30 days"); }
+function relDateFmt(dateStr){
+  return new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",month:"short",day:"numeric"}).format(new Date(dateStr+"T12:00:00"));
+}
+var REL_BAND_COLOR={fresh:"#E7A04F",mid:"rgba(231,160,79,.42)",old:"rgba(107,116,136,.55)"};
+function relRingGeom(rm){
+  var W=720,CX=360,CY=360,R=310,byKey={},nodes=[];
+  rm.forEach(function(m){
+    [m.a,m.b].forEach(function(n){
+      var g=byKey[n.key];
+      if(!g){ g=byKey[n.key]={key:n.key,label:netName(n),node:n,pairs:[],fresh:1e9}; nodes.push(g); }
+      g.pairs.push(m);
+      var d=relDaysAgo(m.date); if(d<g.fresh) g.fresh=d;
+    });
+  });
+  nodes.sort(function(a,b){ return a.label.localeCompare(b.label); });
+  nodes.forEach(function(g,i){
+    var ang=-Math.PI/2+i/nodes.length*Math.PI*2;
+    g.x=CX+Math.cos(ang)*R; g.y=CY+Math.sin(ang)*R;
+    g.deg=g.pairs.length; g.band=relBand(g.fresh);
+    g.pairs.sort(function(a,b){ return relDaysAgo(a.date)-relDaysAgo(b.date); });
+  });
+  var chords=rm.map(function(m,i){
+    var A=byKey[m.a.key],B=byKey[m.b.key],d=relDaysAgo(m.date);
+    var mx=(A.x+B.x)/2,my=(A.y+B.y)/2,qx=CX+(mx-CX)*0.12,qy=CY+(my-CY)*0.12;
+    return {i:i,a:A,b:B,date:m.date,days:d,band:relBand(d),
+      d:"M"+A.x.toFixed(1)+" "+A.y.toFixed(1)+" Q"+qx.toFixed(1)+" "+qy.toFixed(1)+" "+B.x.toFixed(1)+" "+B.y.toFixed(1)};
+  });
+  chords.sort(function(a,b){ return a.days-b.days||a.a.label.localeCompare(b.a.label); });
+  var pairChord={};
+  chords.forEach(function(c){ pairChord[[c.a.key,c.b.key].sort().join("|")]=c; });
+  return {nodes:nodes,chords:chords,pairChord:pairChord,byKey:byKey,W:W,CX:CX,CY:CY,R:R};
+}
+function relPairCard(c){
+  return '<div class="relring-pair"><div class="rp-top">'+netChip(c.a.node)+' <span class="muted">⇄</span> '+netChip(c.b.node)
+    +'<span class="rn-when band-'+c.band+'">'+esc(relDateFmt(c.date))+'</span></div>'
+    +'<p class="rp-move"><b>Move:</b> A new working relationship is forming — introduce yourself to both before the door closes. Name two photographers you both follow, and ask who they call for overflow work.</p></div>';
+}
+function relDetailDefault(geom){
+  var h='<p class="hint">'+geom.chords.length+' new relationships among '+geom.nodes.length+' businesses in the last 30 days. Newest first:</p>';
+  h+=geom.chords.slice(0,6).map(relPairCard).join("");
+  if(geom.chords.length>6){
+    h+='<button class="linkish relring-more">Show all '+geom.chords.length+' pairs</button>'
+      +'<div class="relring-rest" hidden>'+geom.chords.slice(6).map(relPairCard).join("")+'</div>';
+  }
+  return h;
+}
+function relDetailNode(geom,n){
+  var h='<p class="hint"><b style="color:var(--silver)">'+esc(n.label)+'</b> — '+n.deg+' new relationship'+(n.deg>1?"s":"")+' in the last 30 days:</p>';
+  h+=n.pairs.map(function(m){
+    var ok=m.a.key===n.key?m.b.key:m.a.key;
+    return relPairCard(geom.pairChord[[n.key,ok].sort().join("|")]);
+  }).join("");
+  return h;
+}
+function relRingHTML(rm){
+  var g=relRingGeom(rm), W=g.W;
+  var chords=g.chords.slice(0,60); /* safeguard: the pair list below always covers every pair */
+  var h='<div class="panel relring-panel" style="margin-top:18px"><h2>New relationships forming</h2>'
+    +'<p class="hint">Competitor pairs that started following each other in the last 30 days. A new mutual follow is usually a working relationship forming — worth knowing before you pitch either of them.</p>'
+    +'<div class="relring-legend"><span class="lg"><i class="sw band-fresh"></i>'+relBandLabel("fresh")+'</span>'
+    +'<span class="lg"><i class="sw band-mid"></i>'+relBandLabel("mid")+'</span>'
+    +'<span class="lg"><i class="sw band-old"></i>'+relBandLabel("old")+'</span>'
+    +'<span class="lg lg-hint">Hover a dot, a line, or a name to isolate · click to pin</span></div>'
+    +'<div class="relring-wrap"><div class="relring-stage">'
+    +'<svg class="relring" viewBox="0 0 '+W+' '+W+'" role="img" aria-label="Chord diagram: '+g.chords.length+' new mutual-follow relationships among '+g.nodes.length+' businesses in the last 30 days.">'
+    +'<circle cx="'+g.CX+'" cy="'+g.CY+'" r="'+g.R+'" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1"/>';
+  chords.forEach(function(c){
+    h+='<path class="rn-chord band-'+c.band+'" data-ak="'+esc(c.a.key)+'" data-bk="'+esc(c.b.key)+'" d="'+c.d+'"><title>'+esc(c.a.label+" ⇄ "+c.b.label)+'\nStarted following each other '+esc(relDateFmt(c.date))+'</title></path>';
+  });
+  g.nodes.forEach(function(n){
+    var r=(5+2*Math.sqrt(Math.max(0,n.deg-1))).toFixed(1);
+    var ago=n.fresh===0?"today":n.fresh+"d ago";
+    h+='<g class="rn-node" data-nk="'+esc(n.key)+'"><circle cx="'+n.x.toFixed(1)+'" cy="'+n.y.toFixed(1)+'" r="'+r+'" fill="'+REL_BAND_COLOR[n.band]+'"><title>'+esc(n.label)+'\n'+n.deg+' new relationship'+(n.deg>1?"s":"")+' · newest '+ago+'</title></circle></g>';
+  });
+  h+='</svg>'
+    +'<div class="relring-center"></div>'
+    +'</div><div class="relring-side"><div class="relring-index" role="list" aria-label="Businesses with new relationships">';
+  g.nodes.slice().sort(function(a,b){ return a.fresh-b.fresh||a.label.localeCompare(b.label); }).forEach(function(n){
+    h+='<button class="relring-row" data-nk="'+esc(n.key)+'" role="listitem"><span class="rn-dot" style="background:'+REL_BAND_COLOR[n.band]+'"></span>'
+      +'<span class="rn-name">'+esc(n.label)+'</span>'
+      +'<span class="rn-when band-'+n.band+'">'+esc(relDateFmt(n.pairs[0].date))+'</span>'
+      +'<span class="rn-n">'+(n.deg>1?"×"+n.deg:"")+'</span></button>';
+  });
+  h+='</div></div></div><div class="relring-detail"></div></div>';
+  return h;
+}
+function relRingInit(p, rm){
+  var geom=relRingGeom(rm);
+  var svg=p.querySelector("svg.relring"); if(!svg) return;
+  var center=p.querySelector(".relring-center"), detail=p.querySelector(".relring-detail"),
+      rows=Array.prototype.slice.call(p.querySelectorAll(".relring-row"));
+  var nodeEls={}, chordEls=[];
+  svg.querySelectorAll(".rn-node").forEach(function(el){ nodeEls[el.getAttribute("data-nk")]=el; });
+  svg.querySelectorAll(".rn-chord").forEach(function(el){ chordEls.push(el); });
+  var pinned=null;
+  var centerDefault='<b>'+geom.chords.length+' new relationships</b><span>last 30 days · '+geom.nodes.length+' businesses</span>';
+  function setDetail(html){
+    detail.innerHTML=html;
+    var more=detail.querySelector(".relring-more");
+    if(more) more.addEventListener("click",function(){
+      var r=detail.querySelector(".relring-rest"), open=r.hidden;
+      r.hidden=!open; more.textContent=open?("Hide pairs"):("Show all "+geom.chords.length+" pairs");
+    });
+  }
+  function clearIso(){
+    svg.classList.remove("iso");
+    svg.querySelectorAll(".on").forEach(function(el){ el.classList.remove("on"); });
+    rows.forEach(function(r){ r.classList.remove("on"); });
+  }
+  function isoNode(n){
+    clearIso(); svg.classList.add("iso");
+    geom.chords.forEach(function(c,i){
+      if(c.a===n||c.b===n){
+        if(chordEls[i]) chordEls[i].classList.add("on");
+        if(nodeEls[c.a.key]) nodeEls[c.a.key].classList.add("on");
+        if(nodeEls[c.b.key]) nodeEls[c.b.key].classList.add("on");
+      }
+    });
+    rows.forEach(function(r){ r.classList.toggle("on",r.getAttribute("data-nk")===n.key); });
+    center.innerHTML='<b>'+esc(n.label)+'</b><span>'+n.deg+' new relationship'+(n.deg>1?"s":"")+' · newest '+(n.fresh===0?"today":n.fresh+"d ago")+'</span>';
+    setDetail(relDetailNode(geom,n));
+  }
+  function isoChord(c){
+    clearIso(); svg.classList.add("iso");
+    var i=geom.chords.indexOf(c);
+    if(chordEls[i]) chordEls[i].classList.add("on");
+    if(nodeEls[c.a.key]) nodeEls[c.a.key].classList.add("on");
+    if(nodeEls[c.b.key]) nodeEls[c.b.key].classList.add("on");
+    center.innerHTML='<b>'+esc(c.a.label)+' ⇄ '+esc(c.b.label)+'</b><span>started following each other '+esc(relDateFmt(c.date))+'</span>';
+    setDetail(relPairCard(c));
+  }
+  function clearAll(){
+    clearIso(); pinned=null;
+    center.innerHTML=centerDefault; setDetail(relDetailDefault(geom));
+  }
+  svg.querySelectorAll(".rn-node").forEach(function(el){
+    var n=geom.byKey[el.getAttribute("data-nk")]; if(!n) return;
+    el.addEventListener("mouseenter",function(){ if(!pinned) isoNode(n); });
+    el.addEventListener("click",function(e){
+      e.stopPropagation();
+      pinned=(pinned&&pinned.t==="node"&&pinned.key===n.key)?null:{t:"node",key:n.key};
+      if(pinned) isoNode(n); else clearAll();
+    });
+  });
+  svg.querySelectorAll(".rn-chord").forEach(function(el,i){
+    var c=geom.chords[i]; if(!c) return;
+    el.addEventListener("mouseenter",function(){ if(!pinned) isoChord(c); });
+    el.addEventListener("click",function(e){
+      e.stopPropagation();
+      pinned=(pinned&&pinned.t==="chord"&&pinned.i===c.i)?null:{t:"chord",i:c.i};
+      if(pinned) isoChord(c); else clearAll();
+    });
+  });
+  svg.addEventListener("mouseleave",function(){ if(!pinned) clearAll(); });
+  svg.addEventListener("click",function(){ if(pinned){ pinned=null; clearAll(); } });
+  rows.forEach(function(r){
+    var n=geom.byKey[r.getAttribute("data-nk")]; if(!n) return;
+    r.addEventListener("mouseenter",function(){ if(!pinned) isoNode(n); });
+    r.addEventListener("mouseleave",function(){ if(!pinned) clearAll(); });
+    r.addEventListener("focus",function(){ if(!pinned) isoNode(n); });
+    r.addEventListener("click",function(){ pinned={t:"node",key:n.key}; isoNode(n); });
+  });
+  clearAll();
+}
+
 /* shared detail renderer for the new tabs */
 function netDetailHTML(n){
   var s='<div class="nd-head"><b style="font-size:18px">'+esc(netName(n))+'</b>';
@@ -2846,14 +3018,9 @@ NET_TABS_RENDER.opps = function(p){
     }).join("")+'</div>';
   }
   var rm=recentMutuals();
-  if(rm.length){
-    h+='<div class="panel" style="margin-top:18px"><h2>New relationships forming</h2>'
-      +'<p class="hint">Competitor pairs that started following each other in the last 30 days. A new mutual follow is usually a working relationship forming \u2014 worth knowing before you pitch either of them.</p>'
-      +'<div class="chips">'+rm.map(function(m){
-        return '<span class="chip" style="cursor:default" data-tip="'+esc(m.a.label+" and "+m.b.label+" started following each other in the last 30 days \u2014 a new mutual, usually a working relationship forming.")+'">'+esc(m.a.label)+' <span class="muted">\u21c4</span> '+esc(m.b.label)+'</span>';
-      }).join("")+'</div></div>';
-  }
+  if(rm.length){ h+=relRingHTML(rm); }
   p.innerHTML=h;
+  if(rm.length){ relRingInit(p,rm); }
 };
 
 /* ---------- 2. Your position ---------- */
