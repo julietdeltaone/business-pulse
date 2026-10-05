@@ -2594,12 +2594,10 @@ var FGN = (function(){
 var NET = null;
 
 /* ============================================================
-   FOLLOW GRAPH hub: the map reorganized around what JD wants from it.
-   Tabs: Opportunities · Your position · Clusters · Momentum · Compare · Gap list · Explore map
+   FOLLOW GRAPH hub: the follow map as neutral market data.
+   Tabs: Movers · Positions · Clusters · Momentum · Compare · Gap list · Explore map
    ============================================================ */
-var JDKEY = "jd:jdmeyersproductions";
 var FGH = D.followGraphHistory || [];
-function jdNode(){ return FGN.byKey[JDKEY]; }
 function netName(n){ return n.kind==="jd" ? "JD Meyers Productions" : n.label; }
 function igURL(n){ return n.handle ? "https://www.instagram.com/"+encodeURIComponent(n.handle)+"/" : null; }
 var BY_HANDLE = {};
@@ -2607,7 +2605,7 @@ FGN.nodes.forEach(function(n){ if(n.handle) BY_HANDLE[n.handle.toLowerCase()] = 
 function nodeForHandle(h){ return BY_HANDLE[String(h||"").toLowerCase().replace(/^@/,"")] || null; }
 function netChip(n){
   if(!n) return "";
-  if(n.kind==="jd") return '<span class="chip jd"><span class="dot" style="background:var(--amber)"></span>@jdmeyersproductions</span>';
+  if(n.kind==="jd") return '<span class="chip"><span class="dot"></span>'+esc(netName(n))+'</span>';
   return '<button class="chip" data-open="'+esc(n.comp.id)+'"><span class="dot"></span>'+esc(n.label)+'</button>';
 }
 function isMutualNow(aKey,bKey){
@@ -2621,18 +2619,18 @@ function neighbors(n){
   return out;
 }
 function netExplain(what, how){
-  return '<div class="nxplain"><div><b>What this is:</b> '+what+'</div><div><b>How it helps you:</b> '+how+'</div></div>';
+  return '<div class="nxplain"><div><b>What this is:</b> '+what+'</div><div><b>How to read it:</b> '+how+'</div></div>';
 }
 
 /* ---------- rings around JD ---------- */
-function jdRings(){
-  var jd=jdNode(); if(!jd) return null;
+function ringsFor(center){
+  if(!center) return null;
   var mf={}, fb={};
-  jd.follows.forEach(function(m){ mf[m.key]=1; });
-  jd.followedBy.forEach(function(m){ fb[m.key]=1; });
+  center.follows.forEach(function(m){ mf[m.key]=1; });
+  center.followedBy.forEach(function(m){ fb[m.key]=1; });
   var R={mutual:[],fans:[],following:[],network:[],isolated:[]};
   FGN.nodes.forEach(function(n){
-    if(n.key===JDKEY||n.kind!=="comp") return;
+    if(n.key===center.key) return;
     var m=!!mf[n.key], f=!!fb[n.key];
     if(m&&f) R.mutual.push(n);
     else if(f) R.fans.push(n);
@@ -2676,46 +2674,50 @@ function communities(){
     .sort(function(a,b){ return b.length-a.length; });
 }
 
-/* ---------- opportunity scoring ---------- */
-function oppRows(){
-  var jd=jdNode(), rows=[];
-  var mf={}, fb={};
-  if(jd){ jd.follows.forEach(function(m){ mf[m.key]=1; }); jd.followedBy.forEach(function(m){ fb[m.key]=1; }); }
-  FGN.nodes.forEach(function(n){
-    if(n.kind!=="comp") return;
-    var followsJD=!!fb[n.key], jdFollows=!!mf[n.key], mutual=followsJD&&jdFollows;
-    var compLinks=n.follows.filter(function(m){ return m.kind==="comp"; }).length
-                + n.followedBy.filter(function(m){ return m.kind==="comp"; }).length;
-    var score=0, why="", move="";
-    if(!followsJD && !jdFollows && compLinks>=3){
-      score=Math.min(compLinks,12)+2;
-      why="Connected to "+compLinks+" businesses in this network but not to you. They already hire local photographers \u2014 you are the one they have not met.";
-      move="Introduce yourself and name two photographers you both follow. Ask who they call for overflow work.";
-    } else if(followsJD && !jdFollows){
-      score=8;
-      why="Already follows @jdmeyersproductions. They are paying attention to you \u2014 the door is open.";
-      move="Follow back this week, then leave a genuine comment on their latest post.";
-    } else if(jdFollows && !followsJD){
-      score=4;
-      why="You follow them, but they have not followed back. They know your name; the connection is one-sided.";
-      move="Find a shared connection on the Compare tab and ask for a warm introduction.";
-    } else if(mutual){
-      why="Mutual follow with you \u2014 the relationship exists. Keep it warm.";
-      move="Engage monthly; mutuals are your referral bench.";
-    } else if(n.deg===0){
-      why="No verified follow links to anyone in the network yet \u2014 either truly independent or not yet mapped.";
-      move="None for now; they will surface here if they start connecting.";
-    } else {
-      score=2;
-      why="In the network ("+compLinks+" links) but neither follows you nor is followed by you.";
-      move="A shared connection on the Compare tab is your fastest introduction.";
-    }
-    rows.push({n:n, followsJD:followsJD, jdFollows:jdFollows, mutual:mutual, compLinks:compLinks, score:score, why:why, move:move});
+/* ---------- momentum scoring (neutral): who the market is connecting to ---------- */
+function nodeMomentum(n){
+  var h=normHandle(n.handle), nl=0, nm=0, cutoff=Date.now()-30*864e5, seen={};
+  FGH.forEach(function(ev){
+    if(new Date(ev.date+"T12:00:00").getTime()<cutoff) return;
+    (ev.new_edges||[]).forEach(function(e){
+      var a=normHandle(e.from), b=normHandle(e.to);
+      if(a!==h&&b!==h) return;
+      var k=[a,b].sort().join("|");
+      if(seen[k]) return; seen[k]=1;
+      nl++;
+      var A=nodeForHandle(e.from), B=nodeForHandle(e.to);
+      if(A&&B&&isMutualNow(A.key,B.key)) nm++;
+    });
   });
-  rows.sort(function(a,b){ return b.score-a.score || b.compLinks-a.compLinks || a.n.label.localeCompare(b.n.label); });
+  return {newLinks:nl, newMutuals:nm};
+}
+function moverRows(){
+  var rows=[];
+  FGN.nodes.forEach(function(n){
+    if(n.deg===0) return;
+    var m=nodeMomentum(n);
+    var compLinks=n.deg;
+    var mutuals=n.follows.filter(function(x){ return n.followedBy.indexOf(x)>=0; }).length;
+    var score=m.newMutuals*5+m.newLinks*2+Math.min(n.deg,20);
+    var why, note;
+    if(m.newMutuals>=3){
+      why=m.newMutuals+" new mutual follows in the last 30 days \u2014 building a referral bench fast.";
+      note="Watch who they link with next \u2014 new mutuals here usually mean working relationships forming.";
+    }else if(m.newLinks>=5){
+      why=m.newLinks+" new follow links in the last 30 days \u2014 the market is connecting to them right now.";
+      note="New attention is arriving; the next sweeps will show whether it sticks.";
+    }else if(n.deg>=30){
+      why=n.deg+" total verified links \u2014 one of the most plugged-in businesses in the market.";
+      note="A hub: movements around this business ripple through the network.";
+    }else{
+      why=n.deg+" verified links"+(m.newLinks?"; "+m.newLinks+" new in the last 30 days.":" \u2014 steady, no new links in the last 30 days.");
+      note="A stable node in the graph \u2014 useful as a reference point for the movers above.";
+    }
+    rows.push({n:n, mom:m, compLinks:compLinks, mutuals:mutuals, score:score, why:why, note:note});
+  });
+  rows.sort(function(a,b){ return b.score-a.score || b.n.deg-a.n.deg || a.n.label.localeCompare(b.n.label); });
   return rows;
 }
-
 /* mutual pairs that formed in the last 30 days */
 function recentMutuals(){
   var out=[], seen={}, cutoff=Date.now()-30*864e5;
@@ -2793,15 +2795,36 @@ function relDetailNode(geom,n){
   }).join("");
   return h;
 }
+/* top market-significant developments in the ring: fastest-growing connectors */
+function relSpotlight(g){
+  var cands=g.nodes.map(function(n){
+    var m=nodeMomentum(n.node);
+    return {n:n, nm:m.newMutuals, nl:m.newLinks};
+  }).filter(function(c){ return c.nm>=2; })
+    .sort(function(a,b){ return b.nm-a.nm || b.nl-a.nl; }).slice(0,3);
+  if(!cands.length) return "";
+  var reads=[
+    "The fastest-growing connector in the network right now.",
+    "Another bench being built \u2014 watch who links here next.",
+    "New working relationships forming around this business."
+  ];
+  var h='<div class="relring-read"><h3>Reading the ring</h3><div class="rr-cards">'
+    +cands.map(function(c,i){
+      return '<button class="rr-card" data-nk="'+esc(c.n.key)+'"><b>'+esc(c.n.label)+'</b>'
+        +'<span>'+c.nm+' new mutuals in 30 days</span><em>'+reads[i]+'</em></button>';
+    }).join("")+'</div></div>';
+  return h;
+}
 function relRingHTML(rm){
   var g=relRingGeom(rm), W=g.W;
   var chords=g.chords.slice(0,60); /* safeguard: the pair list below always covers every pair */
   var h='<div class="panel relring-panel" style="margin-top:18px"><h2>New relationships forming</h2>'
-    +'<p class="hint">Competitor pairs that started following each other in the last 30 days. A new mutual follow is usually a working relationship forming — worth knowing before you pitch either of them.</p>'
+    +'<p class="hint">Competitor pairs that started following each other in the last 30 days. A new mutual follow is usually a working relationship forming — worth knowing before anyone pitches either of them.</p>'
     +'<div class="relring-legend"><span class="lg"><i class="sw band-fresh"></i>'+relBandLabel("fresh")+'</span>'
     +'<span class="lg"><i class="sw band-mid"></i>'+relBandLabel("mid")+'</span>'
     +'<span class="lg"><i class="sw band-old"></i>'+relBandLabel("old")+'</span>'
     +'<span class="lg lg-hint">Hover a dot, a line, or a name to isolate · click to pin</span></div>'
+    +relSpotlight(g)
     +'<div class="relring-wrap"><div class="relring-stage">'
     +'<svg class="relring" viewBox="0 0 '+W+' '+W+'" role="img" aria-label="Chord diagram: '+g.chords.length+' new mutual-follow relationships among '+g.nodes.length+' businesses in the last 30 days.">'
     +'<circle cx="'+g.CX+'" cy="'+g.CY+'" r="'+g.R+'" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1"/>';
@@ -2892,6 +2915,12 @@ function relRingInit(p, rm){
       if(pinned) isoChord(c); else clearAll();
     });
   });
+  p.querySelectorAll(".rr-card").forEach(function(el){
+    var n=geom.byKey[el.getAttribute("data-nk")]; if(!n) return;
+    el.addEventListener("click",function(){ pinned={t:"node",key:n.key}; isoNode(n); });
+    el.addEventListener("mouseenter",function(){ if(!pinned) isoNode(n); });
+    el.addEventListener("mouseleave",function(){ if(!pinned) clearAll(); });
+  });
   svg.addEventListener("mouseleave",function(){ if(!pinned) clearAll(); });
   svg.addEventListener("click",function(){ if(pinned){ pinned=null; clearAll(); } });
   rows.forEach(function(r){
@@ -2910,10 +2939,8 @@ function netDetailHTML(n){
   if(n.kind==="comp"){
     s+=' <button class="linkish" data-open="'+esc(n.comp.id)+'">full profile \u2192</button>';
     if(n.comp.town) s+='<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>';
-    if(igURL(n)) s+=' <a class="tbtn" href="'+igURL(n)+'" target="_blank" rel="noopener">Instagram \u2197</a>';
-  } else {
-    s+='<span class="muted"> \u2014 your business account</span>';
   }
+  if(igURL(n)) s+=' <a class="tbtn" href="'+igURL(n)+'" target="_blank" rel="noopener">Instagram \u2197</a>';
   s+='</div>';
   s+='<div class="grid g-2" style="margin-top:10px">';
   s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+') <span class="muted">\u2014 who they pay attention to</span></p>'
@@ -2950,8 +2977,8 @@ function netFreshLine(){
    tabs
    ============================================================ */
 var NET_TABS = [
-  {id:"opps",     label:"Opportunities"},
-  {id:"you",      label:"Your position"},
+  {id:"opps",     label:"Movers"},
+  {id:"you",      label:"Positions"},
   {id:"clusters", label:"Clusters"},
   {id:"momentum", label:"Momentum"},
   {id:"compare",  label:"Compare"},
@@ -2963,12 +2990,10 @@ var NET_RENDERED = {};
 
 function renderNetworkHTML(){
   var nodes=FGN.nodes;
-  var jdE=0;
-  (FG.edges||[]).forEach(function(e){ var a=normHandle(e.from), b=normHandle(e.to); if(a==="jdmeyersproductions"||b==="jdmeyersproductions") jdE++; });
-  var biz=nodes.filter(function(n){ return n.kind==="comp"&&n.deg>0; }).length;
+  var biz=nodes.filter(function(n){ return n.deg>0; }).length;
   var h='<div class="page-head"><h1>Who follows who</h1>'
-    +'<p>'+FG.edges.length+' verified Instagram follow links across '+biz+' businesses ('+jdE+' touch @jdmeyersproductions). '
-    +'Every link is a confirmed follow \u2014 nothing inferred, nothing guessed. The tabs turn the map into decisions: who should send you clients, where you stand, and who is gaining ground.</p>'
+    +'<p>'+FG.edges.length+' verified Instagram follow links across '+biz+' businesses. '
+    +'Every link is a confirmed follow \u2014 nothing inferred, nothing guessed. The tabs turn the map into decisions: who is gaining ground, where the referral rings are, and how the market connects.</p>'
     +'<p class="freshline" id="netFresh"></p></div>';
   h+='<div class="ntabs" role="tablist" aria-label="Follow graph views">'
     + NET_TABS.map(function(t,i){ return '<button role="tab" class="ntab'+(i===0?" on":"")+'" data-ntab="'+t.id+'" aria-selected="'+(i===0)+'">'+t.label+'</button>'; }).join("")
@@ -2999,22 +3024,22 @@ function netSwitchTab(id){
   if(id==="explore" && NET && NET.wake) NET.wake();
 }
 
-/* ---------- 1. Opportunities ---------- */
+/* ---------- 1. Movers ---------- */
 NET_TABS_RENDER.opps = function(p){
-  var rows=oppRows().filter(function(r){ return r.score>0; }).slice(0,14);
+  var rows=moverRows().filter(function(r){ return r.score>0; }).slice(0,14);
   var h=netExplain(
-    "A ranked shortlist of the businesses most worth your attention right now, scored from the follow data.",
-    "Work it top to bottom. Each card names the business, says why the data flagged them, and gives the one move that turns the link into clients or referrals.");
+    "The businesses the market is connecting to right now, ranked by a momentum score from the follow data.",
+    "Work it top to bottom. Each card names the business, says why the data flagged it, and notes what to watch next.");
   if(!rows.length){
-    h+='<p class="muted">No open opportunities right now \u2014 every business in the network is already connected to you.</p>';
+    h+='<p class="muted">No movement in the last 30 days \u2014 the graph is quiet.</p>';
   } else {
     h+='<div class="ocards">'+rows.map(function(r){
       var n=r.n;
-      return '<div class="ocard" data-tip="Why this business: '+esc(r.why)+' Suggested move: '+esc(r.move)+'"><div class="oc-top">'+netChip(n)
+      return '<div class="ocard" data-tip="Why this business: '+esc(r.why)+'"><div class="oc-top">'+netChip(n)
         +(igURL(n)?'<a class="tbtn" href="'+igURL(n)+'" target="_blank" rel="noopener">Instagram \u2197</a>':"")
-        +'<span class="oscore" data-tip="Opportunity score out of 14. Higher means more worth your time: they follow lots of competitors, or they follow you and you have not followed back.">'+r.score+'</span></div>'
+        +'<span class="oscore" data-tip="Momentum score: new mutuals count 5, new links count 2, plus up to 20 for total links. Higher means the market is connecting to them faster.">'+r.score+'</span></div>'
         +'<p class="owhy">'+esc(r.why)+'</p>'
-        +'<p class="oact"><b>Move:</b> '+esc(r.move)+'</p></div>';
+        +'<p class="oact"><b>Watch:</b> '+esc(r.note)+'</p></div>';
     }).join("")+'</div>';
   }
   var rm=recentMutuals();
@@ -3022,73 +3047,93 @@ NET_TABS_RENDER.opps = function(p){
   p.innerHTML=h;
   if(rm.length){ relRingInit(p,rm); }
 };
-
-/* ---------- 2. Your position ---------- */
+/* ---------- 2. Positions ---------- */
 NET_TABS_RENDER.you = function(p){
-  var R=jdRings();
+  var opts=FGN.nodes.filter(function(n){ return n.deg>0; }).sort(function(a,b){ return b.deg-a.deg; });
   var h=netExplain(
-    "Every business placed by its relationship to you: mutuals closest to the center, then people who follow you, then people you follow, then everyone else.",
-    "The outer rings are your growth surface. The second ring already likes you \u2014 follow them back. The outer ring does not know you exist yet.");
-  var W=920,H=920,cx=460,cy=460;
-  var rings=[
-    {key:"mutual",    label:"Mutual",        sub:"you follow each other",  color:"var(--rel-mutual)",    r:140, tip:"Mutual \u2014 you follow each other. The inner circle: real working relationships."},
-    {key:"fans",      label:"Follow you",    sub:"you don't follow back",  color:"var(--rel-fan)",       r:235, tip:"Follow you \u2014 they follow @jdmeyersproductions but you do not follow back. Your warmest leads."},
-    {key:"following", label:"You follow",    sub:"they don't follow back", color:"var(--rel-following)",r:330, tip:"You follow \u2014 you watch them, they do not follow back. Normal for bigger accounts."},
-    {key:"network",   label:"No link to you",sub:"in the network",         color:"var(--rel-none)",      r:425, tip:"No link to you \u2014 in the competitor network but with no direct follow either way. Your growth surface."}
-  ];
-  var s='<div class="youpos"><svg class="you-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Your position in the follow network">';
-  rings.forEach(function(rg){
-    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+rg.r+'" fill="none" stroke="'+rg.color+'" stroke-opacity=".32" stroke-width="1.5"><title>'+esc(rg.tip)+'</title></circle>';
-    s+='<text x="'+(cx+8)+'" y="'+(cy-rg.r+18)+'" class="yrlab" fill="'+rg.color+'">'+rg.label+' \u00b7 '+R[rg.key].length+' \u2014 '+rg.sub+'</text>';
-  });
-  s+='<g class="ynode" data-nk="'+JDKEY+'"><circle cx="'+cx+'" cy="'+cy+'" r="30" fill="var(--amber)"/><text x="'+cx+'" y="'+(cy+52)+'" class="yname you">YOU</text><title>JD Meyers Productions (@jdmeyersproductions)</title></g>';
-  rings.forEach(function(rg){
-    var list=R[rg.key], n=list.length;
-    list.forEach(function(m,i){
-      var ang=-Math.PI/2 + (n? i/n*Math.PI*2 : 0);
-      var x=cx+Math.cos(ang)*rg.r, y=cy+Math.sin(ang)*rg.r;
-      var rr=7+Math.min(9,Math.sqrt(m.deg)*1.7);
-      s+='<g class="ynode" data-nk="'+m.key+'"><circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+rr.toFixed(1)+'" fill="'+rg.color+'"><title>'+esc(m.label)+' \u2014 '+rg.label.toLowerCase()+' ('+rg.sub+'), '+m.deg+' total links. Tap for details.</title></circle>';
-      if(rg.key!=="network"||i<10) s+='<text x="'+(x+rr+6).toFixed(1)+'" y="'+(y+4).toFixed(1)+'" class="yname">'+esc(m.label)+'</text>';
-      s+='</g>';
-    });
-  });
-  s+='</svg></div>';
-  h+=s;
-  if(R.isolated.length){
-    h+='<p class="hint" style="margin-top:14px">Off the map \u2014 '+R.isolated.length+' businesses with no verified links to anyone yet:</p>'
-      +'<div class="chips" style="margin-bottom:18px">'+R.isolated.map(netChip).join("")+'</div>';
-  }
-  h+='<div class="panel"><h2>Details</h2><p class="hint">Tap any dot above.</p><div id="youDetail"><p class="muted">No one selected yet.</p></div></div>';
+    "Pick any business: every other business is placed by its relationship to the selected one \u2014 mutuals closest to the center, then followers, then following, then everyone else.",
+    "The outer rings are the selected business's growth surface. The second ring already follows them; the outer ring has no link yet.");
+  h+='<div class="cmp-pick"><label>Center on <select id="posPick">'
+    +opts.map(function(n){ return '<option value="'+n.key+'">'+esc(netName(n))+'</option>'; }).join("")
+    +'</select></label></div><div id="posOut"></div>';
   p.innerHTML=h;
-  p.addEventListener("click",function(e){
-    var g=e.target.closest?e.target.closest(".ynode"):null;
-    if(!g) return;
-    var n=FGN.byKey[g.getAttribute("data-nk")];
-    if(n) $("#youDetail").innerHTML=netDetailHTML(n);
-  });
+  function draw(){
+    var center=FGN.byKey[$("#posPick").value]||opts[0];
+    var R=ringsFor(center); if(!R) return;
+    var W=920,H=920,cx=460,cy=460;
+    var rings=[
+      {key:"mutual",    label:"Mutual",    sub:"they follow each other",      color:"var(--rel-mutual)",    r:140, tip:"Mutual \u2014 the two follow each other. The inner circle: real working relationships."},
+      {key:"fans",      label:"Followers", sub:"follow, not followed back",   color:"var(--rel-fan)",       r:235, tip:"Followers \u2014 they follow the selected business, which does not follow back."},
+      {key:"following", label:"Following", sub:"followed, not following back",color:"var(--rel-following)", r:330, tip:"Following \u2014 the selected business follows them; they do not follow back. Normal for bigger accounts."},
+      {key:"network",   label:"No link",   sub:"in the network",              color:"var(--rel-none)",      r:425, tip:"No link \u2014 in the network but with no direct follow either way."}
+    ];
+    var s='<div class="youpos"><svg class="you-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Position of '+esc(netName(center))+' in the follow network">';
+    rings.forEach(function(rg){
+      s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+rg.r+'" fill="none" stroke="'+rg.color+'" stroke-opacity=".32" stroke-width="1.5"><title>'+esc(rg.tip)+'</title></circle>';
+      s+='<text x="'+(cx+8)+'" y="'+(cy-rg.r+18)+'" class="yrlab" fill="'+rg.color+'">'+rg.label+' \u00b7 '+R[rg.key].length+' \u2014 '+rg.sub+'</text>';
+    });
+    s+='<g class="ynode" data-nk="'+center.key+'"><circle cx="'+cx+'" cy="'+cy+'" r="30" fill="var(--rel-fan)"/><text x="'+cx+'" y="'+(cy+52)+'" class="yname center-name">'+esc(netName(center))+'</text><title>'+esc(netName(center))+'</title></g>';
+    rings.forEach(function(rg){
+      var list=R[rg.key], n=list.length;
+      list.forEach(function(m,i){
+        var ang=-Math.PI/2 + (n? i/n*Math.PI*2 : 0);
+        var x=cx+Math.cos(ang)*rg.r, y=cy+Math.sin(ang)*rg.r;
+        var rr=7+Math.min(9,Math.sqrt(m.deg)*1.7);
+        s+='<g class="ynode" data-nk="'+m.key+'"><circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+rr.toFixed(1)+'" fill="'+rg.color+'"><title>'+esc(netName(m))+' \u2014 '+rg.label.toLowerCase()+' ('+rg.sub+'), '+m.deg+' total links. Tap for details.</title></circle>';
+        if(rg.key!=="network"||i<10) s+='<text x="'+(x+rr+6).toFixed(1)+'" y="'+(y+4).toFixed(1)+'" class="yname">'+esc(netName(m))+'</text>';
+        s+='</g>';
+      });
+    });
+    s+='</svg></div>';
+    if(R.isolated.length){
+      s+='<p class="hint" style="margin-top:14px">Off the map \u2014 '+R.isolated.length+' businesses with no verified links to anyone yet:</p>'
+        +'<div class="chips" style="margin-bottom:18px">'+R.isolated.map(netChip).join("")+'</div>';
+    }
+    s+='<div class="panel"><h2>Details</h2><p class="hint">Tap any dot above.</p><div id="youDetail"><p class="muted">No one selected yet.</p></div></div>';
+    $("#posOut").innerHTML=s;
+    $("#posOut").addEventListener("click",function(ev){
+      var g=ev.target.closest?ev.target.closest(".ynode"):null;
+      if(!g) return;
+      var n=FGN.byKey[g.getAttribute("data-nk")];
+      if(n) $("#youDetail").innerHTML=netDetailHTML(n);
+    });
+  }
+  $("#posPick").addEventListener("change",draw);
+  draw();
 };
-
 /* ---------- 3. Clusters ---------- */
 NET_TABS_RENDER.clusters = function(p){
   var groups=communities();
   var h=netExplain(
     "Businesses grouped by who actually follows each other. Each circle is found from the link patterns \u2014 not from categories, towns, or guesses.",
-    "A circle you are not in is a referral ring you are locked out of. The fix is one introduction: anyone inside can bring you in.");
+    "An insular circle is a referral ring with few links outside it. Bridge businesses \u2014 members with the most links to other circles \u2014 are the fastest way in.");
   h+='<div class="ccards">'+groups.map(function(g,i){
-    var hasJD=g.some(function(n){ return n.key===JDKEY; });
-    var others=g.filter(function(n){ return n.key!==JDKEY; }).sort(function(a,b){ return b.deg-a.deg; });
-    var anchor=others.slice(0,3).map(function(n){ return n.label; }).join(", ");
-    return '<div class="ccard'+(hasJD?" in":"")+'" data-tip="'+(hasJD?"You are inside this circle \u2014 these businesses follow each other and you are part of the ring.":"You are outside this circle \u2014 a referral ring you are locked out of. One introduction from anyone inside brings you in.")+'"><div class="cc-top"><b>Circle '+(i+1)+'</b>'
-      +'<span class="muted">'+g.length+' businesses</span>'
-      +(hasJD?'<span class="jdbadge">You are in this circle</span>':'<span class="missbadge">You are not in this circle</span>')
-      +'</div>'
+    var inset={}; g.forEach(function(n){ inset[n.key]=1; });
+    var intL=0, extL=0, bridges=[];
+    g.forEach(function(n){
+      var seen={};
+      n.follows.concat(n.followedBy).forEach(function(m){
+        if(seen[m.key]) return; seen[m.key]=1;
+        if(inset[m.key]) intL++; else { extL++; }
+      });
+      bridges.push({n:n, ext:Object.keys(seen).filter(function(k){ return !inset[k]; }).length});
+    });
+    var share=intL+extL?intL/(intL+extL):1;
+    var knit=share>=0.8?"Tightly knit \u2014 "+Math.round(share*100)+"% of links stay inside the circle."
+      :share>=0.5?"Mixed \u2014 about half its links reach outside the circle."
+      :"Open \u2014 most of its links reach other circles.";
+    bridges.sort(function(a,b){ return b.ext-a.ext; });
+    var bnames=bridges.filter(function(b){ return b.ext>0; }).slice(0,2).map(function(b){ return b.n.label; });
+    var anchor=g.slice().sort(function(a,b){ return b.deg-a.deg; }).slice(0,3).map(function(n){ return n.label; }).join(", ");
+    return '<div class="ccard" data-tip="'+esc(knit)+'"><div class="cc-top"><b>Circle '+(i+1)+'</b>'
+      +'<span class="muted">'+g.length+' businesses</span></div>'
+      +'<p class="hint" style="margin:0 0 4px">'+esc(knit)+'</p>'
       +(anchor?'<p class="hint" style="margin:0 0 8px">Anchored by '+esc(anchor)+'</p>':"")
+      +(bnames.length?'<p class="hint" style="margin:0 0 8px">Bridges: '+esc(bnames.join(", "))+'</p>':"")
       +'<div class="chips">'+g.map(netChip).join("")+'</div></div>';
   }).join("")+'</div>';
   p.innerHTML=h;
 };
-
 /* ---------- 4. Momentum ---------- */
 NET_TABS_RENDER.momentum = function(p){
   var h=netExplain(
@@ -3139,7 +3184,7 @@ function compareHTML(A,B){
   function val(n,k){
     return k==="deg"?n.deg : k==="fol"?n.follows.length : k==="fby"?n.followedBy.length : mutCount(n);
   }
-  function sideDot(n){ return n.key===JDKEY?"var(--rel-mutual)":"var(--rel-fan)"; }
+  function sideDot(n){ return n===A?"var(--rel-mutual)":"var(--rel-fan)"; }
   var s='<div class="panel duel">'
     +'<div class="duel-head">'
     +'<div class="duel-side a"><span class="dot" style="background:'+sideDot(A)+'"></span><span class="who">'+esc(netName(A))+'</span></div>'
@@ -3167,23 +3212,23 @@ function compareHTML(A,B){
   var onlyB=bn.filter(function(m){ return !aset[m.key]&&m.key!==A.key; }).sort(function(x,y){ return y.deg-x.deg; });
   var onlyA=an.filter(function(m){ return !bset[m.key]&&m.key!==B.key; }).sort(function(x,y){ return y.deg-x.deg; });
   s+='<div class="panel" style="margin-top:18px"><h2>Shared connections ('+shared.length+')</h2>'
-    +'<p class="hint">Businesses connected to both. '+(A.key===JDKEY?'Each one is a warm introduction to '+esc(netName(B))+' waiting to happen \u2014 \u201cyou both know X\u201d beats a cold message every time.':'Each one knows both sides \u2014 useful if you ever need an introduction.')+'</p>'
+    +'<p class="hint">Businesses connected to both \u2014 each one knows both sides.</p>'
     +'<div class="chips">'+(shared.length?shared.map(netChip).join(""):'<span class="muted">None.</span>')+'</div></div>';
   s+='<div class="grid g-2" style="margin-top:18px"><div class="panel"><h2>Only '+esc(netName(B))+' reaches ('+onlyB.length+')</h2>'
-    +'<p class="hint">'+(A.key===JDKEY?'Businesses they are connected to that you are not \u2014 your expansion list.':'Connections B has that A lacks.')+'</p>'
+    +'<p class="hint">Connections B has that A lacks.</p>'
     +'<div class="chips">'+(onlyB.length?onlyB.map(netChip).join(""):'<span class="muted">None.</span>')+'</div></div>'
     +'<div class="panel"><h2>Only '+esc(netName(A))+' reaches ('+onlyA.length+')</h2>'
-    +'<p class="hint">'+(A.key===JDKEY?'Your edge \u2014 connections they do not have.':'Connections A has that B lacks.')+'</p>'
+    +'<p class="hint">Connections A has that B lacks.</p>'
     +'<div class="chips">'+(onlyA.length?onlyA.map(netChip).join(""):'<span class="muted">None.</span>')+'</div></div></div>';
   return s;
 }
 NET_TABS_RENDER.compare = function(p){
   var opts=FGN.nodes.filter(function(n){ return n.deg>0; }).sort(function(a,b){ return b.deg-a.deg; });
-  var topComp=opts.filter(function(n){ return n.kind==="comp"; })[0];
+  var top2=opts.slice(0,2);
   var h=netExplain(
     "Put any two businesses side by side: their reach, their shared connections, and who one reaches that the other does not.",
-    "Shared connections are warm introductions waiting to happen. Start with yourself against anyone you want to know better.");
-  h+='<div class="cmp-pick"><label>Compare '+sel("cmpA",opts,JDKEY)+'</label><label>with '+sel("cmpB",opts,topComp?topComp.key:"")+'</label></div>';
+    "Shared connections show who knows both sides. Starts with the two most-connected businesses \u2014 pick any pair.");
+  h+='<div class="cmp-pick"><label>Compare '+sel("cmpA",opts,top2[0]?top2[0].key:"")+'</label><label>with '+sel("cmpB",opts,top2[1]?top2[1].key:"")+'</label></div>';
   h+='<div id="cmpOut"></div>';
   p.innerHTML=h;
   function sel(id,list,def){
@@ -3192,7 +3237,7 @@ NET_TABS_RENDER.compare = function(p){
     }).join("")+'</select>';
   }
   function render(){
-    var A=FGN.byKey[$("#cmpA").value]||jdNode(), B=FGN.byKey[$("#cmpB").value]||topComp;
+    var A=FGN.byKey[$("#cmpA").value]||top2[0], B=FGN.byKey[$("#cmpB").value]||top2[1];
     if(A&&B) $("#cmpOut").innerHTML=compareHTML(A,B);
   }
   $("#cmpA").addEventListener("change",render);
@@ -3204,34 +3249,38 @@ NET_TABS_RENDER.compare = function(p){
 var GAP_SORT={k:"score",d:-1};
 NET_TABS_RENDER.gaps = function(p){
   var h=netExplain(
-    "Every business in the network in one sortable table, ranked by opportunity score.",
-    "Sort by Opportunity for your outreach list, or by Competitor links to find the most networked businesses you are missing.");
+    "Every business in the network in one sortable table, ranked by momentum score.",
+    "Sort by Momentum to see who the market is connecting to, or by Links for the most plugged-in businesses.");
   h+='<div class="tablewrap"><table class="data" id="gapTable"><thead><tr>'
     +'<th data-sk="name" class="sortable" data-tip-below data-tip="Business name. Tap to sort A to Z.">Business</th>'
-    +'<th data-sk="followsJD" class="sortable" data-tip-below data-tip="They follow @jdmeyersproductions but you do not follow them back. These are your warmest leads \u2014 they already like you.">Follows you</th>'
-    +'<th data-sk="jdFollows" class="sortable" data-tip-below data-tip="You follow them but they do not follow back. Normal for bigger accounts; not a priority.">You follow</th>'
-    +'<th data-sk="mutual" class="sortable" data-tip-below data-tip="You follow each other \u2014 usually a real working relationship. Nothing to win here.">Mutual</th>'
-    +'<th data-sk="compLinks" class="sortable num" data-tip-below data-tip="How many verified follow links they have with other competitors. High means they are well plugged into the market.">Competitor links</th>'
-    +'<th data-sk="score" class="sortable num" data-tip-below data-tip="Opportunity score: who is most worth your outreach right now. Tap to sort.">Opportunity</th>'
+    +'<th data-sk="compLinks" class="sortable num" data-tip-below data-tip="Total verified follow links. High means they are well plugged into the market.">Links</th>'
+    +'<th data-sk="newLinks" class="sortable num" data-tip-below data-tip="New verified follow links in the last 30 days, either direction.">New links (30d)</th>'
+    +'<th data-sk="mutuals" class="sortable num" data-tip-below data-tip="Two-way follows \u2014 usually real working relationships, not just watching.">Mutuals</th>'
+    +'<th data-sk="score" class="sortable num" data-tip-below data-tip="Momentum score: new mutuals count 5, new links count 2, plus up to 20 for total links. Tap to sort.">Momentum</th>'
     +'<th></th></tr></thead><tbody></tbody></table></div>';
-  h+='<p class="hint" style="margin-top:10px"><b>Opportunity score</b> \u2014 businesses that follow many competitors but not you score highest; a follow-back you owe scores next; mutuals score zero because the relationship already exists. Tap a column header to re-sort.</p>';
+  h+='<p class="hint" style="margin-top:10px"><b>Momentum score</b> \u2014 new mutuals \u00d7 5 plus new links \u00d7 2 plus up to 20 for total links. Tap a column header to re-sort.</p>';
   p.innerHTML=h;
   var tb=p.querySelector("#gapTable tbody");
-  function yn(v,c){ return v?'<b style="color:'+c+'">Yes</b>':'<span class="muted">No</span>'; }
+  function num(v){ return '<span class="num">'+(v||'<span class="muted">0</span>')+'</span>'; }
   function draw(){
-    var rows=oppRows().slice();
+    var rows=moverRows().slice();
     var k=GAP_SORT.k, d=GAP_SORT.d;
+    function val(r){
+      if(k==="name") return r.n.label;
+      if(k==="newLinks") return r.mom.newLinks;
+      return r[k];
+    }
     rows.sort(function(a,b){
-      var va=k==="name"?a.n.label:(a[k]?1:0), vb=k==="name"?b.n.label:(b[k]?1:0);
-      if(k==="compLinks"||k==="score"){ va=a[k]; vb=b[k]; }
+      var va=val(a), vb=val(b);
       var r=va>vb?1:va<vb?-1:0;
       return r*d || b.score-a.score;
     });
     tb.innerHTML=rows.map(function(r){
       return '<tr><td class="nm">'+netChip(r.n)+'</td>'
-        +'<td>'+yn(r.followsJD,"var(--rel-fan)")+'</td><td>'+yn(r.jdFollows,"var(--rel-following)")+'</td><td>'+yn(r.mutual,"var(--rel-mutual)")+'</td>'
         +'<td class="num">'+r.compLinks+'</td>'
-        +'<td class="num"><b>'+(r.score||'<span class="muted">0</span>')+'</b></td>'
+        +'<td class="num">'+(r.mom.newLinks||'<span class="muted">0</span>')+'</td>'
+        +'<td class="num">'+(r.mutuals||'<span class="muted">0</span>')+'</td>'
+        +'<td class="num"><b>'+r.score+'</b></td>'
         +'<td>'+(igURL(r.n)?'<a class="tbtn" href="'+igURL(r.n)+'" target="_blank" rel="noopener">IG \u2197</a>':"")+'</td></tr>';
     }).join("");
     p.querySelectorAll("th.sortable").forEach(function(th){
@@ -3257,7 +3306,7 @@ NET_TABS_RENDER.explore = function(p){
   var maxDeg=nodes.reduce(function(m,n){ return Math.max(m,n.deg); },0);
   var h=netExplain(
     "The complete verified map, explorable. Dots are businesses (bigger dot = more links). Wedges are follows \u2014 the wide end sits at the follower. Double arcs are mutual follows.",
-    "Use this when you want the full picture: click any business to fan out its circle, trace how anyone connects back to you, or open the directory to jump anywhere.");
+    "Use this for the full picture: click any business to fan out its circle, trace how any two businesses connect, or open the directory to jump anywhere.");
   h+='<div class="net-wrap" id="netWrap">'
     +'<div class="net-tools"><div class="net-search"><input class="search" id="netSearch" type="search" placeholder="Find a business\u2026" autocomplete="off" aria-label="Find a business"><div id="netResults" hidden></div></div>'
     +'<div class="seg" role="group" aria-label="Link type"><button class="filter" data-m="all" aria-pressed="true">All links</button><button class="filter" data-m="mutual" aria-pressed="false">Mutual</button><button class="filter" data-m="oneway" aria-pressed="false">One-way</button></div>'
@@ -3274,8 +3323,7 @@ NET_TABS_RENDER.explore = function(p){
     +'</div><div class="net-legend">'
     +'<span data-tip="A one-way follow: the wide end of the wedge sits at the follower."><svg width="22" height="10" aria-hidden="true"><path d="M1,1.5 L21,4.6 L21,5.4 L1,8.5 Z" fill="#8fa3c8"/></svg>A follows B \u2014 the wide end is the follower</span>'
     +'<span data-tip="They follow each other \u2014 usually a real working relationship, not just watching."><span class="ln" style="--c:#d7e2f7;border-top-width:3px"></span>Mutual follow \u2014 they follow each other (usually a working relationship)</span>'
-    +'<span data-tip="This amber dot is you: @jdmeyersproductions."><span class="swatch" style="--c:var(--rel-mutual);border-radius:50%"></span>You (@jdmeyersproductions)</span>'
-    +'<span data-tip="Every other dot is a competitor. Bigger dot = more verified follow links."><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Competitor \u2014 bigger dot means more links</span>'
+    +'<span data-tip="Every dot is a business. Bigger dot = more verified follow links."><span class="swatch" style="--c:#8fa3c8;border-radius:50%"></span>Business \u2014 bigger dot means more links</span>'
     +'</div></div>';
   h+='<div class="panel" style="margin-top:18px"><h2>Follow details</h2><p class="hint">Click a business on the map. \u201cFollows\u201d is who they pay attention to; \u201cFollowed by\u201d is who pays attention to them. Tap any name to hop to that business.</p><div id="fgDetail"><p class="muted">No one selected yet.</p></div></div>';
   p.innerHTML=h;
@@ -3296,39 +3344,36 @@ function buildFollowGraph(){
   var seed=987654321;
   function rnd(){ seed|=0; seed=seed+0x6D2B79F5|0; var t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }
   nodes.forEach(function(n){
-    n.r=n.kind==="jd"?13:5.5+Math.sqrt(n.deg)*2.1;
-    var ang=rnd()*Math.PI*2, rr=60+rnd()*230;
+    n.r=5.5+Math.sqrt(n.deg)*2.1;
+    var ang=rnd()*Math.PI*2, rr=30+rnd()*80;
     n.x=W/2+Math.cos(ang)*rr; n.y=H/2+Math.sin(ang)*rr*0.8;
   });
-  var jd0=null;
-  nodes.forEach(function(n){ if(n.kind==="jd") jd0=n; });
-  var K=200;
+  var K=60;
   function tick(){
     for(i=0;i<nodes.length;i++){ nodes[i].dx=0; nodes[i].dy=0; }
     for(i=0;i<nodes.length;i++){ a=nodes[i];
       for(j=i+1;j<nodes.length;j++){ b=nodes[j];
         dx=a.x-b.x; dy=a.y-b.y; d=dx*dx+dy*dy+60;
-        f=Math.min(K*K/d,5);
+        f=Math.min(K*K/d,4);
         a.dx+=dx*f; a.dy+=dy*f; b.dx-=dx*f; b.dy-=dy*f;
       }
     }
     FGN.pairs.forEach(function(p){
       a=byKey[p.a]; b=byKey[p.b]; if(!a||!b) return;
       dx=b.x-a.x; dy=b.y-a.y; d=Math.sqrt(dx*dx+dy*dy)+0.01;
-      f=d/K*0.03;
+      f=d/K*0.3;
       a.dx+=dx*f; a.dy+=dy*f; b.dx-=dx*f; b.dy-=dy*f;
     });
     for(i=0;i<nodes.length;i++){ a=nodes[i];
-      a.dx+=(W/2-a.x)*0.02; a.dy+=(H/2-a.y)*0.02;
-      if(a===jd0){ a.dx+=(W/2-a.x)*0.25; a.dy+=(H/2-a.y)*0.25; }
+      a.dx+=(W/2-a.x)*0.15; a.dy+=(H/2-a.y)*0.15;
       var m=Math.sqrt(a.dx*a.dx+a.dy*a.dy);
-      if(m>24){ a.dx*=24/m; a.dy*=24/m; }
+      if(m>8){ a.dx*=8/m; a.dy*=8/m; }
       a.x+=a.dx; a.y+=a.dy;
       if(a.x<34) a.x=34; if(a.x>W-34) a.x=W-34;
       if(a.y<34) a.y=34; if(a.y>H-34) a.y=H-34;
     }
   }
-  for(t=0;t<480;t++) tick();
+  for(t=0;t<800;t++) tick();
   nodes.forEach(function(n){ n.hx=n.x; n.hy=n.y; });
   var topDeg=nodes.map(function(n){ return n.deg; }).sort(function(x,y){ return y-x; })[4]||0;
 
@@ -3369,19 +3414,19 @@ function buildFollowGraph(){
   /* ---------- nodes ---------- */
   var tip=$("#tip");
   function tipShow(n,ev){
-    var s='<b>'+esc(n.kind==="jd"?n.label+" (JD\u2019s account)":n.label)+'</b>';
-    if(n.kind==="comp") s+='<br>'+esc(n.comp.town||"")+'<br>'+n.follows.length+' follows, '+n.followedBy.length+' followed by (verified)';
-    else s+='<br>JD Meyers Productions<br>'+n.follows.length+' follows, '+n.followedBy.length+' followed by (verified)';
+    var s='<b>'+esc(netName(n))+'</b>';
+    if(n.kind==="comp"&&n.comp.town) s+='<br>'+esc(n.comp.town);
+    s+='<br>'+n.follows.length+' follows, '+n.followedBy.length+' followed by (verified)';
     tip.innerHTML=s; tip.classList.add("on"); tipMove(ev);
   }
   function tipMove(ev){ if(!ev||ev.clientX==null) return; tip.style.left=Math.min(window.innerWidth-280,ev.clientX+14)+"px"; tip.style.top=(ev.clientY+14)+"px"; }
   function tipHide(){ tip.classList.remove("on"); }
   nodes.forEach(function(n){
     var g=el("g",{"class":"node "+n.kind, tabindex:"0", role:"button",
-      "aria-label":n.kind==="jd"?n.label+" (JD\u2019s account)":n.label});
-    g.appendChild(el("circle",{r:f1(n.r), fill:n.kind==="jd"?"var(--amber)":"#8fa3c8", stroke:"rgba(8,10,14,.85)", "stroke-width":1.4}));
+      "aria-label":n.label});
+    g.appendChild(el("circle",{r:f1(n.r), fill:"#8fa3c8", stroke:"rgba(8,10,14,.85)", "stroke-width":1.4}));
     g.appendChild(el("circle",{r:22, "class":"hit", fill:"rgba(0,0,0,0)"}));
-    var tx=el("text",{x:f1(n.r+7), y:4}); tx.textContent=n.label;
+    var tx=el("text",{x:f1(n.r+7), y:4}); tx.textContent=netName(n);
     g.appendChild(tx);
     n.el=g; n.txt=tx; gN.appendChild(g);
     g.addEventListener("pointerenter",function(e){ tipShow(n,e); if(!egoOn) focusOn(n); });
@@ -3507,7 +3552,7 @@ function buildFollowGraph(){
   function nbrMap(n){ var o={}; n.follows.forEach(function(m){ o[m.key]=m; }); n.followedBy.forEach(function(m){ o[m.key]=m; }); return o; }
   function updateLabels(){
     nodes.forEach(function(n){
-      var show=visNode(n)&&(n===SEL||(SEL&&nbrMap(SEL)[n.key])||n.kind==="jd"||n.deg>=topDeg||cam.k>=0.95);
+      var show=visNode(n)&&(n===SEL||(SEL&&nbrMap(SEL)[n.key])||n.deg>=topDeg||cam.k>=0.95);
       if(moving) show=(n===SEL);
       n.txt.style.opacity=show?"1":"0";
     });
@@ -3531,18 +3576,18 @@ function buildFollowGraph(){
 
   /* ---------- detail panel ---------- */
   function fgChip(n){
-    if(n.kind==="jd") return '<span class="chip" style="cursor:default"><span class="dot" style="background:var(--amber)"></span>'+esc(n.label)+'</span>';
+    if(n.kind==="jd") return '<span class="chip" style="cursor:default"><span class="dot"></span>'+esc(netName(n))+'</span>';
     return '<button class="chip net-hop" data-nk="'+esc(n.key)+'"><span class="dot"></span>'+esc(n.label)+'</button>';
   }
   function renderDetail(n){
     var d=$("#fgDetail");
     if(!n){ d.innerHTML='<p class="muted">No one selected yet.</p>'; return; }
-    var s='<p style="font-size:17px;margin:0 0 10px"><b>'+(n.kind==="jd"?esc(n.label):'<button class="linkish" data-open="'+esc(n.comp.id)+'" style="font-size:17px">'+esc(n.label)+'</button>')+'</b>'+(n.kind==="comp"&&n.comp.town?'<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>':"")+'</p>';
+    var s='<p style="font-size:17px;margin:0 0 10px"><b>'+esc(netName(n))+'</b>'+(n.kind==="comp"&&n.comp.town?'<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>':"")+'</p>';
     s+='<div class="grid g-2">';
     s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+')</p>'+(n.follows.length?'<div class="chips">'+n.follows.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
     s+='<div><p class="hint" style="margin:0 0 6px">Followed by ('+n.followedBy.length+')</p>'+(n.followedBy.length?'<div class="chips">'+n.followedBy.map(fgChip).join("")+'</div>':'<p class="muted">None verified.</p>')+'</div>';
     s+='</div>';
-    if(n.kind==="comp") s+='<p style="margin:12px 0 0"><button class="tbtn" data-trace="'+esc(n.key)+'">Trace path to @jdmeyersproductions</button></p><p class="hint" style="margin:6px 0 0">Tap any name above to hop to that business.</p>';
+    s+='<div class="tracepick"><span class="hint">Trace a follow path to</span> '+traceSelHTML(n.key)+' <button class="tbtn" data-trace="'+esc(n.key)+'">Trace path</button></div><p class="hint" style="margin:6px 0 0">Tap any name above to hop to that business.</p>';
     if(n.kind==="comp"&&FG.status&&FG.status[n.handle]==="unavailable_via_api")
       s+='<p class="hint" style="margin-top:10px">This account\u2019s full following list has not been mapped yet \u2014 it needs a logged-in Instagram check.</p>';
     d.innerHTML=s;
@@ -3550,7 +3595,7 @@ function buildFollowGraph(){
       b.addEventListener("click",function(){ var m=byKey[b.getAttribute("data-nk")]; if(m) select(m); });
     });
     var tr=d.querySelector("[data-trace]");
-    if(tr) tr.addEventListener("click",function(){ tracePath(byKey[tr.getAttribute("data-trace")]); });
+    if(tr) tr.addEventListener("click",function(){ var to=d.querySelector("#traceTo"); tracePath(byKey[tr.getAttribute("data-trace")], to?to.value:null); });
   }
 
   /* ---------- ego hub-and-spoke ---------- */
@@ -3628,9 +3673,15 @@ function buildFollowGraph(){
     edgeObjs.forEach(function(eo){ eo.paths.forEach(function(o){ o.elm.classList.remove("onpath"); }); });
     var bar=$("#netPath"); if(bar) bar.hidden=true;
   }
-  function tracePath(from){
+  function traceSelHTML(exclude){
+    var opts=nodes.filter(function(m){ return m.key!==exclude&&m.deg>0; })
+      .sort(function(a,b){ return a.label.localeCompare(b.label); });
+    return '<select id="traceTo" aria-label="Trace path target">'
+      +opts.map(function(m){ return '<option value="'+m.key+'">'+esc(netName(m))+'</option>'; }).join("")+'</select>';
+  }
+  function tracePath(from,toKey){
     clearPath(); backToAll();
-    var target=byKey[JDKEY];
+    var target=toKey?byKey[toKey]:null;
     var bar=$("#netPath");
     function barMsg(html){
       bar.hidden=false;
@@ -3641,17 +3692,17 @@ function buildFollowGraph(){
     var prev={}, q=[from.key]; prev[from.key]=from.key;
     for(var h=0;h<q.length;h++){
       var u=q[h], nu=byKey[u];
-      if(u===JDKEY) break;
+      if(u===toKey) break;
       var adj={};
       nu.follows.forEach(function(m){ adj[m.key]=1; });
       nu.followedBy.forEach(function(m){ adj[m.key]=1; });
       Object.keys(adj).forEach(function(v){ if(!(v in prev)){ prev[v]=u; q.push(v); } });
     }
-    if(!(JDKEY in prev)){
-      barMsg('<span>No verified follow path connects '+esc(from.label)+' to @jdmeyersproductions.</span>');
+    if(!toKey||!(toKey in prev)){
+      barMsg('<span>No verified follow path connects '+esc(netName(from))+' to '+esc(target?netName(target):'that business')+'.</span>');
       return;
     }
-    var chain=[], c=JDKEY;
+    var chain=[], c=toKey;
     while(c!==from.key){ chain.unshift(c); c=prev[c]; }
     chain.unshift(from.key);
     pathKeys={};
@@ -3661,13 +3712,13 @@ function buildFollowGraph(){
       if(pathKeys[eo.p.a]&&pathKeys[eo.p.b]) eo.paths.forEach(function(o){ o.elm.classList.add("onpath"); });
     });
     var hops=chain.length-1;
-    barMsg('<span><b>'+hops+' hop'+(hops===1?"":"s")+'</b> to @jdmeyersproductions: '+chain.map(function(k){ return esc(byKey[k].label); }).join(" \u2192 ")+'</span>');
+    barMsg('<span><b>'+hops+' hop'+(hops===1?"":"s")+'</b>: '+chain.map(function(k){ return esc(netName(byKey[k])); }).join(" \u2192 ")+'</span>');
     updateLabels();
   }
 
   /* hubs: spotlight the most-connected businesses */
   var hubBtn=$("#netHubs");
-  nodes.filter(function(n){ return n.kind==="comp"; })
+  nodes.filter(function(n){ return n.deg>0; })
     .sort(function(a,b){ return b.deg-a.deg; }).slice(0,8)
     .forEach(function(n){ n.el.setAttribute("data-hub","1"); });
   hubBtn.addEventListener("click",function(){
@@ -3685,12 +3736,10 @@ function buildFollowGraph(){
       if(!dirFilter) return true;
       var q=dirFilter;
       return (n.label||"").toLowerCase().indexOf(q)>=0||(n.handle||"").indexOf(q)>=0;
-    }).sort(function(a,b){ return ((b.kind==="jd")-(a.kind==="jd")) || b.deg-a.deg; });
+    }).sort(function(a,b){ return b.deg-a.deg; });
     dirCount.textContent=rows.length+" of "+withDeg.length+" shown";
     dirBody.innerHTML=rows.map(function(n){
-      return '<tr><td class="nm">'+(n.kind==="jd"
-          ? '<span class="chip" style="cursor:default"><span class="dot" style="background:var(--amber)"></span>'+esc(n.label)+'</span>'
-          : esc(n.label)+'<br><span class="muted">@'+esc(n.handle)+'</span>')+'</td>'
+      return '<tr><td class="nm">'+esc(netName(n))+'<br><span class="muted">@'+esc(n.handle)+'</span></td>'
         +'<td class="num">'+n.follows.length+'</td><td class="num">'+n.followedBy.length+'</td><td class="num"><b>'+n.deg+'</b></td>'
         +'<td><button class="tbtn" data-locate="'+esc(n.key)+'">Locate</button></td></tr>';
     }).join("")||'<tr><td colspan="5" class="empty">No matches.</td></tr>';
@@ -3747,7 +3796,7 @@ function buildFollowGraph(){
     var q=sIn.value.trim().toLowerCase();
     if(q.length<2){ sRes.hidden=true; return; }
     var ms=nodes.filter(function(n){
-      return n.kind==="comp"&&visNode(n)&&(((n.label||"").toLowerCase().indexOf(q)>=0)||(n.handle||"").indexOf(q)>=0);
+      return visNode(n)&&(((n.label||"").toLowerCase().indexOf(q)>=0)||(n.handle||"").indexOf(q)>=0||(netName(n).toLowerCase().indexOf(q)>=0));
     }).sort(function(x,y){ return y.deg-x.deg; }).slice(0,6);
     if(!ms.length){ sRes.hidden=true; return; }
     sRes.innerHTML=ms.map(function(m){ return '<button type="button">'+esc(m.label)+' <span class="muted">@'+esc(m.handle)+'</span></button>'; }).join("");
@@ -3774,8 +3823,8 @@ function buildFollowGraph(){
   var degIn=$("#netDeg"), degV=$("#netDegV");
   function applyDeg(){
     var v=+degIn.value; degV.textContent=v;
-    nodes.forEach(function(n){ n.el.style.display=(n.kind==="jd"||n.deg>=v)?"":"none"; });
-    if(SEL&&SEL.kind!=="jd"&&SEL.deg<v) backToAll();
+    nodes.forEach(function(n){ n.el.style.display=n.deg>=v?"":"none"; });
+    if(SEL&&SEL.deg<v) backToAll();
     else { drawEdges(); updateLabels(); }
   }
   degIn.addEventListener("input",applyDeg);
