@@ -1437,7 +1437,7 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-network .you-svg{width:100%;height:auto;display:block;max-height:88vh}
 .pg-network .yrlab{font-size:13px;font-weight:600;letter-spacing:.4px}
 .pg-network .yname{font-size:12.5px;fill:var(--silver-2);font-weight:500}
-.pg-network .yname.you{font-size:15px;font-weight:700;fill:#04050A}
+.pg-network .yname.center-name{font-size:15px;font-weight:700;fill:var(--silver)}
 .pg-network .ynode{cursor:pointer}
 .pg-network .ynode circle{stroke:rgba(4,5,10,.9);stroke-width:1.5;transition:filter .15s}
 .pg-network .ynode:hover circle{filter:brightness(1.35)}
@@ -1448,8 +1448,6 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-network .ccard.in{border-color:rgba(231,160,79,.45)}
 .pg-network .cc-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .pg-network .cc-top b{font-size:16px}
-.pg-network .jdbadge{font-size:12px;font-weight:700;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:2px 10px}
-.pg-network .missbadge{font-size:12px;font-weight:600;color:var(--silver-2);border:1px solid var(--line-2);border-radius:999px;padding:2px 10px}
 /* momentum bars (hbar — renamed to avoid the global .bar progress bar) */
 .pg-network .hbars{display:flex;flex-direction:column;gap:9px}
 .pg-network .hbar{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 58px;gap:12px;align-items:center;font-size:13.5px}
@@ -1538,14 +1536,13 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-network .node{cursor:pointer}
 .pg-network .node circle{transition:opacity .2s}
 .pg-network .node text{font-size:11.5px;fill:var(--silver-2);pointer-events:none;paint-order:stroke;stroke:var(--plate);stroke-width:4px;stroke-linejoin:round;transition:opacity .2s}
-.pg-network .node.jd text{font-family:var(--serif);font-size:18px;fill:var(--amber)}
 .pg-network .node .hit{cursor:pointer}
 .pg-network .fedge{transition:opacity .18s}
 .pg-network .net-wrap.focusing .node:not(.lit) circle,.pg-network .net-wrap.focusing .node:not(.lit) text{opacity:.12}
 .pg-network .net-wrap.focusing .edge:not(.lit){opacity:.05}
 .pg-network .net-wrap.focusing .edge.lit{opacity:1}
 .pg-network .net-wrap.hubs-on .node[data-hub="1"] circle:first-of-type{stroke:var(--amber);stroke-width:2.5}
-.pg-network .net-wrap.hubs-on .node:not([data-hub="1"]):not(.jd) circle:first-of-type{opacity:.35}
+.pg-network .net-wrap.hubs-on .node:not([data-hub="1"]) circle:first-of-type{opacity:.35}
 .pg-network .node.onpath circle:first-of-type{stroke:var(--amber);stroke-width:2.5}
 .pg-network .net-wrap .edge.onpath{stroke:var(--amber)!important;stroke-opacity:.9!important;fill:var(--amber)!important;fill-opacity:.5!important}
 .pg-network .pulse-ring{fill:none;stroke:var(--amber);stroke-width:1.2;opacity:.6;transform-box:fill-box;transform-origin:center;animation:ring 2.8s ease-out infinite}
@@ -1565,3 +1562,17 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 @media (prefers-reduced-motion:reduce){
   .pg-network *{animation:none!important;transition:none!important}
 }
+
+.pg-network .relring-read{margin:14px 4px 0}
+.pg-network .relring-read h3{font-size:15px;margin:0 0 8px}
+.pg-network .rr-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.pg-network .rr-card{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--plate);border:1px solid var(--line-2);border-radius:var(--r-s);padding:10px 12px;cursor:pointer;color:inherit;font:inherit}
+.pg-network .rr-card:hover{border-color:var(--amber)}
+.pg-network .rr-card b{font-size:14px}
+.pg-network .rr-card span{font-size:12px;color:var(--amber);font-weight:700}
+.pg-network .rr-card em{font-style:normal;font-size:12px;color:var(--silver-2)}
+.pg-network .cmp-pick{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 14px}
+.pg-network .cmp-pick label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--silver-2)}
+.pg-network .cmp-pick select,.pg-network .tracepick select{background:var(--plate);color:var(--silver);border:1px solid var(--line-2);border-radius:var(--r-s);padding:6px 10px;font-size:14px}
+.pg-network .tracepick{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 0}
+.pg-network .tracepick .hint{margin:0}
