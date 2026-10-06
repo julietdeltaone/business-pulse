@@ -2528,11 +2528,8 @@ function renderNetworkHTML(){
     +'<span><i style="background:'+HUBC.connected+'"></i>Connected</span>'
     +'<span><i style="background:'+HUBC.light+'"></i>Lightly linked</span>'
     +'<span><i style="background:'+HUBC.independent+'"></i>Independent</span>'
-    +'</div><div class="seg" role="group" aria-label="View mode">'
-    +'<button data-hub3d="0" class="'+(S.hub3d?"":"on")+'">2D</button>'
-    +'<button data-hub3d="1" class="'+(S.hub3d?"on":"")+'">3D</button>'
     +'</div></div>';
-  h+='<div class="hub-wrap'+(S.hub3d?" is-3d":"")+'"><div class="hub-stage">'
+  h+='<div class="hub-wrap"><div class="hub-stage">'
     +'<svg class="hubsvg" id="hubSvg" viewBox="0 0 920 920" role="img" aria-label="Businesses arranged by connectivity: most connected at the center"></svg>'
     +'</div></div>';
   var iso=FGN.nodes.filter(function(n){ return n.deg===0; });
@@ -2917,13 +2914,6 @@ document.addEventListener("click",function(e){
       var ph=ff.closest(".feed-filters");
       if(ph) ph.querySelectorAll(".feed-pill").forEach(function(p){ p.classList.toggle("on",p.getAttribute("data-feedf")===S.feedf); });
     } else renderLeft();
-    return; }
-  var h3=e.target.closest("[data-hub3d]");
-  if(h3){ S.hub3d=h3.getAttribute("data-hub3d")==="1";
-    var seg=h3.closest(".seg");
-    if(seg) seg.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on",b===h3); });
-    var hw=h3.closest(".pg-network")&&h3.closest(".pg-network").querySelector(".hub-wrap");
-    if(hw) hw.classList.toggle("is-3d",S.hub3d);
     return; }
   var tb=e.target.closest(".pagenav button");
   if(tb){ setTab(tb.getAttribute("data-tab")); return; }
