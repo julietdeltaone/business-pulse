@@ -1364,7 +1364,7 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-today,.pg-data{max-width:none}
 
 /* ---------- Landscape: full-bleed + compact widgets (2026-10-06) ---------- */
-.pg-market{max-width:none}
+.pg-market,.pg-ai{max-width:none}
 .mktx{margin:-18px -22px -40px;padding:26px max(28px,4vw) 48px}
 .mktx>.pg-head{padding:0;margin-bottom:14px}
 .mktx>.pg-head h2{margin-bottom:4px}
@@ -1383,9 +1383,9 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
    their new order, the center cross-fades. Type/scale rules carry over. */
 .pg-ai .linkish{background:none;border:0;padding:0;color:var(--tx);text-decoration:underline;text-decoration-color:var(--card-line);text-underline-offset:3px;cursor:pointer;font-size:14px}
 .pg-ai .linkish:hover{text-decoration-color:var(--amber)}
-.ai-wrap{max-width:1280px;margin:0 auto;padding:0 0 48px}
+.ai-wrap{margin:-18px -22px -40px;padding:26px max(28px,4vw) 48px}
 .ai-wrap .page-head{margin-bottom:24px}
-.ai-dash{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;gap:24px;align-items:start}
+.ai-dash{display:grid;grid-template-columns:340px minmax(0,1fr) 320px;gap:24px;align-items:start}
 .ai-side{position:sticky;top:92px;max-height:calc(100vh - 116px);overflow-y:auto;min-width:0;padding:0 2px 8px 0;scrollbar-width:thin}
 .ai-side .ai-sec-h{margin-bottom:16px}
 .ai-side .ai-sec-h h3{font-size:17px}
