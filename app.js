@@ -1724,7 +1724,6 @@ function renderMarket(){
   if(S.mode==="venues") return renderVenueMarket();
   var list=C.slice(), h='<div class="mkt mktx">'+pageHeadHTML("Market landscape",null);
 
-  h+=landscapeHTML(list);
   h+='<div class="cardgrid">'+marketGlanceHTML(true);
 
   /* post-type mix */
@@ -1770,7 +1769,9 @@ function renderMarket(){
         return '<span class="wk">'+(d.getMonth()+1)+'/'+d.getDate()+'</span>'; }).join("")+'</div>'+
       '</div></div>';
   }
-  h+="</div></div>";
+  h+="</div>";
+  h+=landscapeHTML(list);
+  h+="</div>";
   return h;
 }
 
@@ -1813,6 +1814,71 @@ function histSVG(labels,counts,colors){
       '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(h-5)+'" text-anchor="middle" class="qhlab">'+esc(labels[i])+"</text>";
   }
   return '<svg class="qhist" viewBox="0 0 '+w+" "+h+'" preserveAspectRatio="xMidYMid meet" role="img">'+s+"</svg>";
+}
+function seq(a,b,step){ var r=[]; for(var x=a;x<=b+1e-9;x+=step) r.push(+x.toFixed(6)); return r; }
+/* Granular distribution histogram with a smooth density (KDE) curve overlay,
+   so the shape of the market (bell, skew, bimodal) reads at a glance.
+   vals: numbers; edges: sorted bin lower-bounds (last bin = >= edges[last]).
+   Use -Infinity as edges[0] for an underflow bin. KDE input is winsorized
+   at the 1st/99th percentiles so outliers don't flatten the curve; bars
+   always show exact counts. */
+function distHistSVG(vals, edges, o){
+  o=o||{};
+  var v=vals.filter(function(x){return x!=null&&isFinite(x);});
+  var W=320,H=118,padB=18,padT=10;
+  if(!v.length||edges.length<2) return '<div class="empty-note">No data yet.</div>';
+  var nb=edges.length, counts=[], i, k, j;
+  for(i=0;i<nb;i++) counts.push(0);
+  v.forEach(function(x){ var bi=0; for(i=0;i<nb;i++){ if(x>=edges[i]) bi=i; } counts[bi]++; });
+  var max=Math.max.apply(null,counts.concat([1]));
+  var bw=(W-8)/nb, bh=function(c){return Math.round(c/max*(H-padB-padT));};
+  var fmt=o.fmt||function(x){return String(Math.round(x));};
+  function edgeLab(i){
+    if(edges[i]===-Infinity) return "<"+fmt(edges[i+1]);
+    if(i===nb-1) return fmt(edges[i])+"+";
+    return fmt(edges[i]);
+  }
+  var s="";
+  for(i=0;i<nb;i++){
+    var x=4+bw*i, hgt=bh(counts[i]);
+    var lo=edges[i]===-Infinity?"<"+fmt(edges[i+1]):fmt(edges[i]);
+    var tlab=i===nb-1?lo+"+":lo+" to "+fmt(edges[i+1]);
+    var col=o.colorFn?o.colorFn(edges[i]):(o.color||"#6db3f2");
+    s+='<rect x="'+x.toFixed(1)+'" y="'+(H-padB-hgt)+'" width="'+Math.max(bw-1.5,0.5).toFixed(1)+
+      '" height="'+Math.max(hgt,1.5)+'" rx="1.5" fill="'+col+'" opacity="0.85">'+
+      '<title>'+esc(tlab+": "+counts[i])+"</title></rect>";
+  }
+  var n=v.length, sv=v.slice().sort(function(a,b){return a-b;});
+  var wv=sv.slice(Math.floor(n*0.01), Math.ceil(n*0.99));
+  var wn=wv.length, mean=wv.reduce(function(a,b){return a+b;},0)/wn;
+  var sd=Math.sqrt(wv.reduce(function(a,b){return a+(b-mean)*(b-mean);},0)/wn);
+  var loX=edges[0]===-Infinity?edges[1]:edges[0], hiX=edges[nb-1];
+  var kbw=1.06*sd*Math.pow(wn,-0.2);
+  if(kbw>0&&sd>0&&wn>=3){
+    var M=72, pts=[], dmax=0, d, px, dd, z;
+    for(k=0;k<M;k++){
+      px=loX+(hiX-loX)*k/(M-1); dd=0;
+      for(j=0;j<wn;j++){ z=(px-wv[j])/kbw; dd+=Math.exp(-0.5*z*z); }
+      d=dd/(wn*kbw); pts.push(d); if(d>dmax) dmax=d;
+    }
+    if(dmax>0){
+      var X=function(q){return 4+(q-loX)/(hiX-loX)*(W-8);};
+      var Y=function(q){return H-padB-(q/dmax)*(H-padB-padT);};
+      var path="M"+pts.map(function(q,k2){return X(loX+(hiX-loX)*k2/(M-1)).toFixed(1)+" "+Y(q).toFixed(1);}).join(" L");
+      s+='<path d="'+path+'" fill="none" stroke="'+(o.curve||"#f2b13d")+'" stroke-width="2"/>';
+    }
+  }
+  var mx=4+(mean-loX)/(hiX-loX)*(W-8);
+  if(mx>=4&&mx<=W-4){
+    s+='<line x1="'+mx.toFixed(1)+'" y1="'+(H-padB)+'" x2="'+mx.toFixed(1)+'" y2="'+(H-padB-6)+
+      '" stroke="#ece9e2" stroke-width="1.5" opacity="0.7"><title>Mean: '+esc(fmt(mean))+"</title></line>";
+  }
+  var mid=Math.floor(nb/2);
+  [[0,"start"],[mid,"middle"],[nb-1,"end"]].forEach(function(t){
+    var lx=4+bw*t[0]+bw/2;
+    s+='<text x="'+lx.toFixed(1)+'" y="'+(H-5)+'" text-anchor="'+t[1]+'" class="qhlab">'+esc(edgeLab(t[0]))+"</text>";
+  });
+  return '<svg class="qdist" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="xMidYMid meet" role="img">'+s+"</svg>";
 }
 function donutSVG(parts){
   var size=88,total=0,i;
@@ -1929,8 +1995,8 @@ function marketGlanceHTML(full){
       [["radar","#6db3f2"],["users","#f2d06d"],["camera","#e08bb8"],["tag","#c9a0f2"]]:
       [["pulse","#6fd3e7"],["crown","#c9a0f2"],["dollar","#f2d06d"],["flame","#f5b942"],["clock","#8fd18f"],["shield","#6db3f2"]];
     var qi=QICONS[ci]||["pulse","#6fd3e7"];
-    return '<div class="sec qcard"><div class="qcard-top"><span class="qcard-ic" style="color:'+qi[1]+'">'+actIcon(qi[0])+'</span><h3>'+q+'</h3></div><div class="sub">'+sub+'</div><div class="qbars">'+
-      rows+"</div>"+(chart?'<div class="qchart">'+chart+"</div>":"")+"</div>";
+    return '<div class="sec qcard"><div class="qcard-top"><span class="qcard-ic" style="color:'+qi[1]+'">'+actIcon(qi[0])+'</span><h3>'+q+'</h3></div><div class="sub">'+sub+'</div>'+
+      (chart?'<div class="qchart qhero">'+chart+"</div>":"")+'<div class="qbars">'+rows+"</div></div>";
   }
   /* members: sorted business/venue list backing an expandable bucket row */
   function bmem(arr,sortFn,subFn){
@@ -2009,9 +2075,9 @@ function marketGlanceHTML(full){
         function(b){return b.postAge!=null?b.postAge+"d ago":"";})}; }),
     0,
     {stat:ab[0][1].length+" of "+list.length,label:"posted in the last 30 days",frac:ab[0][1].length/list.length,color:"#e8b34b"},
-    '<div class="qchartlab">Share of the market</div>'+
-    donutSVG([["\u226430d",0],["31\u201390d",1],["91\u2013180d",2],["180+d",3],["No data",4]].map(function(x){
-      return {label:x[0],val:ab[x[1]][1].length,color:ab[x[1]][2]}; }))));
+    '<div class="qchartlab">Distribution \u00b7 days since last post</div>'+
+    distHistSVG(list.map(function(b){return b.postAge;}), seq(0,360,15),
+      {fmt:function(x){return Math.round(x)+"d";}})));
   /* Q2: where does the audience sit? */
   var aud=list.filter(function(b){return b.followers!=null;})
     .sort(function(a,b){return b.followers-a.followers;}).slice(0,6);
@@ -2028,7 +2094,8 @@ function marketGlanceHTML(full){
     1,
     {stat:(totAud?Math.round(topAud/totAud*100):0)+"%",label:"of "+fmt(totAud)+" followers sit in the top 6",frac:totAud?topAud/totAud:0,color:"#6db3f2"},
     '<div class="qchartlab">Follower distribution</div>'+
-    histSVG(abins.map(function(bn){return bn[0];}),acounts,["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
+    distHistSVG(list.map(function(b){return b.followers;}), seq(0,5000,250),
+      {fmt:function(x){return x>=1000?((x/1000)%1?(x/1000).toFixed(1):(x/1000))+"k":Math.round(x);}})));
   /* Q3: what does it cost? */
   var pb=[["Under $1k",[],"#6db3f2"],["$1k\u2013$2k",[],"#6db3f2"],["$2k\u2013$3.5k",[],"#6db3f2"],
           ["$3.5k+",[],"#6db3f2"],["Not published",[],"#3a4353"]];
@@ -2041,10 +2108,9 @@ function marketGlanceHTML(full){
         function(b){return b.price.wedding!=null?money(b.price.wedding):"";})}; }),
     2,
     {stat:pub+" of "+list.length,label:"publish a starting wedding price",frac:pub/list.length,color:"#6db3f2"},
-    '<div class="qchartlab">Price distribution</div>'+
-    histSVG(["<$1k","$1\u20132k","$2\u20133.5k","$3.5k+"],
-      [pb[0][1].length,pb[1][1].length,pb[2][1].length,pb[3][1].length],
-      ["#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
+    '<div class="qchartlab">Starting wedding price distribution</div>'+
+    distHistSVG(list.map(function(b){return b.price.wedding;}), seq(0,4000,250),
+      {fmt:function(x){return "$"+(x>=1000?(x/1000)+"k":Math.round(x));}})));
   /* Q4: who's gaining followers? */
   var grAll=list.map(function(b){ return pctChange(b,Math.max(0,S.di-30),S.di); }).filter(function(c){return c!=null;});
   var posFrac=grAll.length?grAll.filter(function(c){return c>0;}).length/grAll.length:0;
@@ -2062,7 +2128,11 @@ function marketGlanceHTML(full){
         pct:Math.min(100,Math.round(Math.abs(x.ch)/gmax*100)),color:x.ch>=0?"#6db3f2":"#e06c6c",vcol:x.ch>=0?null:"#e06c6c"}; }),
       3,
       {stat:(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%",label:"best 30-day mover · "+gm.b.name,frac:posFrac,color:"#6db3f2"},
-      '<div class="qchartlab">Total market followers</div>'+sparkline(mhist,300,72)));
+      '<div class="qchartlab">30-day change distribution</div>'+
+      distHistSVG(grAll, [-Infinity].concat(seq(-20,20,2)),
+        {fmt:function(x){return Math.round(x)+"%";},
+         colorFn:function(lo){return lo<0?"#e06c6c":"#6db3f2";}})+
+      '<div class="qchartlab" style="margin-top:8px">Total market followers</div>'+sparkline(mhist,300,72)));
   }
   /* Q5: how long have they been around? */
   var yb=[["Under 3 yrs",[],"#6db3f2"],["3\u20135 yrs",[],"#6db3f2"],["6\u201310 yrs",[],"#6db3f2"],
@@ -2077,9 +2147,8 @@ function marketGlanceHTML(full){
     4,
     {stat:String(yb[3][1].length),label:"businesses at 10+ years",frac:yb[3][1].length/list.length,color:"#e8b34b"},
     '<div class="qchartlab">Distribution</div>'+
-    histSVG(["<3","3\u20135","6\u201310","10+","Unknown"],
-      [yb[0][1].length,yb[1][1].length,yb[2][1].length,yb[3][1].length,yb[4][1].length],
-      ["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#3a4353"])));
+    distHistSVG(list.map(function(b){return yearsNum(b);}), seq(0,20,1),
+      {fmt:function(x){return Math.round(x)+"y";}})));
   /* Q6: how solid is each profile? */
   var sb=[["80\u2013100 \u00b7 strong",[],"#e8b34b","#e8b34b"],["60\u201379 \u00b7 decent",[],"#6db3f2"],["40\u201359 \u00b7 thin",[],"#6db3f2"],
           ["Under 40 \u00b7 weak",[],"#e06c6c","#e06c6c"],["Unknown",[],"#3a4353"]];
@@ -2093,9 +2162,8 @@ function marketGlanceHTML(full){
     5,
     {stat:sb[0][1].length+" of "+list.length,label:"profiles score 80+ (strong)",frac:sb[0][1].length/list.length,color:"#e8b34b"},
     '<div class="qchartlab">Distribution</div>'+
-    histSVG(["80+","60\u201379","40\u201359","<40","Unknown"],
-      [sb[0][1].length,sb[1][1].length,sb[2][1].length,sb[3][1].length,sb[4][1].length],
-      ["#e8b34b","#6db3f2","#6db3f2","#e06c6c","#3a4353"])));
+    distHistSVG(list.map(function(b){return confOf(b);}), seq(0,95,5),
+      {fmt:function(x){return String(Math.round(x));}})));
     var bHero=list.reduce(function(a,b){return a+(b.followers||0);},0);
     return full?cards.join(""):pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(bHero),"total market followers","combined Instagram audience \u00b7 "+list.length+" photo, video & drone businesses")+glanceCollapsedHTML(glances));
 }
