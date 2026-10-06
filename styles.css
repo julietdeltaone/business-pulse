@@ -1109,8 +1109,7 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 }
 .pg-network [hidden]{display:none!important}
 /* page head */
-.pg-network .page-head{margin-bottom:28px;max-width:860px}
-.pg-network .page-head.pg-hero{max-width:none}
+.pg-network .page-head.pg-hero{max-width:none;margin:-18px -22px 28px;padding:26px max(28px,4vw) 0}
 .pg-network .page-head h1{font-family:var(--serif);font-weight:400;font-size:clamp(30px,3.6vw,44px);line-height:1.05;margin:0 0 10px}
 .pg-network .page-head p{margin:0;color:var(--silver-2);font-size:15.5px;max-width:70ch}
 .pg-network .page-head .freshline{margin-top:10px;font-size:13px;color:var(--fog)}
@@ -1384,7 +1383,7 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-today,.pg-data{max-width:none}
 
 /* ---------- Landscape: full-bleed + compact widgets (2026-10-06) ---------- */
-.pg-market,.pg-ai{max-width:none}
+.pg-market,.pg-ai,.pg-network{max-width:none}
 .mktx{margin:-18px -22px -40px;padding:26px max(28px,4vw) 48px}
 .mktx>.pg-head{padding:0;margin-bottom:14px}
 .mktx>.pg-head h2{margin-bottom:4px}
