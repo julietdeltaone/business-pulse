@@ -1183,41 +1183,9 @@ function lsMatrixHTML(d,rows){
   return h+'</div>';
 }
 function landscapeHTML(list){
-  var d=landscapeData(list), by=S.shareBy==="audience"?"audience":"providers";
-  var val=function(r){ return by==="audience"?r.fol:r.members.length; };
-  var rows=d.rows.slice().sort(function(a,b){ return val(b)-val(a); });
-  var sum=rows.reduce(function(a,r){return a+val(r);},0)||1;
-  var R=100, CIRC=2*Math.PI*R, off=0, segs="";
-  rows.forEach(function(r){
-    var frac=val(r)/sum; if(!frac) return;
-    var len=Math.max(1,frac*CIRC-3);
-    segs+='<circle cx="130" cy="130" r="'+R+'" fill="none" stroke="'+r.g.color+'" stroke-width="28" stroke-dasharray="'+len.toFixed(1)+' '+(CIRC-len).toFixed(1)+'" stroke-dashoffset="'+(-off*CIRC).toFixed(1)+'" transform="rotate(-90 130 130)"><title>'+esc(r.g.label)+': '+Math.round(frac*100)+'% of '+(by==="audience"?"audience reach":"service listings")+'</title></circle>';
-    off+=frac;
-  });
-  var h='<section class="sec card sharecard"><div class="card-head"><div><h3>Market share by service</h3>'+
-    '<div class="sub">Every business counts in each category it offers, so the percentages overlap. '+d.listed+' of '+d.total+' publish a services list; the rest are placed by their main lane'+(d.none?' ('+d.none+' still unclassified)':'')+'.</div></div>'+
-    '<div class="seg" role="tablist" aria-label="Measure"><button data-shareby="providers" class="'+(by==="providers"?"on":"")+'">By businesses</button><button data-shareby="audience" class="'+(by==="audience"?"on":"")+'">By audience</button></div></div>'+
-    '<div class="share"><div class="share-donutcol"><div class="share-donut"><svg viewBox="0 0 260 260" aria-hidden="true">'+segs+'</svg>'+
-    '<div class="share-center"><b>'+d.total+'</b><span>businesses</span></div></div>'+
-    '<div class="share-legend">'+rows.map(function(r){
-      return '<span class="share-leg"><i style="background:'+r.g.color+'"></i>'+esc(r.g.label)+'<b>'+Math.round(val(r)/sum*100)+'%</b></span>';
-    }).join("")+'</div></div><div class="share-rows">';
-  rows.forEach(function(r){
-    var n=r.members.length, pctB=Math.round(n/d.total*100), pctA=d.totFol?Math.round(r.fol/d.totFol*100):0;
-    var big=by==="audience"?pctA:pctB, open=S.qx["g:"+r.g.k];
-    h+='<div class="share-row'+(open?" open":"")+'" data-gx="'+r.g.k+'">'+
-      '<i class="share-sw" style="background:'+r.g.color+'"></i>'+
-      '<div class="share-name">'+esc(r.g.label)+'</div>'+
-      '<div class="share-val">'+big+'%</div>'+
-      '<div class="share-meta">'+(by==="audience"?fmt(r.fol)+' followers \u00b7 '+n+' businesses':n+' of '+d.total+' businesses \u00b7 '+pctA+'% of audience')+'</div>'+
-      '<div class="share-track"><i style="width:'+Math.max(big?2:0,big)+'%;background:'+r.g.color+'"></i></div>';
-    if(open){
-      var ms=r.members.slice().sort(function(a,b){return (b.followers||0)-(a.followers||0);});
-      h+='<div class="share-mem">'+ms.map(function(m){ return '<span class="share-chip" data-open="'+m.id+'">'+esc(m.name)+'</span>'; }).join("")+'</div>';
-    }
-    h+='</div>';
-  });
-  h+='</div></div></section>';
+  var d=landscapeData(list);
+  var rows=d.rows.slice().sort(function(a,b){ return b.members.length-a.members.length; });
+  var h='';
   h+='<section class="sec card"><div class="card-head"><div><h3>Where each service is offered</h3><div class="sub">Businesses per category in each county. Deeper color means deeper coverage.</div></div></div>'+lsMatrixHTML(d,rows)+'</section>';
   return h;
 }
@@ -1739,8 +1707,6 @@ function renderAI(){
       '<div class="empty-note">No AI visibility data yet — the daily audit feeds this tab.</div></div>';
   var h='<div class="ai-page">';
   h+='<div class="pg-head"><h2>AI Visibility</h2><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
-  h+='<div class="sub ai-cov">'+esc(AI.cov)+' · '+AI.engines.length+' assistants · '+AI.prompts.length+' prompts tested · '+
-    'Claude and Perplexity removed — neither offers guest access for neutral audits.</div>';
   h+='<div class="ai-cols"><aside class="ai-side">';
   h+='<div class="ai-promptbar"><span class="ai-promptbar-l">Prompt</span><select id="aiPromptSel">'+
     '<option value="">All prompts · market-wide</option>'+
@@ -2538,24 +2504,35 @@ function netDetailHTML(n){
 
 /* ============================================================
    NETWORK — one page: hub-spoke by connectivity.
-   Market anchors at the center, independents at the edge.
+   Strongly connected at the center, independents at the edge.
    ============================================================ */
+/* network hub: tier colors (data coding) */
+var HUBC={strong:"#f2b13d",connected:"#6ea8ff",light:"#4fd1a5",independent:"#8e97a8"};
+var HUBL={strong:"Strongly connected",connected:"Connected",light:"Lightly linked",independent:"Independent"};
 function hubTiers(){
   var nodes=FGN.nodes.filter(function(n){ return n.deg>0; })
     .sort(function(a,b){ return b.deg-a.deg || netName(a).localeCompare(netName(b)); });
-  var q=Math.max(1,Math.ceil(nodes.length/5));
+  var q=Math.max(1,Math.ceil(nodes.length/4));
   return {
-    anchors: nodes.slice(0,q),
-    strong: nodes.slice(q,q*2),
-    connected: nodes.slice(q*2,q*3),
-    light: nodes.slice(q*3,q*4),
-    independent: nodes.slice(q*4),
+    strong: nodes.slice(0,q),
+    connected: nodes.slice(q,q*2),
+    light: nodes.slice(q*2,q*3),
+    independent: nodes.slice(q*3),
     all: nodes
   };
 }
 function renderNetworkHTML(){
   var h='<div class="page-head"><h1>Network</h1></div>';
-  h+='<div class="hub-wrap"><div class="hub-stage">'
+  h+='<div class="hub-bar"><div class="hub-legend">'
+    +'<span><i style="background:'+HUBC.strong+'"></i>Strongly connected</span>'
+    +'<span><i style="background:'+HUBC.connected+'"></i>Connected</span>'
+    +'<span><i style="background:'+HUBC.light+'"></i>Lightly linked</span>'
+    +'<span><i style="background:'+HUBC.independent+'"></i>Independent</span>'
+    +'</div><div class="seg" role="group" aria-label="View mode">'
+    +'<button data-hub3d="0" class="'+(S.hub3d?"":"on")+'">2D</button>'
+    +'<button data-hub3d="1" class="'+(S.hub3d?"on":"")+'">3D</button>'
+    +'</div></div>';
+  h+='<div class="hub-wrap'+(S.hub3d?" is-3d":"")+'"><div class="hub-stage">'
     +'<svg class="hubsvg" id="hubSvg" viewBox="0 0 920 920" role="img" aria-label="Businesses arranged by connectivity: most connected at the center"></svg>'
     +'</div></div>';
   var iso=FGN.nodes.filter(function(n){ return n.deg===0; });
@@ -2572,16 +2549,17 @@ function networkInit(){
   var NS="http://www.w3.org/2000/svg";
   var cx=460, cy=460;
   var tiers=[
-    {key:"anchors",     color:"var(--rel-mutual)",    r:120},
-    {key:"strong",      color:"var(--rel-fan)",       r:185},
-    {key:"connected",   color:"var(--rel-following)", r:250},
-    {key:"light",       color:"var(--rel-mid)",       r:315},
-    {key:"independent", color:"var(--rel-none)",      r:380}
+    {key:"strong",      color:HUBC.strong,      r:150},
+    {key:"connected",   color:HUBC.connected,   r:225},
+    {key:"light",       color:HUBC.light,       r:300},
+    {key:"independent", color:HUBC.independent, r:375}
   ];
   function el(tag,attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
   function title(t){ var x=el("title",{}); x.textContent=t; return x; }
   tiers.forEach(function(t){
-    svg.appendChild(el("circle",{cx:cx,cy:cy,r:t.r,fill:"none",stroke:t.color,"stroke-opacity":".3","stroke-width":1.5}));
+    var rc=el("circle",{cx:cx,cy:cy,r:t.r,fill:"none",stroke:t.color,"stroke-opacity":".45","stroke-width":1.5});
+    rc.appendChild(title(HUBL[t.key]+" ring"));
+    svg.appendChild(rc);
   });
   var gE=el("g",{}), gL=el("g",{}), gN=el("g",{});
   svg.appendChild(gE); svg.appendChild(gL); svg.appendChild(gN);
@@ -2904,10 +2882,6 @@ document.addEventListener("click",function(e){
   if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
   var gx=e.target.closest("[data-gexpand]");
   if(gx){ setTab("market"); return; }
-  var sb=e.target.closest("[data-shareby]");
-  if(sb){ S.shareBy=sb.getAttribute("data-shareby"); renderLeft(); return; }
-  var sg=e.target.closest("[data-gx]");
-  if(sg&&!e.target.closest("[data-open]")){ var gk="g:"+sg.getAttribute("data-gx"); S.qx[gk]=!S.qx[gk]; renderLeft(); return; }
   var cf=e.target.closest("[data-cf]");
   if(cf){ var id=cf.getAttribute("data-cf");
     if(id!==S.sel) select(id,{fly:false});
@@ -2942,6 +2916,13 @@ document.addEventListener("click",function(e){
       var ph=ff.closest(".feed-filters");
       if(ph) ph.querySelectorAll(".feed-pill").forEach(function(p){ p.classList.toggle("on",p.getAttribute("data-feedf")===S.feedf); });
     } else renderLeft();
+    return; }
+  var h3=e.target.closest("[data-hub3d]");
+  if(h3){ S.hub3d=h3.getAttribute("data-hub3d")==="1";
+    var seg=h3.closest(".seg");
+    if(seg) seg.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on",b===h3); });
+    var hw=h3.closest(".pg-network")&&h3.closest(".pg-network").querySelector(".hub-wrap");
+    if(hw) hw.classList.toggle("is-3d",S.hub3d);
     return; }
   var tb=e.target.closest(".pagenav button");
   if(tb){ setTab(tb.getAttribute("data-tab")); return; }
