@@ -2560,7 +2560,7 @@ var FGN = (function(){
   var nodes=[], byKey={};
   function add(n){ if(!byKey[n.key]){ byKey[n.key]=n; nodes.push(n); } return byKey[n.key]; }
   JD_ACCOUNTS.forEach(function(u){ add({key:"jd:"+u, kind:"jd", label:"@"+u, handle:u}); });
-  B.forEach(function(c){ if(c.ig_handle) add({key:"ig:"+normHandle(c.ig_handle), kind:"comp", label:c.name.replace(/ \(.*\)/,""), comp:c, handle:normHandle(c.ig_handle)}); });
+  B.forEach(function(c){ var h=normHandle(c.ig_handle); if(c.ig_handle&&JD_ACCOUNTS.indexOf(h)<0) add({key:"ig:"+h, kind:"comp", label:c.name.replace(/ \(.*\)/,""), comp:c, handle:h}); });
   function keyOf(e){ var h=normHandle(e); return JD_ACCOUNTS.indexOf(h)>=0 ? "jd:"+h : "ig:"+h; }
   var pairs={}, follows={}, followedBy={};
   (FG.edges||[]).forEach(function(e){
@@ -2687,9 +2687,9 @@ function networkInit(){
   tiers.forEach(function(t){
     svg.appendChild(el("circle",{cx:cx,cy:cy,r:t.r,fill:"none",stroke:t.color,"stroke-opacity":".3","stroke-width":1.5}));
   });
-  var gE=el("g",{}), gN=el("g",{}); svg.appendChild(gE); svg.appendChild(gN);
-  var labelSet={};
-  T.all.forEach(function(n){ labelSet[n.key]=1; });
+  var gE=el("g",{}), gL=el("g",{}), gN=el("g",{});
+  svg.appendChild(gE); svg.appendChild(gL); svg.appendChild(gN);
+  var labInfos=[];
   tiers.forEach(function(t){
     var list=T[t.key], n=list.length;
     list.forEach(function(m,i){
@@ -2701,24 +2701,73 @@ function networkInit(){
       var dot=el("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:rr.toFixed(1),fill:t.color});
       dot.appendChild(title(netName(m)+" \u2014 "+m.deg+" verified links"));
       g.appendChild(dot);
-      if(labelSet[m.key]){
-        var cA=Math.cos(ang), sA=Math.sin(ang);
-        var anc=cA>0.35?"start":(cA<-0.35?"end":"middle");
-        var off=rr+14+(i%2)*20;
-        var tx=el("text",{x:(x+cA*off).toFixed(1), y:(y+sA*off).toFixed(1),
-          "class":"hub-name","text-anchor":anc,
-          dy: anc==="middle" ? (sA>0?"1.1em":"-0.5em") : "0.35em"});
-        tx.textContent=netName(m); g.appendChild(tx);
-      }
+      var cA=Math.cos(ang), sA=Math.sin(ang);
+      var anc=cA>0.35?"start":(cA<-0.35?"end":"middle");
+      var off=rr+16, lx0=x+cA*off, ly0=y+sA*off;
+      var tx=el("text",{x:lx0.toFixed(1), y:ly0.toFixed(1),
+        "class":"hub-name","text-anchor":anc,
+        dy: anc==="middle" ? (sA>0?"1.1em":"-0.5em") : "0.35em"});
+      tx.textContent=netName(m); g.appendChild(tx);
+      labInfos.push({tx:tx,lx:lx0,ly:ly0,dx:x,dy:y,dr:rr});
       gN.appendChild(g);
       m._hub={x:x,y:y,g:g};
       g.addEventListener("mouseenter",function(){ if(!pinned) isolate(m); });
       g.addEventListener("mouseleave",function(){ if(!pinned) clearIso(); });
       g.addEventListener("focus",function(){ if(!pinned) isolate(m); });
       g.addEventListener("blur",function(){ if(!pinned) clearIso(); });
-      g.addEventListener("click",function(e){ e.stopPropagation(); pinned=m; isolate(m); showDetail(m); pinLabel(m); });
-      g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pinned=m; isolate(m); showDetail(m); pinLabel(m); } });
+      g.addEventListener("click",function(e){ e.stopPropagation(); pinned=m; isolate(m); showDetail(m); });
+      g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pinned=m; isolate(m); showDetail(m); } });
     });
+  });
+  /* label layout: 2D de-collision (label-label + label-dot), clamped to the canvas, then leaders */
+  function setL(L){ L.tx.setAttribute("x",L.lx.toFixed(1)); L.tx.setAttribute("y",L.ly.toFixed(1)); }
+  function clampL(L){
+    var b=L.tx.getBBox(), sx=0, sy=0;
+    if(b.x<8) sx=8-b.x; else if(b.x+b.width>912) sx=912-(b.x+b.width);
+    if(b.y<10) sy=10-b.y; else if(b.y+b.height>910) sy=910-(b.y+b.height);
+    if(sx||sy){ L.lx+=sx; L.ly+=sy; setL(L); return true; }
+    return false;
+  }
+  function ctr(b){ return [b.x+b.width/2, b.y+b.height/2]; }
+  labInfos.forEach(function(L){ clampL(L); });
+  for(var li=0; li<40; li++){
+    var moved=false;
+    var boxes=labInfos.map(function(L){ return L.tx.getBBox(); });
+    for(var ai=0; ai<labInfos.length; ai++){
+      for(var bi=ai+1; bi<labInfos.length; bi++){
+        var A=labInfos[ai], B=labInfos[bi];
+        var ba=boxes[ai], bb=boxes[bi];
+        var ca=ctr(ba), cb=ctr(bb), p=5;
+        var ox=(ba.width+bb.width)/2+p-Math.abs(cb[0]-ca[0]);
+        var oy=(ba.height+bb.height)/2+p-Math.abs(cb[1]-ca[1]);
+        if(ox>0&&oy>0){
+          var s;
+          if(ox<oy){ s=(ox/2+1)*((cb[0]-ca[0])>=0?1:-1); A.lx-=s; B.lx+=s; }
+          else{ s=(oy/2+1)*((cb[1]-ca[1])>=0?1:-1); A.ly-=s; B.ly+=s; }
+          setL(A); setL(B); clampL(A); clampL(B);
+          boxes[ai]=A.tx.getBBox(); boxes[bi]=B.tx.getBBox();
+          moved=true;
+        }
+      }
+      var L0=labInfos[ai];
+      for(var di=0; di<labInfos.length; di++){
+        if(di===ai) continue;
+        var D=labInfos[di], bl=L0.tx.getBBox(), p2=3;
+        var dcx=(bl.x+bl.width/2)-D.dx, dcy=(bl.y+bl.height/2)-D.dy;
+        var ox2=bl.width/2+D.dr+p2-Math.abs(dcx), oy2=bl.height/2+D.dr+p2-Math.abs(dcy);
+        if(ox2>0&&oy2>0){
+          if(ox2<oy2) L0.lx+=(ox2+1)*(dcx>=0?1:-1); else L0.ly+=(oy2+1)*(dcy>=0?1:-1);
+          setL(L0); clampL(L0); moved=true;
+        }
+      }
+      boxes[ai]=labInfos[ai].tx.getBBox();
+    }
+    if(!moved) break;
+  }
+  labInfos.forEach(function(L){ clampL(L); });
+  labInfos.forEach(function(L){
+    gL.appendChild(el("line",{x1:L.dx.toFixed(1),y1:L.dy.toFixed(1),
+      x2:L.lx.toFixed(1),y2:L.ly.toFixed(1),"class":"hub-leader"}));
   });
   var pinned=null;
   function nbrsOf(n){
@@ -2743,13 +2792,7 @@ function networkInit(){
   }
   function clearIso(){
     gE.innerHTML=""; svg.classList.remove("has-spokes");
-    var old=gN.querySelector(".hub-pin"); if(old) gN.removeChild(old);
     Array.prototype.forEach.call(gN.childNodes,function(g){ g.classList.remove("lit"); });
-  }
-  function pinLabel(m){
-    var b=m._hub; if(!b) return;
-    var tx=el("text",{x:b.x.toFixed(1),y:(b.y-15).toFixed(1),"class":"hub-name hub-pin","text-anchor":"middle"});
-    tx.textContent=netName(m); gN.appendChild(tx);
   }
   function showDetail(n){ /* side panels removed 2026-10-06: names now label every dot */ }
   svg.addEventListener("click",function(){ pinned=null; clearIso(); });
