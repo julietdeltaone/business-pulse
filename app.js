@@ -2636,27 +2636,28 @@ function netFreshLine(){
 function hubTiers(){
   var nodes=FGN.nodes.filter(function(n){ return n.deg>0; })
     .sort(function(a,b){ return b.deg-a.deg || netName(a).localeCompare(netName(b)); });
-  var third=Math.max(1,Math.ceil(nodes.length/3));
+  var q=Math.max(1,Math.ceil(nodes.length/5));
   return {
-    anchors: nodes.slice(0,third),
-    connected: nodes.slice(third,third*2),
-    independent: nodes.slice(third*2),
+    anchors: nodes.slice(0,q),
+    strong: nodes.slice(q,q*2),
+    connected: nodes.slice(q*2,q*3),
+    light: nodes.slice(q*3,q*4),
+    independent: nodes.slice(q*4),
     all: nodes
   };
 }
 function renderNetworkHTML(){
   var T=hubTiers();
-  var h='<div class="page-head"><h1>Who follows who</h1>'
+  var h='<div class="page-head"><h1>Network</h1>'
     +'<p>'+FG.edges.length+' verified Instagram follow links across '+T.all.length+' businesses. '
     +'Every link is a confirmed follow \u2014 nothing inferred, nothing guessed.</p>'
     +'<p class="freshline" id="netFresh"></p></div>';
-  h+='<div class="nxplain"><div><b>What this is:</b> every business placed by how connected it is '
-    +'\u2014 market anchors at the center, independents at the edge. Bigger dot means more links.</div>'
-    +'<div><b>How to read it:</b> hover any dot to light up its links; click to pin the details.</div></div>';
   h+='<div class="hub-legend">'
-    +'<span><i style="background:var(--rel-mutual)"></i>Market anchors \u00b7 '+T.anchors.length+' \u2014 most connected</span>'
-    +'<span><i style="background:var(--rel-fan)"></i>Connected \u00b7 '+T.connected.length+' \u2014 solid link counts</span>'
-    +'<span><i style="background:var(--rel-none)"></i>Independent \u00b7 '+T.independent.length+' \u2014 few verified links</span></div>';
+    +'<span><i style="background:var(--rel-mutual)"></i>Market anchors \u00b7 '+T.anchors.length+'</span>'
+    +'<span><i style="background:var(--rel-fan)"></i>Strongly connected \u00b7 '+T.strong.length+'</span>'
+    +'<span><i style="background:var(--rel-following)"></i>Connected \u00b7 '+T.connected.length+'</span>'
+    +'<span><i style="background:var(--rel-mid)"></i>Lightly linked \u00b7 '+T.light.length+'</span>'
+    +'<span><i style="background:var(--rel-none)"></i>Independent \u00b7 '+T.independent.length+'</span></div>';
   h+='<div class="hub-wrap"><div class="hub-stage">'
     +'<svg class="hubsvg" id="hubSvg" viewBox="0 0 920 920" role="img" aria-label="Businesses arranged by connectivity: most connected at the center"></svg>'
     +'</div><div class="hub-side">'
@@ -2679,9 +2680,11 @@ function networkInit(){
   var NS="http://www.w3.org/2000/svg";
   var cx=460, cy=460;
   var tiers=[
-    {key:"anchors",     color:"var(--rel-mutual)", r:170},
-    {key:"connected",   color:"var(--rel-fan)",    r:280},
-    {key:"independent", color:"var(--rel-none)",   r:390}
+    {key:"anchors",     color:"var(--rel-mutual)",    r:120},
+    {key:"strong",      color:"var(--rel-fan)",       r:185},
+    {key:"connected",   color:"var(--rel-following)", r:250},
+    {key:"light",       color:"var(--rel-mid)",       r:315},
+    {key:"independent", color:"var(--rel-none)",      r:380}
   ];
   function el(tag,attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
   function title(t){ var x=el("title",{}); x.textContent=t; return x; }
@@ -2716,8 +2719,8 @@ function networkInit(){
       g.addEventListener("mouseleave",function(){ if(!pinned) clearIso(); });
       g.addEventListener("focus",function(){ if(!pinned) isolate(m); });
       g.addEventListener("blur",function(){ if(!pinned) clearIso(); });
-      g.addEventListener("click",function(e){ e.stopPropagation(); pinned=m; isolate(m); showDetail(m); });
-      g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pinned=m; isolate(m); showDetail(m); } });
+      g.addEventListener("click",function(e){ e.stopPropagation(); pinned=m; isolate(m); showDetail(m); pinLabel(m); });
+      g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pinned=m; isolate(m); showDetail(m); pinLabel(m); } });
     });
   });
   var pinned=null;
@@ -2743,7 +2746,13 @@ function networkInit(){
   }
   function clearIso(){
     gE.innerHTML=""; svg.classList.remove("has-spokes");
+    var old=gN.querySelector(".hub-pin"); if(old) gN.removeChild(old);
     Array.prototype.forEach.call(gN.childNodes,function(g){ g.classList.remove("lit"); });
+  }
+  function pinLabel(m){
+    var b=m._hub; if(!b) return;
+    var tx=el("text",{x:b.x.toFixed(1),y:(b.y-15).toFixed(1),"class":"hub-name hub-pin","text-anchor":"middle"});
+    tx.textContent=netName(m); gN.appendChild(tx);
   }
   function showDetail(n){ var d=$("#hubDetail"); if(d) d.innerHTML=netDetailHTML(n); }
   svg.addEventListener("click",function(){ pinned=null; clearIso(); });
