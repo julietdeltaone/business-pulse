@@ -637,7 +637,9 @@ function renderVenueToday(){
 }
 
 function renderToday(){
-  if(S.mode==="venues") return '<div class="actx"><div class="actx-pad">'+renderVenueToday()+'</div></div>';
+  if(S.mode==="venues") return '<div class="actx"><div class="actx-top pg-hero"><div><h1>Activity</h1>'+
+    '<p>Instagram presence for North Country venues</p></div>'+
+    pgPull(dataPullDate())+'</div><div class="actx-pad">'+renderVenueToday()+'</div></div>';
   var h='<div class="actx">';
   h+='<div class="actx-top pg-hero"><div><h1>Activity</h1>'+
     '<p>Every post, promo and price move across the market · last 7 days</p></div>'+
@@ -1672,8 +1674,11 @@ function aiDateStr(ds){
 }
 function renderAI(){
   if(S.mode==="venues")
-    return '<div class="sec"><h3>AI Search</h3><div class="sub">Venue visibility</div>'+
-      '<div class="empty-note">No AI visibility data for venues yet.</div></div>';
+    return '<div class="ai-wrap"><div class="page-head pg-hero"><div><h1>AI Visibility</h1>'+
+      '<p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>'+
+      pgPull(dataPullDate())+'</div>'+
+      '<div class="ai-empty"><h3>No venue audits yet</h3>'+
+      '<p>AI visibility audits cover photo, video and drone businesses. Venue audits haven\u2019t started.</p></div></div>';
   computeAI();
   if(!AI.rows.length)
     return '<div class="page-head"><h1>AI Visibility</h1><div class="empty-note">No AI visibility data yet \u2014 the daily audit feeds this tab.</div></div>';
