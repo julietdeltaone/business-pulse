@@ -1132,13 +1132,12 @@ var SVC_GROUPS=[
   {k:"re",label:"Real estate",color:"#c7d2e0"},
   {k:"dr",label:"Drone & aerial",color:"#6fd3e7"}];
 /* assistant colors + citation-tier color: applied to every business equally, data only */
-var ENG_COLORS={ChatGPT:"#34d399",Gemini:"#6db3f2"};
-function aiTierColor(pct){
-  if(pct>=80) return "#34d399";
-  if(pct>=50) return "#e8b34b";
-  if(pct>=25) return "#6db3f2";
-  return "#5b6472";
-}
+/* AI Visibility — neutral third-party redesign (2026-10-06).
+   Market stats first, identical leaderboard rows, detail only on selection.
+   One accent (amber) = selected. Rank bars use a 3-step scale: green/amber/mute. */
+var AI_TIER3=["#34d399","#e8b34b","#6b7484"];
+function aiTier3(pct){ return pct>=66?AI_TIER3[0]:pct>=33?AI_TIER3[1]:AI_TIER3[2]; }
+
 var GRP_RX=[
   ["dr",/drone|aerial|\bfaa\b|\buav\b/],
   ["re",/real estate|matterport|floor plan|inspection|street view|\b360\b|architectur|video tours/],
@@ -1293,13 +1292,7 @@ var RIVAL2ID={
  "The Video Lab":"wendy-o-brien-the-video-lab",
  "La Belle Amour Photography":"la-belle-amour-photography"
 };
-function aiPromptShort(p){
-  if(/videographer/i.test(p)) return "Wedding videographer · St. Lawrence Co.";
-  if(/drone/i.test(p)) return "Drone · real estate · North Country";
-  if(/family/i.test(p)) return "Family photographer · Potsdam";
-  if(/how much|cpst/i.test(p)) return "Wedding photo/video cost · SLC";
-  return "Wedding photographer · Potsdam";
-}
+
 function aiMed(xs){ var a=xs.filter(function(x){return x!=null;}).sort(function(x,y){return x-y;});
   return a.length?a[Math.floor(a.length/2)]:null; }
 /* ---------- AI visibility: 50/50 split explorer ---------- */
@@ -1391,54 +1384,9 @@ function computeAI(){
     restPricePct:pct(rest,function(b){return b.hasPrice;}),
     nNamed:Object.keys(nameDays).length};
 }
-function aiSvcLabel(g){
-  if(g==="general") return "General / pricing";
-  for(var i=0;i<SVC_GROUPS.length;i++) if(SVC_GROUPS[i].k===g) return SVC_GROUPS[i].label;
-  return g;
-}
-function aiOwnLane(t){
-  var b=t.id?B_BY_ID[t.id]:null; if(!b) return null;
-  var groups=svcGroupsOf(b).groups; if(!groups.length) return null;
-  var nk={}, ck={}, sets=AI.idSvc[t.id]||{};
-  groups.forEach(function(g){
-    var sg=sets[g]; if(sg) Object.keys(sg).forEach(function(k){nk[k]=1;});
-    var sk=AI.svcKeys[g]; if(sk) Object.keys(sk).forEach(function(k){ck[k]=1;});
-  });
-  return {groups:groups,named:Object.keys(nk).length,checks:Object.keys(ck).length};
-}
-function aiVerdict(t){
-  var share=AI.nDays?t.days/AI.nDays:0, ps=Math.round(share*100);
-  var b=t.id?B_BY_ID[t.id]:null, h="";
-  var lane=t.id?aiOwnLane(t):null;
-  if(lane&&lane.checks){
-    var lp=Math.round(100*lane.named/lane.checks);
-    var lab=lane.groups.map(aiSvcLabel).join(" + ").toLowerCase();
-    if(lane.named===0) h+="The assistants have not named <b>"+esc(t.name)+"</b> on any "+lab+" prompt so far — 0 of "+lane.checks+" checks in the services it offers. ";
-    else h+="<b>"+esc(t.name)+"</b> is named in "+lane.named+" of "+lane.checks+" checks ("+lp+"%) on "+lab+" prompts — the services it actually offers. ";
-    h+="Across all "+AI.nDays+" checks market-wide, it was named "+t.days+" time"+(t.days===1?"":"s")+" ("+ps+"%). ";
-  }
-  else if(t.days===0) h+="The assistants have not named <b>"+esc(t.name)+"</b> in any of the "+AI.nDays+" checks so far. ";
-  else if(share>=0.5) h+="<b>"+esc(t.name)+"</b> is one of the market\u2019s most-cited businesses — named in "+t.days+" of "+AI.nDays+" checks ("+ps+"%). ";
-  else h+="<b>"+esc(t.name)+"</b> is cited in "+t.days+" of "+AI.nDays+" checks ("+ps+"%) — on the assistants\u2019 radar, but well below the leaders. ";
-  if(!b){ h+="It isn\u2019t in our "+B.length+"-business roster, so there\u2019s no profile data to weigh against the most-cited group."; return h; }
-  var yrs=b.est_year?2026-b.est_year:null;
-  var reasons=[], gaps=[];
-  if(b.website) reasons.push("it has its own website ("+AI.webPct+"% of the ten most-cited businesses do)");
-  else gaps.push("it has no website of its own ("+AI.webPct+"% of the ten most-cited businesses do)");
-  if(yrs!=null&&AI.medYrs!=null){
-    if(yrs>=AI.medYrs) reasons.push("it\u2019s an established local name at "+yrs+" years (most-cited median: "+AI.medYrs+")");
-    else gaps.push("it\u2019s newer than the most-cited group ("+yrs+" vs a median "+AI.medYrs+" years)");
-  }
-  if(t.days===0||share<0.5){
-    if(gaps.length) h+="The gap lines up with what the most-cited businesses share: "+gaps.join("; ")+". ";
-    else if(reasons.length) h+="It actually shares the most-cited footprint ("+reasons.join("; ")+") — so the difference likely comes down to cumulative mentions across the local web, which build slowly. ";
-    else h+="Its profile looks much like the most-cited group\u2019s — citation seems to come down to cumulative mentions across the local web, which build slowly. ";
-  }else if(reasons.length){
-    h+="What it shares with the most-cited group: "+reasons.join("; ")+". ";
-  }
-  h+="Reviews and published pricing don\u2019t separate cited from uncited businesses in this data, so they don\u2019t explain the difference either way.";
-  return h;
-}
+
+
+
 /* Plain data for the selected business's AI profile. The fleshed-out detail section
    re-renders per selection; bar widths animate via aiAnimateBars() after insert. */
 function aiPromptScope(){
@@ -1471,81 +1419,17 @@ function aiPromptScope(){
   return {prompt:p,n:n,board:board,byName:byName,engChecks:engChecks,
     services:cat?(cat.services||[]):[]};
 }
-function aiDetailData(){
-  var sel=S.aiSel, t=sel?AI.board.filter(function(x){return x.name===sel;})[0]:null;
-  if(!t) return null;
-  var scope=aiPromptScope();
-  var sc=scope?scope.byName[t.name]||null:null;
-  var b=t.id?B_BY_ID[t.id]:null;
-  var yrs=b&&b.est_year?2026-b.est_year:null;
-  var sDays=scope?(sc?sc.days:0):t.days;
-  var sN=scope?scope.n:AI.nDays;
-  var citePct=sN?Math.round(100*sDays/sN):0;
-  var eng=AI.engines.map(function(e){
-    var ec=scope?(scope.engChecks[e]||0):(AI.engChecks[e]||0);
-    var nd, se;
-    if(scope){ se=sc&&sc.eng[e]; nd=se?Object.keys(se).length:0; }
-    else{ var sets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
-      se=sets[e]; nd=se?Object.keys(se).length:0; }
-    return {e:e,nd:nd,ec:ec,color:ENG_COLORS[e]||"#6db3f2",
-      label:ec===0?(scope?"no checks for this assistant":"unreachable"):nd+" of "+ec,
-      pct:ec?(nd>0?Math.max(3,nd/ec*100):0):0};
-  });
-  var myGrps=b?svcGroupsOf(b).groups:[];
-  var svc;
-  if(scope){
-    svc=SVC_GROUPS.map(function(g){
-      var inPrompt=scope.services.indexOf(g.k)>=0;
-      return {k:g.k,label:g.label,color:g.color,served:inPrompt,
-        label:!inPrompt?"not in this prompt":(scope.n===0?"no checks yet":sDays+" of "+scope.n),
-        pct:inPrompt&&scope.n?(sDays>0?Math.max(3,sDays/scope.n*100):0):0};
-    });
-  }else{
-    svc=SVC_GROUPS.map(function(g){
-    var served=myGrps.indexOf(g.k)>=0;
-    var cc=AI.svcChecks[g.k]||0, sg=t.id&&AI.idSvc[t.id]&&AI.idSvc[t.id][g.k];
-    var nd=sg?Object.keys(sg).length:0;
-    return {k:g.k,label:g.label,color:g.color,served:served,
-      label:!served?"not a lane":(cc===0?"no checks yet":nd+" of "+cc),
-      pct:served&&cc?(nd>0?Math.max(3,nd/cc*100):0):0};
-    });
-  }
-  var prof=null;
-  if(b){
-    var yn=function(v){return v?"Yes":"No";};
-    prof=[
-      {k:"Own website",v:yn(!!b.website),bm:AI.webPct+"% of most-cited"},
-      {k:"Years in business",v:yrs!=null?String(yrs):"—",bm:"median "+(AI.medYrs||"—")},
-      {k:"Google reviews",v:b.review_count!=null?String(b.review_count):"—",bm:"median "+(AI.medRev!=null?AI.medRev:"—")},
-      {k:"Pricing published",v:yn(!!b.hasPrice),bm:AI.pricePct+"% of most-cited"}
-    ];
-  }
-  var lane=t.id?aiOwnLane(t):null;
-  var base=scope?citePct:(lane&&lane.checks?Math.round(100*lane.named/lane.checks):citePct);
-  var scopeNote=scope?
-    '<b>On this prompt:</b> '+(scope.n===0?"no checks have run yet — it joins the next audit.":
-      "named in "+sDays+" of "+scope.n+" ("+citePct+"%)"+(sDays===0?" — not named once on this prompt.":""))+" ":"";
-  return {t:t,b:b,
-    citeSub:scope?"This prompt · named in":"AI citations · named in",
-    meta:b?((b.review_count!=null?b.review_count+" Google reviews":"reviews n/a")+" · "+
-      (b.hasPrice?"pricing published":"no pricing shown")+(yrs!=null?" · "+yrs+" yrs in business":""))
-      :"Named by the assistants, but not in our "+B.length+"-business roster.",
-    cite:{label:scope&&scope.n===0?"no checks yet":sDays+" of "+sN,
-      pct:sN?(sDays>0?Math.max(3,sDays/sN*100):0):0,
-      color:aiTierColor(citePct)},
-    eng:eng, svc:svc, prof:prof, verdict:scopeNote+aiVerdict(t),
-    tone:base>=70?"strong":(base>=30?"mixed":"weak")};
-}
+
 /* ---------- AI visibility: fleshed-out two-engine explorer (2026-10-02) ----------
    Claude and Perplexity were cut from the tab: neither offers guest access for
    neutral audits, so their legs are permanently blocked. Only ChatGPT + Gemini
    render here; historical rows stay in ai-visibility.json and the log. */
 
-/* Selected business for the AI tab: defaults to the top-ranked business. */
+/* Selected business for the AI tab: null until the user picks a row. */
 function aiSelT(){
-  var board=AI.board;
-  if(!board.some(function(t){return t.name===S.aiSel;})) S.aiSel=board.length?board[0].name:null;
-  return board.filter(function(x){return x.name===S.aiSel;})[0]||null;
+  if(!S.aiSel) return null;
+  var f=AI.board.filter(function(x){return x.name===S.aiSel;});
+  return f[0]||null;
 }
 function aiEngChecks(e){ return AI.engChecks[e]||0; }
 function aiNamedDays(t,e){
@@ -1575,127 +1459,141 @@ function aiAnimateBars(root){
   }); });
 }
 /* two big engine hero cards for the selected business */
-function aiEngineCards(t){
-  var h='<div class="ai-eng2 stagger">';
-  AI.engines.forEach(function(e){
-    var c=ENG_COLORS[e]||"#6db3f2", ec=aiEngChecks(e), nd=aiNamedDays(t,e);
-    var pct=ec?Math.round(100*nd/ec):0, last="", ones=0;
-    AI.rows.forEach(function(r){
-      if(r.engine!==e) return;
-      if(r.date>last) last=r.date;
-      if(t.id==="jd-meyers-productions"&&r.jd_rank===1) ones++;
-    });
-    h+='<div class="ai-eng-card" style="--eng:'+c+'">'+
-      '<div class="ai-eng-top"><span class="ai-dot" style="background:'+c+'"></span><b>'+esc(e)+'</b>'+
-      '<span class="ai-eng-last">'+(last?"last audit "+esc(last):"no checks yet")+'</span></div>'+
-      '<div class="ai-eng-big" data-count="'+nd+'">0</div>'+
-      '<div class="ai-eng-of">of '+ec+' checks · named '+pct+'% of the time</div>'+
-      '<div class="ai-eng-bar"><i data-bw="'+Math.max(2,pct)+'" style="width:'+Math.max(2,pct)+'%;background:'+c+'"></i></div>'+
-      (t.id==="jd-meyers-productions"?'<div class="ai-eng-ones">Ranked <b>#1</b> in '+ones+' of those checks</div>':"")+
-      '</div>';
-  });
-  return h+'</div>';
-}
+
 /* prompt-by-prompt: latest check per assistant for each tested prompt */
-function aiPromptList(t){
-  var n=AI.promptCatalog.length;
-  var h='<div class="ai-sec-t">Prompt by prompt — '+esc(t.name)+'</div>'+
-    '<div class="sub" style="margin:-2px 0 10px">Latest check per assistant across the '+n+' tested prompts.</div>'+
-    '<div class="ai-plist stagger">';
-  AI.promptCatalog.forEach(function(p){
-    var lanes=(p.services||[]).map(aiLaneChip).join("");
-    h+='<div class="ai-prow"><div class="ai-prow-q"><div class="ai-prow-t">'+esc(p.text)+'</div>'+
-      (lanes?'<div class="ai-prow-l">'+lanes+'</div>':"")+'</div>';
-    AI.engines.forEach(function(e){
-      var r=aiLatestPrompt(p.text,e), c=ENG_COLORS[e]||"#6db3f2", lab, cls;
-      if(!r){ lab="no check"; cls="ai-miss"; }
-      else if(!aiNamedInRow(t,r)){ lab="not named"; cls="ai-miss"; }
-      else if(t.id==="jd-meyers-productions"&&r.jd_rank){ lab="#"+r.jd_rank+" of "+r.of_total; cls=r.jd_rank===1?"ai-win":"ai-hit"; }
-      else { lab="named"; cls="ai-hit"; }
-      h+='<div class="ai-pill '+cls+'" style="--eng:'+c+'"><span class="ai-pill-e">'+esc(e)+'</span><span class="ai-pill-v">'+esc(lab)+'</span></div>';
-    });
-    h+='</div>';
-  });
-  return h+'</div>';
-}
+
 /* recent audits: share of each day's prompts naming the business, per assistant */
-function aiTrend(t){
-  var ud=[]; AI.dates.forEach(function(d){ if(ud.indexOf(d)<0) ud.push(d); });
-  ud=ud.slice(-8);
-  var h='<div class="ai-sec-t">Recent audits — '+esc(t.name)+'</div>'+
-    '<div class="sub" style="margin:-2px 0 10px">Share of each day\u2019s prompts naming this business, per assistant.</div>'+
-    '<div class="ai-trend stagger">';
-  ud.forEach(function(d){
-    h+='<div class="ai-trow"><span class="ai-tdate">'+esc(d)+'</span>';
-    AI.engines.forEach(function(e){
-      var c=ENG_COLORS[e]||"#6db3f2", n=0, tot=0;
-      AI.rows.forEach(function(r){
-        if(r.date!==d||r.engine!==e) return;
-        tot++; if(aiNamedInRow(t,r)) n++;
-      });
-      var pct=tot?Math.round(100*n/tot):0;
-      h+='<div class="ai-tcell"><span class="ai-pill-e" style="color:'+c+'">'+esc(e)+'</span>'+
-        '<div class="ai-tbar"><i data-bw="'+Math.max(2,pct)+'" style="width:'+Math.max(2,pct)+'%;background:'+c+'"></i></div>'+
-        '<span class="ai-tv">'+(tot?n+" of "+tot:"—")+'</span></div>';
-    });
-    h+='</div>';
-  });
-  return h+'</div>';
-}
+
 /* fleshed-out detail for the selected business (reuses aiDetailData) */
 /* headline block for the selected business: name + verdict up top (numbers live in the right drawer) */
-function aiHead(t){
-  var d=aiDetailData();
-  if(!d) return '<div class="empty-note">Select a business to see its AI detail.</div>';
-  var h='<div class="ai-dsec"><div class="ai-sec-t" style="margin-top:0">'+esc(d.t.name)+'</div>'+
-    '<div class="sub" style="margin:-2px 0 12px">'+esc(d.meta)+'</div>';
-  if(d.t.id) h+='<div style="margin:0 0 14px"><span class="ai-open" data-open="'+esc(d.t.id)+'">Open profile \u2192</span></div>';
-  h+='<div class="ai-verdict tone-'+d.tone+'">'+d.verdict+'</div>';
-  return h+'</div>';
-}
+
 /* right-drawer hero numbers: mega citation tile + the two engine cards */
-function aiHero(t){
-  var d=aiDetailData();
-  if(!d) return '';
-  var h='<div class="ai-mega" style="--tier:'+d.cite.color+'"><div class="ai-mega-v">'+esc(d.cite.label)+'</div>'+
-    '<div class="ai-mega-l">'+esc(d.citeSub)+'</div>'+
-    '<div class="ai-mega-bar"><i data-bw="'+d.cite.pct+'" style="width:'+d.cite.pct+'%;background:'+d.cite.color+'"></i></div></div>';
-  h+=aiEngineCards(t);
-  return h;
-}
+
 /* lane chip, color-coded by service-lane color */
-function aiLaneChip(k){
-  var g=null;
-  for(var i=0;i<SVC_GROUPS.length;i++) if(SVC_GROUPS[i].k===k) g=SVC_GROUPS[i];
-  var label=g?g.label:aiSvcLabel(k), color=g?g.color:"#6b7484";
-  return '<span class="ai-lane" style="--lc:'+color+'">'+esc(label)+'</span>';
-}
+
 /* everything in the center column: headline, prompt-by-prompt, trend */
-function renderAISel(){
-  var t=aiSelT();
-  if(!t) return '<div class="empty-note">No AI visibility data yet.</div>';
-  return aiHead(t)+aiPromptList(t)+aiTrend(t);
+
+
+
+/* ---------- AI Visibility sections (neutral redesign) ---------- */
+function aiSecHead(t,d){
+  return '<div class="ai-sec-h"><h3>'+esc(t)+'</h3><p>'+esc(d)+'</p></div>';
 }
-function renderAIHero(){
-  var t=aiSelT();
-  if(!t) return '';
-  return aiHero(t);
-}
-function aiLeaderboard(scope){
-  var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
-  var h='<div class="ai-sec-t">'+(scope?"Businesses — ranked for this prompt":"Businesses — ranked by AI citations")+'</div>'+
-    '<div class="sub" style="margin:-2px 0 10px">Select a business to inspect it.</div>';
-  if(!sBoard.length) h+='<div class="empty-note">No checks have run for this prompt yet — it joins the next audit.</div>';
-  h+='<div class="ai-lead stagger">';
-  sBoard.forEach(function(t,i){
-    var pct=sN?Math.round(t.days/sN*100):0, tier=aiTierColor(pct);
-    h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+(t.days===0?" ai-zero":"")+'" data-ai="'+esc(t.name)+'">'+
-      '<span class="rk">'+(i+1)+'</span>'+
-      '<div class="ai-row-bd"><div class="ai-row-top"><span class="nm">'+esc(t.name)+'</span>'+
-      '<span class="ct">'+(t.days>0&&sN>0?t.days+' of '+sN+' checks ('+pct+'%)':(sN>0?'not cited':'—'))+'</span></div>'+
-      '<div class="bar"><i style="width:'+Math.max(2,pct)+'%;background:'+tier+'"></i></div></div></div>';
+function aiStatStrip(){
+  var last=AI.dates.length?AI.dates[AI.dates.length-1]:"\u2014";
+  var items=[
+    {v:String(AI.nNamed),l:"Businesses cited"},
+    {v:String((AI.promptCatalog||[]).length||AI.prompts.length),l:"Prompts tested"},
+    {v:String(AI.nDays),l:"Checks run"},
+    {v:last,l:"Last audit"}
+  ];
+  var h='<div class="ai-stats">';
+  items.forEach(function(s){
+    h+='<div class="ai-stat"><div class="ai-stat-v">'+esc(s.v)+'</div><div class="ai-stat-l">'+esc(s.l)+'</div></div>';
   });
   return h+'</div>';
+}
+function aiPromptFilter(){
+  return '<label class="ai-filter"><span>Prompt</span><select id="aiPromptSel">'+
+    '<option value="">All prompts \u00b7 market-wide</option>'+
+    AI.promptCatalog.map(function(p){
+      var pc=AI.promptChecks[p.text], cc=pc?Object.keys(pc).length:0;
+      return '<option value="'+esc(p.text)+'"'+(S.aiPrompt===p.text?" selected":"")+'>'+
+        esc(p.text.length>64?p.text.slice(0,64)+"\u2026":p.text)+(cc?" \u00b7 "+cc+" checks":"")+'</option>';
+    }).join("")+'</select></label>';
+}
+function aiBoard(scope){
+  var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
+  var list=S.aiAll?sBoard:sBoard.slice(0,20);
+  var h='<div class="ai-rows">';
+  list.forEach(function(t,i){
+    var pct=sN?Math.round(t.days/sN*100):0;
+    h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+'" role="button" tabindex="0" aria-pressed="'+(S.aiSel===t.name)+'" data-ai="'+esc(t.name)+'">'+
+      '<span class="ai-rk">'+(i+1)+'</span>'+
+      '<span class="ai-row-bd"><span class="ai-nm">'+esc(t.name)+'</span>'+
+      '<span class="bar"><i data-bw="'+Math.max(2,pct)+'" style="width:'+Math.max(2,pct)+'%;background:'+aiTier3(pct)+'"></i></span></span>'+
+      '<span class="ai-ct">'+(sN>0?t.days+' of '+sN+' checks':"\u2014")+'</span></div>';
+  });
+  h+='</div>';
+  if(sBoard.length>20)
+    h+='<button class="ai-more" data-aiall>'+(S.aiAll?"Show fewer":"Show all "+sBoard.length+" businesses")+'</button>';
+  return h;
+}
+function aiDetail(){
+  var t=aiSelT();
+  if(!t) return '';
+  var sN=AI.nDays, pct=sN?Math.round(t.days/sN*100):0;
+  var h='<section class="ai-sec"><div class="ai-detail">';
+  h+='<div class="ai-detail-h">'+aiSecHead(t.name,"Cited in "+t.days+" of "+sN+" checks ("+pct+"%).")+
+     '<button class="ai-x" data-aix aria-label="Close detail">\u00d7</button></div>';
+  if(t.id) h+='<div class="ai-dopen"><span class="linkish" data-open="'+esc(t.id)+'">Open profile \u2192</span></div>';
+  h+='<div class="ai-deng">';
+  AI.engines.forEach(function(e){
+    var ec=aiEngChecks(e), nd=aiNamedDays(t,e);
+    h+='<div class="ai-deng-c"><span class="ai-deng-v">'+nd+' of '+ec+'</span><span class="ai-deng-l">'+esc(e)+' checks</span></div>';
+  });
+  h+='</div><div class="ai-dp">';
+  AI.promptCatalog.forEach(function(p){
+    h+='<div class="ai-dp-r"><span class="ai-dp-q">'+esc(p.text)+'</span><span class="ai-dp-c">';
+    AI.engines.forEach(function(e){
+      var r=aiLatestPrompt(p.text,e), lab, cls;
+      if(!r){ lab="no check"; cls="is-mut"; }
+      else if(!aiNamedInRow(t,r)){ lab="not named"; cls="is-mut"; }
+      else if(t.id==="jd-meyers-productions"&&r.jd_rank){ lab="#"+r.jd_rank+" of "+r.of_total; cls=r.jd_rank===1?"is-win":"is-hit"; }
+      else { lab="named"; cls="is-hit"; }
+      h+='<span class="ai-chip '+cls+'"><b>'+esc(e)+'</b>'+esc(lab)+'</span>';
+    });
+    h+='</span></div>';
+  });
+  return h+'</div></div></section>';
+}
+function aiMatrix(){
+  var per={};
+  AI.rows.forEach(function(r){
+    var o=per[r.prompt]=per[r.prompt]||{};
+    var oe=o[r.engine]=o[r.engine]||{names:{},total:0};
+    oe.total++;
+    var seen={};
+    (r.rivals||[]).forEach(function(n){ seen[n]=1; });
+    if(r.jd_named==="yes"||r.jd_named==="partial") seen["JD Meyers Productions"]=1;
+    Object.keys(seen).forEach(function(n){ oe.names[n]=(oe.names[n]||0)+1; });
+  });
+  var h='<section class="ai-sec">'+aiSecHead("Results by prompt and assistant","Most-cited business per prompt across all checks.");
+  h+='<div class="ai-mx"><div class="ai-mx-h">Prompt</div><div class="ai-mx-h">ChatGPT</div><div class="ai-mx-h">Gemini</div>';
+  AI.promptCatalog.forEach(function(p){
+    var o=per[p.text]||{};
+    h+='<div class="ai-mx-q">'+esc(p.text)+'</div>';
+    ["ChatGPT","Gemini"].forEach(function(e){
+      var oe=o[e], top=null, tc=0;
+      if(oe) Object.keys(oe.names).forEach(function(n){ if(oe.names[n]>tc){ tc=oe.names[n]; top=n; } });
+      h+='<div class="ai-mx-c">'+(top?'<b>'+esc(top)+'</b><span>'+tc+' of '+oe.total+' checks</span>':'<span class="muted">\u2014</span>')+'</div>';
+    });
+  });
+  return h+'</div></section>';
+}
+function aiTraits(){
+  function card(t,v,l,rv,rl){
+    return '<div class="ai-trait"><div class="ai-trait-t">'+esc(t)+'</div>'+
+      '<div class="ai-stat-v">'+esc(v)+'</div><div class="ai-stat-l">'+esc(l)+'</div>'+
+      '<div class="ai-trait-r">'+esc(rv)+' \u2014 '+esc(rl)+'</div></div>';
+  }
+  var h='<section class="ai-sec">'+aiSecHead("What the most-cited businesses share","The 10 most-cited businesses, compared with the rest of the market.");
+  h+='<div class="ai-traits">';
+  h+=card("Website",AI.webPct+"%","of the 10 most-cited have their own website",AI.restWebPct+"%","of the rest do");
+  h+=card("Google reviews",AI.medRev!=null?String(AI.medRev):"\u2014","median review count, most-cited",(AI.restMedRev!=null?String(AI.restMedRev):"\u2014")+" median","for the rest");
+  h+=card("Years in business",AI.medYrs!=null?String(AI.medYrs):"\u2014","median years, most-cited",(AI.restMedYrs!=null?String(AI.restMedYrs):"\u2014")+" median","for the rest");
+  return h+'</div></section>';
+}
+function aiMethod(){
+  var h='<section class="ai-sec"><details class="ai-meth"><summary>Methodology</summary><div class="ai-meth-b">';
+  h+='<p>Daily neutral audits ask each prompt verbatim to ChatGPT and Gemini in signed-out guest sessions, one prompt at a time.</p>';
+  h+='<p class="ai-meth-t">Prompts tested ('+AI.promptCatalog.length+')</p><ul class="ai-meth-p">';
+  AI.promptCatalog.forEach(function(p){ h+='<li>'+esc(p.text)+'</li>'; });
+  h+='</ul><p class="ai-meth-t">Limitations</p><ul>'+
+    '<li>Claude and Perplexity require sign-in, so they are excluded from neutral audits.</li>'+
+    '<li>Each check records which businesses were named. Exact rank is recorded only for the primary tracked business.</li>'+
+    '<li>Assistant answers vary between runs; treat small differences as noise.</li></ul>';
+  return h+'</div></details></section>';
 }
 function renderAI(){
   if(S.mode==="venues")
@@ -1703,31 +1601,22 @@ function renderAI(){
       '<div class="empty-note">No AI visibility data for venues yet.</div></div>';
   computeAI();
   if(!AI.rows.length)
-    return '<div class="ai-page"><div class="pg-head"><h2>AI Visibility</h2>'+
-      '<div class="empty-note">No AI visibility data yet — the daily audit feeds this tab.</div></div>';
-  var h='<div class="ai-page">';
-  h+='<div class="pg-head"><h2>AI Visibility</h2><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
-  h+='<div class="ai-cols"><aside class="ai-side">';
-  h+='<div class="ai-promptbar"><span class="ai-promptbar-l">Prompt</span><select id="aiPromptSel">'+
-    '<option value="">All prompts · market-wide</option>'+
-    AI.promptCatalog.map(function(p){
-      var pc=AI.promptChecks[p.text], cc=pc?Object.keys(pc).length:0;
-      return '<option value="'+esc(p.text)+'"'+(S.aiPrompt===p.text?" selected":"")+'>'+
-        esc(p.text.length>64?p.text.slice(0,64)+"…":p.text)+
-        (cc?" · "+cc+" checks":" · new, no history yet")+'</option>';
-    }).join("")+'</select></div>';
+    return '<div class="page-head"><h1>AI Visibility</h1><div class="empty-note">No AI visibility data yet \u2014 the daily audit feeds this tab.</div></div>';
+  var h='<div class="ai-wrap">';
+  h+='<div class="page-head"><h1>AI Visibility</h1><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
+  h+=aiStatStrip();
+  h+='<section class="ai-sec">'+aiSecHead("Cited businesses","Ranked by how often assistants name them. Select a row for detail.");
+  h+='<div class="ai-board-h">'+aiPromptFilter()+'</div>';
   var scope=aiPromptScope();
-  if(scope){
-    h+='<div class="ai-scope"><span class="ai-scope-t">Prompt: &ldquo;'+esc(scope.prompt)+'&rdquo;</span>'+
-      '<span class="ai-scope-x" data-aipx>&times; all prompts</span></div>';
-  }
-  h+=aiLeaderboard(scope);
-  h+='</aside><div class="ai-main">';
-  h+='<div id="aiSelWrap">'+renderAISel()+'</div>';
-  h+='</div><aside class="ai-hero" id="aiHeroWrap">'+renderAIHero()+'</aside></div>';
-  h+='</div>';
-  return h;
+  if(scope) h+='<div class="ai-scope"><span>Prompt: \u201c'+esc(scope.prompt)+'\u201d</span><span class="linkish" data-aipx>\u00d7 all prompts</span></div>';
+  h+=aiBoard(scope)+'</section>';
+  h+=aiDetail();
+  h+=aiMatrix();
+  h+=aiTraits();
+  h+=aiMethod();
+  return h+'</div>';
 }
+
 
 /* ---------- market aggregates ---------- */
 function postEvents(){
@@ -2870,13 +2759,13 @@ document.addEventListener("click",function(e){
   var apx=e.target.closest("[data-aipx]");
   if(apx){ S.aiPrompt=null; renderLeft(); return; }
   var ar=e.target.closest("[data-ai]");
-  if(ar){ S.aiSel=ar.getAttribute("data-ai");
-    var sw=$("#aiSelWrap");
-    if(sw){ sw.innerHTML=renderAISel(); aiAnimateBars(sw); animateCounts(sw); }
-    var hw=$("#aiHeroWrap");
-    if(hw){ hw.innerHTML=renderAIHero(); aiAnimateBars(hw); animateCounts(hw); }
-    $$(".ai-row").forEach(function(r){ r.classList.toggle("sel",r.getAttribute("data-ai")===S.aiSel); });
-    return; }
+  if(ar){ var nm=ar.getAttribute("data-ai");
+    S.aiSel=(S.aiSel===nm)?null:nm;
+    renderLeft(); return; }
+  var ax=e.target.closest("[data-aix]");
+  if(ax){ S.aiSel=null; renderLeft(); return; }
+  var aall=e.target.closest("[data-aiall]");
+  if(aall){ S.aiAll=!S.aiAll; renderLeft(); return; }
   var mc=e.target.closest("[data-mclose]");
   if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
   var gx=e.target.closest("[data-gexpand]");
@@ -2955,6 +2844,11 @@ document.addEventListener("keydown",function(e){
     setPlaying(false);
     if(window.innerWidth<=900){ $("#right").classList.remove("open"); }
     else clearSel(); }
+  if((e.key==="Enter"||e.key===" ")&&document.activeElement&&document.activeElement.hasAttribute&&document.activeElement.hasAttribute("data-ai")){
+    e.preventDefault();
+    var nm=document.activeElement.getAttribute("data-ai");
+    S.aiSel=(S.aiSel===nm)?null:nm;
+    renderLeft(); return; }
   var tg=(document.activeElement&&document.activeElement.tagName)||"";
   if(e.key==="/"&&document.activeElement!==$("#fq")&&tg!=="INPUT"&&tg!=="SELECT"){ e.preventDefault(); if(S.tab!=="explore") setTab("explore"); $("#fq").focus(); }
 });
