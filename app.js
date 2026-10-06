@@ -255,13 +255,12 @@ function syncChrome(){
   /* sections */
   $$(".pagenav button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
     x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
-  var ex=S.tab==="explore", rk=ex&&S.view==="rankings", cv=ex&&S.view==="coverage";
+  var ex=S.tab==="explore", rk=ex&&S.view==="rankings";
   document.body.classList.toggle("pgmode",!ex);
+  document.body.classList.toggle("covrank",rk); /* EXPERIMENTAL */
   $("#page").hidden=ex;
   $("#rankings").hidden=!rk;
-  $("#coverage").hidden=!cv;
-  if(!(ex&&cv)) coverageStop(); /* EXPERIMENTAL */
-  $("#map").style.visibility=(ex&&!rk&&!cv)?"visible":"hidden";
+  $("#map").style.visibility=(ex&&!rk)?"visible":"hidden";
   syncSort();
 }
 function applyState(st){
@@ -277,7 +276,6 @@ function applyState(st){
     if(map&&st.c){ HIST.noPush=true; map.setView([st.c.lat,st.c.lng],st.z,{animate:false}); }
     renderPins();
     if(S.view==="rankings") renderRankings();
-    if(S.view==="coverage") renderCoverage(); /* EXPERIMENTAL */
     renderLeft(); renderRight();
     $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
     if(S.sel){ var row=$('#leftbody .row[data-open="'+S.sel+'"]'); if(row) row.classList.add("sel"); }
@@ -2168,6 +2166,7 @@ function initMap(){
     clearSel();
   });
   renderPins();
+  covInitBtn(); /* EXPERIMENTAL */
 }
 /* heat intensity: bigger follower counts weigh more, recent activity adds more */
 var _maxLogF=1;
@@ -2202,6 +2201,190 @@ function refreshHeat(){
   if(heatLayer._canvas) heatLayer._canvas.style.opacity=op;
 }
 /* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
+
+/* ==================== EXPERIMENTAL: coverage orbit overlay ====================
+   Map overlay toggled by the floating "Orbits" button: each coverage area gets
+   a geographic circle and member businesses orbit its perimeter. Areas come
+   from b.coverage (data/seeds/coverage.json) with home-town fallback.
+   Reversible: delete this block, the .covl-* CSS, #covlBtn, and the hooks in
+   initMap / setMode / refreshFiltered / select / clearSel / setView. */
+var covOn=false, covGroup=null, covAnim=0, covAreas=[];
+function covDest(lat,lng,brgDeg,distM){
+  var R=6371000, d=distM/R, br=brgDeg*Math.PI/180;
+  var la1=lat*Math.PI/180, lo1=lng*Math.PI/180;
+  var la2=Math.asin(Math.sin(la1)*Math.cos(d)+Math.cos(la1)*Math.sin(d)*Math.cos(br));
+  var lo2=lo1+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(la1),Math.cos(d)-Math.sin(la1)*Math.sin(la2));
+  return [la2*180/Math.PI, lo2*180/Math.PI];
+}
+function covKey(s){ return String(s||"").toLowerCase().replace(/^saint\b/,"st").replace(/\./g,"").replace(/,\s*ny.*$/,"").replace(/\s+county$/,"").trim(); }
+var COV_COUNTY={
+  "st lawrence":{label:"St. Lawrence County",lat:44.52,lng:-75.08,r:26000},
+  "franklin":{label:"Franklin County",lat:44.58,lng:-74.30,r:24000},
+  "essex":{label:"Essex County",lat:44.08,lng:-73.68,r:26000},
+  "jefferson":{label:"Jefferson County",lat:44.02,lng:-76.02,r:24000},
+  "clinton":{label:"Clinton County",lat:44.68,lng:-73.68,r:24000},
+  "lewis":{label:"Lewis County",lat:43.82,lng:-75.42,r:22000},
+  "herkimer":{label:"Herkimer County",lat:43.52,lng:-74.92,r:24000}
+};
+var COV_REGION={
+  "north country":{label:"North Country",lat:44.45,lng:-74.70,r:65000},
+  "northern new york":{label:"North Country",lat:44.45,lng:-74.70,r:65000},
+  "northern ny":{label:"North Country",lat:44.45,lng:-74.70,r:65000},
+  "adirondack":{label:"Adirondacks",lat:44.00,lng:-74.20,r:60000},
+  "adirondacks":{label:"Adirondacks",lat:44.00,lng:-74.20,r:60000},
+  "adirondack park":{label:"Adirondacks",lat:44.00,lng:-74.20,r:60000},
+  "northern adirondacks":{label:"Adirondacks",lat:44.00,lng:-74.20,r:60000},
+  "thousand islands":{label:"Thousand Islands",lat:44.32,lng:-75.98,r:30000},
+  "st lawrence valley":{label:"St. Lawrence Valley",lat:44.55,lng:-75.20,r:35000},
+  "seaway valley":{label:"St. Lawrence Valley",lat:44.55,lng:-75.20,r:35000},
+  "central new york":{label:"Central New York",lat:43.30,lng:-75.80,r:70000},
+  "central ny":{label:"Central New York",lat:43.30,lng:-75.80,r:70000},
+  "upstate new york":{label:"Upstate New York",lat:43.90,lng:-75.30,r:80000},
+  "upstate ny":{label:"Upstate New York",lat:43.90,lng:-75.30,r:80000},
+  "new york state":{label:"New York State",lat:43.90,lng:-75.30,r:80000},
+  "western vermont":{label:"Western Vermont",lat:43.90,lng:-73.10,r:60000},
+  "vermont":{label:"Vermont",lat:43.90,lng:-73.10,r:60000},
+  "new england":{label:"New England",lat:43.80,lng:-72.60,r:80000}
+};
+var COV_TOWN_R=7000, COV_MAX_R=80000;
+function covNormTag(t){
+  var s=String(t||"").trim(); if(!s) return null;
+  var lo=covKey(s);
+  if(/available for travel|destination wedding|willing to travel/.test(lo)) return null;
+  var m=lo.match(/(\d+)\s*-\s*mile radius of\s+(.+)/);
+  if(m) return {type:"town",label:m[2].replace(/\b\w/g,function(c){return c.toUpperCase();})};
+  var k;
+  for(k in COV_REGION){ if(lo.indexOf(k)>=0) return {type:"region",key:k}; }
+  for(k in COV_COUNTY){ if(lo.indexOf(k)>=0) return {type:"county",key:k}; }
+  var tn=s.replace(/,\s*NY.*$/i,"").trim();
+  return tn?{type:"town",label:tn}:null;
+}
+function covIntel(b){
+  try{ var it=(window.PULSE_WEBSITE_INTEL&&PULSE_WEBSITE_INTEL.intel)||{}; return it[b.id]||null; }
+  catch(e){ return null; }
+}
+function covAreaFor(b){
+  var seen={}, tags=[];
+  [b.coverage, (covIntel(b)||{}).coverage].forEach(function(arr){
+    (arr||[]).forEach(function(t){
+      var k=String(t).toLowerCase();
+      if(!seen[k]){ seen[k]=1; tags.push(t); }
+    });
+  });
+  var best=null, rank=0, i, n;
+  for(i=0;i<tags.length;i++){
+    n=covNormTag(tags[i]); if(!n) continue;
+    var r=n.type==="region"?3:n.type==="county"?2:1;
+    if(r>rank){ rank=r; best=n; }
+  }
+  if(best) return best;
+  var tn=String(b.town||"").split(",")[0].trim();
+  return tn?{type:"town",label:tn}:null;
+}
+function covBuildAreas(){
+  var groups={}, order=[];
+  filtered().forEach(function(b){
+    if(!b||!b.id) return;
+    var a=covAreaFor(b); if(!a) return;
+    var key=a.type+":"+(a.type==="town"?covKey(a.label):a.key);
+    if(!groups[key]){ groups[key]={area:a,members:[],key:key}; order.push(key); }
+    groups[key].members.push(b);
+  });
+  var arr=order.map(function(k){ return groups[k]; });
+  arr.sort(function(x,y){ return y.members.length-x.members.length; });
+  return arr;
+}
+function covCenter(g){
+  var a=g.area;
+  if(g.elsewhere){
+    var la=0,lo=0,n=0,i,b;
+    for(i=0;i<g.members.length;i++){ b=g.members[i];
+      if(b._geo&&b.lat!=null){ la+=b.lat; lo+=b.lng; n++; } }
+    if(!n) return null;
+    return {lat:la/n,lng:lo/n,r:90000,label:"Elsewhere"};
+  }
+  if(a.type==="county"){ var c=COV_COUNTY[a.key]; return {lat:c.lat,lng:c.lng,r:Math.min(c.r,COV_MAX_R),label:c.label}; }
+  if(a.type==="region"){ var r2=COV_REGION[a.key]; return {lat:r2.lat,lng:r2.lng,r:Math.min(r2.r,COV_MAX_R),label:r2.label}; }
+  var la=0,lo=0,n=0,i,b;
+  for(i=0;i<g.members.length;i++){ b=g.members[i];
+    if(b._geo&&b.lat!=null){ la+=b.lat; lo+=b.lng; n++; } }
+  if(!n) return null;
+  return {lat:la/n,lng:lo/n,r:COV_TOWN_R,label:a.label};
+}
+function covDotIcon(sel){
+  return L.divIcon({className:"",html:'<div class="covl-dot'+(sel?' sel':'')+'"></div>',iconSize:[12,12],iconAnchor:[6,6]});
+}
+function covRender(){
+  if(covGroup){ map.removeLayer(covGroup); covGroup=null; }
+  covAreas=[];
+  if(!covOn||!map) return;
+  var all=covBuildAreas(), top=all.slice(0,10), rest=all.slice(10);
+  if(rest.length){
+    var rm=[];
+    rest.forEach(function(g){ rm=rm.concat(g.members); });
+    top.push({area:{type:"town",label:"Elsewhere"},members:rm,elsewhere:true});
+  }
+  top.forEach(function(g){
+    var c=covCenter(g); if(!c) return;
+    g.c=c; covAreas.push(g);
+  });
+  if(!covAreas.length) return;
+  covGroup=L.layerGroup().addTo(map);
+  covAreas.forEach(function(g){
+    L.circle([g.c.lat,g.c.lng],{radius:g.c.r,color:"rgba(232,179,75,.5)",weight:1.5,
+      fillColor:"#e8b34b",fillOpacity:0.045,dashArray:"7 6"}).addTo(covGroup)
+      .bindTooltip(g.c.label+" · "+g.members.length,{permanent:true,direction:"center",className:"covl-tip"});
+    g.dots=g.members.map(function(b,bi){
+      var mk=L.marker([g.c.lat,g.c.lng],{icon:covDotIcon(b.id===S.sel),keyboard:false}).addTo(covGroup);
+      mk.bindTooltip(b.name,{direction:"top",className:"covl-tip2",offset:[0,-7]});
+      mk.on("click",function(){ select(b.id,{fly:false}); });
+      return {mk:mk,b:b,a0:(bi/g.members.length)*Math.PI*2};
+    });
+  });
+  covMarkSel();
+}
+function covPlace(t){
+  var i,j;
+  for(i=0;i<covAreas.length;i++){
+    var g=covAreas[i]; if(!g.c) continue;
+    var w=1500/g.c.r;
+    for(j=0;j<g.dots.length;j++){
+      var d=g.dots[j], a=d.a0+t*w;
+      d.mk.setLatLng(covDest(g.c.lat,g.c.lng,a*180/Math.PI,g.c.r));
+    }
+  }
+}
+function covTick(){
+  if(!covOn) return;
+  covPlace(performance.now()/1000);
+  covAnim=requestAnimationFrame(covTick);
+}
+function covMarkSel(){
+  if(!covGroup) return;
+  covAreas.forEach(function(g){
+    (g.dots||[]).forEach(function(d){ d.mk.setIcon(covDotIcon(d.b.id===S.sel)); });
+  });
+}
+function covToggle(){
+  covOn=!covOn;
+  var b=document.getElementById("covlBtn");
+  if(b){ b.classList.toggle("on",covOn); b.setAttribute("aria-pressed",covOn?"true":"false"); }
+  if(covAnim){ cancelAnimationFrame(covAnim); covAnim=0; }
+  if(covOn){
+    covRender();
+    if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches){ covPlace(0); }
+    else covTick();
+  }else if(covGroup){ map.removeLayer(covGroup); covGroup=null; covAreas=[]; }
+}
+function covInitBtn(){
+  if(document.getElementById("covlBtn")) return;
+  var b=document.createElement("button");
+  b.id="covlBtn"; b.className="covl-btn"; b.textContent="Orbits";
+  b.title="Coverage orbits overlay"; b.setAttribute("aria-pressed","false");
+  b.addEventListener("click",function(e){ e.stopPropagation(); covToggle(); });
+  document.body.appendChild(b);
+}
+/* ================== /EXPERIMENTAL: coverage orbit overlay ================== */
 var pinMode="dots";
 function labelFor(b){
   var f=followersAt(b,S.di);
@@ -2791,123 +2974,17 @@ function onScrub(){
   renderRight();
 }
 
-/* ==================== EXPERIMENTAL: coverage orbit view ====================
-   Reversible: delete this block, the #coverage section + Coverage button in
-   index.html, the cov-* CSS, and the /* EXPERIMENTAL *\/ hooks to remove. */
-var covRAF=null, covState=null;
-function covTown(b){ return String(b.town||"").split(",")[0].trim()||"Unknown"; }
-function coverageStop(){ if(covRAF){ cancelAnimationFrame(covRAF); covRAF=null; } covState=null; }
-function covMarkSel(){
-  if(!covState) return;
-  for(var i=0;i<covState.dots.length;i++){
-    var d=covState.dots[i], on=d.el.getAttribute("data-open")===S.sel;
-    d.el.classList.toggle("sel",on);
-    d.el.setAttribute("r",on?7:5.5);
-  }
-}
-function covDraw(){
-  var st=covState; if(!st) return;
-  for(var i=0;i<st.dots.length;i++){
-    var d=st.dots[i], c=st.circles[d.c], a=d.a+st.off[d.c];
-    d.el.setAttribute("cx",(c.x+Math.cos(a)*c.R).toFixed(1));
-    d.el.setAttribute("cy",(c.y+Math.sin(a)*c.R).toFixed(1));
-  }
-}
-function renderCoverage(){
-  coverageStop();
-  var host=$("#coverage"); if(!host) return;
-  var list=filtered().filter(function(b){ return b&&b.id; });
-  var byTown={}, order=[];
-  list.forEach(function(b){
-    var t=covTown(b);
-    if(!byTown[t]){ byTown[t]={label:t,count:0,members:[]}; order.push(t); }
-    byTown[t].count++; byTown[t].members.push(b);
-  });
-  var towns=order.map(function(k){ return byTown[k]; }).sort(function(a,b){ return b.count-a.count; });
-  if(!towns.length){ host.innerHTML='<div class="cov-empty">No businesses match the current filters.</div>'; return; }
-  var TOP=8, circles=towns.slice(0,TOP), rest=towns.slice(TOP), restN=0;
-  if(rest.length){
-    var rm=[];
-    rest.forEach(function(t){ restN+=t.count; rm=rm.concat(t.members); });
-    circles.push({label:"Elsewhere",count:restN,members:rm,sub:rest.length+" other towns"});
-  }
-  circles.forEach(function(c){ c.R=Math.max(30,34*Math.sqrt(c.count)); });
-  circles.sort(function(a,b){ return b.R-a.R; });
-  var GAP=36;
-  circles[0].x=0; circles[0].y=0;
-  for(var i=1;i<circles.length;i++){
-    var c=circles[i], placed=false, d=c.R+circles[0].R+GAP;
-    for(var ring=0; ring<48 && !placed; ring++){
-      var steps=Math.max(14,10+ring*6);
-      for(var s=0;s<steps && !placed;s++){
-        var a=(s/steps)*Math.PI*2+ring*0.45;
-        var x=Math.cos(a)*d, y=Math.sin(a)*d*0.8, ok=true;
-        for(var j=0;j<i;j++){
-          var o=circles[j], dx=x-o.x, dy=y-o.y;
-          if(dx*dx+dy*dy < Math.pow(o.R+c.R+GAP,2)){ ok=false; break; }
-        }
-        if(ok){ c.x=x; c.y=y; placed=true; }
-      }
-      d+=c.R*0.5+GAP*0.5;
-    }
-    if(!placed){ c.x=d; c.y=0; }
-  }
-  var x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
-  circles.forEach(function(c){
-    x0=Math.min(x0,c.x-c.R-16); x1=Math.max(x1,c.x+c.R+16);
-    y0=Math.min(y0,c.y-c.R-16); y1=Math.max(y1,c.y+c.R+16);
-  });
-  var h='<div class="cov-head"><div><h2>Coverage orbits</h2><div class="sub">Each business circles its home town &middot; circle size = business count &middot; top '+TOP+' towns'+(rest.length?' + elsewhere':'')+'</div></div></div>';
-  h+='<svg id="covSvg" viewBox="'+x0+' '+y0+' '+(x1-x0)+' '+(y1-y0)+'" role="img" aria-label="Coverage orbit diagram">';
-  circles.forEach(function(c,ci){
-    h+='<g class="cov-c" data-cov="'+ci+'"><circle cx="'+c.x+'" cy="'+c.y+'" r="'+c.R+'" class="cov-ring"/>';
-    h+='<text x="'+c.x+'" y="'+(c.y-5)+'" text-anchor="middle" class="cov-label">'+esc(c.label)+'</text>';
-    h+='<text x="'+c.x+'" y="'+(c.y+17)+'" text-anchor="middle" class="cov-count">'+c.count+' business'+(c.count===1?'':'es')+(c.sub?' &middot; '+esc(c.sub):'')+'</text>';
-    c.members.forEach(function(b){
-      h+='<circle class="cov-dot'+(S.sel===b.id?' sel':'')+'" data-open="'+b.id+'" r="'+(S.sel===b.id?7:5.5)+'"><title>'+esc(b.name)+'</title></circle>';
-    });
-    h+='</g>';
-  });
-  h+='</svg><div class="cov-hint">Hover a dot for the name &middot; click for the profile</div>';
-  host.innerHTML=h;
-  covState={circles:circles,dots:[],hover:-1,off:circles.map(function(){return 0;})};
-  var dotEls=host.querySelectorAll(".cov-dot"), di=0;
-  circles.forEach(function(c,ci){
-    c.members.forEach(function(b,bi){
-      covState.dots.push({el:dotEls[di++],c:ci,a:(bi/c.members.length)*Math.PI*2});
-    });
-  });
-  host.querySelectorAll(".cov-c").forEach(function(g){
-    g.addEventListener("mouseenter",function(){ if(covState) covState.hover=+g.getAttribute("data-cov"); });
-    g.addEventListener("mouseleave",function(){ if(covState) covState.hover=-1; });
-  });
-  covDraw();
-  if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  var SPEED=16, last=performance.now();
-  (function frame(now){
-    if(!covState) return;
-    var dt=Math.min(0.06,(now-last)/1000); last=now;
-    for(var i=0;i<covState.circles.length;i++)
-      if(i!==covState.hover) covState.off[i]+=dt*SPEED/covState.circles[i].R;
-    covDraw();
-    covRAF=requestAnimationFrame(frame);
-  })(last);
-}
-/* ================== /EXPERIMENTAL: coverage orbit view ================== */
-
 /* ---------- view toggle ---------- */
 function setView(v){
   S.view=v;
   $$(".viewtoggle button").forEach(function(b){
     var on=b.getAttribute("data-view")===v;
     b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
-  var rk=v==="rankings", cv=v==="coverage";
+  var rk=v==="rankings";
   $("#rankings").hidden=!rk;
-  $("#coverage").hidden=!cv;
-  $("#map").style.visibility=(rk||cv)?"hidden":"visible";
-  coverageStop(); /* EXPERIMENTAL */
+  $("#map").style.visibility=rk?"hidden":"visible";
+  document.body.classList.toggle("covrank",rk); /* EXPERIMENTAL */
   if(rk) renderRankings();
-  if(cv) renderCoverage(); /* EXPERIMENTAL */
   pushHist();
 }
 
@@ -2938,7 +3015,7 @@ function setMode(m){
     else map.fitBounds(L.latLngBounds(pts).pad(0.15));
   }
   if(S.view==="rankings") renderRankings();
-  if(S.view==="coverage") renderCoverage(); /* EXPERIMENTAL */
+  if(covOn) covRender(); /* EXPERIMENTAL */
   renderLeft(); renderRight();
   pushHist();
 }
@@ -3031,7 +3108,7 @@ $("#fsort").addEventListener("change",function(e){ S.sortBy=e.target.value; rend
 });
 /* persistent nav buttons were removed from the top bar in the redesign;
    history is still tracked via pushHist for state restore. */
-function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); if(S.view==="coverage") renderCoverage(); /* EXPERIMENTAL */ renderLeft(); }
+function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); if(covOn) covRender(); /* EXPERIMENTAL */ renderLeft(); }
 timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
 $("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
 
