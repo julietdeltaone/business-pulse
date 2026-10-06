@@ -1548,20 +1548,17 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-network .tracepick .hint{margin:0}
 
 /* hub-spoke: one-page network */
-.pg-network .hub-wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start;margin-top:18px}
+.pg-network .hub-wrap{margin:18px -22px 0}
 .pg-network .hub-stage{position:relative}
 .pg-network .hubsvg{width:100%;height:auto;display:block}
 .pg-network .hub-node{cursor:pointer;outline:none}
 .pg-network .hub-node circle{stroke:rgba(8,10,14,.85);stroke-width:1.2}
-.pg-network .hub-name{font-size:12.5px;fill:var(--silver-2);font-weight:500;pointer-events:none}
+.pg-network .hub-name{font-size:13px;fill:var(--silver-2);font-weight:500;pointer-events:none}
 .pg-network .hub-name.hub-pin{font-weight:700;fill:var(--silver)}
 .pg-network .hub-spoke{stroke:#8fa3c8;stroke-width:1;opacity:.55}
 .pg-network .hub-spoke.mut{stroke:#d7e2f7;stroke-width:1.8;opacity:.8}
 .pg-network .hubsvg.has-spokes .hub-node{opacity:.28}
 .pg-network .hubsvg.has-spokes .hub-node.lit{opacity:1}
-.pg-network .hub-side{display:flex;flex-direction:column;gap:18px;min-width:0}
-.pg-network .hub-side .hbar{margin:7px 0}
-@media (max-width:900px){.pg-network .hub-wrap{grid-template-columns:1fr}}
 .pg-network .hub-legend{display:flex;gap:18px;flex-wrap:wrap;margin:2px 0 4px}
 .pg-network .hub-legend span{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--silver-2)}
 .pg-network .hub-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
