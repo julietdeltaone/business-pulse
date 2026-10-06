@@ -2,7 +2,7 @@ window.PULSE_DETAILS = {
   "emily-murphy-photography": {
     "blurb": "Emily Murphy Photography is a North Country portrait photographer focused on genuine, emotion-driven sessions; her site emphasizes capturing personalities 'from the inside out' with natural, prompted smiles.",
     "platform": "Pixieset",
-    "site_note": "Site content is thin (intro only); official presence appears to be the Pixieset-hosted site mirrored on the custom domain. Facebook page shows active wedding work in the Ogdensburg, NY area. Town conflict (2026-09-30): roster lists Canton, NY; Facebook evidence points to Ogdensburg/West Chazy. Roster town NOT changed; both preserved.",
+    "site_note": "Site content is thin (intro only); official presence appears to be the Pixieset-hosted site mirrored on the custom domain. Facebook page shows active wedding work in the Ogdensburg, NY area. Town conflict (2026-09-30): roster lists Canton, NY; Facebook evidence points to Ogdensburg/West Chazy. Roster town NOT changed; both preserved. Deep-dive 2026-10-06: own domain emilymurphyphoto.com confirmed live (thin homepage); pricing lives on the Pixieset storefront. No Google reviews surfaced.",
     "sources": [
       "http://emilymurphyphoto.com/",
       "https://emilymurphyphotography34.mypixieset.com/"
@@ -321,11 +321,13 @@ window.PULSE_DETAILS = {
       "Vermont (occasional)"
     ],
     "since": 2000,
-    "site_note": "Online client galleries hosted on SmugMug (careywhitephotography.smugmug.com); wedding galleries average 500+ hand-edited images.",
+    "site_note": "Online client galleries hosted on SmugMug (careywhitephotography.smugmug.com); wedding galleries average 500+ hand-edited images. Deep-dive 2026-10-06: own-site homepage failed to load this run (verified via search-crawled copies); wedding pricing not published (contact-based); WeddingWire listing (1 review, 4.8/5); Facebook page 3,632 likes.",
     "sources": [
       "https://www.matthughesphoto.com/c-photography/carey-white-photography-potsdam-ny.html",
-      "https://www.weddingwire.com/biz/carey-white-photography-potsdam/6370d71bed03a65f.html"
-    ]
+      "https://www.weddingwire.com/biz/carey-white-photography-potsdam/6370d71bed03a65f.html",
+      "https://wedfolio.com/pages/carey-white-photography-potsdam-ny/29100/"
+    ],
+    "platform": "Yahoo (site footer: 'Web Hosting by Yahoo!')"
   },
   "david-zufall-photography": {
     "blurb": "David Zufall, a wedding & portrait photographer in Northern New York for 'the modern & romantic' — offering weddings, elopements, couples, and portraits.",
@@ -341,7 +343,7 @@ window.PULSE_DETAILS = {
       "available worldwide"
     ],
     "platform": "Pixieset",
-    "site_note": "Site copy mixes locations (Northern New York vs. 'Based in New York City') and still shows unedited template placeholder copy ('This is a paragraph. Click edit and enter your own text.').",
+    "site_note": "Site copy mixes locations (Northern New York vs. 'Based in New York City') and still shows unedited template placeholder copy ('This is a paragraph. Click edit and enter your own text.'). Deep-dive 2026-10-06: site still largely an unfinished template (placeholder copy); no pricing, reviews, or founding year published; previously recorded pricing ($1,400/$200) not re-verifiable on the live site.",
     "sources": [
       "https://www.davidzufallphotography.com"
     ]
@@ -436,14 +438,16 @@ window.PULSE_DETAILS = {
       "Custom wedding albums"
     ],
     "coverage": [
-      "30 miles of travel included from Canton, NY"
+      "30 miles of travel included from Canton, NY",
+      "All Across NNY & Beyond (own site)"
     ],
     "years_in_business": 15,
     "pricing_note": "Weddings from $3,800 (8 hrs, site 2026); engagement sessions regularly $400",
-    "site_note": "Owner Cristina Fenner is also a SUNY Canton adjunct instructor (verified via SUNY Canton); mini sessions held at Taylor Park in Canton.",
+    "site_note": "Owner Cristina Fenner is also a SUNY Canton adjunct instructor (verified via SUNY Canton); mini sessions held at Taylor Park in Canton. Deep-dive 2026-10-06: pricing re-verified live on weddinginfo page (matches on-file); QA page claims 150+ weddings over 15 years (corroborates 2011); named as SUNY Canton commencement photographer. No Google listing found (count stays 0); no Knot or WeddingPro listing.",
     "sources": [
       "https://cristinafennerphotography.com/weddinginfo",
-      "http://canton.meritpages.com/news/suny-canton-entrepreneurial-challenge-assists-north-country-business/48056/print"
+      "http://canton.meritpages.com/news/suny-canton-entrepreneurial-challenge-assists-north-country-business/48056/print",
+      "https://cristinafennerphotography.com/qa"
     ]
   },
   "amanda-hill-photography": {
@@ -537,10 +541,11 @@ window.PULSE_DETAILS = {
       "Families",
       "Newborns",
       "Portraits",
-      "Headshots"
+      "Headshots",
+      "Milestones"
     ],
     "platform": "Pixieset",
-    "site_note": "Site states her love of photography began 'about a year ago'; shoots couples about an hour before sunset for golden-hour light.",
+    "site_note": "Site states her love of photography began 'about a year ago'; shoots couples about an hour before sunset for golden-hour light. Deep-dive 2026-10-06: about page confirms she is a nursing student who shoots posed portraits plus candids with full posing guidance; no wedding/session pricing, founding year, or Google review listing found.",
     "sources": [
       "https://brynleethomasphotography.mypixieset.com/"
     ]
@@ -548,10 +553,20 @@ window.PULSE_DETAILS = {
   "caitlin-beyette-photography": {
     "blurb": "Photography portfolio under the name 'Through Caitlin's Eyes'; the site's published content is minimal (a 'My Beautiful Bestie Models' portfolio page) with no service or pricing detail.",
     "platform": "Pixieset",
-    "site_note": "Caitlin Beyette is listed as an Ogdensburg, NY resident on SUNY Plattsburgh's 2025 and 2026 Dean's Lists; a Plattsburgh, NY base is unconfirmed on the site itself.",
+    "site_note": "Caitlin Beyette is listed as an Ogdensburg, NY resident on SUNY Plattsburgh's 2025 and 2026 Dean's Lists; a Plattsburgh, NY base is unconfirmed on the site itself. Deep-dive 2026-10-06: about page describes her as a 20-year-old college student booking seniors, couples, and portraits in the Plattsburgh area; no Google review listing, no Facebook page, no Knot/WeddingPro presence. The Knot's 'Caitlin B Photography' is a different photographer in Metairie, LA — do not merge.",
     "sources": [
       "https://throughcaitlinseyes.mypixieset.com/",
-      "https://www.plattsburgh.edu/news/news-archive/suny-plattsburgh-announces-spring-2026-deans-list.html"
+      "https://www.plattsburgh.edu/news/news-archive/suny-plattsburgh-announces-spring-2026-deans-list.html",
+      "https://throughcaitlinseyes.mypixieset.com/about/"
+    ],
+    "services": [
+      "Seniors",
+      "Couples",
+      "Portraits"
+    ],
+    "coverage": [
+      "Plattsburgh NY area",
+      "Upstate NY"
     ]
   },
   "maria-lucia-photography": {
@@ -726,12 +741,14 @@ window.PULSE_DETAILS = {
       "Northern New York"
     ],
     "platform": "WordPress",
-    "site_note": "WeddingWire lists 20+ wedding events served; owner describes 'going on 14 years of experience.' Google rating 4.9 (44 reviews).",
+    "site_note": "WeddingWire lists 20+ wedding events served; owner describes 'going on 14 years of experience.' Google rating 4.9 (44 reviews). Deep-dive 2026-10-06: Google 4.9/44 re-verified from the live listing card; WeddingWire 4.9/5 across 4 reviews with 98% of couples recommending.",
     "sources": [
       "http://www.chelseamwalts.com/",
       "https://www.weddingwire.com/biz/chelsea-m-walts-photography/5729cb2c855844ed.html",
-      "https://www.mapquest.com/us/new-york/chelsea-m-walts-photography-425373502"
-    ]
+      "https://www.mapquest.com/us/new-york/chelsea-m-walts-photography-425373502",
+      "https://www.weddingwire.com/reviews/chelsea-m-walts-photography/5729cb2c855844ed.html"
+    ],
+    "since": 2012
   },
   "sharon-segouin-photography": {
     "blurb": "Alexandria Bay, NY photographer (born/raised in Watertown, 1000 Islands area her whole life) capturing important moments and personalities; she is a part-time retail pharmacist with a Cornell University digital photography certification and advertises affordable pricing.",
@@ -938,7 +955,8 @@ window.PULSE_DETAILS = {
       "Weddings",
       "Intimate weddings",
       "Elopements",
-      "Adventure elopements"
+      "Adventure elopements",
+      "Engagements"
     ],
     "coverage": [
       "Lake Placid",
@@ -946,12 +964,13 @@ window.PULSE_DETAILS = {
       "Upstate New York"
     ],
     "platform": "Showit",
-    "site_note": "Site footer credits 'Powered by Showit'; her site notes over a decade of inquiries and deep local venue knowledge (Lake Placid Lodge, Whiteface Lodge, Mirror Lake Inn, etc.).",
+    "site_note": "Site footer credits 'Powered by Showit'; her site notes over a decade of inquiries and deep local venue knowledge (Lake Placid Lodge, Whiteface Lodge, Mirror Lake Inn, etc.). Deep-dive 2026-10-06: Google 5.0/41 verified from the live local listing panel; no pricing published anywhere (investment page is FAQ-only; Google price level 'expensive'); owner Jamie, 'a decade in the industry' per own site.",
     "sources": [
       "https://duewestphotos.com/",
       "https://duewestphotos.com/information",
       "https://duewestphotos.com/gallery-one",
-      "https://www.evepla.com/US/Lake-Placid/1540620522856187/Due-West-Photography"
+      "https://www.evepla.com/US/Lake-Placid/1540620522856187/Due-West-Photography",
+      "https://www.lakeplacid.com/story/2018/10/winter-fun-your-bffs"
     ]
   },
   "mary-dougherty-photography": {
@@ -1007,11 +1026,21 @@ window.PULSE_DETAILS = {
     "blurb": "Lake Placid-based wedding photographer on Spring Street offering wedding and engagement photography; 5.0 rating on The Knot from one review.",
     "services": [
       "Weddings",
-      "Engagements"
+      "Engagements",
+      "Portraits",
+      "Family sessions",
+      "Infant photography",
+      "Pet photography",
+      "Small events"
     ],
-    "site_note": "No official website found; presence verified only via The Knot listing and reviews.",
+    "site_note": "No official website found; presence verified only via The Knot listing and reviews. Deep-dive 2026-10-06: no own website found; Facebook page (566 likes, quiet — '1 talking about this'); Knot listing is 2012-era (5.0/1). Thin footprint — likely low activity or winding down. Activity status could not be verified.",
     "sources": [
-      "https://qa-beta.theknot.com/marketplace/elise-ruocco-photography-lake-placid-ny-522641"
+      "https://qa-beta.theknot.com/marketplace/elise-ruocco-photography-lake-placid-ny-522641",
+      "https://www.facebook.com/eliseruoccophotography/",
+      "https://www.lakeplacid.com/story/2018/10/winter-fun-your-bffs"
+    ],
+    "coverage": [
+      "Lake Placid NY"
     ]
   },
   "sheila-llibre-photo-video": {
@@ -1145,8 +1174,10 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Wix",
     "sources": [
-      "http://butterflyphotographynny.com/"
-    ]
+      "http://butterflyphotographynny.com/",
+      "https://www.facebook.com/ButterflyPhotographyNNY/"
+    ],
+    "site_note": "Deep-dive 2026-10-06: investment/inquiry page is inquiry-based (no package prices published); Pixieset client blog at butterflyphotographynny.pixieset.com; Facebook page (567 likes) corroborates presence; no The Knot or WeddingPro listing found; no founding year published."
   },
   "abby-elizabeth-photography-abygail-clark": {
     "blurb": "Northern New York based Photographer. I specialize in portraits but I LOVE pets, sports, nature, cityscapes, and any kind of creative shoots you could possibly think of. I am a newer photographer but my attention to detail and desire for perfection in my portraits would (hopefully) make you think otherwise.",
@@ -1347,7 +1378,7 @@ window.PULSE_DETAILS = {
       "Graduation"
     ],
     "platform": "Pixieset",
-    "site_note": "Based in Ogdensburg, NY; site has an Investments page but lists no public pricing numbers.",
+    "site_note": "Based in Ogdensburg, NY; site has an Investments page but lists no public pricing numbers. Deep-dive 2026-10-06: about page confirms self-taught, elementary teacher, 'love for photography started back in high school'; no founding year given.",
     "sources": [
       "https://emma-leephotography.mypixieset.com/",
       "https://emma-leephotography.mypixieset.com/about/",
@@ -1485,7 +1516,22 @@ window.PULSE_DETAILS = {
     ]
   },
   "daydreams-by-kimmi-sue": {
-    "site_note": "Rebranded site live at kimberlydoerrphotography.mypixieset.com with new session menu (30min $175 / 1hr $300 / 1.5hr $450 / 2hr $800 + tax, 2026-09-30); old pre-rebrand pricing retired."
+    "site_note": "Rebranded site live at kimberlydoerrphotography.mypixieset.com with new session menu (30min $175 / 1hr $300 / 1.5hr $450 / 2hr $800 + tax, 2026-09-30); old pre-rebrand pricing retired. Deep-dive 2026-10-06: Google Business profile exists (160 Old State Rd, De Kalb Junction NY; 315-323-1531) but shows no rating/reviews — count stays 0. Offers complimentary adoption-day courthouse coverage. No Knot/WeddingPro presence; no founding year or coverage area published.",
+    "blurb": "De Kalb Junction photographer specializing in child, family, tween and fine-art composite sessions; offers complimentary adoption-day courthouse coverage.",
+    "services": [
+      "Child photography",
+      "Families",
+      "Maternity",
+      "Birthdays",
+      "Tweens",
+      "Seniors",
+      "Limited newborns",
+      "Fine-art composites"
+    ],
+    "platform": "Pixieset",
+    "sources": [
+      "https://daydreamsbykimmisue.mypixieset.com/"
+    ]
   },
   "noxon-photography-britt-witt-noxon": {
     "site_note": "CLOSED 2026-09-30: own site banner reads 'No longer accepting bookings' (identity sweep)."
