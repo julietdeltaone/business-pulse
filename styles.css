@@ -1531,3 +1531,14 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
   .pg-network .hub-dot{animation:none}
   .pg-network .hub-pulse{animation:none}
 }
+
+/* network: detail card chips never clip + 3D orb */
+.pg-network .hub-detail .g-2{grid-template-columns:1fr}
+.pg-network .hub-detail .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pg-network .hub-orb{height:100%;aspect-ratio:1/1;max-width:100%;display:none;cursor:grab}
+.pg-network .hub-orb.on{display:block}
+.pg-network .hub-orb.panning{cursor:grabbing}
+.pg-network .hub-viewtoggle{display:flex;border:1px solid var(--line-soft);border-radius:10px;overflow:hidden}
+.pg-network .hub-viewtoggle button{background:transparent;border:0;color:var(--dim);font-size:12.5px;font-weight:600;padding:8px 14px;cursor:pointer}
+.pg-network .hub-viewtoggle button.on{background:rgba(110,168,255,.16);color:#fff}
+.pg-network .hub-viewtoggle button:hover{color:#fff}
