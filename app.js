@@ -2660,10 +2660,6 @@ function renderNetworkHTML(){
     +'<span><i style="background:var(--rel-none)"></i>Independent \u00b7 '+T.independent.length+'</span></div>';
   h+='<div class="hub-wrap"><div class="hub-stage">'
     +'<svg class="hubsvg" id="hubSvg" viewBox="0 0 920 920" role="img" aria-label="Businesses arranged by connectivity: most connected at the center"></svg>'
-    +'</div><div class="hub-side">'
-    +'<div class="panel"><h2>Most connected</h2><div class="hbars" id="hubTop"></div></div>'
-    +'<div class="panel"><h2>Reading the market</h2><div id="hubRead"></div></div>'
-    +'<div class="panel"><h2>Details</h2><p class="hint">Click any dot.</p><div id="hubDetail"><p class="muted">No one selected yet.</p></div></div>'
     +'</div></div>';
   var iso=FGN.nodes.filter(function(n){ return n.deg===0; });
   if(iso.length){
@@ -2693,7 +2689,7 @@ function networkInit(){
   });
   var gE=el("g",{}), gN=el("g",{}); svg.appendChild(gE); svg.appendChild(gN);
   var labelSet={};
-  T.anchors.slice(0,8).forEach(function(n){ labelSet[n.key]=1; });
+  T.all.forEach(function(n){ labelSet[n.key]=1; });
   tiers.forEach(function(t){
     var list=T[t.key], n=list.length;
     list.forEach(function(m,i){
@@ -2708,7 +2704,8 @@ function networkInit(){
       if(labelSet[m.key]){
         var cA=Math.cos(ang), sA=Math.sin(ang);
         var anc=cA>0.35?"start":(cA<-0.35?"end":"middle");
-        var tx=el("text",{x:(x+cA*(rr+10)).toFixed(1), y:(y+sA*(rr+10)).toFixed(1),
+        var off=rr+14+(i%2)*20;
+        var tx=el("text",{x:(x+cA*off).toFixed(1), y:(y+sA*off).toFixed(1),
           "class":"hub-name","text-anchor":anc,
           dy: anc==="middle" ? (sA>0?"1.1em":"-0.5em") : "0.35em"});
         tx.textContent=netName(m); g.appendChild(tx);
@@ -2754,22 +2751,8 @@ function networkInit(){
     var tx=el("text",{x:b.x.toFixed(1),y:(b.y-15).toFixed(1),"class":"hub-name hub-pin","text-anchor":"middle"});
     tx.textContent=netName(m); gN.appendChild(tx);
   }
-  function showDetail(n){ var d=$("#hubDetail"); if(d) d.innerHTML=netDetailHTML(n); }
+  function showDetail(n){ /* side panels removed 2026-10-06: names now label every dot */ }
   svg.addEventListener("click",function(){ pinned=null; clearIso(); });
-  // most connected list
-  var top=T.all.slice(0,10), mx=top.length?top[0].deg:1;
-  $("#hubTop").innerHTML=top.map(function(n){
-    return '<div class="hbar"><span class="n">'+esc(netName(n))+'</span>'
-      +'<span class="t"><i style="width:'+Math.max(2,Math.round(n.deg/mx*100))+'%;--c:var(--amber)"></i></span>'
-      +'<span class="v">'+n.deg+'</span></div>';
-  }).join("");
-  // market read
-  var sumDeg=T.all.reduce(function(s,n){ return s+n.deg; },0);
-  var anchorDeg=T.anchors.reduce(function(s,n){ return s+n.deg; },0);
-  var share=sumDeg?Math.round(anchorDeg/sumDeg*100):0;
-  $("#hubRead").innerHTML='<p>'+T.all.length+' businesses, '+FG.edges.length+' verified follow links.</p>'
-    +'<p>The '+T.anchors.length+' market anchors hold <b>'+share+'%</b> of all links.</p>'
-    +'<p>Most connected: <b>'+esc(netName(T.all[0]))+'</b> ('+T.all[0].deg+' links).</p>';
 }
 /* ---------- left body ---------- */
 var PAGE_HEADS={
