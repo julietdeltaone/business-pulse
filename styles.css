@@ -931,6 +931,19 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .act-hl-k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--mut);margin-top:14px}
 .act-hl-n{font-size:18px;font-weight:700;margin-top:5px}
 .act-hl-w{font-size:13px;color:var(--mut);margin-top:5px}
+.act-hl-top3{margin-top:12px;background:none;border:1px solid var(--card-line);border-radius:8px;color:var(--mut);font-size:12px;font-weight:600;padding:8px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.act-hl-top3:hover{color:var(--tx);border-color:rgba(255,255,255,.24)}
+.act-hl-chev{font-size:10px}
+.act-hl-runners{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.act-hl-card.open .act-hl-runners{grid-template-rows:1fr}
+.act-hl-runners>div{overflow:hidden;min-height:0}
+.act-hl-r{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--card-line);cursor:pointer}
+.act-hl-r:first-child{margin-top:10px}
+.act-hl-r:hover .act-hl-rn{text-decoration:underline;text-decoration-color:var(--acc);text-underline-offset:3px}
+.act-hl-rrk{color:var(--mut);font-size:12px;width:14px;flex:none;font-variant-numeric:tabular-nums}
+.act-hl-rn{font-weight:600;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act-hl-rst{color:var(--mut);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){.act-hl-runners{transition:none}}
 .act-feed{margin-top:16px}
 /* hero tile top-3 */
 .act-tile-top3{display:flex;flex-direction:column;gap:2px;margin-top:7px;width:100%;min-width:0;text-align:left}
