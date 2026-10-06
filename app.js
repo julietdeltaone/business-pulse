@@ -622,8 +622,9 @@ function renderVenueToday(){
 function renderToday(){
   if(S.mode==="venues") return '<div class="actx"><div class="actx-pad">'+renderVenueToday()+'</div></div>';
   var h='<div class="actx">';
-  h+='<div class="actx-top"><h1>Activity</h1>'+
-    '<p>Every post, promo and price move across the market · last 7 days</p></div>';
+  h+='<div class="actx-top pg-hero"><div><h1>Activity</h1>'+
+    '<p>Every post, promo and price move across the market · last 7 days</p></div>'+
+    pgPull(dataPullDate())+'</div>';
   h+='<section class="actx-hl"><div class="actx-hl-h"><span>Week&rsquo;s highlights</span>'+
     '<em>Top of the market · last 7 days</em></div>'+weekHighlights()+'</section>';
   h+='<section class="actx-feed"><div class="actx-feed-h"><span>The feed</span>'+
@@ -1188,10 +1189,18 @@ function landscapeHTML(list){
   h+='<section class="sec card"><div class="card-head"><div><h3>Where each service is offered</h3><div class="sub">Businesses per category in each county. Deeper color means deeper coverage.</div></div></div>'+lsMatrixHTML(d,rows)+'</section>';
   return h;
 }
+function dataPullDate(){
+  var g=(D.meta||{}).generated_at;
+  if(!g) return "\u2014";
+  try{ return new Date(g).toLocaleDateString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric"}); }
+  catch(e){ return "\u2014"; }
+}
+function pgPull(date){
+  return '<div class="pg-pull"><span class="pg-pull-l">Latest data pull</span><span class="pg-pull-v">'+esc(date)+'</span></div>';
+}
 function pageHeadHTML(title,sub){
-  var g=(D.meta||{}).generated_at, built="";
-  if(g){ try{ built=new Date(g).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" ET"; }catch(e){} }
-  return '<div class="pg-head"><h2>'+title+'</h2>'+(sub?'<p>'+sub+(built?' <span class="pg-fresh">Data updated '+esc(built)+'.</span>':"")+'</p>':"")+'</div>';
+  return '<div class="pg-head pg-hero"><div><h2>'+title+'</h2>'+(sub?'<p>'+sub+'</p>':'')+'</div>'+
+    pgPull(dataPullDate())+'</div>';
 }
 var DCOLS=[
   ["name","Name","str"],["town","Town/County","str"],["followers","Followers","num"],
@@ -1638,6 +1647,12 @@ function aiBizPrompt(t,p){
   h+='</div><div class="ai-dopen"><span class="linkish" data-aipx>View all '+AI.promptCatalog.length+' prompts for this business \u2192</span></div>';
   return h+'</div>';
 }
+function aiDateStr(ds){
+  var m={"01":"Jan","02":"Feb","03":"Mar","04":"Apr","05":"May","06":"Jun",
+         "07":"Jul","08":"Aug","09":"Sep","10":"Oct","11":"Nov","12":"Dec"};
+  var p=String(ds).split("-");
+  return p.length===3&&m[p[1]] ? m[p[1]]+" "+(+p[2])+", "+p[0] : String(ds);
+}
 function renderAI(){
   if(S.mode==="venues")
     return '<div class="sec"><h3>AI Search</h3><div class="sub">Venue visibility</div>'+
@@ -1646,7 +1661,8 @@ function renderAI(){
   if(!AI.rows.length)
     return '<div class="page-head"><h1>AI Visibility</h1><div class="empty-note">No AI visibility data yet \u2014 the daily audit feeds this tab.</div></div>';
   var h='<div class="ai-wrap">';
-  h+='<div class="page-head"><h1>AI Visibility</h1><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
+  h+='<div class="page-head pg-hero"><div><h1>AI Visibility</h1><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>'+
+    pgPull(AI.dates.length?aiDateStr(AI.dates[AI.dates.length-1]):"\u2014")+'</div>';
   h+='<div class="ai-dash">';
   h+='<aside class="ai-side ai-side-l">'+aiSecHead("Businesses","Ranked by how often assistants name them.")+aiBizRows()+'</aside>';
   h+=aiCenter();
@@ -2449,7 +2465,7 @@ function hubTiers(){
   };
 }
 function renderNetworkHTML(){
-  var h='<div class="page-head"><h1>Network</h1></div>';
+  var h='<div class="page-head pg-hero"><div><h1>Network</h1></div>'+pgPull(dataPullDate())+'</div>';
   h+='<div class="hub-bar"><div class="hub-legend">'
     +'<span><i style="background:'+HUBC.strong+'"></i>Strongly connected</span>'
     +'<span><i style="background:'+HUBC.connected+'"></i>Connected</span>'
