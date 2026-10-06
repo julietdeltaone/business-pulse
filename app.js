@@ -255,11 +255,13 @@ function syncChrome(){
   /* sections */
   $$(".pagenav button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
     x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
-  var ex=S.tab==="explore", rk=ex&&S.view==="rankings";
+  var ex=S.tab==="explore", rk=ex&&S.view==="rankings", cv=ex&&S.view==="coverage";
   document.body.classList.toggle("pgmode",!ex);
   $("#page").hidden=ex;
   $("#rankings").hidden=!rk;
-  $("#map").style.visibility=(ex&&!rk)?"visible":"hidden";
+  $("#coverage").hidden=!cv;
+  if(!(ex&&cv)) coverageStop(); /* EXPERIMENTAL */
+  $("#map").style.visibility=(ex&&!rk&&!cv)?"visible":"hidden";
   syncSort();
 }
 function applyState(st){
@@ -275,6 +277,7 @@ function applyState(st){
     if(map&&st.c){ HIST.noPush=true; map.setView([st.c.lat,st.c.lng],st.z,{animate:false}); }
     renderPins();
     if(S.view==="rankings") renderRankings();
+    if(S.view==="coverage") renderCoverage(); /* EXPERIMENTAL */
     renderLeft(); renderRight();
     $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
     if(S.sel){ var row=$('#leftbody .row[data-open="'+S.sel+'"]'); if(row) row.classList.add("sel"); }
@@ -2390,6 +2393,7 @@ function clearSel(){
   renderPins(); renderRight();
   $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
   if(S.view==="rankings") renderRankings();
+  covMarkSel(); /* EXPERIMENTAL */
   pushHist();
 }
 function select(id,opts){
@@ -2399,6 +2403,7 @@ function select(id,opts){
   renderPins(); renderRight();
   if(S.view==="rankings") renderRankings();  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
   var row=$('#leftbody .row[data-open="'+id+'"]'); if(row) row.classList.add("sel");
+  covMarkSel(); /* EXPERIMENTAL */
   if(b&&opts.fly!==false&&S.view==="map") flyTo(b);
   if(b&&window.innerWidth<=900){ $("#right").classList.add("open"); }
   pushHist();
@@ -2786,16 +2791,123 @@ function onScrub(){
   renderRight();
 }
 
+/* ==================== EXPERIMENTAL: coverage orbit view ====================
+   Reversible: delete this block, the #coverage section + Coverage button in
+   index.html, the cov-* CSS, and the /* EXPERIMENTAL *\/ hooks to remove. */
+var covRAF=null, covState=null;
+function covTown(b){ return String(b.town||"").split(",")[0].trim()||"Unknown"; }
+function coverageStop(){ if(covRAF){ cancelAnimationFrame(covRAF); covRAF=null; } covState=null; }
+function covMarkSel(){
+  if(!covState) return;
+  for(var i=0;i<covState.dots.length;i++){
+    var d=covState.dots[i], on=d.el.getAttribute("data-open")===S.sel;
+    d.el.classList.toggle("sel",on);
+    d.el.setAttribute("r",on?7:5.5);
+  }
+}
+function covDraw(){
+  var st=covState; if(!st) return;
+  for(var i=0;i<st.dots.length;i++){
+    var d=st.dots[i], c=st.circles[d.c], a=d.a+st.off[d.c];
+    d.el.setAttribute("cx",(c.x+Math.cos(a)*c.R).toFixed(1));
+    d.el.setAttribute("cy",(c.y+Math.sin(a)*c.R).toFixed(1));
+  }
+}
+function renderCoverage(){
+  coverageStop();
+  var host=$("#coverage"); if(!host) return;
+  var list=filtered().filter(function(b){ return b&&b.id; });
+  var byTown={}, order=[];
+  list.forEach(function(b){
+    var t=covTown(b);
+    if(!byTown[t]){ byTown[t]={label:t,count:0,members:[]}; order.push(t); }
+    byTown[t].count++; byTown[t].members.push(b);
+  });
+  var towns=order.map(function(k){ return byTown[k]; }).sort(function(a,b){ return b.count-a.count; });
+  if(!towns.length){ host.innerHTML='<div class="cov-empty">No businesses match the current filters.</div>'; return; }
+  var TOP=8, circles=towns.slice(0,TOP), rest=towns.slice(TOP), restN=0;
+  if(rest.length){
+    var rm=[];
+    rest.forEach(function(t){ restN+=t.count; rm=rm.concat(t.members); });
+    circles.push({label:"Elsewhere",count:restN,members:rm,sub:rest.length+" other towns"});
+  }
+  circles.forEach(function(c){ c.R=Math.max(30,34*Math.sqrt(c.count)); });
+  circles.sort(function(a,b){ return b.R-a.R; });
+  var GAP=36;
+  circles[0].x=0; circles[0].y=0;
+  for(var i=1;i<circles.length;i++){
+    var c=circles[i], placed=false, d=c.R+circles[0].R+GAP;
+    for(var ring=0; ring<48 && !placed; ring++){
+      var steps=Math.max(14,10+ring*6);
+      for(var s=0;s<steps && !placed;s++){
+        var a=(s/steps)*Math.PI*2+ring*0.45;
+        var x=Math.cos(a)*d, y=Math.sin(a)*d*0.8, ok=true;
+        for(var j=0;j<i;j++){
+          var o=circles[j], dx=x-o.x, dy=y-o.y;
+          if(dx*dx+dy*dy < Math.pow(o.R+c.R+GAP,2)){ ok=false; break; }
+        }
+        if(ok){ c.x=x; c.y=y; placed=true; }
+      }
+      d+=c.R*0.5+GAP*0.5;
+    }
+    if(!placed){ c.x=d; c.y=0; }
+  }
+  var x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  circles.forEach(function(c){
+    x0=Math.min(x0,c.x-c.R-16); x1=Math.max(x1,c.x+c.R+16);
+    y0=Math.min(y0,c.y-c.R-16); y1=Math.max(y1,c.y+c.R+16);
+  });
+  var h='<div class="cov-head"><div><h2>Coverage orbits</h2><div class="sub">Each business circles its home town &middot; circle size = business count &middot; top '+TOP+' towns'+(rest.length?' + elsewhere':'')+'</div></div></div>';
+  h+='<svg id="covSvg" viewBox="'+x0+' '+y0+' '+(x1-x0)+' '+(y1-y0)+'" role="img" aria-label="Coverage orbit diagram">';
+  circles.forEach(function(c,ci){
+    h+='<g class="cov-c" data-cov="'+ci+'"><circle cx="'+c.x+'" cy="'+c.y+'" r="'+c.R+'" class="cov-ring"/>';
+    h+='<text x="'+c.x+'" y="'+(c.y-5)+'" text-anchor="middle" class="cov-label">'+esc(c.label)+'</text>';
+    h+='<text x="'+c.x+'" y="'+(c.y+17)+'" text-anchor="middle" class="cov-count">'+c.count+' business'+(c.count===1?'':'es')+(c.sub?' &middot; '+esc(c.sub):'')+'</text>';
+    c.members.forEach(function(b){
+      h+='<circle class="cov-dot'+(S.sel===b.id?' sel':'')+'" data-open="'+b.id+'" r="'+(S.sel===b.id?7:5.5)+'"><title>'+esc(b.name)+'</title></circle>';
+    });
+    h+='</g>';
+  });
+  h+='</svg><div class="cov-hint">Hover a dot for the name &middot; click for the profile</div>';
+  host.innerHTML=h;
+  covState={circles:circles,dots:[],hover:-1,off:circles.map(function(){return 0;})};
+  var dotEls=host.querySelectorAll(".cov-dot"), di=0;
+  circles.forEach(function(c,ci){
+    c.members.forEach(function(b,bi){
+      covState.dots.push({el:dotEls[di++],c:ci,a:(bi/c.members.length)*Math.PI*2});
+    });
+  });
+  host.querySelectorAll(".cov-c").forEach(function(g){
+    g.addEventListener("mouseenter",function(){ if(covState) covState.hover=+g.getAttribute("data-cov"); });
+    g.addEventListener("mouseleave",function(){ if(covState) covState.hover=-1; });
+  });
+  covDraw();
+  if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var SPEED=16, last=performance.now();
+  (function frame(now){
+    if(!covState) return;
+    var dt=Math.min(0.06,(now-last)/1000); last=now;
+    for(var i=0;i<covState.circles.length;i++)
+      if(i!==covState.hover) covState.off[i]+=dt*SPEED/covState.circles[i].R;
+    covDraw();
+    covRAF=requestAnimationFrame(frame);
+  })(last);
+}
+/* ================== /EXPERIMENTAL: coverage orbit view ================== */
+
 /* ---------- view toggle ---------- */
 function setView(v){
   S.view=v;
   $$(".viewtoggle button").forEach(function(b){
     var on=b.getAttribute("data-view")===v;
     b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
-  var rk=v==="rankings";
+  var rk=v==="rankings", cv=v==="coverage";
   $("#rankings").hidden=!rk;
-  $("#map").style.visibility=rk?"hidden":"visible";
+  $("#coverage").hidden=!cv;
+  $("#map").style.visibility=(rk||cv)?"hidden":"visible";
+  coverageStop(); /* EXPERIMENTAL */
   if(rk) renderRankings();
+  if(cv) renderCoverage(); /* EXPERIMENTAL */
   pushHist();
 }
 
@@ -2826,6 +2938,7 @@ function setMode(m){
     else map.fitBounds(L.latLngBounds(pts).pad(0.15));
   }
   if(S.view==="rankings") renderRankings();
+  if(S.view==="coverage") renderCoverage(); /* EXPERIMENTAL */
   renderLeft(); renderRight();
   pushHist();
 }
@@ -2918,7 +3031,7 @@ $("#fsort").addEventListener("change",function(e){ S.sortBy=e.target.value; rend
 });
 /* persistent nav buttons were removed from the top bar in the redesign;
    history is still tracked via pushHist for state restore. */
-function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); renderLeft(); }
+function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); if(S.view==="coverage") renderCoverage(); /* EXPERIMENTAL */ renderLeft(); }
 timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
 $("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
 
