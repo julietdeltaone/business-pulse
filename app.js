@@ -2568,7 +2568,7 @@ function renderNetworkHTML(){
     +'<span><i style="background:'+HUBC.light+'"></i>Lightly linked</span>'
     +'<span><i style="background:'+HUBC.independent+'"></i>Independent</span>'
     +'</div>'
-    +'<div class="hub-tools"><input id="hubSearch" class="hub-search" type="search" placeholder="Find a business\u2026" aria-label="Find a business">'
+    +'<div class="hub-tools"><div class="hub-viewtoggle"><button id="hubView2d" class="on">2D</button><button id="hubView3d">3D</button></div><input id="hubSearch" class="hub-search" type="search" placeholder="Find a business\u2026" aria-label="Find a business">'
     +'<span class="hub-hint">Scroll to zoom \u00b7 drag to pan \u00b7 double-click a dot to focus</span></div></div>';
   h+='<div class="hub-wrap"><div class="hub-stage" id="hubStage" tabindex="0" aria-label="Interactive network map. Scroll to zoom, drag to pan.">'
     +'<svg class="hubsvg" id="hubSvg" viewBox="0 0 920 920" role="img" aria-label="Businesses arranged by connectivity: most connected at the center"></svg>'
@@ -2608,7 +2608,22 @@ function networkInit(){
   function applyView(){
     gView.setAttribute("transform","translate("+view.tx.toFixed(1)+" "+view.ty.toFixed(1)+") scale("+view.k.toFixed(4)+")");
     svg.classList.toggle("zoomed-out",view.k<0.8);
-    var pct=$("#hubZoomPct"); if(pct) pct.textContent=Math.round(view.k*100)+"%";
+    var pct=$("#hubZoomPct"); if(pct&&!orbOn) pct.textContent=Math.round(view.k*100)+"%";
+    fadeEdgeLabels();
+  }
+  function fadeEdgeLabels(){
+    var active=view.k>1.05||Math.abs(view.tx)+Math.abs(view.ty)>2;
+    var r=svg.getBoundingClientRect(); if(r.width<2) return;
+    var su=r.width/920;
+    for(var fi=0;fi<labInfos.length;fi++){
+      var L=labInfos[fi], o=1;
+      if(active){
+        var px=(view.tx+view.k*L.lx)*su, py=(view.ty+view.k*L.ly)*su;
+        var d=Math.min(px,py,r.width-px,r.height-py);
+        o=Math.max(0,Math.min(1,d/36));
+      }
+      if(L._fo!==o){ L.tx.setAttribute("opacity",o.toFixed(2)); L._fo=o; }
+    }
   }
   function svgXY(clientX,clientY){
     var pt=svg.createSVGPoint(); pt.x=clientX; pt.y=clientY;
@@ -2692,15 +2707,15 @@ function networkInit(){
   });
 
   function wireBtn(id,fn){ var b=$(id); if(b) b.addEventListener("click",function(e){ e.stopPropagation(); fn(); }); }
-  wireBtn("#hubZoomIn",function(){ stopTween(); zoomAt(cx,cy,1.45); });
-  wireBtn("#hubZoomOut",function(){ stopTween(); zoomAt(cx,cy,1/1.45); });
-  wireBtn("#hubZoomReset",function(){ clearSel(); resetView(); });
+  wireBtn("#hubZoomIn",function(){ if(orbOn&&orb){ orb.dist=Math.max(2.2,orb.dist/1.25); } else { stopTween(); zoomAt(cx,cy,1.45); } });
+  wireBtn("#hubZoomOut",function(){ if(orbOn&&orb){ orb.dist=Math.min(6,orb.dist*1.25); } else { stopTween(); zoomAt(cx,cy,1/1.45); } });
+  wireBtn("#hubZoomReset",function(){ clearSel(); if(orbOn&&orb){ orb.dist=3.4; orb.rx=-0.42; orb.tween=null; } else resetView(); });
   var stage=svg.closest(".hub-stage");
   if(stage) stage.addEventListener("keydown",function(e){
     if(e.target&&e.target.id==="hubSearch") return;
-    if(e.key==="+"||e.key==="="){ stopTween(); zoomAt(cx,cy,1.3); }
-    else if(e.key==="-"||e.key==="_"){ stopTween(); zoomAt(cx,cy,1/1.3); }
-    else if(e.key==="0"){ clearSel(); resetView(); }
+    if(e.key==="+"||e.key==="="){ if(orbOn&&orb) orb.dist=Math.max(2.2,orb.dist/1.25); else { stopTween(); zoomAt(cx,cy,1.3); } }
+    else if(e.key==="-"||e.key==="_"){ if(orbOn&&orb) orb.dist=Math.min(6,orb.dist*1.25); else { stopTween(); zoomAt(cx,cy,1/1.3); } }
+    else if(e.key==="0"){ clearSel(); if(orbOn&&orb){ orb.dist=3.4; orb.rx=-0.42; orb.tween=null; } else resetView(); }
     else if(e.key==="Escape"){ clearSel(); }
   });
 
@@ -2882,13 +2897,198 @@ function networkInit(){
         for(var i=0;i<nodeList.length;i++){
           if(netName(nodeList[i].m).toLowerCase().indexOf(q)>=0){
             var m=nodeList[i].m;
-            selectNode(m); flyTo(m._hub.x,m._hub.y,2.6);
+            if(orbOn&&orb&&m._orb){ orb.selKey=m.key; selectNode(m); orbFocus(m._orb); }
+            else { selectNode(m); flyTo(m._hub.x,m._hub.y,2.6); }
             break;
           }
         }
       } else if(e.key==="Escape"){ si.value=""; si.dispatchEvent(new Event("input")); si.blur(); }
     });
   }
+
+  /* ---------- 3D floating orb ---------- */
+  var orbOn=false, orb=null;
+  var orbCv=document.createElement("canvas");
+  orbCv.id="hubOrb"; orbCv.className="hub-orb";
+  orbCv.setAttribute("aria-label","3D network orb. Drag to rotate, scroll to zoom.");
+  stage.insertBefore(orbCv,svg.nextSibling);
+  function orbRot(p,ry,rx){
+    var x1=p.x*Math.cos(ry)+p.z*Math.sin(ry), z1=-p.x*Math.sin(ry)+p.z*Math.cos(ry);
+    return {x:x1,y:p.y*Math.cos(rx)-z1*Math.sin(rx),z:p.y*Math.sin(rx)+z1*Math.cos(rx)};
+  }
+  function orbBuild(){
+    var cv=$("#hubOrb"); if(!cv) return null;
+    var idx={}, nodes=[];
+    T.all.forEach(function(m){ idx[m.key]=nodes.length; nodes.push({m:m,key:m.key,major:m.deg>=majCut}); });
+    var shell={strong:0.34,connected:0.55,light:0.76,independent:0.95}, byTier={};
+    nodes.forEach(function(nd){ var tk=nd.m._tier; (byTier[tk]=byTier[tk]||[]).push(nd); });
+    Object.keys(byTier).forEach(function(tk){
+      var arr=byTier[tk], n=arr.length, ga=Math.PI*(3-Math.sqrt(5)), r=shell[tk]||0.9;
+      arr.forEach(function(nd,i){
+        var y=n===1?0:1-(i/(n-1))*2, rad=Math.sqrt(Math.max(0,1-y*y)), th=ga*i;
+        nd.bx=Math.cos(th)*rad*r; nd.by=y*r; nd.bz=Math.sin(th)*rad*r;
+        nd.phase=Math.random()*Math.PI*2;
+        nd.rr=5+Math.min(9,Math.sqrt(nd.m.deg)*1.6);
+        nd.col=HUBC[nd.m._tier]||HUBDOT;
+        nd.m._orb=nd;
+      });
+    });
+    var edges=[];
+    nodes.forEach(function(nd){
+      var a=idx[nd.key];
+      nd.m.follows.forEach(function(m2){ var b=idx[m2.key]; if(b!=null&&b>a) edges.push([a,b]); });
+      nd.m.followedBy.forEach(function(m2){ var b=idx[m2.key]; if(b!=null&&b>a) edges.push([a,b]); });
+    });
+    var o={cv:cv,ctx:cv.getContext("2d"),nodes:nodes,edges:edges,idx:idx,
+      rx:-0.42,ry:0,dist:3.4,auto:!reduced,drag:null,idle:0,hover:-1,selKey:null,
+      tween:null,raf:0,t:0,size:0,_P:[],_pct:$("#hubZoomPct")};
+    cv.addEventListener("pointerdown",function(e){
+      try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+      o.drag={x:e.clientX,y:e.clientY,rx:o.rx,ry:o.ry,id:e.pointerId,moved:0};
+      o.auto=false; o.tween=null; cv.classList.add("panning");
+    });
+    cv.addEventListener("pointermove",function(e){
+      var r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+      if(o.drag&&e.pointerId===o.drag.id){
+        var dx=e.clientX-o.drag.x, dy=e.clientY-o.drag.y;
+        o.drag.moved=Math.max(o.drag.moved,Math.abs(dx)+Math.abs(dy));
+        o.ry=o.drag.ry+dx*0.005;
+        o.rx=Math.max(-1.25,Math.min(1.25,o.drag.rx+dy*0.005));
+        o.idle=0;
+      } else if(!o.drag){
+        o.hover=orbPick(o,mx,my);
+        cv.style.cursor=o.hover>=0?"pointer":"grab";
+      }
+    });
+    function endDrag(e){
+      if(o.drag&&e.pointerId===o.drag.id){
+        if(o.drag.moved<6){
+          var r=cv.getBoundingClientRect();
+          var hi=orbPick(o,e.clientX-r.left,e.clientY-r.top);
+          if(hi>=0){ var m=o.nodes[hi].m; o.selKey=m.key; selectNode(m); }
+          else { o.selKey=null; clearSel(); }
+        }
+        o.drag=null; o.idle=0; cv.classList.remove("panning");
+      }
+    }
+    cv.addEventListener("pointerup",endDrag);
+    cv.addEventListener("pointercancel",function(){ o.drag=null; cv.classList.remove("panning"); });
+    cv.addEventListener("pointerleave",function(){ o.hover=-1; });
+    cv.addEventListener("wheel",function(e){
+      e.preventDefault();
+      o.dist=Math.min(6,Math.max(2.2,o.dist*Math.pow(1.0016,e.deltaY)));
+    },{passive:false});
+    cv.addEventListener("dblclick",function(e){
+      var r=cv.getBoundingClientRect();
+      var hi=orbPick(o,e.clientX-r.left,e.clientY-r.top);
+      if(hi>=0){ var m=o.nodes[hi].m; o.selKey=m.key; selectNode(m); orbFocus(o.nodes[hi]); }
+    });
+    return o;
+  }
+  function orbPick(o,mx,my){
+    var best=-1, bd=1e9;
+    o._P.forEach(function(q,i){
+      var dx=q.x-mx, dy=q.y-my, d=Math.sqrt(dx*dx+dy*dy);
+      if(d<24&&(best<0||d<bd-4||(Math.abs(d-bd)<4&&q.z>o._P[best].z))){ bd=d; best=i; }
+    });
+    return best;
+  }
+  function orbFocus(nd){
+    var o=orb; if(!o) return;
+    var a=Math.atan2(-nd.bx,nd.bz), h=Math.hypot(nd.bx,nd.bz), b=Math.atan2(nd.by,h);
+    var da=((a-o.ry+Math.PI*3)%(Math.PI*2))-Math.PI;
+    o.tween={ry:o.ry+da,rx:b}; o.auto=false; o.idle=0;
+  }
+  function orbResize(o){
+    if(!o) return;
+    var r=o.cv.getBoundingClientRect(); if(r.width<2) return;
+    var dpr=Math.min(2,window.devicePixelRatio||1);
+    o.cv.width=Math.round(r.width*dpr); o.cv.height=Math.round(r.height*dpr);
+    o._dpr=dpr; o.size=Math.min(r.width,r.height);
+  }
+  function orbDraw(){
+    var o=orb; if(!o) return;
+    o.t++;
+    if(o.auto&&!o.drag) o.ry+=0.0032;
+    if(!o.auto&&!o.drag){ o.idle++; if(o.idle>160) o.auto=true; }
+    if(o.tween){
+      o.ry+=(o.tween.ry-o.ry)*0.08; o.rx+=(o.tween.rx-o.rx)*0.08;
+      if(Math.abs(o.tween.ry-o.ry)<0.002&&Math.abs(o.tween.rx-o.rx)<0.002) o.tween=null;
+    }
+    var ctx=o.ctx, dpr=o._dpr||1, W=o.cv.width/dpr, H=o.cv.height/dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    var R=o.size/2*0.94, cxp=W/2, cyp=H/2, tsec=o.t/60;
+    var P=o.nodes.map(function(nd){
+      var fl=reduced?1:1+0.028*Math.sin(tsec*0.9+nd.phase);
+      var p=orbRot({x:nd.bx*fl,y:nd.by*fl,z:nd.bz*fl},o.ry,o.rx);
+      var f=o.dist/(o.dist-p.z);
+      return {nd:nd,x:cxp+p.x*f*R,y:cyp+p.y*f*R,z:p.z,f:f,a:0.30+0.70*((p.z+1)/2)};
+    });
+    o._P=P;
+    var i, A, B, e;
+    ctx.lineWidth=1;
+    for(i=0;i<o.edges.length;i++){
+      e=o.edges[i]; A=P[e[0]]; B=P[e[1]];
+      var al=0.06*((A.a+B.a)/2);
+      if(al<0.008) continue;
+      ctx.strokeStyle="rgba(143,163,200,"+al.toFixed(3)+")";
+      ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+    }
+    if(o.selKey!=null&&o.idx[o.selKey]!=null){
+      var si=o.idx[o.selKey];
+      ctx.strokeStyle="rgba(215,226,247,.8)"; ctx.lineWidth=1.6;
+      for(i=0;i<o.edges.length;i++){
+        e=o.edges[i]; if(e[0]!==si&&e[1]!==si) continue;
+        A=P[e[0]]; B=P[e[1]];
+        ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+      }
+      ctx.lineWidth=1;
+    }
+    var order=P.slice().sort(function(a,b){ return a.z-b.z; });
+    for(i=0;i<order.length;i++){
+      var q=order[i], r=Math.max(1.6,q.nd.rr*0.60*q.f);
+      ctx.globalAlpha=q.a;
+      if(q.nd.key===o.selKey){
+        ctx.shadowColor="rgba(255,255,255,.9)"; ctx.shadowBlur=14;
+        ctx.fillStyle="#ffffff";
+      } else {
+        ctx.shadowBlur=0; ctx.fillStyle=q.nd.key===(o.hover>=0?P[o.hover].nd.key:null)?"#ffffff":HUBDOT;
+      }
+      ctx.beginPath(); ctx.arc(q.x,q.y,r,0,6.2832); ctx.fill();
+    }
+    ctx.shadowBlur=0; ctx.globalAlpha=1;
+    ctx.font="11px system-ui,-apple-system,sans-serif"; ctx.textAlign="center";
+    for(i=0;i<order.length;i++){
+      var q2=order[i], hovKey=o.hover>=0?P[o.hover].nd.key:null;
+      var show=q2.nd.key===o.selKey||q2.nd.key===hovKey||q2.nd.major;
+      if(!show) continue;
+      ctx.globalAlpha=Math.min(1,q2.a+0.3);
+      ctx.fillStyle=q2.nd.key===o.selKey?"#ffffff":"rgba(220,225,235,.9)";
+      ctx.fillText(netName(q2.nd.m),q2.x,q2.y-q2.nd.rr*0.60*q2.f-7);
+    }
+    ctx.globalAlpha=1;
+    if(o._pct) o._pct.textContent=Math.round(3.4/o.dist*100)+"%";
+    o.raf=requestAnimationFrame(orbDraw);
+  }
+  function orbStart(){ if(orb&&!orb.raf){ orbResize(orb); orb.raf=requestAnimationFrame(orbDraw); } }
+  function orbStop(){ if(orb&&orb.raf){ cancelAnimationFrame(orb.raf); orb.raf=0; } }
+  function setOrb(on){
+    orbOn=on;
+    var b2=$("#hubView2d"), b3=$("#hubView3d");
+    if(b2) b2.classList.toggle("on",!on);
+    if(b3) b3.classList.toggle("on",on);
+    svg.style.display=on?"none":"";
+    orbCv.classList.toggle("on",on);
+    if(on){ if(!orb) orb=orbBuild(); orbStart(); }
+    else orbStop();
+    clearSel();
+  }
+  var _b2=$("#hubView2d"), _b3=$("#hubView3d");
+  if(_b2) _b2.addEventListener("click",function(e){ e.stopPropagation(); setOrb(false); });
+  if(_b3) _b3.addEventListener("click",function(e){ e.stopPropagation(); setOrb(true); });
+  window.addEventListener("resize",function(){ if(orbOn) orbResize(orb); });
+
   applyView();
 }
 /* ---------- left body ---------- */
