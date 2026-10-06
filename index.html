@@ -7,12 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=b1dfe179">
+<link rel="stylesheet" href="styles.css?v=83627232">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
 <div id="map" aria-hidden="true"></div>
 <section id="rankings" hidden aria-label="Rankings"></section>
+<section id="coverage" hidden aria-label="Coverage orbits"></section>
 <main id="page" hidden aria-label="Section"></main>
 
 <header id="topbar" class="glass">
@@ -70,6 +71,7 @@
       <select id="fsort" aria-label="Sort"></select>
       <div class="viewtoggle" role="tablist" aria-label="Background view">
         <button data-view="map" class="on" role="tab" aria-selected="true">Map</button>
+        <button data-view="coverage" role="tab" aria-selected="false">Coverage</button>
         <button data-view="rankings" role="tab" aria-selected="false">Rankings</button>
       </div>
     </div>
@@ -92,12 +94,12 @@
 <div id="toast" role="status"></div>
 <div class="tip" id="tip" role="tooltip"></div>
 
-<script src="data/data.js?v=fed2ab3c"></script>
+<script src="data/data.js?v=3a327262"></script>
 <script src="data/website-intel.js?v=9db529d6"></script>
 <script src="data/venues.js?v=dd04c210"></script>
 <script src="data/details-enrichment.js?v=93738668"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=27adfd71"></script>
+<script src="app.js?v=839bb745"></script>
 </body>
 </html>
