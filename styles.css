@@ -1211,10 +1211,6 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 .act-nm b{display:block;font-size:14px}
 .act-nm span{display:block;font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .act-meta{flex:none;display:flex;align-items:center}
-.act-flag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:5px 12px;border-radius:999px;border:1px solid var(--card-line);color:var(--mut);white-space:nowrap}
-.act-flag.new{color:#8fd18f;border-color:color-mix(in srgb,#8fd18f 45%,transparent)}
-.act-flag.promo{color:#c9a0f2;border-color:color-mix(in srgb,#c9a0f2 45%,transparent)}
-.act-flag.quiet{color:#e06c6c;border-color:color-mix(in srgb,#e06c6c 45%,transparent)}
 .act-empty{text-align:center;padding:60px 24px;background:var(--card);border:1px dashed var(--card-line);border-radius:22px;
   animation:actIn .5s backwards;animation-delay:var(--d,0s)}
 .act-empty-ic{width:58px;height:58px;margin:0 auto 22px;color:var(--mut);opacity:.8}
@@ -1592,3 +1588,24 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-data .dtable td:nth-child(7){min-width:0}
 /* Activity + Data are intentionally full-bleed (JD 2026-10-06) */
 .pg-today,.pg-data{max-width:none}
+
+/* ---------- Landscape: full-bleed + compact widgets (2026-10-06) ---------- */
+.pg-market{max-width:none}
+.mktx{margin:-18px -22px -40px;padding:26px max(28px,4vw) 48px}
+.mktx>.pg-head{padding:0;margin-bottom:14px}
+.mktx>.pg-head h2{margin-bottom:4px}
+.pg-market .card,.mktx>.sec,.pg-market .cardgrid>.sec{padding:16px 18px;border-radius:16px}
+.pg-market .qcard>h3{font-size:18px}
+.pg-market .qcard>.sub{margin-bottom:8px;font-size:12.5px}
+.pg-market .qbars{gap:7px}
+.pg-market .share{grid-template-columns:220px 1fr;gap:28px;margin-top:8px}
+.pg-market .share-donut{width:200px;height:200px}
+.pg-market .share-legend{margin-top:10px;max-width:230px}
+.pg-market .share-row{padding:7px 12px;gap:2px 12px}
+.pg-market .share-name{font-size:15px}
+.pg-market .share-val{font-size:25px}
+.pg-market .share-meta{font-size:12px}
+.pg-market .qchart{margin-top:8px;padding-top:8px}
+.pg-market .qhist{height:64px}
+.pg-market .sec>h3{font-size:18px}
+.pg-market .sec>.sub{font-size:12.5px;margin-bottom:8px}
