@@ -2509,6 +2509,7 @@ function netDetailHTML(n){
 /* network hub: tier colors (data coding) */
 var HUBC={strong:"#f2b13d",connected:"#6ea8ff",light:"#4fd1a5",independent:"#8e97a8"};
 var HUBL={strong:"Strongly connected",connected:"Connected",light:"Lightly linked",independent:"Independent"};
+var HUBDOT="#9fb0c3"; /* dots stay uniform: ring position + size already encode tier */
 function hubTiers(){
   var nodes=FGN.nodes.filter(function(n){ return n.deg>0; })
     .sort(function(a,b){ return b.deg-a.deg || netName(a).localeCompare(netName(b)); });
@@ -2569,7 +2570,7 @@ function networkInit(){
       var rr=6+Math.min(10,Math.sqrt(m.deg)*1.8);
       var g=el("g",{"class":"hub-node","data-nk":m.key,tabindex:"0",role:"button",
         "aria-label":netName(m)+", "+m.deg+" verified links"});
-      var dot=el("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:rr.toFixed(1),fill:t.color});
+      var dot=el("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:rr.toFixed(1),fill:HUBDOT});
       dot.appendChild(title(netName(m)+" \u2014 "+m.deg+" verified links"));
       g.appendChild(dot);
       var cA=Math.cos(ang), sA=Math.sin(ang);
