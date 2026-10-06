@@ -2652,6 +2652,7 @@ function networkInit(){
   function isolate(n){
     clearIso();
     var lit={}; lit[n.key]=1;
+    if(n._hub&&n._hub.g) n._hub.g.classList.add("sel");
     nbrsOf(n).forEach(function(m){
       lit[m.key]=1;
       var b=m._hub; if(!b) return;
@@ -2666,7 +2667,7 @@ function networkInit(){
   }
   function clearIso(){
     gE.innerHTML=""; svg.classList.remove("has-spokes");
-    Array.prototype.forEach.call(gN.childNodes,function(g){ g.classList.remove("lit"); });
+    Array.prototype.forEach.call(gN.childNodes,function(g){ g.classList.remove("lit"); g.classList.remove("sel"); });
   }
   function showDetail(n){ /* side panels removed 2026-10-06: names now label every dot */ }
   svg.addEventListener("click",function(){ pinned=null; clearIso(); });
