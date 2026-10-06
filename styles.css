@@ -1554,7 +1554,7 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-network .hub-node{cursor:pointer;outline:none}
 .pg-network .hub-node circle{stroke:rgba(8,10,14,.85);stroke-width:1.2}
 .pg-network .hub-name{font-size:13px;fill:var(--silver-2);font-weight:500;pointer-events:none}
-.pg-network .hub-name.hub-pin{font-weight:700;fill:var(--silver)}
+.pg-network .hub-leader{stroke:rgba(143,163,200,.32);stroke-width:1}
 .pg-network .hub-spoke{stroke:#8fa3c8;stroke-width:1;opacity:.55}
 .pg-network .hub-spoke.mut{stroke:#d7e2f7;stroke-width:1.8;opacity:.8}
 .pg-network .hubsvg.has-spokes .hub-node{opacity:.28}
