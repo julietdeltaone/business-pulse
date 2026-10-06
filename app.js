@@ -1475,56 +1475,107 @@ function aiAnimateBars(root){
 
 
 
-/* ---------- AI Visibility sections (neutral redesign) ---------- */
+/* ---------- AI Visibility: sidebar explorer (2026-10-06) ----------
+   Three columns: businesses (left), detail (center), prompts (right).
+   Business/prompt navigation wraps the state change in a view transition,
+   so rows morph to their new order and the center cross-fades instead of
+   flashing on every click. */
+function aiNav(fn){
+  if(!REDUCED && document.startViewTransition){
+    window.__aiVT=true;
+    try{
+      var tr=document.startViewTransition(function(){ fn(); });
+      if(tr&&tr.finished) tr.finished.then(function(){window.__aiVT=false;},function(){window.__aiVT=false;});
+      else window.__aiVT=false;
+    }catch(e){ window.__aiVT=false; fn(); }
+  } else fn();
+}
+function aiSlug(s){
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"x";
+}
 function aiSecHead(t,d){
-  return '<div class="ai-sec-h"><h3>'+esc(t)+'</h3><p>'+esc(d)+'</p></div>';
+  return '<div class="ai-sec-h"><h3>'+esc(t)+'</h3>'+(d?'<p>'+esc(d)+'</p>':'')+'</div>';
 }
-function aiStatStrip(){
-  var last=AI.dates.length?AI.dates[AI.dates.length-1]:"\u2014";
-  var items=[
-    {v:String(AI.nNamed),l:"Businesses cited"},
-    {v:String((AI.promptCatalog||[]).length||AI.prompts.length),l:"Prompts tested"},
-    {v:String(AI.nDays),l:"Checks run"},
-    {v:last,l:"Last audit"}
-  ];
-  var h='<div class="ai-stats">';
-  items.forEach(function(s){
-    h+='<div class="ai-stat"><div class="ai-stat-v">'+esc(s.v)+'</div><div class="ai-stat-l">'+esc(s.l)+'</div></div>';
-  });
-  return h+'</div>';
-}
-function aiPromptFilter(){
-  return '<label class="ai-filter"><span>Prompt</span><select id="aiPromptSel">'+
-    '<option value="">All prompts \u00b7 market-wide</option>'+
-    AI.promptCatalog.map(function(p){
-      var pc=AI.promptChecks[p.text], cc=pc?Object.keys(pc).length:0;
-      return '<option value="'+esc(p.text)+'"'+(S.aiPrompt===p.text?" selected":"")+'>'+
-        esc(p.text.length>64?p.text.slice(0,64)+"\u2026":p.text)+(cc?" \u00b7 "+cc+" checks":"")+'</option>';
-    }).join("")+'</select></label>';
-}
-function aiBoard(scope){
+/* compact business rows for the left rail; re-sorts when a prompt is picked */
+function aiBizRows(){
+  var scope=S.aiPrompt?aiPromptScope():null;
   var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
   var list=S.aiAll?sBoard:sBoard.slice(0,20);
-  var h='<div class="ai-rows">';
+  var h='<div class="ai-bizrows">';
   list.forEach(function(t,i){
     var pct=sN?Math.round(t.days/sN*100):0;
-    h+='<div class="ai-row'+(S.aiSel===t.name?" sel":"")+'" role="button" tabindex="0" aria-pressed="'+(S.aiSel===t.name)+'" data-ai="'+esc(t.name)+'">'+
-      '<span class="ai-rk">'+(i+1)+'</span>'+
-      '<span class="ai-row-bd"><span class="ai-nm">'+esc(t.name)+'</span>'+
+    h+='<div class="ai-bizrow'+(S.aiSel===t.name?" sel":"")+'" role="button" tabindex="0" aria-pressed="'+(S.aiSel===t.name)+'"'+
+      ' style="view-transition-name:ai-b-'+aiSlug(t.name)+'" data-ai="'+esc(t.name)+'">'+
+      '<span class="ai-brk">'+(i+1)+'</span>'+
+      '<span class="ai-brb"><span class="ai-brn">'+esc(t.name)+'</span>'+
       '<span class="bar"><i data-bw="'+Math.max(2,pct)+'" style="width:'+Math.max(2,pct)+'%;background:'+aiTier3(pct)+'"></i></span></span>'+
-      '<span class="ai-ct">'+(sN>0?t.days+' of '+sN+' checks':"\u2014")+'</span></div>';
+      '<span class="ai-brc">'+(sN>0?t.days+'/'+sN:"\u2014")+'</span></div>';
   });
   h+='</div>';
   if(sBoard.length>20)
-    h+='<button class="ai-more" data-aiall>'+(S.aiAll?"Show fewer":"Show all "+sBoard.length+" businesses")+'</button>';
+    h+='<button class="ai-more" data-aiall>'+(S.aiAll?"Show fewer":"Show all "+sBoard.length)+'</button>';
   return h;
 }
-function aiDetail(){
-  var t=aiSelT();
-  if(!t) return '';
+/* prompt list for the right rail */
+function aiPromptList(){
+  var h='<div class="ai-plist">';
+  h+='<div class="ai-pitem'+(!S.aiPrompt?" on":"")+'" style="view-transition-name:ai-pr-all" role="button" tabindex="0" data-aiprompt="">'+
+    '<span class="ai-pin">All prompts</span><span class="ai-pic">'+AI.promptCatalog.length+'</span></div>';
+  AI.promptCatalog.forEach(function(p,i){
+    h+='<div class="ai-pitem'+(S.aiPrompt===p.text?" on":"")+'" style="view-transition-name:ai-pr-'+i+'" role="button" tabindex="0" data-aiprompt="'+esc(p.text)+'">'+
+      '<span class="ai-pin">'+esc(p.text)+'</span></div>';
+  });
+  return h+'</div>';
+}
+/* per-prompt, per-engine naming counts (prompt overview); one check = one date per engine */
+function aiPromptCounts(prompt){
+  var out={};
+  AI.engines.forEach(function(e){ out[e]={names:{},total:0,seen:{}}; });
+  AI.rows.forEach(function(r){
+    if(r.prompt!==prompt||!out[r.engine]) return;
+    var oe=out[r.engine];
+    if(oe.seen[r.date]) return;
+    oe.seen[r.date]=1; oe.total++;
+    var seen={};
+    (r.rivals||[]).forEach(function(n){ seen[n]=1; });
+    if(r.jd_named==="yes"||r.jd_named==="partial") seen["JD Meyers Productions"]=1;
+    Object.keys(seen).forEach(function(n){ oe.names[n]=(oe.names[n]||0)+1; });
+  });
+  return out;
+}
+function aiPromptTop(prompt,e,n){
+  var oe=aiPromptCounts(prompt)[e];
+  var arr=Object.keys(oe.names).map(function(nm){ return {name:nm,n:oe.names[nm]}; });
+  arr.sort(function(a,b){ return b.n-a.n||(a.name<b.name?-1:1); });
+  return {list:arr.slice(0,n||5),total:oe.total};
+}
+function aiBizPromptCount(t,p,e){
+  var named={},tot={};
+  AI.rows.forEach(function(r){
+    if(r.prompt!==p||r.engine!==e) return;
+    tot[r.date]=1;
+    if(aiNamedInRow(t,r)) named[r.date]=1;
+  });
+  return {n:Object.keys(named).length,tot:Object.keys(tot).length};
+}
+/* center column: four states */
+function aiCenter(){
+  var t=aiSelT(), p=S.aiPrompt;
+  var h='<div class="ai-main">';
+  if(!t&&!p) h+=aiEmpty();
+  else if(t&&!p) h+=aiBizDetail(t);
+  else if(!t&&p) h+=aiPromptDetail(p);
+  else h+=aiBizPrompt(t,p);
+  return h+'</div>';
+}
+function aiEmpty(){
+  return '<div class="ai-empty"><h3>Explore AI visibility</h3>'+
+    '<p>Select a business on the left to see how often assistants cite it, or pick a prompt on the right to see which businesses lead for that question.</p></div>';
+}
+function aiBizDetail(t){
   var sN=AI.nDays, pct=sN?Math.round(t.days/sN*100):0;
-  var h='<section class="ai-sec"><div class="ai-detail">';
-  h+='<div class="ai-detail-h">'+aiSecHead(t.name,"Cited in "+t.days+" of "+sN+" checks ("+pct+"%).")+
+  var h='<div class="ai-detail">';
+  h+='<div class="ai-detail-h"><div class="ai-sec-h"><h3>'+esc(t.name)+'</h3><p>Cited in '+t.days+' of '+sN+' checks ('+pct+'%).</p></div>'+
      '<button class="ai-x" data-aix aria-label="Close detail">\u00d7</button></div>';
   if(t.id) h+='<div class="ai-dopen"><span class="linkish" data-open="'+esc(t.id)+'">Open profile \u2192</span></div>';
   h+='<div class="ai-deng">';
@@ -1545,55 +1596,72 @@ function aiDetail(){
     });
     h+='</span></div>';
   });
-  return h+'</div></div></section>';
+  return h+'</div></div>';
 }
-function aiMatrix(){
-  var per={};
-  AI.rows.forEach(function(r){
-    var o=per[r.prompt]=per[r.prompt]||{};
-    var oe=o[r.engine]=o[r.engine]||{names:{},total:0};
-    oe.total++;
-    var seen={};
-    (r.rivals||[]).forEach(function(n){ seen[n]=1; });
-    if(r.jd_named==="yes"||r.jd_named==="partial") seen["JD Meyers Productions"]=1;
-    Object.keys(seen).forEach(function(n){ oe.names[n]=(oe.names[n]||0)+1; });
-  });
-  var h='<section class="ai-sec">'+aiSecHead("Results by prompt and assistant","Most-cited business per prompt across all checks.");
-  h+='<div class="ai-mx"><div class="ai-mx-h">Prompt</div><div class="ai-mx-h">ChatGPT</div><div class="ai-mx-h">Gemini</div>';
-  AI.promptCatalog.forEach(function(p){
-    var o=per[p.text]||{};
-    h+='<div class="ai-mx-q">'+esc(p.text)+'</div>';
-    ["ChatGPT","Gemini"].forEach(function(e){
-      var oe=o[e], top=null, tc=0;
-      if(oe) Object.keys(oe.names).forEach(function(n){ if(oe.names[n]>tc){ tc=oe.names[n]; top=n; } });
-      h+='<div class="ai-mx-c">'+(top?'<b>'+esc(top)+'</b><span>'+tc+' of '+oe.total+' checks</span>':'<span class="muted">\u2014</span>')+'</div>';
+function aiPromptDetail(p){
+  var h='<div class="ai-detail">';
+  h+='<div class="ai-detail-h"><div class="ai-sec-h"><h3>'+esc(p)+'</h3><p>Most-cited businesses per assistant, across all checks. Select a business to see its result for this prompt.</p></div>'+
+     '<button class="ai-x" data-aipx aria-label="Clear prompt">\u00d7</button></div>';
+  h+='<div class="ai-peng">';
+  AI.engines.forEach(function(e){
+    var top=aiPromptTop(p,e,5);
+    h+='<div class="ai-peng-c"><div class="ai-peng-t">'+esc(e)+'</div>';
+    top.list.forEach(function(x,i){
+      var pct=top.total?Math.round(x.n/top.total*100):0;
+      h+='<div class="ai-peng-r" role="button" tabindex="0" data-ai="'+esc(x.name)+'">'+
+        '<span class="ai-brk">'+(i+1)+'</span>'+
+        '<span class="ai-brb"><span class="ai-brn">'+esc(x.name)+'</span>'+
+        '<span class="bar"><i style="width:'+Math.max(2,pct)+'%;background:'+aiTier3(pct)+'"></i></span></span>'+
+        '<span class="ai-brc">'+x.n+'/'+top.total+'</span></div>';
     });
+    h+='</div>';
   });
-  return h+'</div></section>';
+  return h+'</div></div>';
 }
-function aiTraits(){
-  function card(t,v,l,rv,rl){
-    return '<div class="ai-trait"><div class="ai-trait-t">'+esc(t)+'</div>'+
-      '<div class="ai-stat-v">'+esc(v)+'</div><div class="ai-stat-l">'+esc(l)+'</div>'+
-      '<div class="ai-trait-r">'+esc(rv)+' \u2014 '+esc(rl)+'</div></div>';
+function aiBizPrompt(t,p){
+  var h='<div class="ai-detail">';
+  h+='<div class="ai-detail-h"><div class="ai-sec-h"><h3>'+esc(t.name)+'</h3><p>'+esc(p)+'</p></div>'+
+     '<button class="ai-x" data-aix aria-label="Close detail">\u00d7</button></div>';
+  if(t.id) h+='<div class="ai-dopen"><span class="linkish" data-open="'+esc(t.id)+'">Open profile \u2192</span></div>';
+  h+='<div class="ai-deng">';
+  AI.engines.forEach(function(e){
+    var r=aiLatestPrompt(p,e), c=aiBizPromptCount(t,p,e), big, sub, cls;
+    if(!r){ big="No check"; sub=""; cls="is-mut"; }
+    else{
+      if(!aiNamedInRow(t,r)){ big="Not named"; cls="is-mut"; }
+      else if(t.id==="jd-meyers-productions"&&r.jd_rank){ big="#"+r.jd_rank+" of "+r.of_total; cls=r.jd_rank===1?"is-win":"is-hit"; }
+      else { big="Named"; cls="is-hit"; }
+      sub="named in "+c.n+" of "+c.tot+" "+e+" checks";
+    }
+    h+='<div class="ai-deng-c"><span class="ai-deng-v '+cls+'">'+esc(big)+'</span><span class="ai-deng-l">'+esc(sub||e)+'</span></div>';
+  });
+  h+='</div><div class="ai-dopen"><span class="linkish" data-aipx>View all '+AI.promptCatalog.length+' prompts for this business \u2192</span></div>';
+  return h+'</div>';
+}
+/* compact shared-traits block for the left rail */
+function aiTraitsMini(){
+  function row(t,v,c){
+    return '<div class="ai-tr"><div class="ai-trt">'+esc(t)+'</div>'+
+      '<div class="ai-trv">'+esc(v)+'<span class="ai-trc">'+esc(c)+'</span></div></div>';
   }
-  var h='<section class="ai-sec">'+aiSecHead("What the most-cited businesses share","The 10 most-cited businesses, compared with the rest of the market.");
-  h+='<div class="ai-traits">';
-  h+=card("Website",AI.webPct+"%","of the 10 most-cited have their own website",AI.restWebPct+"%","of the rest do");
-  h+=card("Google reviews",AI.medRev!=null?String(AI.medRev):"\u2014","median review count, most-cited",(AI.restMedRev!=null?String(AI.restMedRev):"\u2014")+" median","for the rest");
-  h+=card("Years in business",AI.medYrs!=null?String(AI.medYrs):"\u2014","median years, most-cited",(AI.restMedYrs!=null?String(AI.restMedYrs):"\u2014")+" median","for the rest");
-  return h+'</div></section>';
+  var h=aiSecHead("What the most-cited businesses share","The 10 most-cited, vs the rest of the market.");
+  h+='<div class="ai-tmini">';
+  h+=row("Website",AI.webPct+"%","of top 10 have one \u00b7 "+AI.restWebPct+"% of rest");
+  h+=row("Google reviews","median "+(AI.medRev!=null?AI.medRev:"\u2014"),"rest median "+(AI.restMedRev!=null?AI.restMedRev:"\u2014"));
+  h+=row("Years in business","median "+(AI.medYrs!=null?AI.medYrs:"\u2014"),"rest median "+(AI.restMedYrs!=null?AI.restMedYrs:"\u2014"));
+  return h+'</div>';
 }
 function aiMethod(){
-  var h='<section class="ai-sec"><details class="ai-meth"><summary>Methodology</summary><div class="ai-meth-b">';
-  h+='<p>Daily neutral audits ask each prompt verbatim to ChatGPT and Gemini in signed-out guest sessions, one prompt at a time.</p>';
+  var last=AI.dates.length?AI.dates[AI.dates.length-1]:"\u2014";
+  var h='<details class="ai-meth"><summary>Methodology</summary><div class="ai-meth-b">';
+  h+='<p>Daily neutral audits ask each prompt verbatim to ChatGPT and Gemini in signed-out guest sessions, one prompt at a time. Last audit '+esc(last)+'; '+AI.nNamed+' businesses cited across '+AI.nDays+' checks.</p>';
   h+='<p class="ai-meth-t">Prompts tested ('+AI.promptCatalog.length+')</p><ul class="ai-meth-p">';
   AI.promptCatalog.forEach(function(p){ h+='<li>'+esc(p.text)+'</li>'; });
   h+='</ul><p class="ai-meth-t">Limitations</p><ul>'+
     '<li>Claude and Perplexity require sign-in, so they are excluded from neutral audits.</li>'+
     '<li>Each check records which businesses were named. Exact rank is recorded only for the primary tracked business.</li>'+
     '<li>Assistant answers vary between runs; treat small differences as noise.</li></ul>';
-  return h+'</div></details></section>';
+  return h+'</div></details>';
 }
 function renderAI(){
   if(S.mode==="venues")
@@ -1604,17 +1672,11 @@ function renderAI(){
     return '<div class="page-head"><h1>AI Visibility</h1><div class="empty-note">No AI visibility data yet \u2014 the daily audit feeds this tab.</div></div>';
   var h='<div class="ai-wrap">';
   h+='<div class="page-head"><h1>AI Visibility</h1><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
-  h+=aiStatStrip();
-  h+='<section class="ai-sec">'+aiSecHead("Cited businesses","Ranked by how often assistants name them. Select a row for detail.");
-  h+='<div class="ai-board-h">'+aiPromptFilter()+'</div>';
-  var scope=aiPromptScope();
-  if(scope) h+='<div class="ai-scope"><span>Prompt: \u201c'+esc(scope.prompt)+'\u201d</span><span class="linkish" data-aipx>\u00d7 all prompts</span></div>';
-  h+=aiBoard(scope)+'</section>';
-  h+=aiDetail();
-  h+=aiMatrix();
-  h+=aiTraits();
-  h+=aiMethod();
-  return h+'</div>';
+  h+='<div class="ai-dash">';
+  h+='<aside class="ai-side ai-side-l">'+aiSecHead("Businesses","Ranked by how often assistants name them.")+aiBizRows()+aiTraitsMini()+aiMethod()+'</aside>';
+  h+=aiCenter();
+  h+='<aside class="ai-side ai-side-r">'+aiSecHead("Prompts","Filter the market by question.")+aiPromptList()+'</aside>';
+  return h+'</div></div>';
 }
 
 
@@ -2592,7 +2654,7 @@ function renderLeft(){
     el.scrollTop=sc;
   }
   animateCounts(el);
-  if(S.tab==="ai"){ var pg=$("#page"); if(pg) aiAnimateBars(pg); }
+  if(S.tab==="ai"){ var pg=$("#page"); if(pg&&!window.__aiVT) aiAnimateBars(pg); }
   if(S.tab==="network") networkInit();
 }
 function setTab(t,opts){
@@ -2757,15 +2819,17 @@ document.addEventListener("click",function(e){
     if(k==="glance") S.glanceX=!S.glanceX; else S.expanded=!S.expanded;
     renderRight(); pushHist(); return; }
   var apx=e.target.closest("[data-aipx]");
-  if(apx){ S.aiPrompt=null; renderLeft(); return; }
+  if(apx){ aiNav(function(){ S.aiPrompt=null; renderLeft(); }); return; }
+  var apr=e.target.closest("[data-aiprompt]");
+  if(apr){ var pmt=apr.getAttribute("data-aiprompt")||null;
+    aiNav(function(){ S.aiPrompt=(S.aiPrompt===pmt)?null:pmt; renderLeft(); }); return; }
   var ar=e.target.closest("[data-ai]");
   if(ar){ var nm=ar.getAttribute("data-ai");
-    S.aiSel=(S.aiSel===nm)?null:nm;
-    renderLeft(); return; }
+    aiNav(function(){ S.aiSel=(S.aiSel===nm)?null:nm; renderLeft(); }); return; }
   var ax=e.target.closest("[data-aix]");
-  if(ax){ S.aiSel=null; renderLeft(); return; }
+  if(ax){ aiNav(function(){ S.aiSel=null; renderLeft(); }); return; }
   var aall=e.target.closest("[data-aiall]");
-  if(aall){ S.aiAll=!S.aiAll; renderLeft(); return; }
+  if(aall){ aiNav(function(){ S.aiAll=!S.aiAll; renderLeft(); }); return; }
   var mc=e.target.closest("[data-mclose]");
   if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
   var gx=e.target.closest("[data-gexpand]");
@@ -2844,11 +2908,14 @@ document.addEventListener("keydown",function(e){
     setPlaying(false);
     if(window.innerWidth<=900){ $("#right").classList.remove("open"); }
     else clearSel(); }
-  if((e.key==="Enter"||e.key===" ")&&document.activeElement&&document.activeElement.hasAttribute&&document.activeElement.hasAttribute("data-ai")){
+  var kae=document.activeElement;
+  if((e.key==="Enter"||e.key===" ")&&kae&&kae.hasAttribute&&(kae.hasAttribute("data-ai")||kae.hasAttribute("data-aiprompt"))){
     e.preventDefault();
-    var nm=document.activeElement.getAttribute("data-ai");
-    S.aiSel=(S.aiSel===nm)?null:nm;
-    renderLeft(); return; }
+    if(kae.hasAttribute("data-ai")){ var knm=kae.getAttribute("data-ai");
+      aiNav(function(){ S.aiSel=(S.aiSel===knm)?null:knm; renderLeft(); }); }
+    else { var kp=kae.getAttribute("data-aiprompt")||null;
+      aiNav(function(){ S.aiPrompt=(S.aiPrompt===kp)?null:kp; renderLeft(); }); }
+    return; }
   var tg=(document.activeElement&&document.activeElement.tagName)||"";
   if(e.key==="/"&&document.activeElement!==$("#fq")&&tg!=="INPUT"&&tg!=="SELECT"){ e.preventDefault(); if(S.tab!=="explore") setTab("explore"); $("#fq").focus(); }
 });
