@@ -1638,31 +1638,6 @@ function aiBizPrompt(t,p){
   h+='</div><div class="ai-dopen"><span class="linkish" data-aipx>View all '+AI.promptCatalog.length+' prompts for this business \u2192</span></div>';
   return h+'</div>';
 }
-/* compact shared-traits block for the left rail */
-function aiTraitsMini(){
-  function row(t,v,c){
-    return '<div class="ai-tr"><div class="ai-trt">'+esc(t)+'</div>'+
-      '<div class="ai-trv">'+esc(v)+'<span class="ai-trc">'+esc(c)+'</span></div></div>';
-  }
-  var h=aiSecHead("What the most-cited businesses share","The 10 most-cited, vs the rest of the market.");
-  h+='<div class="ai-tmini">';
-  h+=row("Website",AI.webPct+"%","of top 10 have one \u00b7 "+AI.restWebPct+"% of rest");
-  h+=row("Google reviews","median "+(AI.medRev!=null?AI.medRev:"\u2014"),"rest median "+(AI.restMedRev!=null?AI.restMedRev:"\u2014"));
-  h+=row("Years in business","median "+(AI.medYrs!=null?AI.medYrs:"\u2014"),"rest median "+(AI.restMedYrs!=null?AI.restMedYrs:"\u2014"));
-  return h+'</div>';
-}
-function aiMethod(){
-  var last=AI.dates.length?AI.dates[AI.dates.length-1]:"\u2014";
-  var h='<details class="ai-meth"><summary>Methodology</summary><div class="ai-meth-b">';
-  h+='<p>Daily neutral audits ask each prompt verbatim to ChatGPT and Gemini in signed-out guest sessions, one prompt at a time. Last audit '+esc(last)+'; '+AI.nNamed+' businesses cited across '+AI.nDays+' checks.</p>';
-  h+='<p class="ai-meth-t">Prompts tested ('+AI.promptCatalog.length+')</p><ul class="ai-meth-p">';
-  AI.promptCatalog.forEach(function(p){ h+='<li>'+esc(p.text)+'</li>'; });
-  h+='</ul><p class="ai-meth-t">Limitations</p><ul>'+
-    '<li>Claude and Perplexity require sign-in, so they are excluded from neutral audits.</li>'+
-    '<li>Each check records which businesses were named. Exact rank is recorded only for the primary tracked business.</li>'+
-    '<li>Assistant answers vary between runs; treat small differences as noise.</li></ul>';
-  return h+'</div></details>';
-}
 function renderAI(){
   if(S.mode==="venues")
     return '<div class="sec"><h3>AI Search</h3><div class="sub">Venue visibility</div>'+
@@ -1673,7 +1648,7 @@ function renderAI(){
   var h='<div class="ai-wrap">';
   h+='<div class="page-head"><h1>AI Visibility</h1><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>';
   h+='<div class="ai-dash">';
-  h+='<aside class="ai-side ai-side-l">'+aiSecHead("Businesses","Ranked by how often assistants name them.")+aiBizRows()+aiTraitsMini()+aiMethod()+'</aside>';
+  h+='<aside class="ai-side ai-side-l">'+aiSecHead("Businesses","Ranked by how often assistants name them.")+aiBizRows()+'</aside>';
   h+=aiCenter();
   h+='<aside class="ai-side ai-side-r">'+aiSecHead("Prompts","Filter the market by question.")+aiPromptList()+'</aside>';
   return h+'</div></div>';
