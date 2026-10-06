@@ -1562,3 +1562,33 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-network .hub-legend{display:flex;gap:18px;flex-wrap:wrap;margin:2px 0 4px}
 .pg-network .hub-legend span{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--silver-2)}
 .pg-network .hub-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+
+/* ---------- Activity page: full-bleed redesign (2026-10-06) ---------- */
+.actx{margin:-18px -22px -40px}
+.actx-top{padding:30px max(28px,4vw) 20px}
+.actx-top h1{font-size:34px;margin:0;letter-spacing:-.02em}
+.actx-top p{color:var(--mut);margin:8px 0 0;font-size:14px}
+.actx-hl{background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,0));
+  border-top:1px solid var(--card-line);border-bottom:1px solid var(--card-line);
+  padding:24px max(28px,4vw) 30px}
+.actx-hl-h{display:flex;align-items:baseline;gap:14px;margin-bottom:16px}
+.actx-hl-h span{font-size:22px;font-weight:800;letter-spacing:-.015em}
+.actx-hl-h em{font-style:normal;font-size:13px;color:var(--mut)}
+.actx-feed{padding:26px max(28px,4vw) 70px}
+.actx-feed-h{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.actx-feed-h>span{font-size:22px;font-weight:800;letter-spacing:-.015em}
+.actx-feed .feed-filters{margin-bottom:0}
+.actx-pad{padding:24px max(28px,4vw) 48px}
+
+/* ---------- Data page: full-bleed, no horizontal scroll (2026-10-06) ---------- */
+.datax{margin:-18px -22px -40px}
+.datax>.pg-head{padding:26px max(28px,4vw) 4px}
+.datax>.sec{padding:0 max(28px,4vw) 48px}
+.pg-data .dtable-wrap{overflow-x:visible}
+.pg-data .dtable{table-layout:fixed;min-width:0}
+.pg-data .dtable th{position:static;white-space:normal}
+.pg-data .dtable td{white-space:normal;word-break:break-word;overflow:hidden}
+.pg-data .dtable td:first-child{white-space:nowrap;text-overflow:ellipsis;min-width:0;max-width:none}
+.pg-data .dtable td:nth-child(7){min-width:0}
+/* Activity + Data are intentionally full-bleed (JD 2026-10-06) */
+.pg-today,.pg-data{max-width:none}
