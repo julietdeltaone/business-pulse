@@ -388,21 +388,9 @@ function feedEvents(){
     return null;
   }
   function compById(id){ for(var i=0;i<C.length;i++) if(C[i].id===id) return C[i]; return null; }
-  /* follower moves, day by day across the window */
-  for(var d=Math.max(1,d0);d<=di;d++){
-    (function(dd){
-      C.forEach(function(b){
-        var first=b.followHist.length?b.followHist[0].date:null;
-        if(first&&first>=DATES[dd-1]) return; /* new-biz handled below */
-        var ch=pctChange(b,dd-1,dd), from=followersAt(b,dd-1), to=followersAt(b,dd);
-        if(ch!=null&&Math.abs(ch)>=3)
-          ev.push({date:DATES[dd],kind:"move",b:b,sub:fmt(from)+" \u2192 "+fmt(to),val:pctStr(ch),up:ch>=0});
-        else if(from!=null&&to!=null&&to!==from)
-          ev.push({date:DATES[dd],kind:"move",b:b,sub:fmt(from)+" \u2192 "+fmt(to),
-            val:(to>from?"+":"\u2212")+fmt(Math.abs(to-from)),up:to>from});
-      });
-    })(d);
-  }
+  /* NOTE: follower "move" events are intentionally excluded — the Activity page
+     is a general-activity feed (posts, promos, prices, new faces, quiet spells),
+     not a follower-change ticker. */
   /* posts + promos from the IG activity rows */
   (D.igActivity||[]).forEach(function(r){
     if(!r.date||r.date<lo||r.date>hi) return;
@@ -452,6 +440,7 @@ function feedPillsHTML(){
   var counts={}; evs.forEach(function(e){ counts[e.kind]=(counts[e.kind]||0)+1; });
   return '<div class="feed-filters"><button class="feed-pill'+(f==="all"?" on":"")+'" data-feedf="all">All · '+evs.length+'</button>'+
     FEED_CATS.map(function(c){
+      if(c.k==="move") return ""; /* follower moves are excluded from this feed */
       return '<button class="feed-pill'+(f===c.k?" on":"")+'" data-feedf="'+c.k+'">'+c.t+' · '+(counts[c.k]||0)+'</button>';
     }).join("")+'</div>';
 }
@@ -581,22 +570,54 @@ function weekHighlightCards(){
     cards.push({k:"Biggest audience",icon:"crown",c:"#c9a0f2",b:big[0],
       stat:fmt(followersAt(big[0],di)),sub:"followers · largest tracked",why:""});
   }
+  /* new on the radar (first tracked inside the 7-day window) */
+  var newW=list.filter(function(b){
+    var first=b.followHist.length?b.followHist[0].date:null;
+    return b.id!=="jd-meyers-productions"&&first&&first>=DATES[d0]&&first<=DATES[di];
+  }).sort(function(a,b){ var fa=a.followHist[0].date, fb=b.followHist[0].date;
+    return fa<fb?1:fa>fb?-1:0; });
+  if(newW.length){
+    cards.push({k:"New on the radar",icon:"radar",c:"#8fd18f",b:newW[0],
+      stat:String(newW.length),sub:newW.length===1?"new business this week":"new businesses this week",
+      names:newW.slice(0,3).map(function(b){ return b.name; }),
+      why:newW.length>3?("+"+(newW.length-3)+" more"):""});
+  }
+  /* promos live */
+  var seenP={}, promoN=[];
+  feedEvents().forEach(function(e){
+    if(e.kind!=="promo"||seenP[e.b.id]) return;
+    seenP[e.b.id]=1; promoN.push(e.b.name);
+  });
+  if(promoN.length){
+    cards.push({k:"Promos live",icon:"tag",c:"#c9a0f2",b:null,
+      stat:String(promoN.length),sub:promoN.length===1?"promotion running":"promotions running",
+      names:promoN.slice(0,3),
+      why:promoN.length>3?("+"+(promoN.length-3)+" more"):""});
+  }
+  /* gone quiet */
+  var quiet=todayChanges().quiet;
+  if(quiet.length){
+    cards.push({k:"Gone quiet",icon:"moon",c:"#e06c6c",b:quiet[0].b,
+      stat:String(quiet.length),sub:quiet.length===1?"business gone quiet":"businesses gone quiet",
+      names:quiet.slice(0,3).map(function(q){ return q.b.name; }),
+      why:quiet.length>3?("+"+(quiet.length-3)+" more"):""});
+  }
   return cards;
 }
 function weekHighlights(){
   var cards=weekHighlightCards();
   if(!cards.length) return "";
-  return '<div class="act-hlwrap"><div class="act-sect-h"><span>Week&rsquo;s highlights</span>'+
-    '<span class="act-sect-sub">Top of the market · last 7 days</span></div>'+
-    '<div class="act-hl-grid">'+cards.map(function(c,i){
-      return '<div class="act-hl-card" data-open="'+c.b.id+'" style="--d:'+(0.08*i).toFixed(2)+'s;--acc:'+c.c+'">'+
-        '<div class="act-hl-ic">'+actIcon(c.icon)+'</div>'+
-        '<div class="act-hl-stat">'+esc(c.stat)+'</div>'+
-        '<div class="act-hl-sub">'+esc(c.sub)+'</div>'+
-        '<div class="act-hl-k">'+esc(c.k)+'</div>'+
-        '<div class="act-hl-n">'+esc(c.b.name)+'</div>'+
-        (c.why?'<div class="act-hl-w">'+esc(c.why)+'</div>':"")+'</div>';
-    }).join("")+"</div></div>";
+  return '<div class="act-hl-grid">'+cards.map(function(c,i){
+    var nm=c.names?c.names.map(function(n){ return '<div class="act-hl-w">'+esc(n)+'</div>'; }).join("")
+      :'<div class="act-hl-n">'+esc(c.b.name)+'</div>';
+    return '<div class="act-hl-card"'+(c.b?' data-open="'+c.b.id+'"':"")+
+      ' style="--d:'+(0.08*i).toFixed(2)+'s;--acc:'+c.c+'">'+
+      '<div class="act-hl-ic">'+actIcon(c.icon)+'</div>'+
+      '<div class="act-hl-stat">'+esc(c.stat)+'</div>'+
+      '<div class="act-hl-sub">'+esc(c.sub)+'</div>'+
+      '<div class="act-hl-k">'+esc(c.k)+'</div>'+nm+
+      (c.why?'<div class="act-hl-w">'+esc(c.why)+'</div>':"")+'</div>';
+  }).join("")+"</div>";
 }
 
 /* venue-mode Today: no change history exists yet — overview instead */
@@ -615,96 +636,15 @@ function renderVenueToday(){
 }
 
 function renderToday(){
-  if(S.mode==="venues") return renderVenueToday();
-  var ch=todayChanges();
-  var cats=[
-    {k:"jumps",t:"Follower jumps",thr:"\u22653% daily",icon:"bolt",c:"#f5b942",n:ch.jumps.length},
-    {k:"small",t:"Smaller moves",thr:"under 3%",icon:"wave",c:"#6db3f2",n:ch.small.length},
-    {k:"new",t:"New on the radar",thr:"",icon:"radar",c:"#8fd18f",n:ch.newBiz.length},
-    {k:"promo",t:"Promotional posts",thr:"",icon:"tag",c:"#c9a0f2",n:ch.promo.length},
-    {k:"prices",t:"Price changes",thr:"",icon:"dollar",c:"#f2d06d",n:ch.prices.length},
-    {k:"quiet",t:"Gone quiet",thr:"",icon:"moon",c:"#e06c6c",n:ch.quiet.length}
-  ];
-  var total=cats.reduce(function(a,x){ return a+x.n; },0);
-  function t3row(nm,val){ return '<span><i>'+esc(nm)+'</i>'+(val?'<b>'+esc(val)+'</b>':"")+'</span>'; }
-  var tops={
-    jumps:ch.jumps.slice(0,3).map(function(j){ return t3row(j.b.name,pctStr(j.ch)); }),
-    small:ch.small.slice(0,3).map(function(s){ return t3row(s.b.name,(s.delta>0?"+":"\u2212")+fmt(Math.abs(s.delta))); }),
-    new:ch.newBiz.slice(0,3).map(function(b){ return t3row(b.name,null); }),
-    promo:ch.promo.slice(0,3).map(function(p){ return t3row(p.b.name,null); }),
-    prices:ch.prices.slice(0,3).map(function(p){ return t3row(p.b.name,null); }),
-    quiet:ch.quiet.slice(0,3).map(function(q){ return t3row(q.b.name,q.band); })
-  };
-  var h='';
-  /* hero */
-  h+='<div class="act-hero" style="--d:0s">'+
-    '<div class="act-hero-line">'+
-    '<span class="act-pulse"><span class="act-pulse-ring"></span><span class="act-pulse-dot"></span></span>'+
-    '<span class="act-hero-num" data-count="'+total+'">0</span>'+
-    '<span class="act-hero-cap">market movements<em>Since '+esc(dstr(ch.prev))+' · through '+esc(dstr(ch.date))+'</em></span>'+
-    '</div>'+
-    '<div class="act-tiles">'+cats.map(function(x,i){
-      var tp=tops[x.k]||[];
-      return '<button class="act-tile'+(x.n===0?' zero':'')+'" data-actgo="'+x.k+'"'+(x.k==="new"?' data-radar="1"':"")+' style="--d:'+(0.06*(i+1)).toFixed(2)+'s;--acc:'+x.c+'">'+
-        '<span class="act-tile-ic">'+actIcon(x.icon)+'</span>'+
-        '<span class="act-tile-n" data-count="'+x.n+'">0</span>'+
-        '<span class="act-tile-l">'+x.t+'</span>'+
-        (tp.length?'<span class="act-tile-top3">'+tp.join("")+'</span>':"")+'</button>';
-    }).join("")+'</div></div>';
-  /* change feed (main column) */
-  function actRow(b,sub,meta,i){
-    return '<div class="act-row" data-open="'+b.id+'" style="--d:'+(0.04*i).toFixed(2)+'s">'+
-      '<span class="act-dot" style="background:'+recencyDot(b)+'"></span>'+
-      '<div class="act-nm"><b>'+esc(b.name)+'</b><span>'+sub+'</span></div>'+
-      '<div class="act-meta">'+meta+'</div></div>';
-  }
-  function actCat(x,list,rowFn){
-    if(!list.length) return "";
-    return '<div class="act-cat" id="actsec-'+x.k+'">'+
-      '<div class="act-cat-h"><span class="act-cat-ic" style="color:'+x.c+'">'+actIcon(x.icon)+'</span>'+
-      '<span class="act-cat-t">'+x.t+'</span>'+(x.thr?'<span class="act-cat-thr">'+esc(x.thr)+'</span>':"")+
-      '<span class="act-cat-n" data-count="'+list.length+'">0</span></div>'+
-      '<div class="act-rows">'+list.slice(0,8).map(rowFn).join("")+'</div></div>';
-  }
-  var feed="";
-  feed+=actCat(cats[0],ch.jumps,function(j,i){
-    var cls=j.ch>=0?"up":"dn";
-    return actRow(j.b,esc(j.b.townShort)+' · '+fmt(j.from)+' → '+fmt(j.to),
-      '<span class="pct '+cls+'">'+pctStr(j.ch)+'</span>',i);});
-  feed+=actCat(cats[1],ch.small,function(s,i){
-    var cls=s.delta>0?"up":"dn", sign=s.delta>0?"+":"\u2212";
-    return actRow(s.b,esc(s.b.townShort)+' · '+fmt(s.from)+' → '+fmt(s.to),
-      '<span class="pct '+cls+'">'+sign+fmt(Math.abs(s.delta))+'</span>',i);});
-  feed+=actCat(cats[2],ch.newBiz,function(b,i){
-    return actRow(b,esc(newWhy(b)),'<span class="act-flag new">new</span>',i);});
-  feed+=actCat(cats[3],ch.promo,function(p,i){
-    return actRow(p.b,esc(p.note).slice(0,72),'<span class="act-flag promo">promo</span>',i);});
-  feed+=actCat(cats[4],ch.prices,function(p,i){
-    return actRow(p.b,esc(p.note).slice(0,72),'<span class="act-flag">'+esc(p.run)+'</span>',i);});
-  feed+=actCat(cats[5],ch.quiet,function(q,i){
-    return '<div class="act-row" data-open="'+q.b.id+'" style="--d:'+(0.04*i).toFixed(2)+'s">'+
-      '<span class="act-dot" style="background:#e06c6c"></span>'+
-      '<div class="act-nm"><b>'+esc(q.b.name)+'</b><span>'+esc(q.b.townShort)+'</span></div>'+
-      '<div class="act-meta"><span class="act-flag quiet">silent '+esc(q.band)+'</span></div></div>';});
-  if(!feed){
-    feed='<div class="act-empty" style="--d:.1s"><div class="act-empty-ic">'+actIcon("moon")+'</div>'+
-      '<div class="act-empty-t">The market is holding its breath.</div>'+
-      '<div class="act-empty-s">Nothing moved since '+esc(dstr(ch.prev))+'. Check back tomorrow.</div></div>';
-  }else{
-    feed='<div class="act-sect-h" style="--d:0s"><span>What changed</span>'+
-      '<span class="act-sect-sub">Every move, by category</span></div>'+feed;
-  }
-  /* body: main column (highlights + what changed) + live-feed sidebar, top-right */
-  h+='<div class="act-body"><div class="act-main">'+weekHighlights()+'<div class="act-feed">'+feed+'</div></div>'+
-    '<aside class="act-side" id="feedside" aria-label="Live activity feed">'+
-    '<div class="feed-side-head"><div class="act-sect-h" style="margin:0"><span>Live feed</span>'+
-    '<span class="live-dot" title="Auto-scrolling"></span></div>'+
-    '<div class="act-sect-sub">Every post, move and change · last 7 days</div>'+
-    '<div class="feed-fresh">'+feedFresh().map(function(f){
-      return '<span class="feed-chip">'+esc(f[0])+' · <b>'+esc(dstrShort(f[1]))+'</b></span>';
-    }).join("")+'</div>'+feedPillsHTML()+'</div>'+
-    '<div id="feedlist">'+feedRowsHTML()+'</div></aside></div>';
-  return h;
+  if(S.mode==="venues") return '<div class="actx"><div class="actx-pad">'+renderVenueToday()+'</div></div>';
+  var h='<div class="actx">';
+  h+='<div class="actx-top"><h1>Activity</h1>'+
+    '<p>Every post, promo, price move and quiet spell across the market · last 7 days</p></div>';
+  h+='<section class="actx-hl"><div class="actx-hl-h"><span>Week&rsquo;s highlights</span>'+
+    '<em>Top of the market · last 7 days</em></div>'+weekHighlights()+'</section>';
+  h+='<section class="actx-feed"><div class="actx-feed-h"><span>The feed</span>'+
+    feedPillsHTML()+'</div><div id="feedlist">'+feedRowsHTML()+'</div></section>';
+  return h+'</div>';
 }
 
 /* ---------- confidence badges + price-conflict flags ---------- */
@@ -1356,7 +1296,11 @@ function renderData(){
   dSortRows(rows,s);
   var h='<div class="sec">'+
     '<input id="dq" class="dfilter" type="search" placeholder="Filter rows…" value="'+esc(S.dq||"")+'" aria-label="Filter data rows">';
-  h+='<div class="dsub">Businesses · '+rows.length+'</div><div class="dtable-wrap"><table class="dtable"><thead><tr>'+
+  h+='<div class="dsub">Businesses · '+rows.length+'</div><div class="dtable-wrap"><table class="dtable">'+
+    '<colgroup><col style="width:14%"><col style="width:9%"><col style="width:8%">'+
+    '<col style="width:5%"><col style="width:5%"><col style="width:5%"><col style="width:19%">'+
+    '<col style="width:8%"><col style="width:5%"><col style="width:7%"><col style="width:11%">'+
+    '<col style="width:4%"></colgroup><thead><tr>'+
     DCOLS.map(function(c){ return '<th data-dk="'+c[0]+'" class="'+(s.key===c[0]?"sorted":"")+'">'+c[1]+(s.key===c[0]?(s.dir<0?" ▼":" ▲"):"")+'</th>'; }).join("")+
     '</tr></thead><tbody>'+
     rows.map(function(b){ return '<tr data-open="'+b.id+'">'+DCOLS.map(function(c){ return "<td>"+dCellHTML(b,c[0])+"</td>"; }).join("")+"</tr>"; }).join("")+
@@ -2806,9 +2750,9 @@ function pageHTML(){
   if(S.tab==="market") return renderMarket();
   if(S.tab==="ai") return renderAI();
   if(S.tab==="network") return renderNetworkHTML();
-  var hd=PAGE_HEADS[S.tab], body=S.tab==="today"?renderToday():renderData();
-  if(S.tab==="today") return '<div class="actdash">'+pageHeadHTML(hd[0],hd[1])+body+'</div>';
-  return pageHeadHTML(hd[0],hd[1])+body;
+  if(S.tab==="today") return '<div class="actdash">'+renderToday()+'</div>';
+  var hd=PAGE_HEADS[S.tab];
+  return '<div class="datax">'+pageHeadHTML(hd[0],hd[1])+renderData()+'</div>';
 }
 function animateCounts(el){
   $$("[data-count]",el).forEach(function(n){
@@ -2831,7 +2775,6 @@ function renderLeft(){
   }
   animateCounts(el);
   if(S.tab==="ai"){ var pg=$("#page"); if(pg) aiAnimateBars(pg); }
-  if(S.tab==="today"&&S.mode!=="venues"){ feedAutoStart(); radarOnce(); }
   if(S.tab==="network") networkInit();
 }
 function setTab(t,opts){
@@ -3040,9 +2983,6 @@ document.addEventListener("click",function(e){
     S.dsort=s2; renderLeft(); pushHist(); return; }
   var cfb=e.target.closest("#clearf");
   if(cfb){ S.q=""; S.lane=""; S.mom=""; S.reg=""; syncChrome(); refreshFiltered(); pushHist(); return; }
-  var ag=e.target.closest("[data-actgo]");
-  if(ag){ var tgt=document.getElementById("actsec-"+ag.getAttribute("data-actgo"));
-    if(tgt) tgt.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"start"}); return; }
   var ff=e.target.closest("[data-feedf]");
   if(ff){ S.feedf=ff.getAttribute("data-feedf");
     var fl=document.getElementById("feedlist");
