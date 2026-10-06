@@ -254,7 +254,8 @@ function syncChrome(){
   document.title=biz?"Business Pulse · North Country photo, video & drone market":"Business Pulse · North Country venues";
   /* sections */
   $$(".pagenav button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
-    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
+    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false");
+    if(x.getAttribute("data-tab")==="network") x.style.display=networkWindowOpen()?"":"none"; });
   var ex=S.tab==="explore", rk=ex&&S.view==="rankings";
   document.body.classList.toggle("pgmode",!ex);
   $("#page").hidden=ex;
@@ -266,6 +267,7 @@ function applyState(st){
   HIST.busy=true;
   try{
     S.view=st.view; S.mode=st.mode; S.tab=st.tab; S.sel=st.sel;
+    if(S.tab==="network"&&!networkWindowOpen()) S.tab="explore";
     S.q=st.q; S.lane=st.lane; S.mom=st.mom; S.reg=st.reg;
     S.rankMode=st.rankMode; S.rankDir=st.rankDir; S.dq=st.dq; S.railX=!!st.railX;
     S.dsort=st.dsort?{key:st.dsort.key,dir:st.dsort.dir}:null;
@@ -2555,6 +2557,23 @@ function hubTiers(){
     all: nodes
   };
 }
+/* ---------- network live window: Sat 9:00 AM - Sun 1:00 PM ET ----------
+   The follow graph is scraped once a week (Sat ~7 AM); the Network tab only
+   exists inside this window so stale data is never shown. Outside it the tab
+   button is hidden and any navigation to it falls back to Explore. */
+function networkWindowOpen(){
+  try{
+    var parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"numeric",hour12:false}).formatToParts(new Date());
+    var day=null,hour=-1;
+    parts.forEach(function(p){ if(p.type==="weekday")day=p.value; else if(p.type==="hour")hour=parseInt(p.value,10); });
+    if(day==="Sat") return hour>=9;
+    if(day==="Sun") return hour<13;
+    return false;
+  }catch(e){ return true; }
+}
+if(!window.__netWatch){ window.__netWatch=setInterval(function(){
+  if(typeof S!=="undefined"&&S.tab==="network"&&!networkWindowOpen()) setTab("explore");
+},60000); }
 function renderNetworkHTML(){
   if(S.mode==="venues")
     return '<div class="page-head pg-hero"><div><h1>Network</h1>'+
@@ -2955,6 +2974,7 @@ function renderLeft(){
 }
 function setTab(t,opts){
   opts=opts||{};
+  if(t==="network"&&!networkWindowOpen()) t="explore";
   if(S.tab===t) return;
   S.tab=t;
   if(t!=="explore") setPlaying(false);
@@ -3240,6 +3260,6 @@ $("#leftbody").addEventListener("mouseout",function(e){
   var m=pinById[row.dataset.open], el=m&&m.getElement();
   if(el&&el.firstChild) el.firstChild.classList.remove("hot");
 });
-syncSort(); renderScrub(); renderLeft(); renderRight(); buildFresh();
+syncSort(); syncChrome(); renderScrub(); renderLeft(); renderRight(); buildFresh();
 pushHist(); /* seed undo history with the initial view */
 })();
