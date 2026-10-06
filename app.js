@@ -205,7 +205,6 @@ function recencyDot(b){
 }
 var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b9c2cf",drone:"#6fd3e7",venue:"#d98e4a"};
 var LANE_LABEL={photo:"Photo",video:"Video",both:"Photo + Video",drone:"Drone",venue:"Venue"};
-var MOM_LABEL={gaining:"Gaining",slipping:"Slipping",active:"Active",quiet:"Quiet",dormant:"Dormant"};
 var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unconfirmed"};
 
 /* ---------- state ---------- */
@@ -318,7 +317,7 @@ function scopeList(){ return S.tab==="explore"?filtered():C.slice(); }
 /* ---------- "what changed since yesterday" ---------- */
 function todayChanges(){
   var di=S.di, ydi=Math.max(0,di-1), today=DATES[di], yd=DATES[ydi];
-  var out={date:today,prev:yd,newBiz:[],jumps:[],small:[],prices:[],promo:[],quiet:[]};
+  var out={date:today,prev:yd,newBiz:[],jumps:[],small:[],prices:[],promo:[]};
   C.forEach(function(b){
     var first=b.followHist.length?b.followHist[0].date:null;
     /* the injected JD Meyers Productions entry is a permanent anchor, never a new discovery */
@@ -348,15 +347,6 @@ function todayChanges(){
       var comp=C.filter(function(c){return c.ig_handle===r.handle;})[0];
       if(comp) out.promo.push({b:comp,note:r.activity});
     }});
-  /* gone quiet: silence milestones (30/60/90/180/365 days) landing on today.
-     Exact-day matches keep this an event feed, not a static dormant list. */
-  var bands=[[30,"30 days"],[60,"60 days"],[90,"90 days"],[180,"6 months"],[365,"1 year"]];
-  var isos={};
-  bands.forEach(function(bd){ var dd=new Date(today+"T12:00:00"); dd.setDate(dd.getDate()-bd[0]); isos[dd.toISOString().slice(0,10)]=bd[1]; });
-  C.forEach(function(b){
-    var band=b.last_post_date&&isos[b.last_post_date];
-    if(band) out.quiet.push({b:b,band:band});
-  });
   return out;
 }
 
@@ -376,8 +366,7 @@ var FEED_CATS=[
   {k:"move",t:"Moves",icon:"bolt",c:"#f5b942"},
   {k:"new",t:"New",icon:"radar",c:"#8fd18f"},
   {k:"promo",t:"Promos",icon:"tag",c:"#c9a0f2"},
-  {k:"price",t:"Prices",icon:"dollar",c:"#f2d06d"},
-  {k:"quiet",t:"Quiet",icon:"moon",c:"#e06c6c"}
+  {k:"price",t:"Prices",icon:"dollar",c:"#f2d06d"}
 ];
 function feedCat(k){ for(var i=0;i<FEED_CATS.length;i++) if(FEED_CATS[i].k===k) return FEED_CATS[i]; return FEED_CATS[0]; }
 function feedEvents(){
@@ -389,8 +378,8 @@ function feedEvents(){
   }
   function compById(id){ for(var i=0;i<C.length;i++) if(C[i].id===id) return C[i]; return null; }
   /* NOTE: follower "move" events are intentionally excluded — the Activity page
-     is a general-activity feed (posts, promos, prices, new faces, quiet spells),
-     not a follower-change ticker. */
+     is a general-activity feed (posts, promos, prices, new faces),
+     not a follower-change ticker. Only active happenings appear here. */
   /* posts + promos from the IG activity rows */
   (D.igActivity||[]).forEach(function(r){
     if(!r.date||r.date<lo||r.date>hi) return;
@@ -416,11 +405,7 @@ function feedEvents(){
     if(b.id!=="jd-meyers-productions"&&first&&first>=lo&&first<=hi)
       ev.push({date:first,kind:"new",b:b,sub:newWhy(b)});
   });
-  /* quiet milestones landing today */
-  todayChanges().quiet.forEach(function(q){
-    ev.push({date:hi,kind:"quiet",b:q.b,sub:"No posts in "+q.band});
-  });
-  var ko={new:0,price:1,promo:2,post:3,move:4,quiet:5};
+  var ko={new:0,price:1,promo:2,post:3,move:4};
   ev.sort(function(a,b2){
     if(a.date!==b2.date) return a.date<b2.date?1:-1;
     return (ko[a.kind]-ko[b2.kind])||(a.b.name<b2.b.name?-1:1);
@@ -594,13 +579,12 @@ function weekHighlightCards(){
       names:promoN.slice(0,3),
       why:promoN.length>3?("+"+(promoN.length-3)+" more"):""});
   }
-  /* gone quiet */
-  var quiet=todayChanges().quiet;
-  if(quiet.length){
-    cards.push({k:"Gone quiet",icon:"moon",c:"#e06c6c",b:quiet[0].b,
-      stat:String(quiet.length),sub:quiet.length===1?"business gone quiet":"businesses gone quiet",
-      names:quiet.slice(0,3).map(function(q){ return q.b.name; }),
-      why:quiet.length>3?("+"+(quiet.length-3)+" more"):""});
+  /* market output: total posts across the market in 7 days */
+  var totalPosts=act.reduce(function(a,x){ return a+x.n; },0);
+  if(totalPosts>0){
+    cards.push({k:"Market output",icon:"pulse",c:"#6fd3e7",b:act[0].b,
+      stat:String(totalPosts),sub:"posts across the market in 7 days",
+      why:"Top poster: "+act[0].b.name+" ("+act[0].n+")"});
   }
   return cards;
 }
@@ -639,7 +623,7 @@ function renderToday(){
   if(S.mode==="venues") return '<div class="actx"><div class="actx-pad">'+renderVenueToday()+'</div></div>';
   var h='<div class="actx">';
   h+='<div class="actx-top"><h1>Activity</h1>'+
-    '<p>Every post, promo, price move and quiet spell across the market · last 7 days</p></div>';
+    '<p>Every post, promo and price move across the market · last 7 days</p></div>';
   h+='<section class="actx-hl"><div class="actx-hl-h"><span>Week&rsquo;s highlights</span>'+
     '<em>Top of the market · last 7 days</em></div>'+weekHighlights()+'</section>';
   h+='<section class="actx-feed"><div class="actx-feed-h"><span>The feed</span>'+
@@ -664,7 +648,7 @@ function actScore(b){
   var d=b.postAge;
   if(d==null) return {score:null,band:"Unknown",why:"No recent-post date on record."};
   var s=d<=7?100:d<=14?85:d<=30?70:d<=60?50:d<=90?30:d<=180?15:5;
-  var band=s>=70?"Active":s>=30?"Cooling":"Dormant";
+  var band=s>=70?"Active":s>=30?"Cooling":"Low";
   var ago=d===0?"today":d+" day"+(d>1?"s":"")+" ago";
   return {score:s,band:band,why:"Last posted "+ago+".",days:d};
 }
@@ -721,7 +705,7 @@ function engScore(b){
   /* peer-relative: the old absolute scale saturated at 100 for many businesses.
      The top observed rate maps to 98 so scores can actually distinguish. */
   var s=Math.max(2,Math.min(98,Math.round(e.rate_pct/ENG_MAX*98)));
-  var band=s>=60?"Strong":s>=35?"Solid":s>=15?"Quiet":"Faint";
+  var band=s>=60?"Strong":s>=35?"Solid":s>=15?"Light":"Minimal";
   var rank=ENG_RATES.filter(function(r){return r>e.rate_pct;}).length+1;
   return {score:s,band:band,e:e,rank:rank,of:ENG_RATES.length,
     why:e.posts+" recent posts · "+e.rate_pct+"% mean engagement · "+e.avg_likes+" avg likes"};
@@ -1792,7 +1776,7 @@ var EVENTS=postEvents();
 
 /* venue-mode Market: venue-only aggregates, never business medians */
 function renderVenueMarket(){
-  var list=C.slice(), h='<div class="mkt">'+pageHeadHTML("Venue landscape","Wedding and event venues across the North Country: size, location and reach across "+list.length+" venues.");
+  var list=C.slice(), h='<div class="mkt mktx">'+pageHeadHTML("Venue landscape","Wedding and event venues across the North Country: size, location and reach across "+list.length+" venues.");
   var caps=list.filter(function(b){return b.capacity_num!=null;}).map(function(b){return b.capacity_num;}).sort(function(a,b){return a-b;});
   var med=caps.length?caps[Math.floor(caps.length/2)]:null;
   var ig=list.filter(function(b){return b.ig_handle;}).length;
@@ -1808,7 +1792,7 @@ function renderVenueMarket(){
 
 function renderMarket(){
   if(S.mode==="venues") return renderVenueMarket();
-  var list=C.slice(), h='<div class="mkt">'+pageHeadHTML("Market landscape",null);
+  var list=C.slice(), h='<div class="mkt mktx">'+pageHeadHTML("Market landscape",null);
 
   h+=landscapeHTML(list);
   h+='<div class="cardgrid">'+marketGlanceHTML(true);
@@ -1980,7 +1964,7 @@ function marketGlanceHTML(full){
      slim sidebar (stat + label), collected in parallel with the cards.
      Bar rule, everywhere: length is relative to the card's biggest bucket.
      Color rule: one blue hue for plain counts; gold/red reserved for status
-     (Active/strong, Dormant/weak/declining); no-data buckets are muted and
+     (Active/strong, Low/weak/declining); no-data buckets are muted and
      always shown as the last row so the buckets add up to the total. */
   var glances=[];
   function qCardG(q,sub,bars,ci,g,chart){
@@ -2056,14 +2040,14 @@ function marketGlanceHTML(full){
     var imax=Math.max(ia.length,idm.length,inone.length,1);
     function vsub(v){ return v.ig_handle?"@"+v.ig_handle:""; }
     cards.push(qCardG("Instagram","Verified venue accounts only \u2014 never guessed",
-      [{label:"Active (posted \u226490d)",val:ia.length,pct:Math.round(ia.length/imax*100),color:"#e8b34b",vcol:"#e8b34b",members:bmem(ia,byName,vsub)},
-       {label:"Dormant",val:idm.length,pct:Math.round(idm.length/imax*100),color:"#e06c6c",vcol:"#e06c6c",members:bmem(idm,byName,vsub)},
+      [{label:"Posted \u226490d",val:ia.length,pct:Math.round(ia.length/imax*100),color:"#e8b34b",vcol:"#e8b34b",members:bmem(ia,byName,vsub)},
+       {label:"Last post 90d+ ago",val:idm.length,pct:Math.round(idm.length/imax*100),color:"#e06c6c",vcol:"#e06c6c",members:bmem(idm,byName,vsub)},
        {label:"No verified account",val:inone.length,pct:Math.round(inone.length/imax*100),color:"#3a4353",nodata:true,members:bmem(inone,byName,vsub)}],
       2,
       {stat:inone.length+" of "+V.length,label:"venues with no verified Instagram",frac:(ia.length+idm.length)/V.length,color:"#6db3f2"},
       '<div class="qchartlab">Share of venues</div>'+
       donutSVG([{label:"Active",val:ia.length,color:"#e8b34b"},
-        {label:"Dormant",val:idm.length,color:"#e06c6c"},
+        {label:"90d+ ago",val:idm.length,color:"#e06c6c"},
         {label:"No account",val:inone.length,color:"#3a4353"}])));
     /* Q4: what style of venue? */
     var st={},stm={};
@@ -2085,7 +2069,7 @@ function marketGlanceHTML(full){
   }
   var list=C, cards=[];
   /* Q1: who is actually posting? */
-  var ab=[["Active \u00b7 \u226430 days",[],"#e8b34b","#e8b34b"],["Steady \u00b7 31\u201390 days",[],"#6db3f2"],["Quiet \u00b7 91\u2013180 days",[],"#6db3f2"],["Dormant \u00b7 180+ days",[],"#e06c6c","#e06c6c"],["No post data",[],"#3a4353"]];
+  var ab=[["\u226430 days",[],"#e8b34b","#e8b34b"],["31\u201390 days",[],"#6db3f2"],["91\u2013180 days",[],"#6db3f2"],["180+ days",[],"#e06c6c","#e06c6c"],["No post data",[],"#3a4353"]];
   list.forEach(function(b){ var a=b.postAge,bi=a==null?4:(a<=30?0:(a<=90?1:(a<=180?2:3))); ab[bi][1].push(b); });
   var amax=Math.max.apply(null,ab.map(function(x){return x[1].length;}))||1;
   cards.push(qCardG("Posting activity","Last post recency across "+list.length+" businesses",
@@ -2096,7 +2080,7 @@ function marketGlanceHTML(full){
     0,
     {stat:ab[0][1].length+" of "+list.length,label:"posted in the last 30 days",frac:ab[0][1].length/list.length,color:"#e8b34b"},
     '<div class="qchartlab">Share of the market</div>'+
-    donutSVG([["Active",0],["Steady",1],["Quiet",2],["Dormant",3],["No data",4]].map(function(x){
+    donutSVG([["\u226430d",0],["31\u201390d",1],["91\u2013180d",2],["180+d",3],["No data",4]].map(function(x){
       return {label:x[0],val:ab[x[1]][1].length,color:ab[x[1]][2]}; }))));
   /* Q2: where does the audience sit? */
   var aud=list.filter(function(b){return b.followers!=null;})
@@ -2404,12 +2388,12 @@ var RANK_MODES=[{id:"audience",label:"Audience"},{id:"activity",label:"Activity"
   {id:"price",label:"Price"},{id:"reviews",label:"Reviews"},{id:"strength",label:"Profile strength"}];
 /* composite profile score: mean of the signals that report */
 function ageStr(age){
-  if(age==null) return "no recent posts";
+  if(age==null) return "—";
   if(age<=0) return "posted today";
   if(age===1) return "posted yesterday";
   if(age<30) return "posted "+age+"d ago";
   if(age<60) return "posted ~1mo ago";
-  return "quiet "+Math.round(age/30)+"mo+";
+  return "posted ~"+Math.round(age/30)+"mo ago";
 }
 function renderRankings(){
   var el=$("#rankings"); if(!el) return;
@@ -2552,27 +2536,6 @@ function netDetailHTML(n){
   return s;
 }
 
-function netFreshLine(){
-  function fmtET(d){
-    return new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",hour:"numeric",minute:"2-digit",hour12:true}).format(d);
-  }
-  function nextSweep(){
-    var now=new Date();
-    var pp=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour12:false,year:"numeric",month:"2-digit",day:"numeric",hour:"2-digit",minute:"2-digit"}).formatToParts(now);
-    var o={}; pp.forEach(function(x){ o[x.type]=x.value; });
-    var mins=((+o.hour)%24)*60+(+o.minute);
-    var grid=[36,396,756,1116], nx=null, doff=0, i;
-    for(i=0;i<grid.length;i++){ if(grid[i]>mins){ nx=grid[i]; break; } }
-    if(nx==null){ nx=grid[0]; doff=1; }
-    var base=new Date(+o.year, +o.month-1, +o.day+doff, Math.floor(nx/60), nx%60);
-    return base;
-  }
-  var gen=FG.generated_at?new Date(FG.generated_at):null;
-  var upd=gen&&!isNaN(gen)?fmtET(gen):(FG.generated||"unknown date");
-  var elx=$("#netFresh");
-  if(elx) elx.innerHTML='Follow data updated <b>'+esc(upd)+'</b> ET &nbsp;\u00b7&nbsp; Next sweep <b>'+esc(fmtET(nextSweep()))+'</b> ET';
-}
-
 /* ============================================================
    NETWORK — one page: hub-spoke by connectivity.
    Market anchors at the center, independents at the edge.
@@ -2591,17 +2554,7 @@ function hubTiers(){
   };
 }
 function renderNetworkHTML(){
-  var T=hubTiers();
-  var h='<div class="page-head"><h1>Network</h1>'
-    +'<p>'+FG.edges.length+' verified Instagram follow links across '+T.all.length+' businesses. '
-    +'Every link is a confirmed follow \u2014 nothing inferred, nothing guessed.</p>'
-    +'<p class="freshline" id="netFresh"></p></div>';
-  h+='<div class="hub-legend">'
-    +'<span><i style="background:var(--rel-mutual)"></i>Market anchors \u00b7 '+T.anchors.length+'</span>'
-    +'<span><i style="background:var(--rel-fan)"></i>Strongly connected \u00b7 '+T.strong.length+'</span>'
-    +'<span><i style="background:var(--rel-following)"></i>Connected \u00b7 '+T.connected.length+'</span>'
-    +'<span><i style="background:var(--rel-mid)"></i>Lightly linked \u00b7 '+T.light.length+'</span>'
-    +'<span><i style="background:var(--rel-none)"></i>Independent \u00b7 '+T.independent.length+'</span></div>';
+  var h='<div class="page-head"><h1>Network</h1></div>';
   h+='<div class="hub-wrap"><div class="hub-stage">'
     +'<svg class="hubsvg" id="hubSvg" viewBox="0 0 920 920" role="img" aria-label="Businesses arranged by connectivity: most connected at the center"></svg>'
     +'</div></div>';
@@ -2612,9 +2565,8 @@ function renderNetworkHTML(){
   }
   return h;
 }
-/* post-render wiring: freshness line + hub-spoke interactions */
+/* post-render wiring: hub-spoke interactions */
 function networkInit(){
-  netFreshLine();
   var T=hubTiers();
   var svg=$("#hubSvg"); if(!svg||!T.all.length) return;
   var NS="http://www.w3.org/2000/svg";
