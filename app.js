@@ -2487,6 +2487,11 @@ function hubTiers(){
   };
 }
 function renderNetworkHTML(){
+  if(S.mode==="venues")
+    return '<div class="page-head pg-hero"><div><h1>Network</h1>'+
+      '<p>Who follows who across the market.</p></div>'+pgPull(dataPullDate())+'</div>'+
+      '<div class="ai-empty" style="margin:0 max(28px,4vw)"><h3>No venue network data yet</h3>'+
+      '<p>Follow data covers photo, video and drone businesses. Venue follow data isn\u2019t collected.</p></div>';
   var h='<div class="page-head pg-hero"><div><h1>Network</h1></div>'+pgPull(dataPullDate())+'</div>';
   h+='<div class="hub-bar"><div class="hub-legend">'
     +'<span><i style="background:'+HUBC.strong+'"></i>Strongly connected</span>'
