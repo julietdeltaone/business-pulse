@@ -1530,6 +1530,8 @@ body.fp .pg-market .statgrid>.stat:nth-child(5){animation-delay:.2s}
 .pg-network .hub-spoke.mut{stroke:#d7e2f7;stroke-width:1.8;opacity:.8}
 .pg-network .hubsvg.has-spokes .hub-node{opacity:.28}
 .pg-network .hubsvg.has-spokes .hub-node.lit{opacity:1}
+.pg-network .hub-node.sel>circle{stroke:#fff;stroke-width:2.5}
+.pg-network .hub-node.sel .hub-name{fill:#fff;font-weight:700}
 .pg-network .hub-legend{display:flex;gap:18px;flex-wrap:wrap;margin:2px 0 4px}
 .pg-network .hub-legend span{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--silver-2)}
 .pg-network .hub-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
