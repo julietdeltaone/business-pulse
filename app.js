@@ -538,7 +538,8 @@ function weekHighlightCards(){
     var g=growers[0], from=followersAt(g.b,d0), to=followersAt(g.b,di);
     cards.push({k:"Fastest growing",icon:"flame",c:"#f5b942",b:g.b,
       stat:"+"+g.ch.toFixed(1)+"%",sub:"followers this week",
-      why:(from!=null&&to!=null?fmt(from)+" → "+fmt(to):"")});
+      why:(from!=null&&to!=null?fmt(from)+" → "+fmt(to):""),
+      top3:growers.slice(0,3).map(function(x){ return {b:x.b,stat:"+"+x.ch.toFixed(1)+"%"}; })});
   }
   /* most active */
   var act=list.map(function(b){ var h=norm(b.ig_handle);
@@ -546,14 +547,16 @@ function weekHighlightCards(){
     .filter(function(x){ return x.n>0; }).sort(function(a,c){ return c.n-a.n; });
   if(act.length){
     cards.push({k:"Most active",icon:"mega",c:"#6db3f2",b:act[0].b,
-      stat:String(act[0].n),sub:act[0].n===1?"post in 7 days":"posts in 7 days",why:""});
+      stat:String(act[0].n),sub:act[0].n===1?"post in 7 days":"posts in 7 days",why:"",
+      top3:act.slice(0,3).map(function(x){ return {b:x.b,stat:x.n+(x.n===1?" post":" posts")}; })});
   }
   /* biggest audience */
   var big=list.filter(function(b){ return followersAt(b,di)!=null; })
     .sort(function(a,c){ return followersAt(c,di)-followersAt(a,di); });
   if(big.length){
     cards.push({k:"Biggest audience",icon:"crown",c:"#c9a0f2",b:big[0],
-      stat:fmt(followersAt(big[0],di)),sub:"followers · largest tracked",why:""});
+      stat:fmt(followersAt(big[0],di)),sub:"followers · largest tracked",why:"",
+      top3:big.slice(0,3).map(function(b){ return {b:b,stat:fmt(followersAt(b,di))+" followers"}; })});
   }
   /* new on the radar (first tracked inside the 7-day window) */
   var newW=list.filter(function(b){
@@ -565,26 +568,30 @@ function weekHighlightCards(){
     cards.push({k:"New on the radar",icon:"radar",c:"#8fd18f",b:newW[0],
       stat:String(newW.length),sub:newW.length===1?"new business this week":"new businesses this week",
       names:newW.slice(0,3).map(function(b){ return b.name; }),
-      why:newW.length>3?("+"+(newW.length-3)+" more"):""});
+      why:newW.length>3?("+"+(newW.length-3)+" more"):"",
+      top3:newW.slice(0,3).map(function(b){ return {b:b,stat:""}; })});
   }
   /* promos live */
-  var seenP={}, promoN=[];
+  var seenP={}, promoB=[];
   feedEvents().forEach(function(e){
     if(e.kind!=="promo"||seenP[e.b.id]) return;
-    seenP[e.b.id]=1; promoN.push(e.b.name);
+    seenP[e.b.id]=1; promoB.push(e.b);
   });
+  var promoN=promoB.map(function(b){ return b.name; });
   if(promoN.length){
     cards.push({k:"Promos live",icon:"tag",c:"#c9a0f2",b:null,
       stat:String(promoN.length),sub:promoN.length===1?"promotion running":"promotions running",
       names:promoN.slice(0,3),
-      why:promoN.length>3?("+"+(promoN.length-3)+" more"):""});
+      why:promoN.length>3?("+"+(promoN.length-3)+" more"):"",
+      top3:promoB.slice(0,3).map(function(b){ return {b:b,stat:"promo running"}; })});
   }
   /* market output: total posts across the market in 7 days */
   var totalPosts=act.reduce(function(a,x){ return a+x.n; },0);
   if(totalPosts>0){
     cards.push({k:"Market output",icon:"pulse",c:"#6fd3e7",b:act[0].b,
       stat:String(totalPosts),sub:"posts across the market in 7 days",
-      why:"Top poster: "+act[0].b.name+" ("+act[0].n+")"});
+      why:"Top poster: "+act[0].b.name+" ("+act[0].n+")",
+      top3:act.slice(0,3).map(function(x){ return {b:x.b,stat:x.n+(x.n===1?" post":" posts")}; })});
   }
   return cards;
 }
@@ -594,13 +601,23 @@ function weekHighlights(){
   return '<div class="act-hl-grid">'+cards.map(function(c,i){
     var nm=c.names?c.names.map(function(n){ return '<div class="act-hl-w">'+esc(n)+'</div>'; }).join("")
       :'<div class="act-hl-n">'+esc(c.b.name)+'</div>';
+    var runners="";
+    if(c.top3&&c.top3.length>1){
+      runners='<button class="act-hl-top3" data-hl>Top 3 <span class="act-hl-chev">\u25be</span></button>'+
+        '<div class="act-hl-runners"><div>'+
+        c.top3.slice(1).map(function(r,j){
+          return '<div class="act-hl-r"'+(r.b?' data-open="'+r.b.id+'"':"")+'><span class="act-hl-rrk">'+(j+2)+
+            '</span><span class="act-hl-rn">'+esc(r.b?r.b.name:"")+'</span>'+
+            (r.stat?'<span class="act-hl-rst">'+esc(r.stat)+'</span>':"")+'</div>';
+        }).join("")+'</div></div>';
+    }
     return '<div class="act-hl-card"'+(c.b?' data-open="'+c.b.id+'"':"")+
       ' style="--d:'+(0.08*i).toFixed(2)+'s;--acc:'+c.c+'">'+
       '<div class="act-hl-ic">'+actIcon(c.icon)+'</div>'+
       '<div class="act-hl-stat">'+esc(c.stat)+'</div>'+
       '<div class="act-hl-sub">'+esc(c.sub)+'</div>'+
       '<div class="act-hl-k">'+esc(c.k)+'</div>'+nm+
-      (c.why?'<div class="act-hl-w">'+esc(c.why)+'</div>':"")+'</div>';
+      (c.why?'<div class="act-hl-w">'+esc(c.why)+'</div>':"")+runners+'</div>';
   }).join("")+"</div>";
 }
 
@@ -2829,6 +2846,12 @@ document.addEventListener("click",function(e){
   if(cf){ var id=cf.getAttribute("data-cf");
     if(id!==S.sel) select(id,{fly:false});
     S.expanded=true; renderRight(); pushHist(); return; }
+  var hlt=e.target.closest("[data-hl]");
+  if(hlt){
+    var card=hlt.closest(".act-hl-card");
+    if(card){ var isOpen=card.classList.toggle("open");
+      var chev=hlt.querySelector(".act-hl-chev"); if(chev) chev.textContent=isOpen?"\u25b4":"\u25be"; }
+    return; }
   var t=e.target.closest("[data-open]");
   if(t){ var oid=t.getAttribute("data-open");
     if(S.tab!=="explore"){ S.tab="explore"; syncChrome(); renderLeft(); }
