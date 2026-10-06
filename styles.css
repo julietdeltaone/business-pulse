@@ -46,6 +46,20 @@ button{font-family:var(--sans)}
 #map .leaflet-control-attribution a{color:#7a8494}
 #buildtag{font-size:11px;color:#8a8f9e;white-space:nowrap}
 #rankings{position:fixed;top:88px;bottom:150px;left:396px;right:372px;z-index:2;overflow-y:auto;padding:6px 30px 30px;scrollbar-width:thin;scrollbar-color:#3a4356 transparent}
+/* ===== EXPERIMENTAL: coverage orbit view (delete with the feature) ===== */
+#coverage{position:fixed;top:88px;bottom:150px;left:396px;right:372px;z-index:2;overflow:hidden;display:flex;flex-direction:column}
+#coverage[hidden]{display:none}
+.cov-head{padding:16px 30px 4px}
+.cov-head h2{font-size:22px;margin:0 0 4px}
+#covSvg{flex:1;width:100%;min-height:0}
+.cov-ring{fill:rgba(255,255,255,.025);stroke:rgba(255,255,255,.20);stroke-width:1.5}
+.cov-label{fill:#e8e4da;font-size:17px;font-family:Georgia,'Times New Roman',serif}
+.cov-count{fill:#8e97a8;font-size:12px}
+.cov-dot{fill:#9fb0c3;cursor:pointer}
+.cov-dot:hover{fill:#fff;stroke:#fff;stroke-width:2}
+.cov-dot.sel{fill:#f2b13d}
+.cov-hint{text-align:center;color:#6b7484;font-size:12px;padding:10px 0 4px}
+.cov-empty{padding:48px;text-align:center;color:#8e97a8}
 #rankings[hidden]{display:none}
 #rankings::-webkit-scrollbar{width:8px}
 #rankings::-webkit-scrollbar-thumb{background:#3a4356;border-radius:8px}
@@ -73,6 +87,8 @@ button{font-family:var(--sans)}
 .rk-sub{color:#9aa3b2;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rk-age{color:#c8cfdb}
 @media(max-width:900px){#rankings{left:8px;right:8px;top:132px;bottom:200px;padding:6px 12px 24px}.rk-head{flex-direction:column;align-items:flex-start}}
+/* EXPERIMENTAL coverage: mirror rankings responsive rules */
+@media(max-width:900px){#coverage{left:8px;right:8px;top:132px;bottom:200px}}
 
 /* map pins */
 .mkpin{border-radius:50%;border:2.5px solid rgba(255,255,255,.85);box-shadow:0 0 0 1.5px rgba(0,0,0,.55),0 0 12px rgba(0,0,0,.65);transition:transform .25s ease}
@@ -766,7 +782,8 @@ body.panelexp #map{filter:brightness(.82)}
 #fq{width:100%}
 .lh-filters{display:flex;gap:6px}
 .lh-filters select{flex:1;font-size:12.5px;padding:7px 8px}
-.lh-row{display:flex;align-items:center;gap:8px}
+.lh-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#lhead .viewtoggle{flex-shrink:0}
 #lcount{font-size:12px;color:var(--mut);white-space:nowrap;margin-right:auto}
 #fsort{font-size:12px!important;padding:6px 8px!important;max-width:150px}
 #lhead .viewtoggle button{padding:5px 10px;font-size:12px}
@@ -861,6 +878,7 @@ body.pgmode #left,body.pgmode #right,body.pgmode #scrub,body.pgmode #rankings{di
 /* panel width + row breathing room */
 #left{width:420px}
 #rankings{left:444px}
+#coverage{left:444px} /* EXPERIMENTAL: mirror rankings */
 .row .nm b{font-size:14px}
 .row .meta{max-width:150px}
 
