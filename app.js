@@ -1243,7 +1243,7 @@ function pageHeadHTML(title,sub){
   return '<div class="pg-head"><h2>'+title+'</h2>'+(sub?'<p>'+sub+(built?' <span class="pg-fresh">Data updated '+esc(built)+'.</span>':"")+'</p>':"")+'</div>';
 }
 var DCOLS=[
-  ["name","Name","str"],["town","Town/County","str"],["followers","IG followers","num"],
+  ["name","Name","str"],["town","Town/County","str"],["followers","Followers","num"],
   ["ch7","7d","num"],["ch30","30d","num"],["posts","Posts","num"],
   ["services","Services","str"],["price","Price range","num"],["years","Years","str"],
   ["website","Website","str"],["ig","IG handle","str"],["conf","Conf.","num"]];
@@ -1297,8 +1297,8 @@ function renderData(){
   var h='<div class="sec">'+
     '<input id="dq" class="dfilter" type="search" placeholder="Filter rows…" value="'+esc(S.dq||"")+'" aria-label="Filter data rows">';
   h+='<div class="dsub">Businesses · '+rows.length+'</div><div class="dtable-wrap"><table class="dtable">'+
-    '<colgroup><col style="width:14%"><col style="width:9%"><col style="width:8%">'+
-    '<col style="width:5%"><col style="width:5%"><col style="width:5%"><col style="width:19%">'+
+    '<colgroup><col style="width:16%"><col style="width:9%"><col style="width:8%">'+
+    '<col style="width:5%"><col style="width:5%"><col style="width:5%"><col style="width:17%">'+
     '<col style="width:8%"><col style="width:5%"><col style="width:7%"><col style="width:11%">'+
     '<col style="width:4%"></colgroup><thead><tr>'+
     DCOLS.map(function(c){ return '<th data-dk="'+c[0]+'" class="'+(s.key===c[0]?"sorted":"")+'">'+c[1]+(s.key===c[0]?(s.dir<0?" ▼":" ▲"):"")+'</th>'; }).join("")+
