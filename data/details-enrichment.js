@@ -167,6 +167,8 @@ window.PULSE_DETAILS = {
   },
   "frisina-s-photography": {
     "blurb": "Photographer Alicia Frisina in Potsdam, NY ('Capturing Life's Greatest Moments'), focused on capturing the emotion and essence of the moment; contact for details on shoots.",
+    "platform": "Wix (inferred)",
+    "site_note": "Deep-dive 2026-10-07: single-page portfolio site (intro, portfolio, contact form; phone (315) 244-9740) — no services, pricing, or about pages exist or are indexed. Platform inferred from Wix hosting IP (185.230.63.171 per cutestat), medium confidence; direct header check failed. Domain ~5 years old (registered ~Nov 2021), only age proxy. No Google review listing or third-party listings (Knot/WeddingPro/Yelp) found.",
     "sources": [
       "https://www.frisinasphotography.com/",
       "https://frisinasphotography.com.cutestat.com/"
@@ -510,7 +512,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Pixieset",
     "pricing_note": "$75 non-refundable retainer; payment plans available (site, 2026)",
-    "site_note": "Based in Massena, NY; travel fees apply beyond 30 miles. The photographer works full-time as an ED registered nurse; she also maintains a client wardrobe. Highlighted work in Alexandria Bay, Albany, Plattsburgh, Buffalo NY.",
+    "site_note": "Based in Massena, NY; travel fees apply beyond 30 miles. The photographer works full-time as an ED registered nurse; she also maintains a client wardrobe. Highlighted work in Alexandria Bay, Albany, Plattsburgh, Buffalo NY. Deep-dive 2026-10-07: FAQ re-confirms ER RN role; $75 non-refundable retainer, payment plans accepted. No Google Business listing surfaced after 3 targeted searches — no review seed possible; no founding year published. Portrait tiers re-verified same-day ($250/$325/$425 on her pricing page).",
     "sources": [
       "https://ericacartyphoto.mypixieset.com/",
       "https://ericacartyphoto.mypixieset.com/pricing/"
@@ -683,7 +685,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "GoDaddy Website Builder",
     "since": 1989,
-    "site_note": "Google listing shows 4.7 stars across 244 reviews; owner describes over 34 years photographing North Country families. WeddingWire listing shows 4.9 rating, 8 reviews, 99% recommend, wedding most-popular price $1,850. The Knot listing exists (43395 NYS Route 37) with 0 reviews. Facebook page facebook.com/HeathPhotography (~3.9k likes).",
+    "site_note": "Google listing shows 4.7 stars across 244 reviews; owner describes over 34 years photographing North Country families. WeddingWire listing shows 4.9 rating, 8 reviews, 99% recommend, wedding most-popular price $1,850. The Knot listing exists (43395 NYS Route 37) with 0 reviews. Facebook page facebook.com/HeathPhotography (~3.9k likes). Deep-dive 2026-10-07: Birdeye (Google-sourced aggregator, crawled ~63 days) shows 5 star rating with 33 reviews — seed count updated 32->33; live Google listing not opened. Conflict preserved, not resolved: prior capture showed 4.7/244 on the live listing while Google-sourced aggregators show 5.0/33.",
     "sources": [
       "https://heathphotography.net/",
       "http://www.heathphotography.net/",
@@ -708,10 +710,12 @@ window.PULSE_DETAILS = {
       "Watertown, NY",
       "Thousand Islands",
       "Adirondacks",
-      "Lake Placid"
+      "Lake Placid",
+      "20-mile radius pricing basis (per pricing page)"
     ],
+    "platform": "Wix",
     "pricing_note": "Real estate Basic Shoot from $210; Standard Shoot $360; Premium $495; Platinum $595; The Works $995; aerial images from $155 (site pricing page).",
-    "site_note": "Claims to be the largest-volume real estate photography provider in its area, working regularly with 50+ top-producing Realtors. Founded June 2014 per BBB profile (business started 6/11/2014) and a May 2014 Kathryn's Report article on the Desjardins couple founding Horizon Aerial Media Services in Glen Park. BBB rating A+, not BBB accredited. Site platform could not be determined. Own contact page mirrors Google data (5.0, 25 reviews) but per the never-from-own-pages rule no review seed was set.",
+    "site_note": "Claims to be the largest-volume real estate photography provider in its area, working regularly with 50+ top-producing Realtors. Founded June 2014 per BBB profile (business started 6/11/2014) and a May 2014 Kathryn's Report article on the Desjardins couple founding Horizon Aerial Media Services in Glen Park. BBB rating A+, not BBB accredited. Deep-dive 2026-10-07: platform confirmed Wix (x-wix-request-id / x-wix-cache-control headers, static.wixstatic.com assets). RE pricing re-verified on the live page — all seeded tiers match exactly ($210/$360/$495/$595/$995, aerial from $155). Google business-profile snippet (place_id 776394596890310, Glen Park) shows 5.0/25 reviews, matching the seeded BBB figure; snippet-sourced, live listing not opened. Third-party corroboration: tilife.org bio confirms husband-and-wife ownership (Amanda + Jason Desjardins) in Glen Park.",
     "sources": [
       "https://www.horizonaerialmediany.com/contact",
       "https://horizonaerialmediaNY.com/",
@@ -1242,6 +1246,11 @@ window.PULSE_DETAILS = {
     "platform": "Squarespace",
     "site_note": "Deep-dive 2026-10-01: packages page re-verified (elopements $2,000 / intimate weddings $5,500 / couples sessions $650); includes online gallery, timeline assistance, location scouting, vendor recommendations; client 'love notes' on homepage; listed as recommended photographer by Golden Arrow Lakeside Resort, Lake Placid."
   },
+  "gabby-olivia-photography-gabrielle-ramsdell": {
+    "blurb": "Gabby Olivia Photography (Gabrielle Ramsdell) — no verifiable web presence; known only via the roster IG handle gabbyoliviaphotography.",
+    "site_note": "Deep-dive 2026-10-07: three targeted web searches found zero verifiable presence — no website, no town/base location, no services, no pricing, no Google/Yelp/Knot/WeddingPro listings. The only incidental Gabrielle Ramsdell traces (Potsdam meal-train organizer, 2016 school-board attendee list) do not confirm a photography business. Instagram-only; Instagram was out of scope for this leg. Do not guess a town.",
+    "sources": []
+  },
   "hannah-brogan-photography": {
     "blurb": "H. Saranac Photography is Hannah Brogan's photography business, advertising 'affordable and quality services' for weddings, couples, and family sessions.",
     "services": [
@@ -1254,7 +1263,7 @@ window.PULSE_DETAILS = {
       "Paul Smiths"
     ],
     "platform": "Squarespace",
-    "site_note": "She travels: one testimonial describes her driving to Buffalo for a rain-soaked engagement session. Brands as 'H. Saranac Photography' on hsaranacphotography.com (2026-09-30); roster display name kept to preserve seed/id keys.",
+    "site_note": "She travels: one testimonial describes her driving to Buffalo for a rain-soaked engagement session. Brands as 'H. Saranac Photography' on hsaranacphotography.com (2026-09-30); roster display name kept to preserve seed/id keys. Deep-dive 2026-10-07: pricing re-verified on the live /investment page — sessions $300, couples & engagements $250, seniors & grads $250, family & maternity $300, weddings from $1,200. NOTE: family & maternity moved from $250 to $300 (likely a real price change; seed updated). About page: Hannah, 25, flies a drone for aerials; no founding year stated. Contact (518) 322-0749 / hsaranacphotography@gmail.com. No The Knot, WeddingPro, or Yelp listing found.",
     "sources": [
       "https://hsaranacphotography.com/"
     ]
@@ -1263,15 +1272,16 @@ window.PULSE_DETAILS = {
     "blurb": "Jayden Dates is a sports photographer based in the Adirondacks, specializing in capturing raw emotion — high-intensity competition moments and close-up portraits.",
     "services": [
       "Sports photography",
-      "Portraits",
-      "Athlete portraits"
+      "School sports coverage",
+      "Endurance/competition events",
+      "Portrait sessions"
     ],
     "coverage": [
       "Adirondacks",
       "Lake Placid NY"
     ],
     "platform": "Pixieset",
-    "site_note": "Portfolio shows sports game galleries (e.g. AVCS vs Moriah); the main site page blocked loading (403) so details come from the indexed site summary. Deep-dive 2026-09-30: no pricing published on site; no third-party directory listings, The Knot/WeddingPro/Yelp presence, or review listings found. Active portfolio (recent game post April 2026). IG handle jaydendatesmedia matches the site.",
+    "site_note": "Portfolio shows sports game galleries (e.g. AVCS vs Moriah); the main site page blocked loading (403) so details come from the indexed site summary. Deep-dive 2026-09-30: no pricing published on site; no third-party directory listings, The Knot/WeddingPro/Yelp presence, or review listings found. Active portfolio (recent game post April 2026). IG handle jaydendatesmedia matches the site. Deep-dive 2026-10-07: own site (jaydendatesmedia.pixieset.com) re-verified — events include track, softball, Ironman 2025, skating, baseball, UCI Mountain Bike World Series, volleyball, winter World Cups, basketball, hockey, football, soccer, TAPS Lake Placid, ADK Boxing, 1980 Miracle on Ice Camp. Contact (904) 801-9299 / jaydendates1@gmail.com. Still no pricing published, no Google review listing, no Yelp/Knot/WeddingPro presence.",
     "sources": [
       "https://jaydendatesmedia.pixieset.com/",
       "https://jaydendatesmedia.mypixieset.com/portfolio/",
@@ -1427,12 +1437,13 @@ window.PULSE_DETAILS = {
       "Central New York"
     ],
     "platform": "Squarespace",
-    "site_note": "Official site evetaverne.com (roster previously had no website). 95 Cold Brook St, Poland, NY 13431; (315) 826-3322. Facebook page facebook.com/evetavernephotography (2,048 likes). Senior-portrait specialist; weddings not a listed service. Superpages lists 18 years in business (unverified by primary source). Google reviews: 5.0 across 35 (listing data surfaced via search, place_id 591422052627650; listing page not opened directly; Birdeye corroborates 5.0/37).",
+    "site_note": "Official site evetaverne.com (roster previously had no website). 95 Cold Brook St, Poland, NY 13431; (315) 826-3322. Facebook page facebook.com/evetavernephotography (2,048 likes). Senior-portrait specialist; weddings not a listed service. Superpages lists 18 years in business (unverified by primary source). Google reviews: 5.0 across 35 (listing data surfaced via search, place_id 591422052627650; listing page not opened directly; Birdeye corroborates 5.0/37). Deep-dive 2026-10-07: no pricing published anywhere on her site or in search — session-fee/in-person-sales model; Superpages '18 years in business' remains the only age signal (secondary aggregator, not a primary claim), so since/years_in_business stay empty. Licensed NYS cosmetologist (per bio), HOT 100 (Senior Style Guide 2019/2020), SeniorInspire Hall of Fame.",
     "sources": [
       "https://www.evetaverne.com/",
       "https://www.facebook.com/evetavernephotography",
       "https://reviews.birdeye.com/eve-taverne-photography-167591220843414",
-      "https://www.superpages.com/frankfort-ny/photography-videography"
+      "https://www.superpages.com/frankfort-ny/photography-videography",
+      "https://www.superpages.com/ilion-ny/photography-videography"
     ]
   },
   "fairytale-dreams-photography": {
@@ -1456,7 +1467,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Wix",
     "since": 2010,
-    "site_note": "Est. 2010, booking 2026 & 2027. 'PHOTOGRAPHY FOR PEOPLE WHO DREAD BEING PHOTOGRAPHED.' Featured on Northern Bride, WeddingPro, NCPR, WeddingWire, Unscripted, The Knot, Zola. IG @fairytaledreamsphotography linked from site (roster had it blank). Site claims '5/5 Over 50 Google Reviews' but that is her own page, not the live listing, so no review seed.",
+    "site_note": "Est. 2010, booking 2026 & 2027. 'PHOTOGRAPHY FOR PEOPLE WHO DREAD BEING PHOTOGRAPHED.' Featured on Northern Bride, WeddingPro, NCPR, WeddingWire, Unscripted, The Knot, Zola. IG @fairytaledreamsphotography linked from site (roster had it blank). Site claims '5/5 Over 50 Google Reviews' but that is her own page, not the live listing. Deep-dive 2026-10-07: Birdeye (Google-sourced aggregator) shows 5 star rating with 61 reviews — seed count updated 60->61; live listing not opened. WeddingWire most-popular price $4,300; The Knot 4.9/16 reviews (marketplace page).",
     "sources": [
       "https://www.fairytaledreamsphotography.com/",
       "https://www.weddingwire.com/biz/fairytale-dreams-photography-burke/0879420e38edab0d.html",
@@ -1482,7 +1493,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Squarespace",
     "since": 2018,
-    "site_note": "Own business (runtime-injected in app.js, not in roster). Site states 5.0 stars across 15 Google reviews; Zola vendor profile shows 5.0 across 18 reviews (Zola + Google aggregate). Deep-dive 2026-09-30: fresh crawl shows video production from $900 and drone Signature $675 / Premiere $1,200 vs bulk sweep earlier today (video from $1,600, drone from $450) — site may have been updated between captures, or crawl variance.",
+    "site_note": "Own business (runtime-injected in app.js, not in roster). Site states 5.0 stars across 15 Google reviews; Zola vendor profile shows 5.0 across 18 reviews (Zola + Google aggregate). Deep-dive 2026-09-30: fresh crawl shows video production from $900 and drone Signature $675 / Premiere $1,200 vs bulk sweep earlier today (video from $1,600, drone from $450) — site may have been updated between captures, or crawl variance. Deep-dive 2026-10-07: live Google Maps listing not openable via text fetch; Zola vendor pages (crawled ~late Sep 2026) still show 5.0 (18 reviews) — seeded 5.0/18 stands, no evidence of movement. Flag: Zola still says 'Starts at $1,200', conflicting with the current $1,400 wedding floor — the Zola listing looks stale.",
     "sources": [
       "https://jdmeyersjr.com/about",
       "https://jdmeyersjr.com/availability",
