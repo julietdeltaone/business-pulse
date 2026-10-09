@@ -84,8 +84,11 @@ window.PULSE_DETAILS = {
       "https://mccluskeyphotography.net/2022-wedding-packages/",
       "https://www.yelp.com/biz/mccluskey-photography-canton",
       "https://www.theknot.com/marketplace/mccluskey-photography-canton-ny-429594",
-      "https://www.facebook.com/mccluskey.photography"
-    ]
+      "https://www.facebook.com/mccluskey.photography",
+      "https://www.bestprosintown.com/ny/canton/mccluskey-photography-",
+      "https://business.visitstlc.com/list/member/mccluskey-photography-2174"
+    ],
+    "platform": "WordPress"
   },
   "jsc-photography-media": {
     "blurb": "JSC Photography & Media is a North Country-born artistic photographer with a creative, color-forward style spanning themes, set building and special effects, alongside family, lifestyle, and studio work.",
@@ -137,7 +140,7 @@ window.PULSE_DETAILS = {
       "Family portraits",
       "Photo booth"
     ],
-    "site_note": "Blog shows wedding work across the region (Pulaski, Chaumont, Massena, Old Forge); studio address per directory listing is 160 W Parishville Rd, Parishville, NY. Deep-dive 2026-10-02: owner Natalie Wendig (blog tags). Self-reported on Feb 2021 blog post: 'doing this business since I was married 10 years ago' → ~2011; blog archive back to 2011. Phone (315) 212-3679. Review presence (aggregators, not Google): Birdeye 17/5.0, TrustFeed 5.0 (named reviewers). Site appears mid-redesign as of 2026-10-02 ('taking limited sessions while under construction'). No published pricing found.",
+    "site_note": "Blog shows wedding work across the region (Pulaski, Chaumont, Massena, Old Forge); studio address per directory listing is 160 W Parishville Rd, Parishville, NY. Deep-dive 2026-10-02: owner Natalie Wendig (blog tags). Self-reported on Feb 2021 blog post: 'doing this business since I was married 10 years ago' → ~2011; blog archive back to 2011. Phone (315) 212-3679. Review presence (aggregators, not Google): Birdeye 17/5.0, TrustFeed 5.0 (named reviewers). Site appears mid-redesign as of 2026-10-02 ('taking limited sessions while under construction'). No published pricing found. Deep-dive 2026-10-09: homepage now states she has stepped back from the business to focus on her children and homeschooling, taking only past clients or special circumstances — treat as paused, not an active competitor. Services: weddings, HS senior portraits, family portraits, engagement sessions, event photography; wedding coverage across St. Lawrence, Jefferson, and Lewis counties, the Thousand Islands, and Watertown. No published pricing found; no Knot/Wire/Yelp listing (own site references Facebook + Google 17/5.0).",
     "sources": [
       "http://www.nataliewstudio.com/",
       "https://www.nataliewstudio.com/blog/2015/12/summer-country-wedding-in-pulaski-ny",
@@ -219,7 +222,8 @@ window.PULSE_DETAILS = {
     "site_note": "Google listing: 46 Co Rd 59, Pierrepont, NY; site states born/raised in Potsdam, now lives in Massena. Deep-dive 2026-10-02: site confirms Weebly platform (nicolecharlesonphoto.weebly.com, opened today) — born/raised in Potsdam, now lives in Massena; site states 'contact me for an appointment to go over details and contract information' — no published pricing. WhoDoYou Massena listing corroborates (email nicolecharleson@yahoo.com). No Google listing, no founding date found.",
     "sources": [
       "http://nicolecharlesonphoto.weebly.com/",
-      "https://www.whodoyou.com/biz/79929/nicole-charlesons-photography-massena-ny"
+      "https://www.whodoyou.com/biz/79929/nicole-charlesons-photography-massena-ny",
+      "https://weddingbarn.com/listings/nicole-charlesons-photography/"
     ]
   },
   "forevermore-studio-photography": {
@@ -497,7 +501,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Northern New York"
     ],
-    "site_note": "Run by sole proprietor Cindy Bowen, who also tutors in computer use, photo management, graphic skills and video editing via SUNY Potsdam's SOAR program. Deep-dive 2026-10-02: still listed Active (Meta place record, Massena; phone 315-322-1728; P.O. Box 5045, Massena NY 13662). cinchwedding links www.obsidiancustomvideo.com but the domain did not resolve in fetch — inconclusive (sandbox DNS caveat), not declared dead. No pricing, founding year, or Google reviews found; 'owner Cindy Bowen since ~2001/2009' claims are unverified people-search aggregates — left out.",
+    "site_note": "Run by sole proprietor Cindy Bowen, who also tutors in computer use, photo management, graphic skills and video editing via SUNY Potsdam's SOAR program. Deep-dive 2026-10-02: still listed Active (Meta place record, Massena; phone 315-322-1728; P.O. Box 5045, Massena NY 13662). cinchwedding links www.obsidiancustomvideo.com but the domain did not resolve in fetch — inconclusive (sandbox DNS caveat), not declared dead. No pricing, founding year, or Google reviews found; 'owner Cindy Bowen since ~2001/2009' claims are unverified people-search aggregates — left out. Deep-dive 2026-10-09: former domain obsidiancustomvideo.com dead; YouTube channel inactive since ~2017; phone 315-322-1728; still zero Google reviews; treat as low-activity sole proprietorship.",
     "sources": [
       "https://cinchwedding.com/obsidian-custom-video",
       "https://www.soarnorthcountry.com/presenters/spring-2014/cindy-bowen/",
@@ -589,7 +593,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "North Country NY"
     ],
-    "site_note": "Business listing confirms a Photographer in Canton, St. Lawrence County, NY with phone +1 315-212-6289. The site root could not be loaded directly at research time; service details come from indexed site content. Deep-dive 2026-10-02: AMBIGUOUS MATCH warning — marialuciaphotography.myportfolio.com ('Bridal Muse at Guild Gardens', F1 editorial) is a DIFFERENT fashion/editorial photographer; never merge with Canton M.L. Photography (senior/family/sports). Site root returned HTTP 404 on 2026-10-02 fetch (health flag, not a dead verdict per single-fetch rule). No pricing, founding year, platform, or Google listing verifiable.",
+    "site_note": "Business listing confirms a Photographer in Canton, St. Lawrence County, NY with phone +1 315-212-6289. The site root could not be loaded directly at research time; service details come from indexed site content. Deep-dive 2026-10-02: AMBIGUOUS MATCH warning — marialuciaphotography.myportfolio.com ('Bridal Muse at Guild Gardens', F1 editorial) is a DIFFERENT fashion/editorial photographer; never merge with Canton M.L. Photography (senior/family/sports). Site root returned HTTP 404 on 2026-10-02 fetch (health flag, not a dead verdict per single-fetch rule). No pricing, founding year, platform, or Google listing verifiable. Deep-dive 2026-10-09: site root still not loadable (JS-only; 404 on fetch); facts per search snippets of live homepage — senior portraits, children & family, sports; no weddings offered; no pricing or founding year published.",
     "sources": [
       "https://www.marialuciasphotography.com/",
       "https://meta.ai?place_id=1189521529993880",
@@ -996,14 +1000,21 @@ window.PULSE_DETAILS = {
       "Weddings",
       "Engagements",
       "Portraits",
-      "Editorial"
+      "Editorial",
+      "Elopements",
+      "Destination weddings",
+      "Wedding albums"
     ],
     "coverage": [
       "Lake Placid",
       "Adirondacks",
       "Vermont",
       "New York City",
-      "Boston"
+      "Boston",
+      "East Coast",
+      "Philadelphia",
+      "Detroit",
+      "Destinations worldwide"
     ],
     "since": 2008,
     "sources": [
@@ -1013,7 +1024,7 @@ window.PULSE_DETAILS = {
       "https://www.lakeplacid.com/content/mary-dougherty-photography",
       "https://caratsandcake.com/vendor/mary-dougherty-photography"
     ],
-    "site_note": "Review counts by platform (2026-09-30): Google 5.0 (48) vs The Knot 5.0 (18) — separate sources, both preserved. Deep-dive 2026-10-02: own site is INQUIRE-ONLY (no published pricing found on 2026-10-02; 'Weddings from $8,000' seed could not be re-confirmed — left as-is, flag for re-verification). Signature 'Wedding Weekend'; caps at 15 weddings/year; featured-on: Vogue, NYT, CFDA, Martha Stewart, Style Me Pretty, Carats & Cake, Over the Moon, Wedding Sparrow. The Knot storefront: 5.0/18 reviews, service area Adirondacks/NYC/Vermont/Boston/Philadelphia. WeddingWire: 5.0 with CONFLICTING counts — 76 (page title) vs 72 (page body), likely stale cache; earliest review Nov 2011 → 15+ years. Google review count not obtainable via text search today."
+    "site_note": "Review counts by platform (2026-09-30): Google 5.0 (48) vs The Knot 5.0 (18) — separate sources, both preserved. Deep-dive 2026-10-02: own site is INQUIRE-ONLY (no published pricing found on 2026-10-02; 'Weddings from $8,000' seed could not be re-confirmed — left as-is, flag for re-verification). Signature 'Wedding Weekend'; caps at 15 weddings/year; featured-on: Vogue, NYT, CFDA, Martha Stewart, Style Me Pretty, Carats & Cake, Over the Moon, Wedding Sparrow. The Knot storefront: 5.0/18 reviews, service area Adirondacks/NYC/Vermont/Boston/Philadelphia. WeddingWire: 5.0 with CONFLICTING counts — 76 (page title) vs 72 (page body), likely stale cache; earliest review Nov 2011 → 15+ years. Google review count not obtainable via text search today. Deep-dive 2026-10-09: WeddingWire corroborates 76 reviews / 5.0 (https://www.weddingwire.com/biz/mary-dougherty-photography-saranac-lake/a66c0953806e9ad0.html); earliest Knot review Sep 2014 (active since at least 2014); site platform not determinable."
   },
   "lake-placid-photography-sandy-payne-huber": {
     "blurb": "Sandy Payne Huber has been photographing weddings in Lake Placid since 2005, accepting only a few weddings per year; also offers portrait and event photography.",
@@ -1369,7 +1380,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Pixieset",
     "pricing_note": "Couples & Groups from $200 (30 min, 20 images); Senior portraits from $175; Wedding packages from $800 (site, 2026)",
-    "site_note": "Based near Ogdensburg, NY; a small travel fee applies to shoots outside a 20-mile radius of Ogdensburg. Describes herself as a hobby photographer who has grown more serious over the past two years.",
+    "site_note": "Based near Ogdensburg, NY; a small travel fee applies to shoots outside a 20-mile radius of Ogdensburg. Describes herself as a hobby photographer who has grown more serious over the past two years. Deep-dive 2026-10-09: FAQ — books weddings max 9 months out; turnaround 1-2 weeks; travel fee beyond 20-mile radius of Ogdensburg; no Google listing or reviews found.",
     "sources": [
       "https://madileaphotographyandfilm.mypixieset.com/about",
       "https://madileaphotographyandfilm.mypixieset.com/faq/",
@@ -1622,7 +1633,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Canton, NY"
     ],
-    "site_note": "Deep-dive 2026-10-02: listed as Active, category Photographer, at 37 NY-310 Apt 106, Canton NY; phone +1 315-854-0417; hours Mon–Fri 3:00–5:00 PM (Meta business-place record). chamberofcommerce.com Canton arts directory lists it as 'Photography Studio' with 0 reviews. No owner name, website, services detail, pricing, founding year, social handles, or reviews anywhere. Flag: thin entity — recommend downgrade review if no own-site evidence surfaces.",
+    "site_note": "Deep-dive 2026-10-02: listed as Active, category Photographer, at 37 NY-310 Apt 106, Canton NY; phone +1 315-854-0417; hours Mon–Fri 3:00–5:00 PM (Meta business-place record). chamberofcommerce.com Canton arts directory lists it as 'Photography Studio' with 0 reviews. No owner name, website, services detail, pricing, founding year, social handles, or reviews anywhere. Flag: thin entity — recommend downgrade review if no own-site evidence surfaces. Deep-dive 2026-10-09 re-check: still no website, Facebook page, Etsy, Yelp, WeddingWire, or Thumbtack presence under this name; only footprint is a zero-review chamberofcommerce.com directory listing — appears defunct.",
     "sources": [
       "https://meta.ai?place_id=3129971923972254",
       "https://chamberofcommerce.com/business-directory/new-york/canton/arts-event-services/"
