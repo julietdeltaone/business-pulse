@@ -398,14 +398,15 @@ window.PULSE_DETAILS = {
       "https://railroadproductions.com/about",
       "https://railroadproductions.com/why-every-business-needs-a-brand-film-in-2025/",
       "http://adirondack-weddings.com/vendors-2/railroad-productions",
-      "https://www.slvpaddlers.org/waterway-exploration-reports"
+      "https://www.slvpaddlers.org/waterway-exploration-reports",
+      "https://www.theknot.com/marketplace/railroad-productions-canton-ny-867766"
     ],
     "coverage": [
       "Upstate New York",
       "Nationwide"
     ],
-    "pricing_note": "No published rates on own site; The Knot price band \"$$$$ - Luxury\" (0 Knot reviews).",
-    "site_note": " The Knot marketplace listings: \"$$$$ - Luxury\", 2x award winner, 0 reviews; legacy Adirondack Weddings vendor listing (wedding-videography era, (315) 854-0986); filmed a St. Lawrence County Chamber of Commerce promotional paddling video (Aug 2025)."
+    "pricing_note": "No pricing published on railroadproductions.com (verified live 2026-10-10); no pricing/investment page exists; The Knot price band \"$$$$ - Luxury\" with no dollar figure.",
+    "site_note": " The Knot marketplace listings: \"$$$$ - Luxury\", 2x award winner, 0 reviews; legacy Adirondack Weddings vendor listing (wedding-videography era, (315) 854-0986); filmed a St. Lawrence County Chamber of Commerce promotional paddling video (Aug 2025). Deep-dive 2026-10-10: Knot listing now shows 5.0 across 32 reviews (was 0 at prior check); homepage verified live — site leads with commercial positioning (cinematic films for brands, communities, industry); no Google review count found."
   },
   "apex-pack-media-jay-hicks": {
     "blurb": "Drone/cinematic video outfit associated with Jay Hicks; advertised work includes drone filming, cinematic video, real estate videography, and hunting/adventure film (script, drone + ground cinematography, narration, custom music + sound design, color, edit).",
@@ -485,7 +486,7 @@ window.PULSE_DETAILS = {
   "perfect-memories-photography": {
     "blurb": "Photographer listing in Potsdam, NY (phone 1-315-399-2585).",
     "platform": "Google Sites (business.site)",
-    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified. Rechecked 2026-10-03: business.site still 404; Google listing Active (place_id 413083041649871, phone 1-315-399-2585); no reviews, services, or pricing verifiable. A similarly named 'Perfect Memories Photography' (perfectmemoriesphotography.godaddysites.com, Abby, Pulaski NY, (315) 391-6401) is a DIFFERENT business — excluded.",
+    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified. Rechecked 2026-10-03: business.site still 404; Google listing Active (place_id 413083041649871, phone 1-315-399-2585); no reviews, services, or pricing verifiable. A similarly named 'Perfect Memories Photography' (perfectmemoriesphotography.godaddysites.com, Abby, Pulaski NY, (315) 391-6401) is a DIFFERENT business — excluded. Rechecked 2026-10-10: business.site still 404; no Google reviews surface anywhere.",
     "sources": [
       "https://perfectmemoriesphotography.business.site/"
     ]
@@ -669,7 +670,7 @@ window.PULSE_DETAILS = {
     ],
     "since": 2021,
     "pricing_note": "Christmas minis advertised at $200 (2025)",
-    "site_note": "Price Range '$$' per listing; she runs seasonal mini sessions (e.g., beach minis, Christmas minis) and occasional 'pay what you can' sessions. Rechecked 2026-10-03: homepage live; Facebook page (Rachel Roberts Photography, Watertown, NY) active; price range \"$$\" per photography1000; no The Knot/WeddingPro/Yelp vendor profile or Google review listing found.",
+    "site_note": "Price Range '$$' per listing; she runs seasonal mini sessions (e.g., beach minis, Christmas minis) and occasional 'pay what you can' sessions. Rechecked 2026-10-03: homepage live; Facebook page (Rachel Roberts Photography, Watertown, NY) active; price range \"$$\" per photography1000; no The Knot/WeddingPro/Yelp vendor profile or Google review listing found. Deep-dive 2026-10-10: Feb 2026 FB post confirms she started the business when her daughter was born during COVID (~2021, matches since: 2021); site platform not identifiable from readable text; still no Google reviews under her name in Watertown.",
     "sources": [
       "https://www.findglocal.com/US/Watertown-NY/240298-22",
       "https://www.photography1000.com/US/Watertown/133963698521467/Rachel-Roberts-Photography",
@@ -784,7 +785,8 @@ window.PULSE_DETAILS = {
       "1000 Islands",
       "Alexandria Bay"
     ],
-    "site_note": "About page: 'a year ago decided to learn a lot more about photography and got a certification in digital photography from Cornell University'; emphasizes 'prices that won't break the bank.' Since ~2025 (inferred: about page ~Jan 2026 says she decided to learn photography \"a year ago\"). Services expanded from her own gallery index; no third-party directory listing found.",
+    "platform": "Adobe Portfolio",
+    "site_note": "About page: 'a year ago decided to learn a lot more about photography and got a certification in digital photography from Cornell University'; emphasizes 'prices that won't break the bank.' Since ~2025 (inferred: about page ~Jan 2026 says she decided to learn photography \"a year ago\"). Services expanded from her own gallery index; no third-party directory listing found. Deep-dive 2026-10-10: platform confirmed Adobe Portfolio (HTML source shows cdn.myportfolio.com assets).",
     "sources": [
       "https://sharonsegouinphotography.com/about-me",
       "https://www.sharonsegouinphotography.com/",
@@ -877,14 +879,16 @@ window.PULSE_DETAILS = {
       "Northern New York",
       "Central New York"
     ],
-    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews. Address 5560 Highland Ave, Lowville NY 13367, (315) 376-2951; The Knot (Lowville wedding rentals) 5.0 (4); Birdeye 3.7 (3 reviews, incl. COVID-era non-refund complaint). Founding-year note: own Google copy says \"over 14 years\"; an unverified directory claims roots to 2003 — not adopted.",
+    "since": 2003,
+    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews. Address 5560 Highland Ave, Lowville NY 13367, (315) 376-2951; The Knot (Lowville wedding rentals) 5.0 (4); Birdeye 3.7 (3 reviews, incl. COVID-era non-refund complaint). Founding year adopted: MyEventPod traces business history to 2003 (custom-designed lighted walls origins; Set-Up and Clean-Up service added 2004) — own Google copy says \"over 14 years\", consistent. No published wedding package pricing found anywhere; own site randhcreations.com is HTTP-only and did not resolve in fetch 2026-10-10.",
     "sources": [
       "http://randhcreations.com/contact-us",
       "https://www.theknot.com/marketplace/wedding-rentals-lowville-ny",
       "https://www.myeventpod.com/vendors/r-and-h-creations-videography-and-wedding-rental/",
       "https://wedfolio.com/weddings/ny/canton/videographers/",
       "https://www.nataliewstudio.com/blog/2017/10/fall-jewel-colored-wedding-in-lowville",
-      "https://reviews.birdeye.com/r-h-creations-167973089245892"
+      "https://reviews.birdeye.com/r-h-creations-167973089245892",
+      "https://www.evepla.com/US/Lowville/254652291692137/R&H-Creations"
     ]
   },
   "jordan-craig-media-llc": {
@@ -941,12 +945,13 @@ window.PULSE_DETAILS = {
     ],
     "years_in_business": 13,
     "pricing_note": "Weddings from $4,800 (The Knot / WeddingWire, 2026) Own site (2026-09-30) shows wedding collections from $5,400 (01 $5,400 / 02 $6,800 / 03 $8,300 / bespoke $8,900) vs The Knot 'Starting at $4,800' — both preserved, not resolved. WeddingWire (2026-10-03) repeats $4,800 starting / ~$5,300 typical — treated as ambiguous directory figure, not a replacement for own-site tiers.",
-    "site_note": "5.0 stars across 48 reviews on The Knot; 20+ years behind the lens per her site.; WeddingWire 5.0 across 8 reviews (Lake Placid, 13 years in business, starts $4,800, couples typically ~$5,300, 1936 Saranac Ave) — vs own site weddings from $5,400 (2026-09-30), both preserved, not resolved. A possible second 'Pamela Perrin Photography' listing on The Bash (Fort Lauderdale FL) is UNCONFIRMED as the same business — not merged.",
+    "site_note": "5.0 stars across 48 reviews on The Knot; 20+ years behind the lens per her site.; WeddingWire 5.0 across 8 reviews (Lake Placid, 13 years in business, starts $4,800, couples typically ~$5,300, 1936 Saranac Ave) — vs own site weddings from $5,400 (2026-09-30), both preserved, not resolved. A possible second 'Pamela Perrin Photography' listing on The Bash (Fort Lauderdale FL) is UNCONFIRMED as the same business — not merged. Deep-dive 2026-10-10: site platform still not determinable from text fetches; Birdeye (~1-day-old crawl, aggregates her Google profile) shows 9/5.0 and WeddingWire 8/5.0 — corroboration only, not live-listing reads.",
     "sources": [
       "https://www.pamelaperrinphotography.com/about/",
       "https://www.pamelaperrinphotography.com/weddings/",
       "https://www.weddingwire.com/biz/pamela-perrin-photography-lewiston/a0efb8c848c037c2.html",
-      "https://www.theknot.com/marketplace/wedding-photographers-wanakena-ny"
+      "https://www.theknot.com/marketplace/wedding-photographers-wanakena-ny",
+      "https://reviews.birdeye.com/pamela-perrin-photography-170415784199906"
     ]
   },
   "sooocially": {
@@ -1357,7 +1362,8 @@ window.PULSE_DETAILS = {
     ],
     "pricing_note": "Austrian Alps elopements from $4,300; winter mini adventure packages from $3,900; average booked package $7,900; Adirondack package pricing not stated (own site, 2026-10-03)",
     "since": 2019,
-    "site_note": "States 'over 6 years of expertise' planning and photographing elopements in Lake Placid, Keene, Lake George, Saranac Lake, and Jay; she splits time between the Adirondacks and the Austrian Alps and donates 10% of proceeds to charity.",
+    "years_in_business": "Over 6 years under the Outdoor Chronicles brand (first elopement photographed 2015, per own about page)",
+    "site_note": "States 'over 6 years of expertise' planning and photographing elopements in Lake Placid, Keene, Lake George, Saranac Lake, and Jay; she splits time between the Adirondacks and the Austrian Alps and donates 10% of proceeds to charity. Deep-dive 2026-10-10: about page confirms first elopement photographed 2015; Google 49/5.0 not re-verifiable from a live listing today — keeps prior verification date.",
     "sources": [
       "https://www.outdoorchroniclesphotography.com/",
       "https://www.outdoorchroniclesphotography.com/about-molly-outdoor-chronicles",
@@ -1396,10 +1402,12 @@ window.PULSE_DETAILS = {
       "Family portraits"
     ],
     "platform": "Pixieset",
-    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated. Rechecked 2026-10-03: own site and contact page state no town, pricing, service area, or founding year; no Google listing or Facebook business page found.",
+    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated. Rechecked 2026-10-03: own site and contact page state no town, pricing, service area, or founding year; no Google listing or Facebook business page found. Rechecked 2026-10-10: site loads on Pixieset; sitemap lists /investment, /about, /contact, /clients plus portfolio galleries — but /investment pricing content is JS/image-driven and unreadable via text fetch; /about lists no town, founding year, or coverage area; Instagram @sharlabethphotography confirmed in site footer; no Google reviews or directory listings found.",
     "sources": [
       "https://sharlalodico.mypixieset.com/",
-      "https://sharlalodico.mypixieset.com/about/"
+      "https://sharlalodico.mypixieset.com/about/",
+      "https://sharlalodico.mypixieset.com/investment",
+      "https://sharlalodico.mypixieset.com/about"
     ]
   },
   "emma-lee-photography": {
@@ -1640,9 +1648,19 @@ window.PULSE_DETAILS = {
     ]
   },
   "perennial-images-kursti-jacot": {
-    "blurb": "Perennial Images (Kursti Jacot) — photographer in the Parishville, St. Lawrence County NY area; sessions $175-$225, seniors $200, newborns $325 (within 20 mi).",
+    "blurb": "Perennial Images is the Parishville, NY photography studio of Kursti Jacot — sessions ($185 45-min / $235 1-hour), senior portraits ($215), newborn photography ($235 outdoor / $335 in-studio), occasional minis; within 20 miles of Parishville. All full-price sessions include a client closet (per site).",
     "platform": "Pixieset",
-    "site_note": "No other public web footprint as of 2026-10-03: no indexed site, about content, directory listings, or Google business listing found; town/service details unverified beyond the Pixieset pricing page.",
+    "services": [
+      "Session photography (45-min and 1-hour packages)",
+      "Outdoor/on-location newborns (incl. Fresh 48)",
+      "In-studio newborns (in-home studio)",
+      "Senior portraits",
+      "Occasional mini sessions"
+    ],
+    "coverage": [
+      "Within 20 miles of Parishville, NY"
+    ],
+    "site_note": "No other public web footprint as of 2026-10-03: no indexed site, about content, directory listings, or Google business listing found; town/service details unverified beyond the Pixieset pricing page. Deep-dive 2026-10-10: Pixieset pricing page live again with changed prices — sessions $175-$225 → $185 (45-min, 1-5 people, 30+ edited) / $235 (1-hr, 6-10); seniors $200 → $215 (75 min, 2 locations, 2-3 outfits); newborns $325 → $235 outdoor (75 min, lifestyle with parents) / $335 in-studio (up to 3 hr); all full-price sessions include a client closet. Town confirmed Parishville, NY. Still no Google listing or other footprint beyond Pixieset.",
     "sources": [
       "https://perennialimages.mypixieset.com/pricing/"
     ]
@@ -1656,18 +1674,19 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Canton NY"
     ],
-    "site_note": "photographyworx.com appears as the website on the Locable profile but could not be fetched as of 2026-10-03 (unverified, not declared dead); BestProsInTown shows zero reviews; no pricing, years in business, or Google review data found.",
+    "site_note": "photographyworx.com appears as the website on the Locable profile but could not be fetched as of 2026-10-03 (unverified, not declared dead); BestProsInTown shows zero reviews; no pricing, years in business, or Google review data found. Deep-dive 2026-10-10: photographyworx.com still unfetchable (www/non-www, http/https all fail to resolve); BestProsInTown still solicits the first review (zero reviews); no reviews on any directory.",
     "sources": [
       "https://www.bestprosintown.com/ny/canton/photography-worx-/",
       "https://photography-worx.locable.com/profile/",
       "https://hcomtech.com/page.php?p=2",
-      "https://chamberofcommerce.com/business-directory/new-york/canton/arts-event-services/"
+      "https://chamberofcommerce.com/business-directory/new-york/canton/arts-event-services/",
+      "https://www.mapquest.com/us/new-york/photography-worx-451285842"
     ]
   },
   "samarah-martin-photography": {
     "blurb": "Samarah Martin Photography — St. Lawrence County NY area photographer with a Pixieset site (sarahmartinphoto.mypixieset.com).",
     "platform": "Pixieset",
-    "site_note": "No public web footprint as of 2026-10-03: Pixieset site returned 403 on direct fetch; no indexed directory listings, social profiles, reviews, or about/pricing content found. Town, pricing, services, coverage, and founding year all unverified.",
+    "site_note": "No public web footprint as of 2026-10-03: Pixieset site returned 403 on direct fetch; no indexed directory listings, social profiles, reviews, or about/pricing content found. Town, pricing, services, coverage, and founding year all unverified. Rechecked 2026-10-10: Pixieset site still unreachable; no new footprint surfaced.",
     "sources": [
       "https://sarahmartinphoto.mypixieset.com/"
     ]
