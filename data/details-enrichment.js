@@ -25,7 +25,7 @@ window.PULSE_DETAILS = {
       "https://peterthedj.com/2025/12/abby-corey-rainbow-shores-pulaski/",
       "https://allisonleephotographyny.mypixieset.com/investment/"
     ],
-    "site_note": "Third-source corroboration: peterthedj.com vendor blog names Allison Lee Photography as the photographer for Abby & Corey's Sept 20, 2025 wedding at Rainbow Shores, Pulaski NY. No The Knot or WeddingPro listing found; no dedicated Facebook page found for the NY business (FB hits are Austin TX / Sydney AU namesakes). No founding year published. Rechecked 2026-10-12: Google 53 reviews / 5.0 re-verified via the search-rendered Google place card (unchanged, seed kept). Own Pixieset investment page confirms pricing unchanged ($3,750 / $325 / $350 / $225 tiers per the recorded seed). No founding year published (About says she started in college; college unnamed)."
+    "site_note": "Third-source corroboration: peterthedj.com vendor blog names Allison Lee Photography as the photographer for Abby & Corey's Sept 20, 2025 wedding at Rainbow Shores, Pulaski NY. No The Knot or WeddingPro listing found; no dedicated Facebook page found for the NY business (FB hits are Austin TX / Sydney AU namesakes). No founding year published. CORRECTION 2026-10-12: the pricing seed's source URL was wrong — allisonleephotography.com is a DIFFERENT photographer (Port Hueneme, CA); the NY business's pricing lives on its Pixieset investment page, which confirms the recorded tiers unchanged ($3,750 / $325 / $350 / $225; now booking 2026 & 2027). Seed URL corrected. Google 53 / 5.0 was NOT re-verified today (no card surfaced; her links page has a Google-review link, confirming a profile exists) — seed keeps its prior verification date. A Zola/WeddingWire 'Allison Akins Photography' in Franklin TN is a probable namesake — do not merge."
   },
   "laura-wells-photography": {
     "blurb": "Laura Wells Photography is a documentary-style wedding photographer with an editorial flair, centered on capturing human connection and how a moment felt.",
@@ -417,20 +417,13 @@ window.PULSE_DETAILS = {
       "Drone filming",
       "Cinematic video",
       "Real estate videography",
-      "Hunting/adventure film",
-      "Wedding films"
+      "Hunting/adventure film"
     ],
-    "site_note": "Official site apexpackmedia.com still HTTP 404 as of 2026-10-05; business active per a YouTube promo ('WhoIsApex LONG v9 FINAL') showing drone/cinematic-video work near Loon Lake; an 'APEX PACK MEDIA LLC' entity is registered in NY (link to this operator unconfirmed). Rechecked 2026-10-12: apexpackmedia.com now LOADS (was 404 on 2026-10-05) on Squarespace; apexdogpack.com redirects to it. Site now also offers wedding films alongside real-estate/hunting work. Still no published pricing, no Google reviews, no founding year found. Jay Hicks name not confirmed on the live site text.",
+    "site_note": "Official site apexpackmedia.com still HTTP 404 as of 2026-10-05; business active per a YouTube promo ('WhoIsApex LONG v9 FINAL') showing drone/cinematic-video work near Loon Lake; an 'APEX PACK MEDIA LLC' entity is registered in NY (link to this operator unconfirmed). CORRECTED recheck 2026-10-12: apexpackmedia.com returns 404 again (an interim summary claiming it had gone live on Squarespace was wrong and has been reverted); apexdogpack.com now shows only a parked GoDaddy page. Name conflict flagged: the YouTube promo's contact is jordanhicks@apexdogpack.com ('Jordan Hicks'), not 'Jay Hicks' as recorded — unverified, not merged. Still no pricing, reviews, platform, or founding year.",
     "sources": [
-      "https://www.youtube.com/watch?v=K4WAD2pO8ZA",
-      "https://www.apexpackmedia.com/",
-      "https://www.apexpackmedia.com/wedding-films"
+      "https://www.youtube.com/watch?v=K4WAD2pO8ZA"
     ],
-    "platform": "Squarespace",
-    "coverage": [
-      "Lake Placid",
-      "Adirondacks"
-    ]
+    "coverage": []
   },
   "airvantage-solutions": {
     "blurb": "Family-run drone photography and videography business in Ogdensburg, NY, flying a DJI Mavic 4 Pro and serving real estate and local businesses.",
@@ -449,10 +442,9 @@ window.PULSE_DETAILS = {
       "https://www.airvantagesolutionsllc.com",
       "https://www.airvantagesolutionsllc.com/about.html",
       "https://www.airvantagesolutionsllc.com/services.html",
-      "https://www.bizprofile.net/ny/ogdensburg/airvantage-solutions-llc",
-      "https://members.ogdensburgny.com/list/member/airvantage-solutions-llc"
+      "https://www.bizprofile.net/ny/ogdensburg/airvantage-solutions-llc"
     ],
-    "site_note": "Flies a DJI Mavic 4 Pro. NY Dept. of State LLC filing (doc 7278058) filed March 1, 2024, active status, St. Lawrence County - corroborates the 'Established in 2024' claim on its own site. Active YouTube channel (@airvantagesolutions) posts real-estate listing videos in Ogdensburg, Madrid, Heuvelton, Dekalb Jct. No Google review listing surfaced via search. Rechecked 2026-10-12: own homepage still shows the $100 introductory offer due at scheduling, unchanged. Ogdensburg Chamber of Commerce member listing added as third-source corroboration (services: construction progress, real estate, land surveying & mapping, inspections). No Google review listing surfaced again."
+    "site_note": "Flies a DJI Mavic 4 Pro. NY Dept. of State LLC filing (doc 7278058) filed March 1, 2024, active status, St. Lawrence County - corroborates the 'Established in 2024' claim on its own site. Active YouTube channel (@airvantagesolutions) posts real-estate listing videos in Ogdensburg, Madrid, Heuvelton, Dekalb Jct. No Google review listing surfaced via search. Rechecked 2026-10-12: services page confirms the $100 introductory offer unchanged (1 location, 4 HD images, Dropbox delivery; video extra; mileage fee beyond the 40-mile Ogdensburg radius). About page 'Established in 2024' reconfirmed, corroborated by the NY LLC filing (Mar 1, 2024). No Google listing surfaced again."
   },
   "cristina-fenner": {
     "blurb": "Canton, NY wedding and portrait photographer with 15 years of wedding coverage experience and 150+ weddings photographed; bright, colorful, bold style focused on genuine emotion.",
@@ -488,12 +480,11 @@ window.PULSE_DETAILS = {
     ],
     "sources": [
       "https://www.findglocal.com/XX/Unknown/106317545012612/Amanda-Hill-Photography",
-      "https://www.mapquest.com/us/new-york/amanda-hill-photography-387750358",
       "https://amandahillphoto.mypixieset.com",
       "https://www.stlawco.gov/node/1423"
     ],
     "platform": "Pixieset",
-    "site_note": "Town conflict: roster and MapQuest list Potsdam NY 13676, but the St. Lawrence County business listing gives 148 Cottage Road, Colton, NY, phone 315-212-6498, hours Fri & Sat 10am-6pm, Sun 2pm-6pm. No pricing published on her Pixieset site; no Google review count found. Beware other 'Amanda Hill Photography' businesses in Memphis TN and Pittsburgh PA - different entities. Rechecked 2026-10-12: town conflict persists — her Pixieset footer says Potsdam, NY while the St. Lawrence County listing and MapQuest give 148 Cottage Road, Colton, NY 13676, phone (315) 212-6498. Still no published pricing and no Google review count found."
+    "site_note": "Town conflict: roster and MapQuest list Potsdam NY 13676, but the St. Lawrence County business listing gives 148 Cottage Road, Colton, NY, phone 315-212-6498, hours Fri & Sat 10am-6pm, Sun 2pm-6pm. No pricing published on her Pixieset site; no Google review count found. Beware other 'Amanda Hill Photography' businesses in Memphis TN and Pittsburgh PA - different entities. Rechecked 2026-10-12: investment page is FAQ-only — still no published pricing (rush delivery = half session price). Her Pixieset site states no town (bio: Pittsburgh native, mom of two), so the Potsdam vs Colton (county listing) conflict remains unresolved. No Google listing found again."
   },
   "perfect-memories-photography": {
     "blurb": "Photographer listing in Potsdam, NY (phone 1-315-399-2585).",
@@ -853,7 +844,7 @@ window.PULSE_DETAILS = {
       "Seniors",
       "Infants and children"
     ],
-    "site_note": "Listed on The Knot and WeddingWire; Facebook page @BellaMemoriaPhotography (bio: 'Capturing beautiful and precious moments'); contact 518-483-8281. No Google Business listing/reviews found in web search. The 2019 PA 'Bella Memoria Photography, LLC' filing (bizapedia) is a different company — not used. Rechecked 2026-10-12: a Google Maps place page for the Malone business exists but no rating or review count surfaced in search — WeddingWire 3 / 5.0 remains the only seeded review source. The Knot storefront confirms Malone, NY and starting price $2,900 (Knot's own figure; not published on an own site — not seeded as pricing).",
+    "site_note": "Listed on The Knot and WeddingWire; Facebook page @BellaMemoriaPhotography (bio: 'Capturing beautiful and precious moments'); contact 518-483-8281. No Google Business listing/reviews found in web search. The 2019 PA 'Bella Memoria Photography, LLC' filing (bizapedia) is a different company — not used. Rechecked 2026-10-12: live Knot page verified — 1 review / 5.0 (dated 2013), address 82 Bruso Road, Malone confirmed. WeddingWire 3 / 5.0 stands at snippet level only (its page rendered no review content today). No Google listing found again; no pricing published anywhere.",
     "sources": [
       "https://www.theknot.com/marketplace/bella-memoria-photography-malone-ny-551815",
       "https://www.weddingwire.com/biz/bella-memoria-photography-malone/9eb2845ef9a77feb.html",
@@ -1164,7 +1155,7 @@ window.PULSE_DETAILS = {
       "Vermont"
     ],
     "since": 2017,
-    "site_note": "Run by Corey James; described as a Google Trusted Street View photographer for NY & VT; also listed on Ticonderoga360 as a Crown Point NY business. Pricing not published anywhere on site ('affordable photography packages' only) — quote-based (verified 2026-10-05). Rechecked 2026-10-12: a search snippet of the own services page suggested a 'starting at $400' price, but a direct fetch of https://www.adirondackdrone.net/drone-services the same day showed NO dollar figure (page still says 'affordable photography packages') — pricing left UNSEEDED pending direct verification. Google panel did not surface; seeded 4 / 5.0 keeps its prior verification date. Since 2017 reconfirmed via adk.bar-z.com listing.",
+    "site_note": "Run by Corey James; described as a Google Trusted Street View photographer for NY & VT; also listed on Ticonderoga360 as a Crown Point NY business. Pricing not published anywhere on site ('affordable photography packages' only) — quote-based (verified 2026-10-05). Rechecked 2026-10-12: own site still publishes NO dollar figures — quote-based status stands (an interim research summary claiming a $400 starting price was not corroborated on the live page and was discarded). Since 2017 reconfirmed on the homepage and adk.bar-z.com. Google panel did not surface; seeded 4 / 5.0 keeps its prior verification date.",
     "sources": [
       "http://adirondackdrone.net/",
       "https://www.ticonderoga360.com/business/adirondack-drone/",
@@ -1232,21 +1223,21 @@ window.PULSE_DETAILS = {
       "nature",
       "cityscapes",
       "creative shoots",
-      "Individual portraits",
       "Couples",
-      "Families"
+      "Senior sessions",
+      "Creative portraits",
+      "Small groups",
+      "Large groups / graduate groups"
     ],
     "platform": "Pixieset",
-    "site_note": "Her bio says she picked up her first camera in yearbook club about six years ago and now does this as a job; no pricing, town, or coverage areas stated on the page. Rechecked 2026-10-12: investment page confirms Individuals $175-$400, couples $200-$275, families $225-$300, $50 deposit unchanged, and states coverage as Franklin County and bordering counties. No Google Business listing surfaced; a WeddingWire vendor page exists (no rating/count shown). No founding year published.",
+    "site_note": "Her bio says she picked up her first camera in yearbook club about six years ago and now does this as a job; no pricing, town, or coverage areas stated on the page. CORRECTION 2026-10-12: pricing CHANGED — the investment page now lists four flat tiers (Standard Portrait $175 / 30 min; Deluxe Portrait $250 / 1-2 hr; Small Groups $275 / 3-6 people; Large Groups $350 / 7+ people), replacing the old category ranges; no $50 deposit is shown on the current page. No coverage statement and no founding year found on the site; no Google listing surfaced.",
     "sources": [
       "https://abbyelizabethphotography.mypixieset.com/",
       "https://abbyelizabethphotography.mypixieset.com/about/",
-      "https://abbyelizabethphotography.mypixieset.com/investment/",
-      "https://www.weddingwire.com/biz/abby-elizabeth-photography-malone/2bdbc0ee5ec8e41a.html"
+      "https://abbyelizabethphotography.mypixieset.com/investment/"
     ],
     "coverage": [
-      "Northern NY",
-      "Franklin County, NY and bordering counties (stated on investment page)"
+      "Northern NY"
     ]
   },
   "snapshots-photo-booth": {
@@ -1343,20 +1334,24 @@ window.PULSE_DETAILS = {
       "Elopements",
       "Engagement sessions",
       "weddings",
-      "destination weddings"
+      "destination weddings",
+      "Drone photography",
+      "Second photographer"
     ],
     "coverage": [
       "Lake Placid",
       "Adirondacks",
       "destination weddings worldwide"
     ],
-    "site_note": "Site adkweddingphoto.com loads again (previously rate-limited). No live Google review count verifiable for this business name (verified 2026-10-05); no The Knot/WeddingPro listing found under this name. Rechecked 2026-10-12: own investment page confirms weddings from $4,600 unchanged. No Google review panel surfaced again (prior seeded 0 stands). Minor tenure note: own About page says photographing weddings since 2006 while the bio also says freelance for nearly two decades — recorded since stays 2005, not changed on this evidence.",
+    "site_note": "Site adkweddingphoto.com loads again (previously rate-limited). No live Google review count verifiable for this business name (verified 2026-10-05); no The Knot/WeddingPro listing found under this name. Rechecked 2026-10-12: own 2026 Price Guide (pricing.adkweddingphoto.com) confirms wedding tiers $4,600 (most popular) / $5,900 / $8,900 premium and engagement sessions $1,000; Zola lists elopements from $3,000 and 1 review / 5.0 (2022). No Google listing or count surfaced — that is absence in search, NOT a live listing verified as 0; the existing review seed was left untouched. Since 2005 not directly re-stated today (guide cites 20+ years experience).",
     "sources": [
       "https://tomasflint.com/gallery/adirondack-wedding-photography-ausable/",
       "https://tomasflint.com/gallery/whiteface-lodge-wedding/",
       "https://www.myeventpod.com/vendors/adirondack-wedding-photography/",
       "https://adkweddingphoto.com/about-tomas",
-      "https://adkweddingphoto.com/"
+      "https://adkweddingphoto.com/",
+      "https://pricing.adkweddingphoto.com",
+      "https://WWW.ZOLA.COM/wedding-vendors/wedding-photographers/adirondack-wedding-photography"
     ],
     "since": 2005
   },
@@ -1742,12 +1737,11 @@ window.PULSE_DETAILS = {
       "newborn",
       "landscapes"
     ],
-    "site_note": "About page conflicts on tenure: 'over 15 years ago, I traded the bustling streets of Manhattan for the serene beauty of the Adirondacks' vs 'living in Wilmington, NY for the last eight years' — founding year left unverified. Rechecked 2026-10-12: pricing page confirms weddings/elopements from $1,600, engagements from $200, minis $125-$175 unchanged. Aggregator conflict flagged: WeddingWire shows 33 reviews / 5.0 and Bark 36 reviews / 5.0, both aggregating Google+Facebook, vs the seeded Google-only 6 / 5.0 — the live Google panel did not surface in search today, so the Google seed was NOT updated.",
+    "site_note": "About page conflicts on tenure: 'over 15 years ago, I traded the bustling streets of Manhattan for the serene beauty of the Adirondacks' vs 'living in Wilmington, NY for the last eight years' — founding year left unverified. Rechecked 2026-10-12: investment page confirms weddings/elopements from $1,600, engagements from $200, minis $125-$175, plus maternity & new family, seniors, and family/headshots/birthday all from $200. Birdeye aggregator shows 7 reviews / 5.0 (lead only — live Google panel not seen today; seeded Google 6 / 5.0 NOT updated). About page still gives no founding year (moved to the Adirondacks 15+ years ago is not a founding date).",
     "sources": [
       "https://akellyphotography81.mypixieset.com/",
       "https://akellyphotography81.mypixieset.com/about/",
-      "https://www.weddingwire.com/biz/a-kelly-photography-wilmington/058bccd92db46b3d.html",
-      "https://www.bark.com/en/us/company/a-kelly-photography/1Rkwx/"
+      "https://reviews.birdeye.com/akelly-photography-170413539670358"
     ]
   },
   "atavia-weddings": {
@@ -1767,7 +1761,7 @@ window.PULSE_DETAILS = {
       "Online gallery, full ownership rights",
       "Second shooter available"
     ],
-    "site_note": "NC-based, travels to Potsdam NY; $500 retainer reserves date; editing turnaround 30-90 days; fully insured. Rechecked 2026-10-12: Google 8 reviews / 5.0 re-verified via the search-rendered Google place card (unchanged, seed kept). Own packages page confirms photo from $1,500 (4 hr), video from $1,200 (4 hr), combined from $3,000 (6 hr) unchanged. Zola profile shows 55 reviews (Zola-platform count, different from Google). No founding year published.",
+    "site_note": "NC-based, travels to Potsdam NY; $500 retainer reserves date; editing turnaround 30-90 days; fully insured. Rechecked 2026-10-12: own packages page confirms pricing unchanged (photo from $1,500, video from $1,200, combined from $3,000; $500 reserves the date). Google 8 / 5.0 was NOT re-verified today (no live card surfaced) — seed keeps prior verification. Zola shows 12 reviews / 5.0 combined (Zola+Google), owner listed as Lauren McKinnon, and lists the base as Boston, MA — a base-location conflict vs the NC-based record (336 phone on own site); flagged, not reconciled.",
     "sources": [
       "https://ataviaweddings.com/",
       "https://ataviaweddings.com/packages",
