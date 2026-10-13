@@ -124,7 +124,7 @@ window.PULSE_VENUES = [
     coverage: ["Northern New York"],
     platform: "Webflow",
     since: null,
-    site_note: "Family-owned and operated (Brannoin Sample) in Altona, Clinton County; Facebook: facebook.com/rainbow.b.hall (handle verified on own-site promo flyer); phone (518) 236-5030, email rainbowbanquethall@gmail.com. Deep-dive 2026-10-06: 34 acres, Adirondack setting, wheelchair accessible, free parking; has hosted guests incl. Eliot Spitzer and Hillary Clinton. Founding year unpublished (family recipes date back 75+ years). Reviews: WeddingWire 4.9/18 verified; live Google count not verified (indirect 4.4/54).",
+    site_note: "Family-owned and operated (Brannoin Sample) in Altona, Clinton County; Facebook: facebook.com/rainbow.b.hall (handle verified on own-site promo flyer); phone (518) 236-5030, email rainbowbanquethall@gmail.com. Deep-dive 2026-10-06: 34 acres, Adirondack setting, wheelchair accessible, free parking; has hosted guests incl. Eliot Spitzer and Hillary Clinton. Founding year unpublished (family recipes date back 75+ years). Reviews: WeddingWire 4.9/18 verified; live Google count not verified (indirect 4.4/54). Deep-dive 2026-10-13: Google listing data now surfaces directly at 4.4 / 54 reviews (previously an indirect figure — now matches); WeddingWire room capacities (Gold 175-500 sit-down, White 150-400, Blue 25-180) sit below the on-file Eventective maximums (600/350/200) — ranges vs maximums, both kept; founding year still unpublished; platform not re-verified this run.",
     sources: ["http://www.rainbowbanquethall.com/", "https://www.eventective.com/altona-ny/rainbow-banquet-hall-615421.html", "https://www.weddingwire.com/biz/rainbow-banquet-hall-12910/ec2951a0a3f944d4.html", "https://www.weddingwire.com/reviews/rainbow-banquet-hall-12910/ec2951a0a3f944d4.html", "http://cylex.us.com/company/brookside-barn-38767658.html"],
     confidence: "high"
   },
@@ -253,7 +253,7 @@ window.PULSE_VENUES = [
     coverage: ["Thousand Islands region", "Between Alexandria Bay and Clayton, near 1000 Islands Bridge"],
     platform: null,
     since: null,
-    site_note: "1890s barn restored with modern lighting/sound; also hosts ticketed tribute-band concerts and Thursday line dancing. Deep-dive 2026-10-06: pricing page lists weekday/weekend/full-weekend rates; booking 2027 dates. Review presence: Birdeye 5.0/39 and localitybiz 5.0/24 (aggregates — no live Google count verified). Season not published; events run year-round. Founding year unverifiable. Contact: 315-489-2444, KringRanch@gmail.com.",
+    site_note: "1890s barn restored with modern lighting/sound; also hosts ticketed tribute-band concerts and Thursday line dancing. Deep-dive 2026-10-06: pricing page lists weekday/weekend/full-weekend rates; booking 2027 dates. Review presence: Birdeye 5.0/39 and localitybiz 5.0/24 (aggregates — no live Google count verified). Season not published; events run year-round. Founding year unverifiable. Contact: 315-489-2444, KringRanch@gmail.com. Deep-dive 2026-10-13: pricing re-verified on the own site (wedding package from $1,500; weekday $1,500; weekend 1-day $3,000; full weekend $4,000; main house $1,000/2 nights — all match on-file); Birdeye still 5.0/39; season, platform, and founding year still unpublished.",
     sources: ["https://kringranchbarnvenue.com/", "https://visitalexbay.org/chamber-listing/kring-ranch-barn-venue/", "https://visit1000islands.com/listing/kring-ranch-barn-venue/", "https://www.evepla.com/US/Alexandria-Bay/115547534958267/Kring-Ranch-Barn-Venue"],
     confidence: "high"
   },
@@ -432,7 +432,7 @@ window.PULSE_VENUES = [
     coverage: ["Adirondacks", "Saranac Lake / Lake Placid", "Ray Brook NY (1295 NY-86)"],
     platform: null,
     since: 2023,
-    site_note: "Exclusive estate access; clear-top reception tents; owners Sean and Jessi O'Malley. Coordinates withheld: street address could not be precisely geocoded, so no map pin (per town-level-only rule). Deep-dive 2026-10-06: founded ~2023 by the owners (first couple married on the property Oct 7, 2023, per their Zola wedding page; WeddingWire lists '2 years in business'). Reviews: WeddingWire Google-aggregated 5.0/7, Zola 5.0/3, The Knot 5.0/2 — no live Google listing count verified.",
+    site_note: "Exclusive estate access; clear-top reception tents; owners Sean and Jessi O'Malley. Coordinates withheld: street address could not be precisely geocoded, so no map pin (per town-level-only rule). Deep-dive 2026-10-06: founded ~2023 by the owners (first couple married on the property Oct 7, 2023, per their Zola wedding page; WeddingWire lists '2 years in business'). Reviews: WeddingWire Google-aggregated 5.0/7, Zola 5.0/3, The Knot 5.0/2 — no live Google listing count verified. Deep-dive 2026-10-13: The Knot corroborates starting at $11,000 with 201-250 guests; Zola still lists $11,000 off-peak / $17,000 peak with up to 350 seated — the capacity conflict (own site 250) stands; platform still unverified.",
     sources: ["http://mckenziewildernessestate.com/", "https://www.zola.com/wedding-vendors/wedding-vendors/mckenzie-wilderness-estate", "https://www.weddingwire.com/biz/mckenzie-wilderness-estate/65ed80e790826c97.html", "https://www.theknot.com/marketplace/wedding-reception-venues-saranac-lake-ny"],
     confidence: "high"
   },
