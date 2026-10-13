@@ -2,10 +2,16 @@ window.PULSE_DETAILS = {
   "emily-murphy-photography": {
     "blurb": "Emily Murphy Photography is a North Country portrait photographer focused on genuine, emotion-driven sessions; her site emphasizes capturing personalities 'from the inside out' with natural, prompted smiles.",
     "platform": "Pixieset",
-    "site_note": "Site content is thin (intro only); official presence appears to be the Pixieset-hosted site mirrored on the custom domain. Facebook page shows active wedding work in the Ogdensburg, NY area. Town conflict (2026-09-30): roster lists Canton, NY; Facebook evidence points to Ogdensburg/West Chazy. Roster town NOT changed; both preserved. Deep-dive 2026-10-06: own domain emilymurphyphoto.com confirmed live (thin homepage); pricing lives on the Pixieset storefront. No Google reviews surfaced.",
+    "site_note": "Site content is thin (intro only); official presence appears to be the Pixieset-hosted site mirrored on the custom domain. Facebook page shows active wedding work in the Ogdensburg, NY area. Town conflict (2026-09-30): roster lists Canton, NY; Facebook evidence points to Ogdensburg/West Chazy. Roster town NOT changed; both preserved. Deep-dive 2026-10-06: own domain emilymurphyphoto.com confirmed live (thin homepage); pricing lives on the Pixieset storefront. No Google reviews surfaced. Deep-dive 2026-10-13: wedding tiers re-confirmed on the Pixieset weddings page ($1,800 micro/elopement; $3,200 6hr; $4,000 8hr \u2014 matches seed); the own domain now resolves to the Pixieset storefront; a The Knot vendor listing exists (Canton, NY); the Facebook page shows recent Ogdensburg-area wedding work \u2014 the town conflict (roster Canton vs Facebook Ogdensburg) remains unresolved; no Google reviews surfaced.",
     "sources": [
       "http://emilymurphyphoto.com/",
       "https://emilymurphyphotography34.mypixieset.com/"
+    ],
+    "services": [
+      "Weddings",
+      "Seniors",
+      "Families",
+      "Photobooth"
     ]
   },
   "allison-lee-photography": {
@@ -25,7 +31,7 @@ window.PULSE_DETAILS = {
       "https://peterthedj.com/2025/12/abby-corey-rainbow-shores-pulaski/",
       "https://allisonleephotographyny.mypixieset.com/investment/"
     ],
-    "site_note": "Third-source corroboration: peterthedj.com vendor blog names Allison Lee Photography as the photographer for Abby & Corey's Sept 20, 2025 wedding at Rainbow Shores, Pulaski NY. No The Knot or WeddingPro listing found; no dedicated Facebook page found for the NY business (FB hits are Austin TX / Sydney AU namesakes). No founding year published. CORRECTION 2026-10-12: the pricing seed's source URL was wrong — allisonleephotography.com is a DIFFERENT photographer (Port Hueneme, CA); the NY business's pricing lives on its Pixieset investment page, which confirms the recorded tiers unchanged ($3,750 / $325 / $350 / $225; now booking 2026 & 2027). Seed URL corrected. Google 53 / 5.0 was NOT re-verified today (no card surfaced; her links page has a Google-review link, confirming a profile exists) — seed keeps its prior verification date. A Zola/WeddingWire 'Allison Akins Photography' in Franklin TN is a probable namesake — do not merge."
+    "site_note": "Third-source corroboration: peterthedj.com vendor blog names Allison Lee Photography as the photographer for Abby & Corey's Sept 20, 2025 wedding at Rainbow Shores, Pulaski NY. No The Knot or WeddingPro listing found; no dedicated Facebook page found for the NY business (FB hits are Austin TX / Sydney AU namesakes). No founding year published. CORRECTION 2026-10-12: the pricing seed's source URL was wrong \u2014 allisonleephotography.com is a DIFFERENT photographer (Port Hueneme, CA); the NY business's pricing lives on its Pixieset investment page, which confirms the recorded tiers unchanged ($3,750 / $325 / $350 / $225; now booking 2026 & 2027). Seed URL corrected. Google 53 / 5.0 was NOT re-verified today (no card surfaced; her links page has a Google-review link, confirming a profile exists) \u2014 seed keeps its prior verification date. A Zola/WeddingWire 'Allison Akins Photography' in Franklin TN is a probable namesake \u2014 do not merge."
   },
   "laura-wells-photography": {
     "blurb": "Laura Wells Photography is a documentary-style wedding photographer with an editorial flair, centered on capturing human connection and how a moment felt.",
@@ -43,7 +49,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Pixieset",
     "pricing_note": "Wedding packages range from $2,800 to $6,500 (site, 2026)",
-    "site_note": "Site images are served from images-pw.pixieset.com, indicating a Pixieset-hosted site behind the custom domain. Deep-dive 2026-10-01: SLU '23 graduate (B.A. Sociology & Business, cum laude); works as SLU women's lacrosse assistant coach and Content/Outreach Coordinator for INTENT; recent weddings Sept 2026 (Lilly + Hoyt, Grace + Phil, Emily + Mitch). No The Knot, WeddingPro, or confirmed Facebook storefront found. Deep-dive 2026-10-08: pricing re-verified live on own site ($2,800-$6,500); services expanded (weddings, families, seniors, newborns, businesses/brands, sports, live music); own wedding guide PDF via Publitas corroborates the package product; no live Google listing found — seeded 5.0/4 unverified this run; no third-party directory storefront found.",
+    "site_note": "Site images are served from images-pw.pixieset.com, indicating a Pixieset-hosted site behind the custom domain. Deep-dive 2026-10-01: SLU '23 graduate (B.A. Sociology & Business, cum laude); works as SLU women's lacrosse assistant coach and Content/Outreach Coordinator for INTENT; recent weddings Sept 2026 (Lilly + Hoyt, Grace + Phil, Emily + Mitch). No The Knot, WeddingPro, or confirmed Facebook storefront found. Deep-dive 2026-10-08: pricing re-verified live on own site ($2,800-$6,500); services expanded (weddings, families, seniors, newborns, businesses/brands, sports, live music); own wedding guide PDF via Publitas corroborates the package product; no live Google listing found \u2014 seeded 5.0/4 unverified this run; no third-party directory storefront found.",
     "sources": [
       "https://lauracwellsphotography.com",
       "https://saintsathletics.com/sports/womens-lacrosse/roster/coaches/laura-wells/7615"
@@ -104,7 +110,7 @@ window.PULSE_DETAILS = {
       "Couples portraits",
       "Kids portraits"
     ],
-    "site_note": "States she has been photographing for over ten years; business is fully insured. Deep-dive 2026-10-01: no pricing published on the single-page live site; no review presence on Knot/WeddingPro/WeddingWire/Yelp/Zola. Phone differs by one digit: own site (503) 444-0513 vs SLC Chamber listing (503) 443-0513. CAUTION: jsc-photography.com (Cambridge, ON) is a DIFFERENT business — its packages must not be attributed here. Email lovejscphotography@gmail.com; 8 Church St, Canton, NY 13617. Deep-dive 2026-10-08: PRICING CONFLICT — current lovejscphotography.com homepage publishes NO pricing; seed floors unverifiable on the live site (may be outdated/removed). since ~2015 (inferred: own homepage says photographing around the country for over ten years).",
+    "site_note": "States she has been photographing for over ten years; business is fully insured. Deep-dive 2026-10-01: no pricing published on the single-page live site; no review presence on Knot/WeddingPro/WeddingWire/Yelp/Zola. Phone differs by one digit: own site (503) 444-0513 vs SLC Chamber listing (503) 443-0513. CAUTION: jsc-photography.com (Cambridge, ON) is a DIFFERENT business \u2014 its packages must not be attributed here. Email lovejscphotography@gmail.com; 8 Church St, Canton, NY 13617. Deep-dive 2026-10-08: PRICING CONFLICT \u2014 current lovejscphotography.com homepage publishes NO pricing; seed floors unverifiable on the live site (may be outdated/removed). since ~2015 (inferred: own homepage says photographing around the country for over ten years).",
     "sources": [
       "https://lovejscphotography.com/",
       "http://visitstl-gzcms.preview.gochambermaster.com/list/category/photographer-1274?o=&"
@@ -125,7 +131,7 @@ window.PULSE_DETAILS = {
       "North Country"
     ],
     "pricing_note": "Wedding photo + DJ package $750: 4 hr DJ + 500-1,000 high-quality photos on disk (site, 2026)",
-    "site_note": "Operator reports 20+ years as a wedding DJ and 10+ years in wedding photography; offers prints on-site at events. Operator Dennis Barr, 77 Morrill Rd, Canton NY 13617, (315) 386-8322 (older listings show 62 County Route 29 — Morrill Rd current). Client galleries on PhotoReflect. SINCE CONFLICT: Superpages '20 Years in Business' (~2006) vs Bark '16 years' vs own page DJ 16+ yrs/photo 10+ yrs — founding ~2006-2010 unresolved. 2026-10-04: $750 DJ+photographer bundle NOT reconfirmed (site says bundle costs 'what you would pay for just a DJ'); pricing seed now carries live Prices & Fees values. RATING CONFLICT (2026-10-11): search-rendered Google place card shows 5.0/3 reviews, but Birdeye's listing of the same 3 Google reviews (5-star, 1-star, 5-star texts) averages 3.7 — seeded value stays 3.7/3 pending a direct live-listing read. Prices & Fees page re-verified live 2026-10-11: sessions $20/hr, prints $1.25-$35, edited disk $100/$300 — unchanged.",
+    "site_note": "Operator reports 20+ years as a wedding DJ and 10+ years in wedding photography; offers prints on-site at events. Operator Dennis Barr, 77 Morrill Rd, Canton NY 13617, (315) 386-8322 (older listings show 62 County Route 29 \u2014 Morrill Rd current). Client galleries on PhotoReflect. SINCE CONFLICT: Superpages '20 Years in Business' (~2006) vs Bark '16 years' vs own page DJ 16+ yrs/photo 10+ yrs \u2014 founding ~2006-2010 unresolved. 2026-10-04: $750 DJ+photographer bundle NOT reconfirmed (site says bundle costs 'what you would pay for just a DJ'); pricing seed now carries live Prices & Fees values. RATING CONFLICT (2026-10-11): search-rendered Google place card shows 5.0/3 reviews, but Birdeye's listing of the same 3 Google reviews (5-star, 1-star, 5-star texts) averages 3.7 \u2014 seeded value stays 3.7/3 pending a direct live-listing read. Prices & Fees page re-verified live 2026-10-11: sessions $20/hr, prints $1.25-$35, edited disk $100/$300 \u2014 unchanged.",
     "sources": [
       "https://www.twoguysandacamera.com",
       "https://www.twoguysandacamera.com/portfolio/",
@@ -142,7 +148,7 @@ window.PULSE_DETAILS = {
       "Family portraits",
       "Photo booth"
     ],
-    "site_note": "Blog shows wedding work across the region (Pulaski, Chaumont, Massena, Old Forge); studio address per directory listing is 160 W Parishville Rd, Parishville, NY. Deep-dive 2026-10-02: owner Natalie Wendig (blog tags). Self-reported on Feb 2021 blog post: 'doing this business since I was married 10 years ago' → ~2011; blog archive back to 2011. Phone (315) 212-3679. Review presence (aggregators, not Google): Birdeye 17/5.0, TrustFeed 5.0 (named reviewers). Site appears mid-redesign as of 2026-10-02 ('taking limited sessions while under construction'). No published pricing found. Deep-dive 2026-10-09: homepage now states she has stepped back from the business to focus on her children and homeschooling, taking only past clients or special circumstances — treat as paused, not an active competitor. Services: weddings, HS senior portraits, family portraits, engagement sessions, event photography; wedding coverage across St. Lawrence, Jefferson, and Lewis counties, the Thousand Islands, and Watertown. No published pricing found; no Knot/Wire/Yelp listing (own site references Facebook + Google 17/5.0).",
+    "site_note": "Blog shows wedding work across the region (Pulaski, Chaumont, Massena, Old Forge); studio address per directory listing is 160 W Parishville Rd, Parishville, NY. Deep-dive 2026-10-02: owner Natalie Wendig (blog tags). Self-reported on Feb 2021 blog post: 'doing this business since I was married 10 years ago' \u2192 ~2011; blog archive back to 2011. Phone (315) 212-3679. Review presence (aggregators, not Google): Birdeye 17/5.0, TrustFeed 5.0 (named reviewers). Site appears mid-redesign as of 2026-10-02 ('taking limited sessions while under construction'). No published pricing found. Deep-dive 2026-10-09: homepage now states she has stepped back from the business to focus on her children and homeschooling, taking only past clients or special circumstances \u2014 treat as paused, not an active competitor. Services: weddings, HS senior portraits, family portraits, engagement sessions, event photography; wedding coverage across St. Lawrence, Jefferson, and Lewis counties, the Thousand Islands, and Watertown. No published pricing found; no Knot/Wire/Yelp listing (own site references Facebook + Google 17/5.0).",
     "sources": [
       "http://www.nataliewstudio.com/",
       "https://www.nataliewstudio.com/blog/2015/12/summer-country-wedding-in-pulaski-ny",
@@ -169,7 +175,7 @@ window.PULSE_DETAILS = {
       "Northern NY and beyond (Watertown, Lake Placid, St. Lawrence River, Lampson Falls, Norfolk, Potsdam, Massena, Colton)"
     ],
     "since": 2024,
-    "site_note": "Julia Kia Photography LLC filed May 15, 2024 (St. Lawrence County, active); site brand/web by 'lady b creative'. Deep-dive 2026-10-01: roster pricing (weddings $500/hr; couples from $450; families from $500; seniors from $300) could NOT be re-verified — live site has no pricing page ('Investment' nav links to /contact; footer investment link resolves to a gallery page). PRICING RESOLVED: deep-dive 2026-10-08 opened juliakia.com/investment live — pricing verified (weddings $500/hr; couples $450; families $500; seniors $300; add-ons: extra time/multi-location, expedited delivery, photo books/prints, destination travel); pricing seed written from own site. Start-date conflict: SUNY Potsdam profile says established 2022; NY DOS shows LLC filed May 15, 2024 (DOS #7329073, Colton NY). Credited by Gavin Law Films (YouTube, Canaras wedding) and The Stables at Windy Point listing; no Knot/WeddingWire/Zola presence.",
+    "site_note": "Julia Kia Photography LLC filed May 15, 2024 (St. Lawrence County, active); site brand/web by 'lady b creative'. Deep-dive 2026-10-01: roster pricing (weddings $500/hr; couples from $450; families from $500; seniors from $300) could NOT be re-verified \u2014 live site has no pricing page ('Investment' nav links to /contact; footer investment link resolves to a gallery page). PRICING RESOLVED: deep-dive 2026-10-08 opened juliakia.com/investment live \u2014 pricing verified (weddings $500/hr; couples $450; families $500; seniors $300; add-ons: extra time/multi-location, expedited delivery, photo books/prints, destination travel); pricing seed written from own site. Start-date conflict: SUNY Potsdam profile says established 2022; NY DOS shows LLC filed May 15, 2024 (DOS #7329073, Colton NY). Credited by Gavin Law Films (YouTube, Canaras wedding) and The Stables at Windy Point listing; no Knot/WeddingWire/Zola presence.",
     "sources": [
       "https://juliakia.com/my-work",
       "https://juliakia.com/contact",
@@ -181,7 +187,7 @@ window.PULSE_DETAILS = {
   "frisina-s-photography": {
     "blurb": "Photographer Alicia Frisina in Potsdam, NY ('Capturing Life's Greatest Moments'), focused on capturing the emotion and essence of the moment; contact for details on shoots.",
     "platform": "Wix (inferred)",
-    "site_note": "Deep-dive 2026-10-07: single-page portfolio site (intro, portfolio, contact form; phone (315) 244-9740) — no services, pricing, or about pages exist or are indexed. Platform inferred from Wix hosting IP (185.230.63.171 per cutestat), medium confidence; direct header check failed. Domain ~5 years old (registered ~Nov 2021), only age proxy. No Google review listing or third-party listings (Knot/WeddingPro/Yelp) found.",
+    "site_note": "Deep-dive 2026-10-07: single-page portfolio site (intro, portfolio, contact form; phone (315) 244-9740) \u2014 no services, pricing, or about pages exist or are indexed. Platform inferred from Wix hosting IP (185.230.63.171 per cutestat), medium confidence; direct header check failed. Domain ~5 years old (registered ~Nov 2021), only age proxy. No Google review listing or third-party listings (Knot/WeddingPro/Yelp) found.",
     "sources": [
       "https://www.frisinasphotography.com/",
       "https://frisinasphotography.com.cutestat.com/"
@@ -202,7 +208,7 @@ window.PULSE_DETAILS = {
     "platform": "Squarespace",
     "since": 2022,
     "pricing_note": "Film session $250 (1 roll 35mm, 20-36 scans, 1 Polaroid); portraits $250 (1 hr min, 75+ images); couples sessions from $300 (1 hr min, 75+ images); weddings from $1,000 (3 hr, 250+ images) / $2,000 (6 hr, 500+ images, 2nd photographer); events from $300/hr (site, re-verified 2026-10-08)",
-    "site_note": "Business founded officially in 2022; SUNY Potsdam graduate (Graphic Design & New Media). Town conflict (2026-09-30): roster lists Potsdam area (SLC); SUNY Potsdam records list Liv Gonia of North Bangor, NY (Franklin Co). Roster town NOT changed; both preserved. Platform confirmed Squarespace (images.squarespace-cdn.com) 2026-10-01. Deep-dive 2026-10-08: pricing re-verified live (film/portrait $250; couples from $300; weddings $1,000-$2,000; events $300/hr); no live Google listing or review count found anywhere — no review seed. CAUTION: contact page says \"currently only booking for 2025\" (page ~281 days stale) — may indicate reduced activity.",
+    "site_note": "Business founded officially in 2022; SUNY Potsdam graduate (Graphic Design & New Media). Town conflict (2026-09-30): roster lists Potsdam area (SLC); SUNY Potsdam records list Liv Gonia of North Bangor, NY (Franklin Co). Roster town NOT changed; both preserved. Platform confirmed Squarespace (images.squarespace-cdn.com) 2026-10-01. Deep-dive 2026-10-08: pricing re-verified live (film/portrait $250; couples from $300; weddings $1,000-$2,000; events $300/hr); no live Google listing or review count found anywhere \u2014 no review seed. CAUTION: contact page says \"currently only booking for 2025\" (page ~281 days stale) \u2014 may indicate reduced activity.",
     "sources": [
       "https://livgoniaphotography.com",
       "https://www.livgoniaphotography.com/about"
@@ -221,7 +227,7 @@ window.PULSE_DETAILS = {
       "Team portraits"
     ],
     "platform": "Weebly",
-    "site_note": "Google listing: 46 Co Rd 59, Pierrepont, NY; site states born/raised in Potsdam, now lives in Massena. Deep-dive 2026-10-02: site confirms Weebly platform (nicolecharlesonphoto.weebly.com, opened today) — born/raised in Potsdam, now lives in Massena; site states 'contact me for an appointment to go over details and contract information' — no published pricing. WhoDoYou Massena listing corroborates (email nicolecharleson@yahoo.com). No Google listing, no founding date found.",
+    "site_note": "Google listing: 46 Co Rd 59, Pierrepont, NY; site states born/raised in Potsdam, now lives in Massena. Deep-dive 2026-10-02: site confirms Weebly platform (nicolecharlesonphoto.weebly.com, opened today) \u2014 born/raised in Potsdam, now lives in Massena; site states 'contact me for an appointment to go over details and contract information' \u2014 no published pricing. WhoDoYou Massena listing corroborates (email nicolecharleson@yahoo.com). No Google listing, no founding date found.",
     "sources": [
       "http://nicolecharlesonphoto.weebly.com/",
       "https://www.whodoyou.com/biz/79929/nicole-charlesons-photography-massena-ny",
@@ -245,7 +251,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "WordPress",
     "years_in_business": 17,
-    "site_note": "Studio at 213 Main St, Ste 104, Massena (inside BRKK Tees); annual Santa/holiday sessions offered. Deep-dive 2026-09-30: site ALIVE (loads 'Forevermore Studio Photography' title; right-click disabled) — the Sep 30 bulk-sweep HTTP 500 was likely a bot block, not a dead site. (315) 514-0379, info@forevermorestudio.com. Facebook facebook.com/ForevermoreStudio (3,477 likes). WeddingWire 5.0 (5 reviews). No published pricing (video = call for quote). Google reviews 4.9/143.",
+    "site_note": "Studio at 213 Main St, Ste 104, Massena (inside BRKK Tees); annual Santa/holiday sessions offered. Deep-dive 2026-09-30: site ALIVE (loads 'Forevermore Studio Photography' title; right-click disabled) \u2014 the Sep 30 bulk-sweep HTTP 500 was likely a bot block, not a dead site. (315) 514-0379, info@forevermorestudio.com. Facebook facebook.com/ForevermoreStudio (3,477 likes). WeddingWire 5.0 (5 reviews). No published pricing (video = call for quote). Google reviews 4.9/143.",
     "sources": [
       "http://www.myforevermore.com/",
       "https://myforevermore.com/",
@@ -294,7 +300,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Ogdensburg, NY"
     ],
-    "site_note": "Official site ohbabylovephotography.com would not load during this research (upstream fetch failure); facts verified via directory listings quoting the business. Deep-dive 2026-10-02: OH BABY LOVE PHOTOGRAPHY LLC, NY DOS ID #4243798, incorporated May 8, 2012, St. Lawrence County, status Active → since 2012. Facebook page 4,083+ likes; visitogdensburg.com listing; HoneyBook profile (Misty Fishel). Own site ohbabylovephotography.com would not open in fetch (inconclusive, not proof down). No published pricing, no Google listing (only a UK namesake surfaced).",
+    "site_note": "Official site ohbabylovephotography.com would not load during this research (upstream fetch failure); facts verified via directory listings quoting the business. Deep-dive 2026-10-02: OH BABY LOVE PHOTOGRAPHY LLC, NY DOS ID #4243798, incorporated May 8, 2012, St. Lawrence County, status Active \u2192 since 2012. Facebook page 4,083+ likes; visitogdensburg.com listing; HoneyBook profile (Misty Fishel). Own site ohbabylovephotography.com would not open in fetch (inconclusive, not proof down). No published pricing, no Google listing (only a UK namesake surfaced).",
     "sources": [
       "https://kaitphotography.com.au/o-photography/oh-baby-love-photography-ogdensburg-ny.html",
       "https://www.matthughesphoto.com/o-photography/oh-baby-love-photography-ogdensburg-ny.html",
@@ -321,7 +327,7 @@ window.PULSE_DETAILS = {
       "https://www.sheerlacephotography.com/the-boudoir-photographer"
     ],
     "since": "2009",
-    "site_note": "Boudoir focus; first Certified Professional Boudoir Photographer in NY State (2018); studio at 215 State Street, Ogdensburg (moved Sept 2021; earlier Lisbon, NY). Deep-dive 2026-10-11: price page re-read live — albums $600 (Little Black Book) to $3,500 (Luxury Radiance) unchanged; no live Google panel surfaced today, seeded 23/5.0 keeps its prior verification."
+    "site_note": "Boudoir focus; first Certified Professional Boudoir Photographer in NY State (2018); studio at 215 State Street, Ogdensburg (moved Sept 2021; earlier Lisbon, NY). Deep-dive 2026-10-11: price page re-read live \u2014 albums $600 (Little Black Book) to $3,500 (Luxury Radiance) unchanged; no live Google panel surfaced today, seeded 23/5.0 keeps its prior verification."
   },
   "carey-white-photography": {
     "blurb": "Carey White, capturing the story as it unfolds with a relaxed, creative, spontaneous approach to wedding and portrait photography in the greater Northern New York area.",
@@ -338,7 +344,7 @@ window.PULSE_DETAILS = {
       "Vermont (occasional)"
     ],
     "since": 2000,
-    "site_note": "Online client galleries hosted on SmugMug (careywhitephotography.smugmug.com); wedding galleries average 500+ hand-edited images. Deep-dive 2026-10-06: own-site homepage failed to load this run (verified via search-crawled copies); wedding pricing not published (contact-based); WeddingWire listing (1 review, 4.8/5); Facebook page 3,632 likes.",
+    "site_note": "Online client galleries hosted on SmugMug (careywhitephotography.smugmug.com); wedding galleries average 500+ hand-edited images. Deep-dive 2026-10-06: own-site homepage failed to load this run (verified via search-crawled copies); wedding pricing not published (contact-based); WeddingWire listing (1 review, 4.8/5); Facebook page 3,632 likes. Deep-dive 2026-10-13: family $195 re-verified via her own site's family page and the pricing seed URL was corrected from the matthughesphoto SmugMug mirror to careywhitephotography.com/family; Google figures conflict across search results (129 / 4.9 in listing data vs 131 / 4.9 on an aggregator page) \u2014 seed kept at 129 / 4.9, the last live-listing verification; client galleries hosted on SmugMug.",
     "sources": [
       "https://www.matthughesphoto.com/c-photography/carey-white-photography-potsdam-ny.html",
       "https://www.weddingwire.com/biz/carey-white-photography-potsdam/6370d71bed03a65f.html",
@@ -347,7 +353,7 @@ window.PULSE_DETAILS = {
     "platform": "Yahoo (site footer: 'Web Hosting by Yahoo!')"
   },
   "david-zufall-photography": {
-    "blurb": "David Zufall, a wedding & portrait photographer in Northern New York for 'the modern & romantic' — offering weddings, elopements, couples, and portraits.",
+    "blurb": "David Zufall, a wedding & portrait photographer in Northern New York for 'the modern & romantic' \u2014 offering weddings, elopements, couples, and portraits.",
     "services": [
       "Weddings",
       "Elopements",
@@ -360,13 +366,13 @@ window.PULSE_DETAILS = {
       "available worldwide"
     ],
     "platform": "Pixieset",
-    "site_note": "Site copy mixes locations (Northern New York vs. 'Based in New York City') and still shows unedited template placeholder copy ('This is a paragraph. Click edit and enter your own text.'). Deep-dive 2026-10-06: site still largely an unfinished template (placeholder copy); no pricing, reviews, or founding year published; previously recorded pricing ($1,400/$200) not re-verifiable on the live site.",
+    "site_note": "Site copy mixes locations (Northern New York vs. 'Based in New York City') and still shows unedited template placeholder copy ('This is a paragraph. Click edit and enter your own text.'). Deep-dive 2026-10-06: site still largely an unfinished template (placeholder copy); no pricing, reviews, or founding year published; previously recorded pricing ($1,400/$200) not re-verifiable on the live site. Deep-dive 2026-10-13 (coordinator direct read): the homepage is STILL an unfinished Pixieset template \u2014 placeholder copy present, location copy still mixes Northern New York and New York City; no pricing is published on the own site, so the $1,400 / $200 figures remain unverifiable; directory pages under his name (Zola starting at $2,350; a WeddingWire page at $2,800) are not linked from his site \u2014 attribution unverified, not seeded; no Google reviews surfaced.",
     "sources": [
       "https://www.davidzufallphotography.com"
     ]
   },
   "weston-garvey-photography": {
-    "blurb": "Weston-Garvey Photography — owner Maria Weston, 29 Commerce St, Heuvelton NY 13654; 315-528-7374. Weddings plus full portrait range (baby/children/maternity/seniors/families).",
+    "blurb": "Weston-Garvey Photography \u2014 owner Maria Weston, 29 Commerce St, Heuvelton NY 13654; 315-528-7374. Weddings plus full portrait range (baby/children/maternity/seniors/families).",
     "services": [
       "Weddings",
       "Engagements",
@@ -409,7 +415,7 @@ window.PULSE_DETAILS = {
       "Nationwide"
     ],
     "pricing_note": "No pricing published on railroadproductions.com (verified live 2026-10-10); no pricing/investment page exists; The Knot price band \"$$$$ - Luxury\" with no dollar figure.",
-    "site_note": " The Knot marketplace listings: \"$$$$ - Luxury\", 2x award winner, 0 reviews; legacy Adirondack Weddings vendor listing (wedding-videography era, (315) 854-0986); filmed a St. Lawrence County Chamber of Commerce promotional paddling video (Aug 2025). Deep-dive 2026-10-10: Knot listing now shows 5.0 across 32 reviews (was 0 at prior check); homepage verified live — site leads with commercial positioning (cinematic films for brands, communities, industry); no Google review count found."
+    "site_note": " The Knot marketplace listings: \"$$$$ - Luxury\", 2x award winner, 0 reviews; legacy Adirondack Weddings vendor listing (wedding-videography era, (315) 854-0986); filmed a St. Lawrence County Chamber of Commerce promotional paddling video (Aug 2025). Deep-dive 2026-10-10: Knot listing now shows 5.0 across 32 reviews (was 0 at prior check); homepage verified live \u2014 site leads with commercial positioning (cinematic films for brands, communities, industry); no Google review count found."
   },
   "apex-pack-media-jay-hicks": {
     "blurb": "Drone/cinematic video outfit associated with Jay Hicks; advertised work includes drone filming, cinematic video, real estate videography, and hunting/adventure film (script, drone + ground cinematography, narration, custom music + sound design, color, edit).",
@@ -419,7 +425,7 @@ window.PULSE_DETAILS = {
       "Real estate videography",
       "Hunting/adventure film"
     ],
-    "site_note": "Official site apexpackmedia.com still HTTP 404 as of 2026-10-05; business active per a YouTube promo ('WhoIsApex LONG v9 FINAL') showing drone/cinematic-video work near Loon Lake; an 'APEX PACK MEDIA LLC' entity is registered in NY (link to this operator unconfirmed). CORRECTED recheck 2026-10-12: apexpackmedia.com returns 404 again (an interim summary claiming it had gone live on Squarespace was wrong and has been reverted); apexdogpack.com now shows only a parked GoDaddy page. Name conflict flagged: the YouTube promo's contact is jordanhicks@apexdogpack.com ('Jordan Hicks'), not 'Jay Hicks' as recorded — unverified, not merged. Still no pricing, reviews, platform, or founding year.",
+    "site_note": "Official site apexpackmedia.com still HTTP 404 as of 2026-10-05; business active per a YouTube promo ('WhoIsApex LONG v9 FINAL') showing drone/cinematic-video work near Loon Lake; an 'APEX PACK MEDIA LLC' entity is registered in NY (link to this operator unconfirmed). CORRECTED recheck 2026-10-12: apexpackmedia.com returns 404 again (an interim summary claiming it had gone live on Squarespace was wrong and has been reverted); apexdogpack.com now shows only a parked GoDaddy page. Name conflict flagged: the YouTube promo's contact is jordanhicks@apexdogpack.com ('Jordan Hicks'), not 'Jay Hicks' as recorded \u2014 unverified, not merged. Still no pricing, reviews, platform, or founding year.",
     "sources": [
       "https://www.youtube.com/watch?v=K4WAD2pO8ZA"
     ],
@@ -462,7 +468,7 @@ window.PULSE_DETAILS = {
     ],
     "years_in_business": 15,
     "pricing_note": "Weddings from $3,800 (8 hrs, site 2026); engagement sessions regularly $400",
-    "site_note": "Owner Cristina Fenner is also a SUNY Canton adjunct instructor (verified via SUNY Canton); mini sessions held at Taylor Park in Canton. Deep-dive 2026-10-06: pricing re-verified live on weddinginfo page (matches on-file); QA page claims 150+ weddings over 15 years (corroborates 2011); named as SUNY Canton commencement photographer. No Google listing found (count stays 0); no Knot or WeddingPro listing.",
+    "site_note": "Owner Cristina Fenner is also a SUNY Canton adjunct instructor (verified via SUNY Canton); mini sessions held at Taylor Park in Canton. Deep-dive 2026-10-06: pricing re-verified live on weddinginfo page (matches on-file); QA page claims 150+ weddings over 15 years (corroborates 2011); named as SUNY Canton commencement photographer. No Google listing found (count stays 0); no Knot or WeddingPro listing. Deep-dive 2026-10-13: pricing re-verified live on /weddinginfo (all figures match the seed; page restates 15 years and 150+ weddings); an aggregator (evepla) claims 57 Google reviews / 4.8 \u2014 this conflicts with the on-file 0 and no live Google listing surfaced in search this run, so the seed is unchanged and the figure is flagged as an unverified lead.",
     "sources": [
       "https://cristinafennerphotography.com/weddinginfo",
       "http://canton.meritpages.com/news/suny-canton-entrepreneurial-challenge-assists-north-country-business/48056/print",
@@ -484,12 +490,12 @@ window.PULSE_DETAILS = {
       "https://www.stlawco.gov/node/1423"
     ],
     "platform": "Pixieset",
-    "site_note": "Town conflict: roster and MapQuest list Potsdam NY 13676, but the St. Lawrence County business listing gives 148 Cottage Road, Colton, NY, phone 315-212-6498, hours Fri & Sat 10am-6pm, Sun 2pm-6pm. No pricing published on her Pixieset site; no Google review count found. Beware other 'Amanda Hill Photography' businesses in Memphis TN and Pittsburgh PA - different entities. Rechecked 2026-10-12: investment page is FAQ-only — still no published pricing (rush delivery = half session price). Her Pixieset site states no town (bio: Pittsburgh native, mom of two), so the Potsdam vs Colton (county listing) conflict remains unresolved. No Google listing found again."
+    "site_note": "Town conflict: roster and MapQuest list Potsdam NY 13676, but the St. Lawrence County business listing gives 148 Cottage Road, Colton, NY, phone 315-212-6498, hours Fri & Sat 10am-6pm, Sun 2pm-6pm. No pricing published on her Pixieset site; no Google review count found. Beware other 'Amanda Hill Photography' businesses in Memphis TN and Pittsburgh PA - different entities. Rechecked 2026-10-12: investment page is FAQ-only \u2014 still no published pricing (rush delivery = half session price). Her Pixieset site states no town (bio: Pittsburgh native, mom of two), so the Potsdam vs Colton (county listing) conflict remains unresolved. No Google listing found again."
   },
   "perfect-memories-photography": {
     "blurb": "Photographer listing in Potsdam, NY (phone 1-315-399-2585).",
     "platform": "Google Sites (business.site)",
-    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified. Rechecked 2026-10-03: business.site still 404; Google listing Active (place_id 413083041649871, phone 1-315-399-2585); no reviews, services, or pricing verifiable. A similarly named 'Perfect Memories Photography' (perfectmemoriesphotography.godaddysites.com, Abby, Pulaski NY, (315) 391-6401) is a DIFFERENT business — excluded. Rechecked 2026-10-10: business.site still 404; no Google reviews surface anywhere.",
+    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified. Rechecked 2026-10-03: business.site still 404; Google listing Active (place_id 413083041649871, phone 1-315-399-2585); no reviews, services, or pricing verifiable. A similarly named 'Perfect Memories Photography' (perfectmemoriesphotography.godaddysites.com, Abby, Pulaski NY, (315) 391-6401) is a DIFFERENT business \u2014 excluded. Rechecked 2026-10-10: business.site still 404; no Google reviews surface anywhere.",
     "sources": [
       "https://perfectmemoriesphotography.business.site/"
     ]
@@ -505,7 +511,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Northern New York"
     ],
-    "site_note": "Run by sole proprietor Cindy Bowen, who also tutors in computer use, photo management, graphic skills and video editing via SUNY Potsdam's SOAR program. Deep-dive 2026-10-02: still listed Active (Meta place record, Massena; phone 315-322-1728; P.O. Box 5045, Massena NY 13662). cinchwedding links www.obsidiancustomvideo.com but the domain did not resolve in fetch — inconclusive (sandbox DNS caveat), not declared dead. No pricing, founding year, or Google reviews found; 'owner Cindy Bowen since ~2001/2009' claims are unverified people-search aggregates — left out. Deep-dive 2026-10-09: former domain obsidiancustomvideo.com dead; YouTube channel inactive since ~2017; phone 315-322-1728; still zero Google reviews; treat as low-activity sole proprietorship.",
+    "site_note": "Run by sole proprietor Cindy Bowen, who also tutors in computer use, photo management, graphic skills and video editing via SUNY Potsdam's SOAR program. Deep-dive 2026-10-02: still listed Active (Meta place record, Massena; phone 315-322-1728; P.O. Box 5045, Massena NY 13662). cinchwedding links www.obsidiancustomvideo.com but the domain did not resolve in fetch \u2014 inconclusive (sandbox DNS caveat), not declared dead. No pricing, founding year, or Google reviews found; 'owner Cindy Bowen since ~2001/2009' claims are unverified people-search aggregates \u2014 left out. Deep-dive 2026-10-09: former domain obsidiancustomvideo.com dead; YouTube channel inactive since ~2017; phone 315-322-1728; still zero Google reviews; treat as low-activity sole proprietorship.",
     "sources": [
       "https://cinchwedding.com/obsidian-custom-video",
       "https://www.soarnorthcountry.com/presenters/spring-2014/cindy-bowen/",
@@ -528,7 +534,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Pixieset",
     "pricing_note": "$75 non-refundable retainer; payment plans available (site, 2026)",
-    "site_note": "Based in Massena, NY; travel fees apply beyond 30 miles. The photographer works full-time as an ED registered nurse; she also maintains a client wardrobe. Highlighted work in Alexandria Bay, Albany, Plattsburgh, Buffalo NY. Deep-dive 2026-10-07: FAQ re-confirms ER RN role; $75 non-refundable retainer, payment plans accepted. No Google Business listing surfaced after 3 targeted searches — no review seed possible; no founding year published. Portrait tiers re-verified same-day ($250/$325/$425 on her pricing page).",
+    "site_note": "Based in Massena, NY; travel fees apply beyond 30 miles. The photographer works full-time as an ED registered nurse; she also maintains a client wardrobe. Highlighted work in Alexandria Bay, Albany, Plattsburgh, Buffalo NY. Deep-dive 2026-10-07: FAQ re-confirms ER RN role; $75 non-refundable retainer, payment plans accepted. No Google Business listing surfaced after 3 targeted searches \u2014 no review seed possible; no founding year published. Portrait tiers re-verified same-day ($250/$325/$425 on her pricing page).",
     "sources": [
       "https://ericacartyphoto.mypixieset.com/",
       "https://ericacartyphoto.mypixieset.com/pricing/"
@@ -542,7 +548,7 @@ window.PULSE_DETAILS = {
     ],
     "since": 2022,
     "pricing_note": "Weddings $1,750 (4h) / $2,500 (6h) / $3,250 (8h) (site, 2026); Zola lists 'starts at $3,000', 5.0 from 5 reviews",
-    "site_note": "Zola describes her style as photojournalistic. Package 03 includes 50% off an engagement session. Deep-dive 2026-09-30 identity caution: jessicaevansphoto.com (Showit site, Michigan area code (269), Grand Rapids references) is a DIFFERENT photographer — its pricing must NOT be attributed to this business. Roster IG handle 'jessicaevansphoto' may belong to the Michigan business, so IG data on this entry may be misattributed. Lisbon LLC corroborated: Jessica Evans Photography LLC, NY DOS doc 6593263, filed 9/20/2022, 210 Randall Rd, Lisbon NY 13658, active. NNY TikTok @jessicaevansphotography ('Jess Evans, NNY Photographer', couples/family content) corroborates local identity.",
+    "site_note": "Zola describes her style as photojournalistic. Package 03 includes 50% off an engagement session. Deep-dive 2026-09-30 identity caution: jessicaevansphoto.com (Showit site, Michigan area code (269), Grand Rapids references) is a DIFFERENT photographer \u2014 its pricing must NOT be attributed to this business. Roster IG handle 'jessicaevansphoto' may belong to the Michigan business, so IG data on this entry may be misattributed. Lisbon LLC corroborated: Jessica Evans Photography LLC, NY DOS doc 6593263, filed 9/20/2022, 210 Randall Rd, Lisbon NY 13658, active. NNY TikTok @jessicaevansphotography ('Jess Evans, NNY Photographer', couples/family content) corroborates local identity.",
     "sources": [
       "https://www.jessicaevansphotographyllc.com/weddings/",
       "https://www.bizprofile.net/ny/lisbon/jessica-evans-photography-llc",
@@ -563,7 +569,7 @@ window.PULSE_DETAILS = {
       "Milestones"
     ],
     "platform": "Pixieset",
-    "site_note": "Site states her love of photography began 'about a year ago'; shoots couples about an hour before sunset for golden-hour light. Deep-dive 2026-10-06: about page confirms she is a nursing student who shoots posed portraits plus candids with full posing guidance; no wedding/session pricing, founding year, or Google review listing found.",
+    "site_note": "Site states her love of photography began 'about a year ago'; shoots couples about an hour before sunset for golden-hour light. Deep-dive 2026-10-06: about page confirms she is a nursing student who shoots posed portraits plus candids with full posing guidance; no wedding/session pricing, founding year, or Google review listing found. Deep-dive 2026-10-13: Pixieset site has no investment/pricing page (404) \u2014 the only published price remains the $50 fall minis announced on IG 2026-09-24; no Google rating or reviews surfaced in search; no Knot/WeddingPro/Yelp presence found.",
     "sources": [
       "https://brynleethomasphotography.mypixieset.com/"
     ]
@@ -571,7 +577,7 @@ window.PULSE_DETAILS = {
   "caitlin-beyette-photography": {
     "blurb": "Photography portfolio under the name 'Through Caitlin's Eyes'; the site's published content is minimal (a 'My Beautiful Bestie Models' portfolio page) with no service or pricing detail.",
     "platform": "Pixieset",
-    "site_note": "Caitlin Beyette is listed as an Ogdensburg, NY resident on SUNY Plattsburgh's 2025 and 2026 Dean's Lists; a Plattsburgh, NY base is unconfirmed on the site itself. Deep-dive 2026-10-06: about page describes her as a 20-year-old college student booking seniors, couples, and portraits in the Plattsburgh area; no Google review listing, no Facebook page, no Knot/WeddingPro presence. The Knot's 'Caitlin B Photography' is a different photographer in Metairie, LA — do not merge.",
+    "site_note": "Caitlin Beyette is listed as an Ogdensburg, NY resident on SUNY Plattsburgh's 2025 and 2026 Dean's Lists; a Plattsburgh, NY base is unconfirmed on the site itself. Deep-dive 2026-10-06: about page describes her as a 20-year-old college student booking seniors, couples, and portraits in the Plattsburgh area; no Google review listing, no Facebook page, no Knot/WeddingPro presence. The Knot's 'Caitlin B Photography' is a different photographer in Metairie, LA \u2014 do not merge. Deep-dive 2026-10-13: investment page confirmed image-based (two pricing-menu images, no readable text) \u2014 the seed figures could not be text-verified today; a Yelp listing shows CONFLICTING session prices (portraits/couples/seniors from $100, family from $150, events from $300 in the Yelp snippet) \u2014 conflict flagged, seed unchanged pending a readable source; no Google listing surfaced.",
     "sources": [
       "https://throughcaitlinseyes.mypixieset.com/",
       "https://www.plattsburgh.edu/news/news-archive/suny-plattsburgh-announces-spring-2026-deans-list.html",
@@ -597,7 +603,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "North Country NY"
     ],
-    "site_note": "Business listing confirms a Photographer in Canton, St. Lawrence County, NY with phone +1 315-212-6289. The site root could not be loaded directly at research time; service details come from indexed site content. Deep-dive 2026-10-02: AMBIGUOUS MATCH warning — marialuciaphotography.myportfolio.com ('Bridal Muse at Guild Gardens', F1 editorial) is a DIFFERENT fashion/editorial photographer; never merge with Canton M.L. Photography (senior/family/sports). Site root returned HTTP 404 on 2026-10-02 fetch (health flag, not a dead verdict per single-fetch rule). No pricing, founding year, platform, or Google listing verifiable. Deep-dive 2026-10-09: site root still not loadable (JS-only; 404 on fetch); facts per search snippets of live homepage — senior portraits, children & family, sports; no weddings offered; no pricing or founding year published.",
+    "site_note": "Business listing confirms a Photographer in Canton, St. Lawrence County, NY with phone +1 315-212-6289. The site root could not be loaded directly at research time; service details come from indexed site content. Deep-dive 2026-10-02: AMBIGUOUS MATCH warning \u2014 marialuciaphotography.myportfolio.com ('Bridal Muse at Guild Gardens', F1 editorial) is a DIFFERENT fashion/editorial photographer; never merge with Canton M.L. Photography (senior/family/sports). Site root returned HTTP 404 on 2026-10-02 fetch (health flag, not a dead verdict per single-fetch rule). No pricing, founding year, platform, or Google listing verifiable. Deep-dive 2026-10-09: site root still not loadable (JS-only; 404 on fetch); facts per search snippets of live homepage \u2014 senior portraits, children & family, sports; no weddings offered; no pricing or founding year published.",
     "sources": [
       "https://www.marialuciasphotography.com/",
       "https://meta.ai?place_id=1189521529993880",
@@ -605,7 +611,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "upstate-selfie-co": {
-    "blurb": "Upstate Selfie Co — pure open-air photobooth rental business in Canton, NY ('anything but your average photobooth'); entire site is a single FAQ page.",
+    "blurb": "Upstate Selfie Co \u2014 pure open-air photobooth rental business in Canton, NY ('anything but your average photobooth'); entire site is a single FAQ page.",
     "services": [
       "Open-air photo booth",
       "Custom filters/branding (wedding hashtag, company branding)",
@@ -613,7 +619,7 @@ window.PULSE_DETAILS = {
       "Instant delivery via phone (SMS)"
     ],
     "pricing_note": "Booking requires signed contract + 50% retaining fee, balance due day before event (site, 2026)",
-    "site_note": "FAQ covers 6x6 booth footprint, works with or without backdrop, WiFi-optional (images delivered within 12 hours if no WiFi). Booking terms: signed contract + 50% retaining fee; 6x6 area; covered setup + outlet within 10 ft outdoors. No named operator, no About/pricing page. No review presence found anywhere (2026-10-04). Seed pricing (half $450 / full $650) not reconfirmed today. Deep-dive 2026-10-11: site re-read — still a single FAQ page with NO pricing published; seeded half-day $450 / full-day $650 remains unconfirmed on the site itself. No Google review presence surfaced again today.",
+    "site_note": "FAQ covers 6x6 booth footprint, works with or without backdrop, WiFi-optional (images delivered within 12 hours if no WiFi). Booking terms: signed contract + 50% retaining fee; 6x6 area; covered setup + outlet within 10 ft outdoors. No named operator, no About/pricing page. No review presence found anywhere (2026-10-04). Seed pricing (half $450 / full $650) not reconfirmed today. Deep-dive 2026-10-11: site re-read \u2014 still a single FAQ page with NO pricing published; seeded half-day $450 / full-day $650 remains unconfirmed on the site itself. No Google review presence surfaced again today.",
     "sources": [
       "https://upstateselfieco.com/"
     ]
@@ -627,7 +633,7 @@ window.PULSE_DETAILS = {
       "8mm/16mm film-to-DVD",
       "Memory videos"
     ],
-    "site_note": "Chamber of Commerce lists it at 34 Alden St, Massena, NY 13662. The official site (thevideolab.net) could not be loaded at research time. Dedicated wedding-pricing page exists (thevideolab.net/pricing-for-wedding-events.html) but was unreadable 2026-10-04 — no pricing numbers verified. Address 34 Alden St, Massena NY; (315) 764-1576. Address conflict: D&B lists 141 Trippany Rd (D&B marks its own data unverified) vs 34 Alden St on current directories/Google place record. Birdeye shows 3.0/2 reviews (not Google). SITE DEAD (2026-10-11): thevideolab.net no longer resolves — NXDOMAIN verified via live browser (ERR_NAME_NOT_RESOLVED, two attempts, apex + www) and Google Public DNS (Status 3 for A and NS records). The wedding-pricing page is therefore unreachable; no pricing has ever been verified for this business. Google listing and Chamber directory presence remain; platform field (GoDaddy) is now historical. The Knot storefront still lists the business (5.0, 1 review, $$ Affordable) with an 'over 23 years experience' claim — that conflicts with the recorded since: 1992 (34 yrs by 2026); unresolved.",
+    "site_note": "Chamber of Commerce lists it at 34 Alden St, Massena, NY 13662. The official site (thevideolab.net) could not be loaded at research time. Dedicated wedding-pricing page exists (thevideolab.net/pricing-for-wedding-events.html) but was unreadable 2026-10-04 \u2014 no pricing numbers verified. Address 34 Alden St, Massena NY; (315) 764-1576. Address conflict: D&B lists 141 Trippany Rd (D&B marks its own data unverified) vs 34 Alden St on current directories/Google place record. Birdeye shows 3.0/2 reviews (not Google). SITE DEAD (2026-10-11): thevideolab.net no longer resolves \u2014 NXDOMAIN verified via live browser (ERR_NAME_NOT_RESOLVED, two attempts, apex + www) and Google Public DNS (Status 3 for A and NS records). The wedding-pricing page is therefore unreachable; no pricing has ever been verified for this business. Google listing and Chamber directory presence remain; platform field (GoDaddy) is now historical. The Knot storefront still lists the business (5.0, 1 review, $$ Affordable) with an 'over 23 years experience' claim \u2014 that conflicts with the recorded since: 1992 (34 yrs by 2026); unresolved.",
     "sources": [
       "https://reviews.birdeye.com/the-video-lab-167967402792237",
       "https://www.chamberofcommerce.com/business-directory/new-york/massena/arts-event-services/movies-video/",
@@ -652,7 +658,7 @@ window.PULSE_DETAILS = {
       "St. Lawrence County"
     ],
     "since": 2011,
-    "site_note": "SuperPages lists '15 Years in Business' (as of 2026), yielding ~2011; business site at www.willowtreeimages.com. Roster previously listed no website; SuperPages 'From Business' block lists www.willowtreeimages.com (2026-10-04); Facebook facebook.com/willowtreeimages ('Custom Portraiture & Lifestyle Photography', Potsdam NY). Phone 315-323-4040; address listed as Potsdam NY 13676 (no street). No published pricing; Manta shows no reviews yet. SITE DEAD (2026-10-11): willowtreeimages.com no longer resolves — NXDOMAIN verified via live browser (ERR_NAME_NOT_RESOLVED, two attempts) and Google Public DNS (Status 3, apex + www). Business presence is now Facebook + directories only. Still no published pricing and no Google review listing for the photography business — the Potsdam 'Willow Tree' florist/garden center (4.7/49 Google) is a DIFFERENT business and must never be merged.",
+    "site_note": "SuperPages lists '15 Years in Business' (as of 2026), yielding ~2011; business site at www.willowtreeimages.com. Roster previously listed no website; SuperPages 'From Business' block lists www.willowtreeimages.com (2026-10-04); Facebook facebook.com/willowtreeimages ('Custom Portraiture & Lifestyle Photography', Potsdam NY). Phone 315-323-4040; address listed as Potsdam NY 13676 (no street). No published pricing; Manta shows no reviews yet. SITE DEAD (2026-10-11): willowtreeimages.com no longer resolves \u2014 NXDOMAIN verified via live browser (ERR_NAME_NOT_RESOLVED, two attempts) and Google Public DNS (Status 3, apex + www). Business presence is now Facebook + directories only. Still no published pricing and no Google review listing for the photography business \u2014 the Potsdam 'Willow Tree' florist/garden center (4.7/49 Google) is a DIFFERENT business and must never be merged.",
     "sources": [
       "https://www.superpages.com/potsdam-ny/portrait-photographers",
       "https://www.manta.com/c/mx84m44/willow-tree-images"
@@ -660,7 +666,7 @@ window.PULSE_DETAILS = {
     "years_in_business": "15 (SuperPages directory claim; implies ~2011)"
   },
   "rachel-roberts-photography": {
-    "blurb": "Upstate NY photographer in Watertown (19973 Morse Lane) capturing 'real moments' — family, couples, engagement, and weddings — who celebrated her 5th year in business in February 2026.",
+    "blurb": "Upstate NY photographer in Watertown (19973 Morse Lane) capturing 'real moments' \u2014 family, couples, engagement, and weddings \u2014 who celebrated her 5th year in business in February 2026.",
     "services": [
       "Families",
       "Couples",
@@ -682,7 +688,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "heath-photography": {
-    "blurb": "Portrait photographer in Redwood, NY run by Penny Kring (Heath), focused on 'the art of family' — senior portraits, families, newborns, and weddings, serving the Watertown, Ogdensburg, and Thousand Islands regions.",
+    "blurb": "Portrait photographer in Redwood, NY run by Penny Kring (Heath), focused on 'the art of family' \u2014 senior portraits, families, newborns, and weddings, serving the Watertown, Ogdensburg, and Thousand Islands regions.",
     "services": [
       "Senior portraits",
       "Family portraits",
@@ -701,7 +707,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "GoDaddy Website Builder",
     "since": 1989,
-    "site_note": "Google listing shows 4.7 stars across 244 reviews; owner describes over 34 years photographing North Country families. WeddingWire listing shows 4.9 rating, 8 reviews, 99% recommend, wedding most-popular price $1,850. The Knot listing exists (43395 NYS Route 37) with 0 reviews. Facebook page facebook.com/HeathPhotography (~3.9k likes). Deep-dive 2026-10-07: Birdeye (Google-sourced aggregator, crawled ~63 days) shows 5 star rating with 33 reviews — seed count updated 32->33; live Google listing not opened. Conflict preserved, not resolved: prior capture showed 4.7/244 on the live listing while Google-sourced aggregators show 5.0/33.",
+    "site_note": "Google listing shows 4.7 stars across 244 reviews; owner describes over 34 years photographing North Country families. WeddingWire listing shows 4.9 rating, 8 reviews, 99% recommend, wedding most-popular price $1,850. The Knot listing exists (43395 NYS Route 37) with 0 reviews. Facebook page facebook.com/HeathPhotography (~3.9k likes). Deep-dive 2026-10-07: Birdeye (Google-sourced aggregator, crawled ~63 days) shows 5 star rating with 33 reviews \u2014 seed count updated 32->33; live Google listing not opened. Conflict preserved, not resolved: prior capture showed 4.7/244 on the live listing while Google-sourced aggregators show 5.0/33.",
     "sources": [
       "https://heathphotography.net/",
       "http://www.heathphotography.net/",
@@ -711,7 +717,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "horizon-aerial-media-services": {
-    "blurb": "Husband-and-wife aerial photo/video company in Glen Park (Watertown), NY — 'Watertown's first and premier aerial photography & videography service,' fully insured and FAA Part 107 approved, specializing in real estate photography plus commercial work, weddings, and special events.",
+    "blurb": "Husband-and-wife aerial photo/video company in Glen Park (Watertown), NY \u2014 'Watertown's first and premier aerial photography & videography service,' fully insured and FAA Part 107 approved, specializing in real estate photography plus commercial work, weddings, and special events.",
     "services": [
       "Real estate photography",
       "Aerial photography",
@@ -731,7 +737,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Wix",
     "pricing_note": "Real estate Basic Shoot from $210; Standard Shoot $360; Premium $495; Platinum $595; The Works $995; aerial images from $155 (site pricing page).",
-    "site_note": "Claims to be the largest-volume real estate photography provider in its area, working regularly with 50+ top-producing Realtors. Founded June 2014 per BBB profile (business started 6/11/2014) and a May 2014 Kathryn's Report article on the Desjardins couple founding Horizon Aerial Media Services in Glen Park. BBB rating A+, not BBB accredited. Deep-dive 2026-10-07: platform confirmed Wix (x-wix-request-id / x-wix-cache-control headers, static.wixstatic.com assets). RE pricing re-verified on the live page — all seeded tiers match exactly ($210/$360/$495/$595/$995, aerial from $155). Google business-profile snippet (place_id 776394596890310, Glen Park) shows 5.0/25 reviews, matching the seeded BBB figure; snippet-sourced, live listing not opened. Third-party corroboration: tilife.org bio confirms husband-and-wife ownership (Amanda + Jason Desjardins) in Glen Park.",
+    "site_note": "Claims to be the largest-volume real estate photography provider in its area, working regularly with 50+ top-producing Realtors. Founded June 2014 per BBB profile (business started 6/11/2014) and a May 2014 Kathryn's Report article on the Desjardins couple founding Horizon Aerial Media Services in Glen Park. BBB rating A+, not BBB accredited. Deep-dive 2026-10-07: platform confirmed Wix (x-wix-request-id / x-wix-cache-control headers, static.wixstatic.com assets). RE pricing re-verified on the live page \u2014 all seeded tiers match exactly ($210/$360/$495/$595/$995, aerial from $155). Google business-profile snippet (place_id 776394596890310, Glen Park) shows 5.0/25 reviews, matching the seeded BBB figure; snippet-sourced, live listing not opened. Third-party corroboration: tilife.org bio confirms husband-and-wife ownership (Amanda + Jason Desjardins) in Glen Park.",
     "sources": [
       "https://www.horizonaerialmediany.com/contact",
       "https://horizonaerialmediaNY.com/",
@@ -761,7 +767,7 @@ window.PULSE_DETAILS = {
       "Northern New York"
     ],
     "platform": "WordPress",
-    "site_note": "WeddingWire lists 20+ wedding events served; owner describes 'going on 14 years of experience.' Google rating 4.9 (44 reviews). Deep-dive 2026-10-06: Google 4.9/44 re-verified from the live listing card; WeddingWire 4.9/5 across 4 reviews with 98% of couples recommending.",
+    "site_note": "WeddingWire lists 20+ wedding events served; owner describes 'going on 14 years of experience.' Google rating 4.9 (44 reviews). Deep-dive 2026-10-06: Google 4.9/44 re-verified from the live listing card; WeddingWire 4.9/5 across 4 reviews with 98% of couples recommending. Deep-dive 2026-10-13: platform WordPress confirmed (site assets served from /wp-content/uploads/ \u2014 a Wix read this run was wrong); Google 44 / 4.9 re-surfaced in listing data, seed unchanged; Zola lists weddings starting at $2,600 and WeddingWire a $2,850 most-popular price (directory figures below her own-site wedding range \u2014 noted, not seeded); reported investment-page lifestyle tiers ($80 mini / $195 / $325) conflict with the on-file portrait figures ($350 / $575) \u2014 flagged, seed unchanged pending a readable own-site pricing page.",
     "sources": [
       "http://www.chelseamwalts.com/",
       "https://www.weddingwire.com/biz/chelsea-m-walts-photography/5729cb2c855844ed.html",
@@ -826,7 +832,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "SmugMug",
     "pricing_note": "Outdoor on-location $350 (45-60 min, min 15 images); on-site garden $300; small on-site $200 (20-30 min); extended family from $450; studio $300 (45-60) / $150 (15-20 small); minis $75-$175; $75 deposit all sessions (site, 2026-10-01)",
-    "site_note": "Mini sessions run frequently (e.g., 2026 Country Garden minis $125 child / $175 family); a $75 deposit is required on all sessions. Blog archive runs 2016-2026; no founding year stated. 443 NY-11B, Dickinson Center, NY 12930; (518) 319-0940; kathychapphoto@gmail.com; mileage over 20 miles at federal rate. Deep-dive 2026-10-08: pricing re-verified live on investment page (matches seed). Review check: Birdeye profile 5.0/3 matches seeded Google 5.0/3 (aggregator snippet); Cylex shows 5 of 5 from 28 reviews for this business but that count looks unreliable/inflated — do not use. PLATFORM CONFLICT: 10-08 agent inferred Squarespace from /blog/YYYY/M/slug URL structure; keep SmugMug per CDN paths until confirmed. Platform: SmugMug CDN asset paths; a 2026-10-01 run suggested Zenfolio heuristically but the /img/s/v-12/u... paths match SmugMug — kept as SmugMug.",
+    "site_note": "Mini sessions run frequently (e.g., 2026 Country Garden minis $125 child / $175 family); a $75 deposit is required on all sessions. Blog archive runs 2016-2026; no founding year stated. 443 NY-11B, Dickinson Center, NY 12930; (518) 319-0940; kathychapphoto@gmail.com; mileage over 20 miles at federal rate. Deep-dive 2026-10-08: pricing re-verified live on investment page (matches seed). Review check: Birdeye profile 5.0/3 matches seeded Google 5.0/3 (aggregator snippet); Cylex shows 5 of 5 from 28 reviews for this business but that count looks unreliable/inflated \u2014 do not use. PLATFORM CONFLICT: 10-08 agent inferred Squarespace from /blog/YYYY/M/slug URL structure; keep SmugMug per CDN paths until confirmed. Platform: SmugMug CDN asset paths; a 2026-10-01 run suggested Zenfolio heuristically but the /img/s/v-12/u... paths match SmugMug \u2014 kept as SmugMug.",
     "sources": [
       "https://kathleenchapmanphotography.com/kathleen-chapman-photography-investment",
       "https://kathleenchapmanphotography.com/blog?first=334414751",
@@ -844,7 +850,7 @@ window.PULSE_DETAILS = {
       "Seniors",
       "Infants and children"
     ],
-    "site_note": "Listed on The Knot and WeddingWire; Facebook page @BellaMemoriaPhotography (bio: 'Capturing beautiful and precious moments'); contact 518-483-8281. No Google Business listing/reviews found in web search. The 2019 PA 'Bella Memoria Photography, LLC' filing (bizapedia) is a different company — not used. Rechecked 2026-10-12: live Knot page verified — 1 review / 5.0 (dated 2013), address 82 Bruso Road, Malone confirmed. WeddingWire 3 / 5.0 stands at snippet level only (its page rendered no review content today). No Google listing found again; no pricing published anywhere.",
+    "site_note": "Listed on The Knot and WeddingWire; Facebook page @BellaMemoriaPhotography (bio: 'Capturing beautiful and precious moments'); contact 518-483-8281. No Google Business listing/reviews found in web search. The 2019 PA 'Bella Memoria Photography, LLC' filing (bizapedia) is a different company \u2014 not used. Rechecked 2026-10-12: live Knot page verified \u2014 1 review / 5.0 (dated 2013), address 82 Bruso Road, Malone confirmed. WeddingWire 3 / 5.0 stands at snippet level only (its page rendered no review content today). No Google listing found again; no pricing published anywhere.",
     "sources": [
       "https://www.theknot.com/marketplace/bella-memoria-photography-malone-ny-551815",
       "https://www.weddingwire.com/biz/bella-memoria-photography-malone/9eb2845ef9a77feb.html",
@@ -852,7 +858,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "lost-cabin-productions": {
-    "blurb": "Saranac Lake, NY documentary/video production company of Dakin (Henderson) — science, music, and documentary filmmaking; he works remotely as Associate Director of Video for the Lincoln Institute of Land Policy and was previously staff Video Producer for the San Francisco Symphony.",
+    "blurb": "Saranac Lake, NY documentary/video production company of Dakin (Henderson) \u2014 science, music, and documentary filmmaking; he works remotely as Associate Director of Video for the Lincoln Institute of Land Policy and was previously staff Video Producer for the San Francisco Symphony.",
     "services": [
       "Broadcast DP/editor",
       "Documentary film",
@@ -863,7 +869,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Saranac Lake"
     ],
-    "site_note": "Not a consumer photo studio: background is broadcast/pbs documentary (Vital Pictures, NOVA short) and institutional video; no wedding or portrait services stated. Deep-dive 2026-10-02: site is Wix (static.wixstatic.com); homepage title includes 'Wedding Videography' — wedding services appear offered (refines earlier note). About: Associate Director of Video, Lincoln Institute of Land Policy (remote); ex-SF Symphony staff Video Producer; DP/editor at Vital Pictures (Boston); directed feature doc 'What Time Is Left'; Stanford LDT master's 2016. Portfolio: NOVA short on reproducibility crisis, 6-part wildlife series for High Country News, 35 live-music videos for KVNF. No pricing published anywhere; no Google listing; no Knot/WeddingPro/Yelp/Facebook directory presence.",
+    "site_note": "Not a consumer photo studio: background is broadcast/pbs documentary (Vital Pictures, NOVA short) and institutional video; no wedding or portrait services stated. Deep-dive 2026-10-02: site is Wix (static.wixstatic.com); homepage title includes 'Wedding Videography' \u2014 wedding services appear offered (refines earlier note). About: Associate Director of Video, Lincoln Institute of Land Policy (remote); ex-SF Symphony staff Video Producer; DP/editor at Vital Pictures (Boston); directed feature doc 'What Time Is Left'; Stanford LDT master's 2016. Portfolio: NOVA short on reproducibility crisis, 6-part wildlife series for High Country News, 35 live-music videos for KVNF. No pricing published anywhere; no Google listing; no Knot/WeddingPro/Yelp/Facebook directory presence.",
     "sources": [
       "https://www.lost-cabin-productions.com/about",
       "https://www.lost-cabin-productions.com/",
@@ -883,7 +889,7 @@ window.PULSE_DETAILS = {
       "Central New York"
     ],
     "since": 2003,
-    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews. Address 5560 Highland Ave, Lowville NY 13367, (315) 376-2951; The Knot (Lowville wedding rentals) 5.0 (4); Birdeye 3.7 (3 reviews, incl. COVID-era non-refund complaint). Founding year adopted: MyEventPod traces business history to 2003 (custom-designed lighted walls origins; Set-Up and Clean-Up service added 2004) — own Google copy says \"over 14 years\", consistent. No published wedding package pricing found anywhere; own site randhcreations.com is HTTP-only and did not resolve in fetch 2026-10-10.",
+    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews. Address 5560 Highland Ave, Lowville NY 13367, (315) 376-2951; The Knot (Lowville wedding rentals) 5.0 (4); Birdeye 3.7 (3 reviews, incl. COVID-era non-refund complaint). Founding year adopted: MyEventPod traces business history to 2003 (custom-designed lighted walls origins; Set-Up and Clean-Up service added 2004) \u2014 own Google copy says \"over 14 years\", consistent. No published wedding package pricing found anywhere; own site randhcreations.com is HTTP-only and did not resolve in fetch 2026-10-10.",
     "sources": [
       "http://randhcreations.com/contact-us",
       "https://www.theknot.com/marketplace/wedding-rentals-lowville-ny",
@@ -921,7 +927,7 @@ window.PULSE_DETAILS = {
     "platform": "Pixieset",
     "since": 2016,
     "pricing_note": "The Knot lists videography 'Starting at $2,697'.",
-    "site_note": "Zola rating 5.0 from 40 reviews; site notes 'photographed hundreds of magic moments' over the past decade and no travel fee within 10 miles of Lake Placid. Deep-dive 2026-10-01: wedding collections begin at $3,000, most couples $4,000-$6,000+ (own site, re-verified); The Knot/WeddingWire list 'Starting at $2,697' (likely videography or an older floor). Owner Jordan Craig; 2591 Main St, Lake Placid, NY 12946; +1 518-314-9046. Deep-dive 2026-10-08: pricing re-verified live on own site (unchanged); REVIEW CONFLICT: seeded Google 4.9/106 could not be re-verified from a live listing — Zola vendor page shows 5.0/46 (Zola+Google combined); seeded 106 is stale/unverifiable, flagged for a live read. CAUTION: the internewscast result for 'Jordan Craig' is a different person (social-media influencer), not him.",
+    "site_note": "Zola rating 5.0 from 40 reviews; site notes 'photographed hundreds of magic moments' over the past decade and no travel fee within 10 miles of Lake Placid. Deep-dive 2026-10-01: wedding collections begin at $3,000, most couples $4,000-$6,000+ (own site, re-verified); The Knot/WeddingWire list 'Starting at $2,697' (likely videography or an older floor). Owner Jordan Craig; 2591 Main St, Lake Placid, NY 12946; +1 518-314-9046. Deep-dive 2026-10-08: pricing re-verified live on own site (unchanged); REVIEW CONFLICT: seeded Google 4.9/106 could not be re-verified from a live listing \u2014 Zola vendor page shows 5.0/46 (Zola+Google combined); seeded 106 is stale/unverifiable, flagged for a live read. CAUTION: the internewscast result for 'Jordan Craig' is a different person (social-media influencer), not him.",
     "sources": [
       "https://www.jordancraigmedia.com/",
       "https://www.lakeplacid.com/weddings/jordan-craig-media-llc",
@@ -946,8 +952,8 @@ window.PULSE_DETAILS = {
       "Vermont"
     ],
     "years_in_business": 13,
-    "pricing_note": "Weddings from $4,800 (The Knot / WeddingWire, 2026) Own site (2026-09-30) shows wedding collections from $5,400 (01 $5,400 / 02 $6,800 / 03 $8,300 / bespoke $8,900) vs The Knot 'Starting at $4,800' — both preserved, not resolved. WeddingWire (2026-10-03) repeats $4,800 starting / ~$5,300 typical — treated as ambiguous directory figure, not a replacement for own-site tiers.",
-    "site_note": "5.0 stars across 48 reviews on The Knot; 20+ years behind the lens per her site.; WeddingWire 5.0 across 8 reviews (Lake Placid, 13 years in business, starts $4,800, couples typically ~$5,300, 1936 Saranac Ave) — vs own site weddings from $5,400 (2026-09-30), both preserved, not resolved. A possible second 'Pamela Perrin Photography' listing on The Bash (Fort Lauderdale FL) is UNCONFIRMED as the same business — not merged. Deep-dive 2026-10-10: site platform still not determinable from text fetches; Birdeye (~1-day-old crawl, aggregates her Google profile) shows 9/5.0 and WeddingWire 8/5.0 — corroboration only, not live-listing reads.",
+    "pricing_note": "Weddings from $4,800 (The Knot / WeddingWire, 2026) Own site (2026-09-30) shows wedding collections from $5,400 (01 $5,400 / 02 $6,800 / 03 $8,300 / bespoke $8,900) vs The Knot 'Starting at $4,800' \u2014 both preserved, not resolved. WeddingWire (2026-10-03) repeats $4,800 starting / ~$5,300 typical \u2014 treated as ambiguous directory figure, not a replacement for own-site tiers.",
+    "site_note": "5.0 stars across 48 reviews on The Knot; 20+ years behind the lens per her site.; WeddingWire 5.0 across 8 reviews (Lake Placid, 13 years in business, starts $4,800, couples typically ~$5,300, 1936 Saranac Ave) \u2014 vs own site weddings from $5,400 (2026-09-30), both preserved, not resolved. A possible second 'Pamela Perrin Photography' listing on The Bash (Fort Lauderdale FL) is UNCONFIRMED as the same business \u2014 not merged. Deep-dive 2026-10-10: site platform still not determinable from text fetches; Birdeye (~1-day-old crawl, aggregates her Google profile) shows 9/5.0 and WeddingWire 8/5.0 \u2014 corroboration only, not live-listing reads.",
     "sources": [
       "https://www.pamelaperrinphotography.com/about/",
       "https://www.pamelaperrinphotography.com/weddings/",
@@ -966,7 +972,7 @@ window.PULSE_DETAILS = {
       "Behind-the-scenes content"
     ],
     "pricing_note": "Intimate/elopement package from $1,200 (site / The Knot, 2026); behind-the-scenes content $25/hr (own services page, 2026-10-11)",
-    "site_note": "Has an official site at sooocially.com; no coverage areas stated on the pages read. Roster previously listed no website; real site is sooocially.com (verified live 2026-10-04). The Knot vendor listing shows 0 reviews; WeddingWire biz page exists (no review count surfaced). Deep-dive 2026-10-11: services page re-verified live — wedding tiers $1,200/$2,700/$3,400, second shooter $50/hr, engagement $450 all unchanged; NEW behind-the-scenes/content service at $25/hr (added to pricing seed). WeddingWire profile corroborates owner Sofie, earthy/moody natural-light style. No founding year or site platform verifiable.",
+    "site_note": "Has an official site at sooocially.com; no coverage areas stated on the pages read. Roster previously listed no website; real site is sooocially.com (verified live 2026-10-04). The Knot vendor listing shows 0 reviews; WeddingWire biz page exists (no review count surfaced). Deep-dive 2026-10-11: services page re-verified live \u2014 wedding tiers $1,200/$2,700/$3,400, second shooter $50/hr, engagement $450 all unchanged; NEW behind-the-scenes/content service at $25/hr (added to pricing seed). WeddingWire profile corroborates owner Sofie, earthy/moody natural-light style. No founding year or site platform verifiable.",
     "sources": [
       "https://www.sooocially.com/services/",
       "https://www.weddingwire.com/biz/sooocially/de5c14a6304a0573.html",
@@ -992,7 +998,7 @@ window.PULSE_DETAILS = {
       "Upstate New York"
     ],
     "platform": "Showit",
-    "site_note": "Site footer credits 'Powered by Showit'; her site notes over a decade of inquiries and deep local venue knowledge (Lake Placid Lodge, Whiteface Lodge, Mirror Lake Inn, etc.). Deep-dive 2026-10-06: Google 5.0/41 verified from the live local listing panel; no pricing published anywhere (investment page is FAQ-only; Google price level 'expensive'); owner Jamie, 'a decade in the industry' per own site.",
+    "site_note": "Site footer credits 'Powered by Showit'; her site notes over a decade of inquiries and deep local venue knowledge (Lake Placid Lodge, Whiteface Lodge, Mirror Lake Inn, etc.). Deep-dive 2026-10-06: Google 5.0/41 verified from the live local listing panel; no pricing published anywhere (investment page is FAQ-only; Google price level 'expensive'); owner Jamie, 'a decade in the industry' per own site. Deep-dive 2026-10-13: the information page is still FAQ-only \u2014 no pricing on the own site (coordinator direct read); The Knot lists a $6,500 starting price (directory figure, not seeded); Google 41 / 5.0 re-surfaced in listing data, seed unchanged; Birdeye's aggregate shows 42-43 reviews (drift lead only); founding year still unverified \u2014 a 2011-dated unclaimed Yelp listing is not founding evidence.",
     "sources": [
       "https://duewestphotos.com/",
       "https://duewestphotos.com/information",
@@ -1031,7 +1037,7 @@ window.PULSE_DETAILS = {
       "https://www.lakeplacid.com/content/mary-dougherty-photography",
       "https://caratsandcake.com/vendor/mary-dougherty-photography"
     ],
-    "site_note": "Review counts by platform (2026-09-30): Google 5.0 (48) vs The Knot 5.0 (18) — separate sources, both preserved. Deep-dive 2026-10-02: own site is INQUIRE-ONLY (no published pricing found on 2026-10-02; 'Weddings from $8,000' seed could not be re-confirmed — left as-is, flag for re-verification). Signature 'Wedding Weekend'; caps at 15 weddings/year; featured-on: Vogue, NYT, CFDA, Martha Stewart, Style Me Pretty, Carats & Cake, Over the Moon, Wedding Sparrow. The Knot storefront: 5.0/18 reviews, service area Adirondacks/NYC/Vermont/Boston/Philadelphia. WeddingWire: 5.0 with CONFLICTING counts — 76 (page title) vs 72 (page body), likely stale cache; earliest review Nov 2011 → 15+ years. Google review count not obtainable via text search today. Deep-dive 2026-10-09: WeddingWire corroborates 76 reviews / 5.0 (https://www.weddingwire.com/biz/mary-dougherty-photography-saranac-lake/a66c0953806e9ad0.html); earliest Knot review Sep 2014 (active since at least 2014); site platform not determinable."
+    "site_note": "Review counts by platform (2026-09-30): Google 5.0 (48) vs The Knot 5.0 (18) \u2014 separate sources, both preserved. Deep-dive 2026-10-02: own site is INQUIRE-ONLY (no published pricing found on 2026-10-02; 'Weddings from $8,000' seed could not be re-confirmed \u2014 left as-is, flag for re-verification). Signature 'Wedding Weekend'; caps at 15 weddings/year; featured-on: Vogue, NYT, CFDA, Martha Stewart, Style Me Pretty, Carats & Cake, Over the Moon, Wedding Sparrow. The Knot storefront: 5.0/18 reviews, service area Adirondacks/NYC/Vermont/Boston/Philadelphia. WeddingWire: 5.0 with CONFLICTING counts \u2014 76 (page title) vs 72 (page body), likely stale cache; earliest review Nov 2011 \u2192 15+ years. Google review count not obtainable via text search today. Deep-dive 2026-10-09: WeddingWire corroborates 76 reviews / 5.0 (https://www.weddingwire.com/biz/mary-dougherty-photography-saranac-lake/a66c0953806e9ad0.html); earliest Knot review Sep 2014 (active since at least 2014); site platform not determinable."
   },
   "lake-placid-photography-sandy-payne-huber": {
     "blurb": "Sandy Payne Huber has been photographing weddings in Lake Placid since 2005, accepting only a few weddings per year; also offers portrait and event photography.",
@@ -1068,7 +1074,7 @@ window.PULSE_DETAILS = {
       "Pet photography",
       "Small events"
     ],
-    "site_note": "No official website found; presence verified only via The Knot listing and reviews. Deep-dive 2026-10-06: no own website found; Facebook page (566 likes, quiet — '1 talking about this'); Knot listing is 2012-era (5.0/1). Thin footprint — likely low activity or winding down. Activity status could not be verified.",
+    "site_note": "No official website found; presence verified only via The Knot listing and reviews. Deep-dive 2026-10-06: no own website found; Facebook page (566 likes, quiet \u2014 '1 talking about this'); Knot listing is 2012-era (5.0/1). Thin footprint \u2014 likely low activity or winding down. Activity status could not be verified. Deep-dive 2026-10-13: re-checked \u2014 still no own website and no Google listing found; presence remains The Knot (5.0 / 1, 2012-era) plus the Facebook page; WeddingWire's Lake Placid vendor search names her but no profile surfaced. No changes.",
     "sources": [
       "https://qa-beta.theknot.com/marketplace/elise-ruocco-photography-lake-placid-ny-522641",
       "https://www.facebook.com/eliseruoccophotography/",
@@ -1099,7 +1105,7 @@ window.PULSE_DETAILS = {
       "https://www.sheilallibreproductions.net/blog/punta-cana-wedding-photographer-videographer/"
     ],
     "platform": "Pixieset",
-    "site_note": "Editorial/fine-art wedding photo+video (owner Sheila; journalistic, earthy style). 2026-10-04 CONFLICT: live investment page shows videography floor $3,500, vs prior seed 'videography from $2,500' — price appears to have risen; pricing seed updated to live values. Address 2509 Main St Apt 2, Lake Placid, NY 12946; (484) 250-3203. Deep-dive 2026-10-11: investment page re-verified live — wedding photo from $4,000 (8 hrs), elopement from $1,400 (2 hrs), videography from $3,500 (8 hrs) all unchanged. Birdeye aggregate shows 60/5.0 (crawl ~29 days old) vs seeded Google 78/5.0 — aggregator count lags; seed unchanged."
+    "site_note": "Editorial/fine-art wedding photo+video (owner Sheila; journalistic, earthy style). 2026-10-04 CONFLICT: live investment page shows videography floor $3,500, vs prior seed 'videography from $2,500' \u2014 price appears to have risen; pricing seed updated to live values. Address 2509 Main St Apt 2, Lake Placid, NY 12946; (484) 250-3203. Deep-dive 2026-10-11: investment page re-verified live \u2014 wedding photo from $4,000 (8 hrs), elopement from $1,400 (2 hrs), videography from $3,500 (8 hrs) all unchanged. Birdeye aggregate shows 60/5.0 (crawl ~29 days old) vs seeded Google 78/5.0 \u2014 aggregator count lags; seed unchanged."
   },
   "fortunate-soul-photography": {
     "blurb": "Wedding photography business in Jay, NY run by Courteney Cookson, focused on a luxury wedding experience with engagement, bridal, boudoir, and trash-the-dress sessions plus albums and prints.",
@@ -1155,7 +1161,7 @@ window.PULSE_DETAILS = {
       "Vermont"
     ],
     "since": 2017,
-    "site_note": "Run by Corey James; described as a Google Trusted Street View photographer for NY & VT; also listed on Ticonderoga360 as a Crown Point NY business. Pricing not published anywhere on site ('affordable photography packages' only) — quote-based (verified 2026-10-05). Rechecked 2026-10-12: own site still publishes NO dollar figures — quote-based status stands (an interim research summary claiming a $400 starting price was not corroborated on the live page and was discarded). Since 2017 reconfirmed on the homepage and adk.bar-z.com. Google panel did not surface; seeded 4 / 5.0 keeps its prior verification date.",
+    "site_note": "Run by Corey James; described as a Google Trusted Street View photographer for NY & VT; also listed on Ticonderoga360 as a Crown Point NY business. Pricing not published anywhere on site ('affordable photography packages' only) \u2014 quote-based (verified 2026-10-05). Rechecked 2026-10-12: own site still publishes NO dollar figures \u2014 quote-based status stands (an interim research summary claiming a $400 starting price was not corroborated on the live page and was discarded). Since 2017 reconfirmed on the homepage and adk.bar-z.com. Google panel did not surface; seeded 4 / 5.0 keeps its prior verification date.",
     "sources": [
       "http://adirondackdrone.net/",
       "https://www.ticonderoga360.com/business/adirondack-drone/",
@@ -1180,14 +1186,14 @@ window.PULSE_DETAILS = {
       "Syracuse",
       "Fort Drum"
     ],
-    "site_note": "Home studio in Watertown for winter portraits; originally from Arizona, built her business in Alaska; 4 years of college photography study including darkroom work. Deep-dive 2026-10-02: site is Pixieset (images-pw.pixieset.com). Zola vendor listing: 5.0/17 reviews (BLENDED Zola+Google, not Google-only), 'Starts at $2,500', reviews 2+ yrs old (Alaska era), BFA in Photography. CONFLICT: a Meta business-page record lists 'Makenzie Leigh Photography' at Philadelphia, PA with phone +1 (520) 499-9833 — stale/wrong vs her own site (Watertown, NY); do not use the FB address. No Google review count obtainable from live listing; founding year unstated.",
+    "site_note": "Home studio in Watertown for winter portraits; originally from Arizona, built her business in Alaska; 4 years of college photography study including darkroom work. Deep-dive 2026-10-02: site is Pixieset (images-pw.pixieset.com). Zola vendor listing: 5.0/17 reviews (BLENDED Zola+Google, not Google-only), 'Starts at $2,500', reviews 2+ yrs old (Alaska era), BFA in Photography. CONFLICT: a Meta business-page record lists 'Makenzie Leigh Photography' at Philadelphia, PA with phone +1 (520) 499-9833 \u2014 stale/wrong vs her own site (Watertown, NY); do not use the FB address. No Google review count obtainable from live listing; founding year unstated.",
     "sources": [
       "https://www.makenzieleighphotography.com/",
       "https://www.makenzieleighphotography.com/experience/",
       "https://www.makenzieleighphotography.com/about/",
       "https://www.zola.com/wedding-vendors/search/ellisburg-ny--wedding-photographers--classic"
     ],
-    "pricing_note": "Live site (2026-09-30) lists storytelling sessions from $350 / mini stories from $200 — likely session/mini product lines vs the banked wedding packages ($1,600+); preserved, not resolved.",
+    "pricing_note": "Live site (2026-09-30) lists storytelling sessions from $350 / mini stories from $200 \u2014 likely session/mini product lines vs the banked wedding packages ($1,600+); preserved, not resolved.",
     "platform": "Pixieset"
   },
   "butterfly-photography-nny": {
@@ -1212,7 +1218,7 @@ window.PULSE_DETAILS = {
       "http://butterflyphotographynny.com/",
       "https://www.facebook.com/ButterflyPhotographyNNY/"
     ],
-    "site_note": "Deep-dive 2026-10-06: investment/inquiry page is inquiry-based (no package prices published); Pixieset client blog at butterflyphotographynny.pixieset.com; Facebook page (567 likes) corroborates presence; no The Knot or WeddingPro listing found; no founding year published."
+    "site_note": "Deep-dive 2026-10-06: wedding package prices are published on the /weddings page; Pixieset client blog at butterflyphotographynny.pixieset.com; Facebook page (567 likes) corroborates presence; no The Knot or WeddingPro listing found; no founding year published. Deep-dive 2026-10-13: pricing re-verified live on the /weddings page (Signature full-day $5,000; Wildflower 6hr $3,000; elopements 3hr $2,000 \u2014 matches seed); platform Wix confirmed from the site's own asset hosting (a Showit read this run was wrong); Birdeye's aggregate shows 97 reviews / 4.7 vs the seeded Google 94 / 4.7 \u2014 seed kept, no live Google card surfaced; Facebook page 567 likes; also offers video storytelling per Facebook."
   },
   "abby-elizabeth-photography-abygail-clark": {
     "blurb": "Northern New York based Photographer. I specialize in portraits but I LOVE pets, sports, nature, cityscapes, and any kind of creative shoots you could possibly think of. I am a newer photographer but my attention to detail and desire for perfection in my portraits would (hopefully) make you think otherwise.",
@@ -1230,7 +1236,7 @@ window.PULSE_DETAILS = {
       "Large groups / graduate groups"
     ],
     "platform": "Pixieset",
-    "site_note": "Her bio says she picked up her first camera in yearbook club about six years ago and now does this as a job; no pricing, town, or coverage areas stated on the page. CORRECTION 2026-10-12: pricing CHANGED — the investment page now lists four flat tiers (Standard Portrait $175 / 30 min; Deluxe Portrait $250 / 1-2 hr; Small Groups $275 / 3-6 people; Large Groups $350 / 7+ people), replacing the old category ranges; no $50 deposit is shown on the current page. No coverage statement and no founding year found on the site; no Google listing surfaced.",
+    "site_note": "Her bio says she picked up her first camera in yearbook club about six years ago and now does this as a job; no pricing, town, or coverage areas stated on the page. CORRECTION 2026-10-12: pricing CHANGED \u2014 the investment page now lists four flat tiers (Standard Portrait $175 / 30 min; Deluxe Portrait $250 / 1-2 hr; Small Groups $275 / 3-6 people; Large Groups $350 / 7+ people), replacing the old category ranges; no $50 deposit is shown on the current page. No coverage statement and no founding year found on the site; no Google listing surfaced.",
     "sources": [
       "https://abbyelizabethphotography.mypixieset.com/",
       "https://abbyelizabethphotography.mypixieset.com/about/",
@@ -1253,7 +1259,7 @@ window.PULSE_DETAILS = {
       "Northern NY",
       "Alexandria Bay/1000 Islands"
     ],
-    "site_note": "Standard rentals run 3-5 hours with an attendant; every photo-booth rental includes a professional attendant. A FindGlocal directory listing ties a Watertown (95 Public Square, Suite 307/308) listing to Snapshots Photo Booth, while their business listing shows Alexandria, NY. DISAMBIGUATION (2026-10-04): a DIFFERENT 'Snapshots Photo Bus & Booths' in Theresa, NY (negative WeddingWire reviews, 1.6) is NOT this Watertown business — never merge their reviews/records. Deep-dive 2026-10-11: own site re-read — homepage is FAQ-only, no pricing published there; standard rentals 3-5 hrs with attendant reconfirmed; booth fits 8-10 (larger up to 25+). Seeded $300/2hrs pricing still rests on site blog posts. No live Google panel surfaced today; seeded 45/4.6 keeps prior verification.",
+    "site_note": "Standard rentals run 3-5 hours with an attendant; every photo-booth rental includes a professional attendant. A FindGlocal directory listing ties a Watertown (95 Public Square, Suite 307/308) listing to Snapshots Photo Booth, while their business listing shows Alexandria, NY. DISAMBIGUATION (2026-10-04): a DIFFERENT 'Snapshots Photo Bus & Booths' in Theresa, NY (negative WeddingWire reviews, 1.6) is NOT this Watertown business \u2014 never merge their reviews/records. Deep-dive 2026-10-11: own site re-read \u2014 homepage is FAQ-only, no pricing published there; standard rentals 3-5 hrs with attendant reconfirmed; booth fits 8-10 (larger up to 25+). Seeded $300/2hrs pricing still rests on site blog posts. No live Google panel surfaced today; seeded 45/4.6 keeps prior verification.",
     "sources": [
       "http://www.snapshotsnny.com/",
       "https://www.findglocal.com/US/Watertown-NY/240298-22",
@@ -1283,11 +1289,11 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Squarespace",
     "since": 2011,
-    "site_note": "Deep-dive 2026-10-01: packages page re-verified (elopements $2,000 / intimate weddings $5,500 / couples sessions $650); includes online gallery, timeline assistance, location scouting, vendor recommendations; client 'love notes' on homepage; listed as recommended photographer by Golden Arrow Lakeside Resort, Lake Placid. Deep-dive 2026-10-08: pricing re-verified live on /koppackages (matches seed); since 2011 (vendor Q&A: hobby became business 2011; domain registered Sept 2013); NOT accepting new maternity/family/proposal sessions per contact page — weddings/elopements only; collections include online gallery, timeline assistance, location scouting, vendor recommendations."
+    "site_note": "Deep-dive 2026-10-01: packages page re-verified (elopements $2,000 / intimate weddings $5,500 / couples sessions $650); includes online gallery, timeline assistance, location scouting, vendor recommendations; client 'love notes' on homepage; listed as recommended photographer by Golden Arrow Lakeside Resort, Lake Placid. Deep-dive 2026-10-08: pricing re-verified live on /koppackages (matches seed); since 2011 (vendor Q&A: hobby became business 2011; domain registered Sept 2013); NOT accepting new maternity/family/proposal sessions per contact page \u2014 weddings/elopements only; collections include online gallery, timeline assistance, location scouting, vendor recommendations."
   },
   "gabby-olivia-photography-gabrielle-ramsdell": {
-    "blurb": "Gabby Olivia Photography (Gabrielle Ramsdell) — no verifiable web presence; known only via the roster IG handle gabbyoliviaphotography.",
-    "site_note": "Deep-dive 2026-10-07: three targeted web searches found zero verifiable presence — no website, no town/base location, no services, no pricing, no Google/Yelp/Knot/WeddingPro listings. The only incidental Gabrielle Ramsdell traces (Potsdam meal-train organizer, 2016 school-board attendee list) do not confirm a photography business. Instagram-only; Instagram was out of scope for this leg. Do not guess a town.",
+    "blurb": "Gabby Olivia Photography (Gabrielle Ramsdell) \u2014 no verifiable web presence; known only via the roster IG handle gabbyoliviaphotography.",
+    "site_note": "Deep-dive 2026-10-07: three targeted web searches found zero verifiable presence \u2014 no website, no town/base location, no services, no pricing, no Google/Yelp/Knot/WeddingPro listings. The only incidental Gabrielle Ramsdell traces (Potsdam meal-train organizer, 2016 school-board attendee list) do not confirm a photography business. Instagram-only; Instagram was out of scope for this leg. Do not guess a town.",
     "sources": []
   },
   "hannah-brogan-photography": {
@@ -1302,13 +1308,13 @@ window.PULSE_DETAILS = {
       "Paul Smiths"
     ],
     "platform": "Squarespace",
-    "site_note": "She travels: one testimonial describes her driving to Buffalo for a rain-soaked engagement session. Brands as 'H. Saranac Photography' on hsaranacphotography.com (2026-09-30); roster display name kept to preserve seed/id keys. Deep-dive 2026-10-07: pricing re-verified on the live /investment page — sessions $300, couples & engagements $250, seniors & grads $250, family & maternity $300, weddings from $1,200. NOTE: family & maternity moved from $250 to $300 (likely a real price change; seed updated). About page: Hannah, 25, flies a drone for aerials; no founding year stated. Contact (518) 322-0749 / hsaranacphotography@gmail.com. No The Knot, WeddingPro, or Yelp listing found.",
+    "site_note": "She travels: one testimonial describes her driving to Buffalo for a rain-soaked engagement session. Brands as 'H. Saranac Photography' on hsaranacphotography.com (2026-09-30); roster display name kept to preserve seed/id keys. Deep-dive 2026-10-07: pricing re-verified on the live /investment page \u2014 sessions $300, couples & engagements $250, seniors & grads $250, family & maternity $300, weddings from $1,200. NOTE: family & maternity moved from $250 to $300 (likely a real price change; seed updated). About page: Hannah, 25, flies a drone for aerials; no founding year stated. Contact (518) 322-0749 / hsaranacphotography@gmail.com. No The Knot, WeddingPro, or Yelp listing found.",
     "sources": [
       "https://hsaranacphotography.com/"
     ]
   },
   "jayden-dates": {
-    "blurb": "Jayden Dates is a sports photographer based in the Adirondacks, specializing in capturing raw emotion — high-intensity competition moments and close-up portraits.",
+    "blurb": "Jayden Dates is a sports photographer based in the Adirondacks, specializing in capturing raw emotion \u2014 high-intensity competition moments and close-up portraits.",
     "services": [
       "Sports photography",
       "School sports coverage",
@@ -1320,7 +1326,7 @@ window.PULSE_DETAILS = {
       "Lake Placid NY"
     ],
     "platform": "Pixieset",
-    "site_note": "Portfolio shows sports game galleries (e.g. AVCS vs Moriah); the main site page blocked loading (403) so details come from the indexed site summary. Deep-dive 2026-09-30: no pricing published on site; no third-party directory listings, The Knot/WeddingPro/Yelp presence, or review listings found. Active portfolio (recent game post April 2026). IG handle jaydendatesmedia matches the site. Deep-dive 2026-10-07: own site (jaydendatesmedia.pixieset.com) re-verified — events include track, softball, Ironman 2025, skating, baseball, UCI Mountain Bike World Series, volleyball, winter World Cups, basketball, hockey, football, soccer, TAPS Lake Placid, ADK Boxing, 1980 Miracle on Ice Camp. Contact (904) 801-9299 / jaydendates1@gmail.com. Still no pricing published, no Google review listing, no Yelp/Knot/WeddingPro presence.",
+    "site_note": "Portfolio shows sports game galleries (e.g. AVCS vs Moriah); the main site page blocked loading (403) so details come from the indexed site summary. Deep-dive 2026-09-30: no pricing published on site; no third-party directory listings, The Knot/WeddingPro/Yelp presence, or review listings found. Active portfolio (recent game post April 2026). IG handle jaydendatesmedia matches the site. Deep-dive 2026-10-07: own site (jaydendatesmedia.pixieset.com) re-verified \u2014 events include track, softball, Ironman 2025, skating, baseball, UCI Mountain Bike World Series, volleyball, winter World Cups, basketball, hockey, football, soccer, TAPS Lake Placid, ADK Boxing, 1980 Miracle on Ice Camp. Contact (904) 801-9299 / jaydendates1@gmail.com. Still no pricing published, no Google review listing, no Yelp/Knot/WeddingPro presence.",
     "sources": [
       "https://jaydendatesmedia.pixieset.com/",
       "https://jaydendatesmedia.mypixieset.com/portfolio/",
@@ -1343,7 +1349,7 @@ window.PULSE_DETAILS = {
       "Adirondacks",
       "destination weddings worldwide"
     ],
-    "site_note": "Site adkweddingphoto.com loads again (previously rate-limited). No live Google review count verifiable for this business name (verified 2026-10-05); no The Knot/WeddingPro listing found under this name. Rechecked 2026-10-12: own 2026 Price Guide (pricing.adkweddingphoto.com) confirms wedding tiers $4,600 (most popular) / $5,900 / $8,900 premium and engagement sessions $1,000; Zola lists elopements from $3,000 and 1 review / 5.0 (2022). No Google listing or count surfaced — that is absence in search, NOT a live listing verified as 0; the existing review seed was left untouched. Since 2005 not directly re-stated today (guide cites 20+ years experience).",
+    "site_note": "Site adkweddingphoto.com loads again (previously rate-limited). No live Google review count verifiable for this business name (verified 2026-10-05); no The Knot/WeddingPro listing found under this name. Rechecked 2026-10-12: own 2026 Price Guide (pricing.adkweddingphoto.com) confirms wedding tiers $4,600 (most popular) / $5,900 / $8,900 premium and engagement sessions $1,000; Zola lists elopements from $3,000 and 1 review / 5.0 (2022). No Google listing or count surfaced \u2014 that is absence in search, NOT a live listing verified as 0; the existing review seed was left untouched. Since 2005 not directly re-stated today (guide cites 20+ years experience).",
     "sources": [
       "https://tomasflint.com/gallery/adirondack-wedding-photography-ausable/",
       "https://tomasflint.com/gallery/whiteface-lodge-wedding/",
@@ -1375,7 +1381,7 @@ window.PULSE_DETAILS = {
     "pricing_note": "Austrian Alps elopements from $4,300; winter mini adventure packages from $3,900; average booked package $7,900; Adirondack package pricing not stated (own site, 2026-10-03)",
     "since": 2019,
     "years_in_business": "Over 6 years under the Outdoor Chronicles brand (first elopement photographed 2015, per own about page)",
-    "site_note": "States 'over 6 years of expertise' planning and photographing elopements in Lake Placid, Keene, Lake George, Saranac Lake, and Jay; she splits time between the Adirondacks and the Austrian Alps and donates 10% of proceeds to charity. Deep-dive 2026-10-10: about page confirms first elopement photographed 2015; Google 49/5.0 not re-verifiable from a live listing today — keeps prior verification date.",
+    "site_note": "States 'over 6 years of expertise' planning and photographing elopements in Lake Placid, Keene, Lake George, Saranac Lake, and Jay; she splits time between the Adirondacks and the Austrian Alps and donates 10% of proceeds to charity. Deep-dive 2026-10-10: about page confirms first elopement photographed 2015; Google 49/5.0 not re-verifiable from a live listing today \u2014 keeps prior verification date.",
     "sources": [
       "https://www.outdoorchroniclesphotography.com/",
       "https://www.outdoorchroniclesphotography.com/about-molly-outdoor-chronicles",
@@ -1398,7 +1404,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Pixieset",
     "pricing_note": "Couples & Groups from $200 (30 min, 20 images); Senior portraits from $175; Wedding packages from $800 (site, 2026)",
-    "site_note": "Based near Ogdensburg, NY; a small travel fee applies to shoots outside a 20-mile radius of Ogdensburg. Describes herself as a hobby photographer who has grown more serious over the past two years. Deep-dive 2026-10-09: FAQ — books weddings max 9 months out; turnaround 1-2 weeks; travel fee beyond 20-mile radius of Ogdensburg; no Google listing or reviews found.",
+    "site_note": "Based near Ogdensburg, NY; a small travel fee applies to shoots outside a 20-mile radius of Ogdensburg. Describes herself as a hobby photographer who has grown more serious over the past two years. Deep-dive 2026-10-09: FAQ \u2014 books weddings max 9 months out; turnaround 1-2 weeks; travel fee beyond 20-mile radius of Ogdensburg; no Google listing or reviews found.",
     "sources": [
       "https://madileaphotographyandfilm.mypixieset.com/about",
       "https://madileaphotographyandfilm.mypixieset.com/faq/",
@@ -1414,7 +1420,7 @@ window.PULSE_DETAILS = {
       "Family portraits"
     ],
     "platform": "Pixieset",
-    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated. Rechecked 2026-10-03: own site and contact page state no town, pricing, service area, or founding year; no Google listing or Facebook business page found. Rechecked 2026-10-10: site loads on Pixieset; sitemap lists /investment, /about, /contact, /clients plus portfolio galleries — but /investment pricing content is JS/image-driven and unreadable via text fetch; /about lists no town, founding year, or coverage area; Instagram @sharlabethphotography confirmed in site footer; no Google reviews or directory listings found.",
+    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated. Rechecked 2026-10-03: own site and contact page state no town, pricing, service area, or founding year; no Google listing or Facebook business page found. Rechecked 2026-10-10: site loads on Pixieset; sitemap lists /investment, /about, /contact, /clients plus portfolio galleries \u2014 but /investment pricing content is JS/image-driven and unreadable via text fetch; /about lists no town, founding year, or coverage area; Instagram @sharlabethphotography confirmed in site footer; no Google reviews or directory listings found.",
     "sources": [
       "https://sharlalodico.mypixieset.com/",
       "https://sharlalodico.mypixieset.com/about/",
@@ -1434,7 +1440,7 @@ window.PULSE_DETAILS = {
       "Graduation"
     ],
     "platform": "Pixieset",
-    "site_note": "Based in Ogdensburg, NY; site has an Investments page but lists no public pricing numbers. Deep-dive 2026-10-06: about page confirms self-taught, elementary teacher, 'love for photography started back in high school'; no founding year given.",
+    "site_note": "Based in Ogdensburg, NY; site has an Investments page but lists no public pricing numbers. Deep-dive 2026-10-06: about page confirms self-taught, elementary teacher, 'love for photography started back in high school'; no founding year given. Deep-dive 2026-10-13 (coordinator direct read): the live wedding page lists $2,000 (4hr) / $2,500 (8hr) / $3,550 (full day incl. second shooter) \u2014 the seed's $2,000-$2,500 range missed the top tier and was corrected; lower wedding tiers reported secondhand ($500 / $1,500) could NOT be found on the live page and were not used; the investments landing page carries no numbers (image-linked subpages); WeddingWire/Birdeye 'Emma Lee Photography' results are WA/AZ/NSW namesakes \u2014 do not merge; the on-file Google 3 / 5.0 did not re-surface today.",
     "sources": [
       "https://emma-leephotography.mypixieset.com/",
       "https://emma-leephotography.mypixieset.com/about/",
@@ -1483,7 +1489,7 @@ window.PULSE_DETAILS = {
       "Central New York"
     ],
     "platform": "Squarespace",
-    "site_note": "Official site evetaverne.com (roster previously had no website). 95 Cold Brook St, Poland, NY 13431; (315) 826-3322. Facebook page facebook.com/evetavernephotography (2,048 likes). Senior-portrait specialist; weddings not a listed service. Superpages lists 18 years in business (unverified by primary source). Google reviews: 5.0 across 35 (listing data surfaced via search, place_id 591422052627650; listing page not opened directly; Birdeye corroborates 5.0/37). Deep-dive 2026-10-07: no pricing published anywhere on her site or in search — session-fee/in-person-sales model; Superpages '18 years in business' remains the only age signal (secondary aggregator, not a primary claim), so since/years_in_business stay empty. Licensed NYS cosmetologist (per bio), HOT 100 (Senior Style Guide 2019/2020), SeniorInspire Hall of Fame.",
+    "site_note": "Official site evetaverne.com (roster previously had no website). 95 Cold Brook St, Poland, NY 13431; (315) 826-3322. Facebook page facebook.com/evetavernephotography (2,048 likes). Senior-portrait specialist; weddings not a listed service. Superpages lists 18 years in business (unverified by primary source). Google reviews: 5.0 across 35 (listing data surfaced via search, place_id 591422052627650; listing page not opened directly; Birdeye corroborates 5.0/37). Deep-dive 2026-10-07: no pricing published anywhere on her site or in search \u2014 session-fee/in-person-sales model; Superpages '18 years in business' remains the only age signal (secondary aggregator, not a primary claim), so since/years_in_business stay empty. Licensed NYS cosmetologist (per bio), HOT 100 (Senior Style Guide 2019/2020), SeniorInspire Hall of Fame.",
     "sources": [
       "https://www.evetaverne.com/",
       "https://www.facebook.com/evetavernephotography",
@@ -1513,7 +1519,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Wix",
     "since": 2010,
-    "site_note": "Est. 2010, booking 2026 & 2027. 'PHOTOGRAPHY FOR PEOPLE WHO DREAD BEING PHOTOGRAPHED.' Featured on Northern Bride, WeddingPro, NCPR, WeddingWire, Unscripted, The Knot, Zola. IG @fairytaledreamsphotography linked from site (roster had it blank). Site claims '5/5 Over 50 Google Reviews' but that is her own page, not the live listing. Deep-dive 2026-10-07: Birdeye (Google-sourced aggregator) shows 5 star rating with 61 reviews — seed count updated 60->61; live listing not opened. WeddingWire most-popular price $4,300; The Knot 4.9/16 reviews (marketplace page).",
+    "site_note": "Est. 2010, booking 2026 & 2027. 'PHOTOGRAPHY FOR PEOPLE WHO DREAD BEING PHOTOGRAPHED.' Featured on Northern Bride, WeddingPro, NCPR, WeddingWire, Unscripted, The Knot, Zola. IG @fairytaledreamsphotography linked from site (roster had it blank). Site claims '5/5 Over 50 Google Reviews' but that is her own page, not the live listing. Deep-dive 2026-10-07: Birdeye (Google-sourced aggregator) shows 5 star rating with 61 reviews \u2014 seed count updated 60->61; live listing not opened. WeddingWire most-popular price $4,300; The Knot 4.9/16 reviews (marketplace page).",
     "sources": [
       "https://www.fairytaledreamsphotography.com/",
       "https://www.weddingwire.com/biz/fairytale-dreams-photography-burke/0879420e38edab0d.html",
@@ -1521,7 +1527,7 @@ window.PULSE_DETAILS = {
       "https://www.eventective.com/lyon-mountain-ny/fairytale-dreams-photography-730935.html",
       "https://www.thumbtack.com/ny/lyon-mountain/portrait-photographers/fairytale-dreams-photography/service/98808076664570944"
     ],
-    "pricing_note": "The Knot Potsdam card (2026-09-30) shows 'Starting at $1,800' but a Tupper Lake snippet shows 'Starting at $2,700', which agrees with the own-site wedding floor ($2,700) — preserved, not resolved."
+    "pricing_note": "The Knot Potsdam card (2026-09-30) shows 'Starting at $1,800' but a Tupper Lake snippet shows 'Starting at $2,700', which agrees with the own-site wedding floor ($2,700) \u2014 preserved, not resolved."
   },
   "jd-meyers-productions": {
     "blurb": "Photographer, videographer, and FAA Part 107 drone operator based in Potsdam, NY. Founded 2018; 74+ clients served, 26+ weddings shot (site, 2026).",
@@ -1539,7 +1545,7 @@ window.PULSE_DETAILS = {
     ],
     "platform": "Squarespace",
     "since": 2018,
-    "site_note": "Own business (runtime-injected in app.js, not in roster). Site states 5.0 stars across 15 Google reviews; Zola vendor profile shows 5.0 across 18 reviews (Zola + Google aggregate). Deep-dive 2026-09-30: fresh crawl shows video production from $900 and drone Signature $675 / Premiere $1,200 vs bulk sweep earlier today (video from $1,600, drone from $450) — site may have been updated between captures, or crawl variance. Deep-dive 2026-10-07: live Google Maps listing not openable via text fetch; Zola vendor pages (crawled ~late Sep 2026) still show 5.0 (18 reviews) — seeded 5.0/18 stands, no evidence of movement. Flag: Zola still says 'Starts at $1,200', conflicting with the current $1,400 wedding floor — the Zola listing looks stale.",
+    "site_note": "Own business (runtime-injected in app.js, not in roster). Site states 5.0 stars across 15 Google reviews; Zola vendor profile shows 5.0 across 18 reviews (Zola + Google aggregate). Deep-dive 2026-09-30: fresh crawl shows video production from $900 and drone Signature $675 / Premiere $1,200 vs bulk sweep earlier today (video from $1,600, drone from $450) \u2014 site may have been updated between captures, or crawl variance. Deep-dive 2026-10-07: live Google Maps listing not openable via text fetch; Zola vendor pages (crawled ~late Sep 2026) still show 5.0 (18 reviews) \u2014 seeded 5.0/18 stands, no evidence of movement. Flag: Zola still says 'Starts at $1,200', conflicting with the current $1,400 wedding floor \u2014 the Zola listing looks stale.",
     "sources": [
       "https://jdmeyersjr.com/about",
       "https://jdmeyersjr.com/availability",
@@ -1573,7 +1579,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "daydreams-by-kimmi-sue": {
-    "site_note": "Rebranded site live at kimberlydoerrphotography.mypixieset.com with new session menu (30min $175 / 1hr $300 / 1.5hr $450 / 2hr $800 + tax, 2026-09-30); old pre-rebrand pricing retired. Deep-dive 2026-10-06: Google Business profile exists (160 Old State Rd, De Kalb Junction NY; 315-323-1531) but shows no rating/reviews — count stays 0. Offers complimentary adoption-day courthouse coverage. No Knot/WeddingPro presence; no founding year or coverage area published.",
+    "site_note": "Rebranded site live at kimberlydoerrphotography.mypixieset.com with new session menu (30min $175 / 1hr $300 / 1.5hr $450 / 2hr $800 + tax, 2026-09-30); old pre-rebrand pricing retired. Deep-dive 2026-10-06: Google Business profile exists (160 Old State Rd, De Kalb Junction NY; 315-323-1531) but shows no rating/reviews \u2014 count stays 0. Offers complimentary adoption-day courthouse coverage. No Knot/WeddingPro presence; no founding year or coverage area published. Deep-dive 2026-10-13: pricing re-verified live on the Pixieset investment page (all tiers match the seed, incl. $100 retainer and prints from $10); the Google Business profile still shows no rating or reviews, so the seeded 0 stands; a Yelp page exists with 0 reviews.",
     "blurb": "De Kalb Junction photographer specializing in child, family, tween and fine-art composite sessions; offers complimentary adoption-day courthouse coverage.",
     "services": [
       "Child photography",
@@ -1606,7 +1612,7 @@ window.PULSE_DETAILS = {
       "Plattsburgh NY",
       "Lake Champlain area (grew up in Charlotte VT)"
     ],
-    "site_note": "Travel: within 10 miles of Rouses Point free, $0.70/mile beyond. Third-source: Zola vendor listing (5.0, 9 reviews, starts at $2,500). Location conflict (2026-10-01): Zola profile describes her as based in Plattsburgh NY; own site/about says she lives in Rouses Point NY. No The Knot, WeddingPro, or confirmed Facebook storefront found. Deep-dive 2026-10-08: pricing re-verified live on /investment/ (matches seed; basic wedding $2,500/8hr, engagement $350, family $250); turnaround 4-6 weeks (sneak peeks within a week), ~80-100 images/hr, single-photographer operation, film on request; travel fee corroborated (free within 10 mi of Rouses Point, $0.70/mi beyond). Google reviews: seeded 5.0/9 matches Zola 5.0/9 snippet — live listing not opened.",
+    "site_note": "Travel: within 10 miles of Rouses Point free, $0.70/mile beyond. Third-source: Zola vendor listing (5.0, 9 reviews, starts at $2,500). Location conflict (2026-10-01): Zola profile describes her as based in Plattsburgh NY; own site/about says she lives in Rouses Point NY. No The Knot, WeddingPro, or confirmed Facebook storefront found. Deep-dive 2026-10-08: pricing re-verified live on /investment/ (matches seed; basic wedding $2,500/8hr, engagement $350, family $250); turnaround 4-6 weeks (sneak peeks within a week), ~80-100 images/hr, single-photographer operation, film on request; travel fee corroborated (free within 10 mi of Rouses Point, $0.70/mi beyond). Google reviews: seeded 5.0/9 matches Zola 5.0/9 snippet \u2014 live listing not opened.",
     "sources": [
       "https://www.kylawilliamson.com/investment/",
       "https://WWW.ZOLA.COM/wedding-vendors/wedding-photographers/kyla-williamson-photography"
@@ -1634,7 +1640,7 @@ window.PULSE_DETAILS = {
       "Destination weddings / worldwide travel for weddings"
     ],
     "since": 2018,
-    "site_note": "Deep-dive 2026-10-08: web presence found — own site lavender-lullabies.com; registered NY LLC incorporated 2018 (DOS #5358324, 17 Old Farm Circle, Massena NY 13662). The Knot + WeddingWire listings show 0 reviews each; no published pricing anywhere; no live Google listing found — no review seed. Phone +1 (518) 481-3765 (own site). Caveat: The Knot page title says 'Updated Prices' but carries no price figures — do not treat as pricing data.",
+    "site_note": "Deep-dive 2026-10-08: web presence found \u2014 own site lavender-lullabies.com; registered NY LLC incorporated 2018 (DOS #5358324, 17 Old Farm Circle, Massena NY 13662). The Knot + WeddingWire listings show 0 reviews each; no published pricing anywhere; no live Google listing found \u2014 no review seed. Phone +1 (518) 481-3765 (own site). Caveat: The Knot page title says 'Updated Prices' but carries no price figures \u2014 do not treat as pricing data.",
     "sources": [
       "https://www.lavender-lullabies.com/",
       "https://www.theknot.com/marketplace/lavender-lullabies-photo-hogansburg-ny-2054139",
@@ -1642,25 +1648,25 @@ window.PULSE_DETAILS = {
     ]
   },
   "kaylee-gilbert": {
-    "site_note": "Deep-dive 2026-10-01: UNREACHABLE — no website, IG handle, town, or directory listing found after 3 searches ('Kaylee Gilbert' + photographer/northern NY/North Country variants); 'Kaylee Gilbert' is a common name and no photography business matched. Prior pricing ($50 mini / $100 basic / $150 premium, posted Sep 2026) could not be re-verified (likely originated from an FB/IG post not accessible via web search). Recommend downgrading or removing the roster entry. Deep-dive 2026-10-08: still no verifiable web presence after 2 more searches; no pricing seed, no reviews; town not guessed.",
+    "site_note": "Deep-dive 2026-10-01: UNREACHABLE \u2014 no website, IG handle, town, or directory listing found after 3 searches ('Kaylee Gilbert' + photographer/northern NY/North Country variants); 'Kaylee Gilbert' is a common name and no photography business matched. Prior pricing ($50 mini / $100 basic / $150 premium, posted Sep 2026) could not be re-verified (likely originated from an FB/IG post not accessible via web search). Recommend downgrading or removing the roster entry. Deep-dive 2026-10-08: still no verifiable web presence after 2 more searches; no pricing seed, no reviews; town not guessed.",
     "sources": []
   },
   "naturely-inspired-photography-and-canvas": {
-    "blurb": "Canton business-listing record for 'Naturely Inspired Photography and Canvas' (low confidence: no website, no Facebook page, no owner name found — listing evidence only).",
+    "blurb": "Canton business-listing record for 'Naturely Inspired Photography and Canvas' (low confidence: no website, no Facebook page, no owner name found \u2014 listing evidence only).",
     "services": [
       "Photography studio"
     ],
     "coverage": [
       "Canton, NY"
     ],
-    "site_note": "Deep-dive 2026-10-02: listed as Active, category Photographer, at 37 NY-310 Apt 106, Canton NY; phone +1 315-854-0417; hours Mon–Fri 3:00–5:00 PM (Meta business-place record). chamberofcommerce.com Canton arts directory lists it as 'Photography Studio' with 0 reviews. No owner name, website, services detail, pricing, founding year, social handles, or reviews anywhere. Flag: thin entity — recommend downgrade review if no own-site evidence surfaces. Deep-dive 2026-10-09 re-check: still no website, Facebook page, Etsy, Yelp, WeddingWire, or Thumbtack presence under this name; only footprint is a zero-review chamberofcommerce.com directory listing — appears defunct.",
+    "site_note": "Deep-dive 2026-10-02: listed as Active, category Photographer, at 37 NY-310 Apt 106, Canton NY; phone +1 315-854-0417; hours Mon\u2013Fri 3:00\u20135:00 PM (Meta business-place record). chamberofcommerce.com Canton arts directory lists it as 'Photography Studio' with 0 reviews. No owner name, website, services detail, pricing, founding year, social handles, or reviews anywhere. Flag: thin entity \u2014 recommend downgrade review if no own-site evidence surfaces. Deep-dive 2026-10-09 re-check: still no website, Facebook page, Etsy, Yelp, WeddingWire, or Thumbtack presence under this name; only footprint is a zero-review chamberofcommerce.com directory listing \u2014 appears defunct.",
     "sources": [
       "https://meta.ai?place_id=3129971923972254",
       "https://chamberofcommerce.com/business-directory/new-york/canton/arts-event-services/"
     ]
   },
   "perennial-images-kursti-jacot": {
-    "blurb": "Perennial Images is the Parishville, NY photography studio of Kursti Jacot — sessions ($185 45-min / $235 1-hour), senior portraits ($215), newborn photography ($235 outdoor / $335 in-studio), occasional minis; within 20 miles of Parishville. All full-price sessions include a client closet (per site).",
+    "blurb": "Perennial Images is the Parishville, NY photography studio of Kursti Jacot \u2014 sessions ($185 45-min / $235 1-hour), senior portraits ($215), newborn photography ($235 outdoor / $335 in-studio), occasional minis; within 20 miles of Parishville. All full-price sessions include a client closet (per site).",
     "platform": "Pixieset",
     "services": [
       "Session photography (45-min and 1-hour packages)",
@@ -1672,7 +1678,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Within 20 miles of Parishville, NY"
     ],
-    "site_note": "No other public web footprint as of 2026-10-03: no indexed site, about content, directory listings, or Google business listing found; town/service details unverified beyond the Pixieset pricing page. Deep-dive 2026-10-10: Pixieset pricing page live again with changed prices — sessions $175-$225 → $185 (45-min, 1-5 people, 30+ edited) / $235 (1-hr, 6-10); seniors $200 → $215 (75 min, 2 locations, 2-3 outfits); newborns $325 → $235 outdoor (75 min, lifestyle with parents) / $335 in-studio (up to 3 hr); all full-price sessions include a client closet. Town confirmed Parishville, NY. Still no Google listing or other footprint beyond Pixieset.",
+    "site_note": "No other public web footprint as of 2026-10-03: no indexed site, about content, directory listings, or Google business listing found; town/service details unverified beyond the Pixieset pricing page. Deep-dive 2026-10-10: Pixieset pricing page live again with changed prices \u2014 sessions $175-$225 \u2192 $185 (45-min, 1-5 people, 30+ edited) / $235 (1-hr, 6-10); seniors $200 \u2192 $215 (75 min, 2 locations, 2-3 outfits); newborns $325 \u2192 $235 outdoor (75 min, lifestyle with parents) / $335 in-studio (up to 3 hr); all full-price sessions include a client closet. Town confirmed Parishville, NY. Still no Google listing or other footprint beyond Pixieset.",
     "sources": [
       "https://perennialimages.mypixieset.com/pricing/"
     ]
@@ -1696,7 +1702,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "samarah-martin-photography": {
-    "blurb": "Samarah Martin Photography — St. Lawrence County NY area photographer with a Pixieset site (sarahmartinphoto.mypixieset.com).",
+    "blurb": "Samarah Martin Photography \u2014 St. Lawrence County NY area photographer with a Pixieset site (sarahmartinphoto.mypixieset.com).",
     "platform": "Pixieset",
     "site_note": "No public web footprint as of 2026-10-03: Pixieset site returned 403 on direct fetch; no indexed directory listings, social profiles, reviews, or about/pricing content found. Town, pricing, services, coverage, and founding year all unverified. Rechecked 2026-10-10: Pixieset site still unreachable; no new footprint surfaced.",
     "sources": [
@@ -1704,7 +1710,7 @@ window.PULSE_DETAILS = {
     ]
   },
   "timothy-thornton-photography": {
-    "blurb": "Timothy Thornton Photography — Denmark, NY photographer (retired military; photography as a hobby, Pixoto Pro with 7 awards). Weddings, family portraits, senior portraits, modeling.",
+    "blurb": "Timothy Thornton Photography \u2014 Denmark, NY photographer (retired military; photography as a hobby, Pixoto Pro with 7 awards). Weddings, family portraits, senior portraits, modeling.",
     "services": [
       "Weddings",
       "Family portraits",
@@ -1714,7 +1720,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Denmark / Lewis County area"
     ],
-    "site_note": "High gap record. Address 10696 Limburg Forks Rd, Denmark, NY (FB once showed a Carthage ZIP — typical for that road; town Denmark confirmed). Domain timothythorntonphotography.com is DEAD (404/not resolving, 2026-10-04); active presence is Facebook (facebook.com/TimothyThorntonPhotography). Google Places panel showed 5.0 stars / 52 reviews but the live listing was not read — UNVERIFIED, not seeded. No published pricing; founding year unverified (scraper snippet 'began 2003' not trusted). Deep-dive 2026-10-11: Google rating gap closed — search-rendered Google place card shows 5.0 stars / 52 reviews (count unchanged from prior verification); rating now seeded. Still no website (domain dead), no published pricing, no directory storefront found.",
+    "site_note": "High gap record. Address 10696 Limburg Forks Rd, Denmark, NY (FB once showed a Carthage ZIP \u2014 typical for that road; town Denmark confirmed). Domain timothythorntonphotography.com is DEAD (404/not resolving, 2026-10-04); active presence is Facebook (facebook.com/TimothyThorntonPhotography). Google Places panel showed 5.0 stars / 52 reviews but the live listing was not read \u2014 UNVERIFIED, not seeded. No published pricing; founding year unverified (scraper snippet 'began 2003' not trusted). Deep-dive 2026-10-11: Google rating gap closed \u2014 search-rendered Google place card shows 5.0 stars / 52 reviews (count unchanged from prior verification); rating now seeded. Still no website (domain dead), no published pricing, no directory storefront found.",
     "sources": [
       "https://pixoto.com/timothy.thornton.56",
       "https://www.photography1000.com/US/Carthage-NY/211018"
@@ -1737,7 +1743,7 @@ window.PULSE_DETAILS = {
       "newborn",
       "landscapes"
     ],
-    "site_note": "About page conflicts on tenure: 'over 15 years ago, I traded the bustling streets of Manhattan for the serene beauty of the Adirondacks' vs 'living in Wilmington, NY for the last eight years' — founding year left unverified. Rechecked 2026-10-12: investment page confirms weddings/elopements from $1,600, engagements from $200, minis $125-$175, plus maternity & new family, seniors, and family/headshots/birthday all from $200. Birdeye aggregator shows 7 reviews / 5.0 (lead only — live Google panel not seen today; seeded Google 6 / 5.0 NOT updated). About page still gives no founding year (moved to the Adirondacks 15+ years ago is not a founding date).",
+    "site_note": "About page conflicts on tenure: 'over 15 years ago, I traded the bustling streets of Manhattan for the serene beauty of the Adirondacks' vs 'living in Wilmington, NY for the last eight years' \u2014 founding year left unverified. Rechecked 2026-10-12: investment page confirms weddings/elopements from $1,600, engagements from $200, minis $125-$175, plus maternity & new family, seniors, and family/headshots/birthday all from $200. Birdeye aggregator shows 7 reviews / 5.0 (lead only \u2014 live Google panel not seen today; seeded Google 6 / 5.0 NOT updated). About page still gives no founding year (moved to the Adirondacks 15+ years ago is not a founding date).",
     "sources": [
       "https://akellyphotography81.mypixieset.com/",
       "https://akellyphotography81.mypixieset.com/about/",
@@ -1761,7 +1767,7 @@ window.PULSE_DETAILS = {
       "Online gallery, full ownership rights",
       "Second shooter available"
     ],
-    "site_note": "NC-based, travels to Potsdam NY; $500 retainer reserves date; editing turnaround 30-90 days; fully insured. Rechecked 2026-10-12: own packages page confirms pricing unchanged (photo from $1,500, video from $1,200, combined from $3,000; $500 reserves the date). Google 8 / 5.0 was NOT re-verified today (no live card surfaced) — seed keeps prior verification. Zola shows 12 reviews / 5.0 combined (Zola+Google), owner listed as Lauren McKinnon, and lists the base as Boston, MA — a base-location conflict vs the NC-based record (336 phone on own site); flagged, not reconciled.",
+    "site_note": "NC-based, travels to Potsdam NY; $500 retainer reserves date; editing turnaround 30-90 days; fully insured. Rechecked 2026-10-12: own packages page confirms pricing unchanged (photo from $1,500, video from $1,200, combined from $3,000; $500 reserves the date). Google 8 / 5.0 was NOT re-verified today (no live card surfaced) \u2014 seed keeps prior verification. Zola shows 12 reviews / 5.0 combined (Zola+Google), owner listed as Lauren McKinnon, and lists the base as Boston, MA \u2014 a base-location conflict vs the NC-based record (336 phone on own site); flagged, not reconciled.",
     "sources": [
       "https://ataviaweddings.com/",
       "https://ataviaweddings.com/packages",
@@ -1780,13 +1786,13 @@ window.PULSE_DETAILS = {
       "Special occasions",
       "Video services"
     ],
-    "site_note": "Solo teen operator; sports pricing listed as 'Sports Package @Peru' (Peru Central School games). Booked via Instagram DM or email. No Google reviews or years-in-business found in web search — left empty. Rechecked 2026-10-12: Carrd pricing re-verified unchanged — Portrait Package $150 (20-30+ edited photos), extra outfit $10, Sports @Peru $30 per athlete (15+ action photos), 2-athlete teammate package $50. No Google or Yelp presence found.",
+    "site_note": "Solo teen operator; sports pricing listed as 'Sports Package @Peru' (Peru Central School games). Booked via Instagram DM or email. No Google reviews or years-in-business found in web search \u2014 left empty. Rechecked 2026-10-12: Carrd pricing re-verified unchanged \u2014 Portrait Package $150 (20-30+ edited photos), extra outfit $10, Sports @Peru $30 per athlete (15+ action photos), 2-athlete teammate package $50. No Google or Yelp presence found.",
     "sources": [
       "https://picturesbybryce.carrd.co"
     ]
   },
   "amber-renee-photography": {
-    "site_note": "No verifiable St. Lawrence County NY web presence found (2026-10-05) beyond IG handle amberrenee.photos (not scraped). Do NOT merge data from amberreneephotography5.mypixieset.com — that is a portrait photographer based in San Luis Obispo, California. Billings MT and Fredericksburg VA listings are also different people. Rechecked 2026-10-12: still no verifiable SLC web presence — no own site, Google listing, Yelp, WeddingWire, or Chamber record found; IG-only presence stands.",
+    "site_note": "No verifiable St. Lawrence County NY web presence found (2026-10-05) beyond IG handle amberrenee.photos (not scraped). Do NOT merge data from amberreneephotography5.mypixieset.com \u2014 that is a portrait photographer based in San Luis Obispo, California. Billings MT and Fredericksburg VA listings are also different people. Rechecked 2026-10-12: still no verifiable SLC web presence \u2014 no own site, Google listing, Yelp, WeddingWire, or Chamber record found; IG-only presence stands.",
     "sources": []
   }
 };
