@@ -497,7 +497,7 @@ window.PULSE_DETAILS = {
   "perfect-memories-photography": {
     "blurb": "Photographer listing in Potsdam, NY (phone 1-315-399-2585).",
     "platform": "Google Sites (business.site)",
-    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified. Rechecked 2026-10-03: business.site still 404; Google listing Active (place_id 413083041649871, phone 1-315-399-2585); no reviews, services, or pricing verifiable. A similarly named 'Perfect Memories Photography' (perfectmemoriesphotography.godaddysites.com, Abby, Pulaski NY, (315) 391-6401) is a DIFFERENT business — excluded. Rechecked 2026-10-10: business.site still 404; no Google reviews surface anywhere.",
+    "site_note": "The business.site page did not load as of Sep 2026 (HTTP 404); only Google business-listing data (photographer category, Potsdam NY, phone 1-315-399-2585) could be verified. Rechecked 2026-10-03: business.site still 404; Google listing Active (place_id 413083041649871, phone 1-315-399-2585); no reviews, services, or pricing verifiable. A similarly named 'Perfect Memories Photography' (perfectmemoriesphotography.godaddysites.com, Abby, Pulaski NY, (315) 391-6401) is a DIFFERENT business — excluded. Rechecked 2026-10-10: business.site still 404; no Google reviews surface anywhere. Rechecked 2026-10-17: Google place card still shows no rating/reviews; no pricing, services, or reviews verifiable.",
     "sources": [
       "https://perfectmemoriesphotography.business.site/"
     ]
@@ -897,7 +897,7 @@ window.PULSE_DETAILS = {
       "Central New York"
     ],
     "since": 2003,
-    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews. Address 5560 Highland Ave, Lowville NY 13367, (315) 376-2951; The Knot (Lowville wedding rentals) 5.0 (4); Birdeye 3.7 (3 reviews, incl. COVID-era non-refund complaint). Founding year adopted: MyEventPod traces business history to 2003 (custom-designed lighted walls origins; Set-Up and Clean-Up service added 2004) — own Google copy says \"over 14 years\", consistent. No published wedding package pricing found anywhere; own site randhcreations.com is HTTP-only and did not resolve in fetch 2026-10-10.",
+    "site_note": "Videography uses 2 trained camera operators, 2 HD cameras, and 6 wireless microphones; 5.0 stars from 15 Google reviews. Address 5560 Highland Ave, Lowville NY 13367, (315) 376-2951; The Knot (Lowville wedding rentals) 5.0 (4); Birdeye 3.7 (3 reviews, incl. COVID-era non-refund complaint). Founding year adopted: MyEventPod traces business history to 2003 (custom-designed lighted walls origins; Set-Up and Clean-Up service added 2004) — own Google copy says \"over 14 years\", consistent. No published wedding package pricing found anywhere; own site randhcreations.com is HTTP-only and did not resolve in fetch 2026-10-10. Rechecked 2026-10-17: randhcreations.com now fails DNS entirely (NXDOMAIN in live browser) — site appears gone; Google place card still shows 5.0 from 15 reviews, unchanged; still no published pricing.",
     "sources": [
       "http://randhcreations.com/contact-us",
       "https://www.theknot.com/marketplace/wedding-rentals-lowville-ny",
@@ -1433,7 +1433,7 @@ window.PULSE_DETAILS = {
       "Family portraits"
     ],
     "platform": "Pixieset",
-    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated. Rechecked 2026-10-03: own site and contact page state no town, pricing, service area, or founding year; no Google listing or Facebook business page found. Rechecked 2026-10-10: site loads on Pixieset; sitemap lists /investment, /about, /contact, /clients plus portfolio galleries — but /investment pricing content is JS/image-driven and unreadable via text fetch; /about lists no town, founding year, or coverage area; Instagram @sharlabethphotography confirmed in site footer; no Google reviews or directory listings found.",
+    "site_note": "Site covers graduations, engagements, weddings, babies, and grandbabies; no public pricing, service area, or founding year stated. Rechecked 2026-10-03: own site and contact page state no town, pricing, service area, or founding year; no Google listing or Facebook business page found. Rechecked 2026-10-10: site loads on Pixieset; sitemap lists /investment, /about, /contact, /clients plus portfolio galleries — but /investment pricing content is JS/image-driven and unreadable via text fetch; /about lists no town, founding year, or coverage area; Instagram @sharlabethphotography confirmed in site footer; no Google reviews or directory listings found. Rechecked 2026-10-17: /investment page still renders no extractable pricing text (JS/image-driven); no Google listing or reviews found.",
     "sources": [
       "https://sharlalodico.mypixieset.com/",
       "https://sharlalodico.mypixieset.com/about/",
@@ -1719,7 +1719,7 @@ window.PULSE_DETAILS = {
     "coverage": [
       "Canton NY"
     ],
-    "site_note": "photographyworx.com appears as the website on the Locable profile but could not be fetched as of 2026-10-03 (unverified, not declared dead); BestProsInTown shows zero reviews; no pricing, years in business, or Google review data found. Deep-dive 2026-10-10: photographyworx.com still unfetchable (www/non-www, http/https all fail to resolve); BestProsInTown still solicits the first review (zero reviews); no reviews on any directory.",
+    "site_note": "photographyworx.com appears as the website on the Locable profile but could not be fetched as of 2026-10-03 (unverified, not declared dead); BestProsInTown shows zero reviews; no pricing, years in business, or Google review data found. Deep-dive 2026-10-10: photographyworx.com still unfetchable (www/non-www, http/https all fail to resolve); BestProsInTown still solicits the first review (zero reviews); no reviews on any directory. Rechecked 2026-10-17: Google place card (64 Miner St, Canton, (315) 244-1123) still shows no rating/reviews; no pricing found.",
     "sources": [
       "https://www.bestprosintown.com/ny/canton/photography-worx-/",
       "https://photography-worx.locable.com/profile/",
@@ -1729,11 +1729,11 @@ window.PULSE_DETAILS = {
     ]
   },
   "samarah-martin-photography": {
-    "blurb": "Samarah Martin Photography — St. Lawrence County NY area photographer with a Pixieset site (sarahmartinphoto.mypixieset.com).",
+    "blurb": "Samarah Martin Photography (site title 'photosbysamarah') — St. Lawrence County NY area photographer on Pixieset (samarahmartinphoto.mypixieset.com); positions as a hopeless romantic capturing who you are and who you love — 'romanticize your life' through timeless photos (own site, verified 2026-10-17).",
     "platform": "Pixieset",
-    "site_note": "No public web footprint as of 2026-10-03: Pixieset site returned 403 on direct fetch; no indexed directory listings, social profiles, reviews, or about/pricing content found. Town, pricing, services, coverage, and founding year all unverified. Rechecked 2026-10-10: Pixieset site still unreachable; no new footprint surfaced.",
+    "site_note": "Earlier records pointed at a misspelled URL (sarahmartinphoto.mypixieset.com, 403). Corrected 2026-10-17: the real site samarahmartinphoto.mypixieset.com loads and carries her about text; no pricing, services list, coverage, town, founding year, or reviews found on the homepage or via search indexing. Pricing/services/coverage/founding year still unverified.",
     "sources": [
-      "https://sarahmartinphoto.mypixieset.com/"
+      "https://samarahmartinphoto.mypixieset.com/"
     ]
   },
   "timothy-thornton-photography": {
