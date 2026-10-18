@@ -228,7 +228,7 @@ window.PULSE_VENUES = [
     coverage: ["Massena area"],
     platform: null,
     since: null,
-    site_note: "Indoor venue with oak tables, vintage wood chairs, bridal suite, groom lounge, stage kitchen, and bar area. FLAG (2026-10-04, re-confirmed 2026-10-11): official site 1923rentalco.com still returns HTTP 404 on direct fetch and no pricing is published anywhere found. UPDATE 2026-10-11: a live Google listing DOES exist (Event Space / Wedding Venue, 8828 NY-56, phone (315) 842-5411; description promises 'exciting updates in 2026') \u2014 the venue is operating; only its website is down. No Google rating/count surfaced in search results.",
+    site_note: "Indoor venue with oak tables, vintage wood chairs, bridal suite, groom lounge, stage kitchen, and bar area. FLAG (2026-10-04, re-confirmed 2026-10-11): official site 1923rentalco.com still returns HTTP 404 on direct fetch and no pricing is published anywhere found. UPDATE 2026-10-11: a live Google listing DOES exist (Event Space / Wedding Venue, 8828 NY-56, phone (315) 842-5411; description promises 'exciting updates in 2026') \u2014 the venue is operating; only its website is down. No Google rating/count surfaced in search results. RE-CONFIRMED 2026-10-18: site still returns HTTP 404 on direct fetch (DNS resolves to Wix hosting); Google place card still lists it active at 8828 NY-56, phone (315) 842-5411, with the same 'exciting updates in 2026' description and still no rating/count in the rendered card. No pricing found anywhere again.",
     sources: ["https://www.1923rentalco.com/"],
     confidence: "medium"
   },
@@ -278,7 +278,7 @@ window.PULSE_VENUES = [
     coverage: ["Watertown area"],
     platform: null,
     since: null,
-    site_note: "30-ft ceilings, AC bridal suite, built-in bar and dance floor, indoor/outdoor options, on-site officiant included, stocked bar staffed, full setup/teardown/cleanup. No published rates (2026-10-04; re-confirmed 2026-10-11 \u2014 homepage and FAQ read live, no pricing anywhere). Owners John and Nancy Scordo; active weddings 2023-2025 per testimonials; Facebook posts (via FindGlocal) show 2027 bookings open as of Jan 2026.",
+    site_note: "30-ft ceilings, AC bridal suite, built-in bar and dance floor, indoor/outdoor options, on-site officiant included, stocked bar staffed, full setup/teardown/cleanup. No published rates (2026-10-04; re-confirmed 2026-10-11 \u2014 homepage and FAQ read live, no pricing anywhere). Owners John and Nancy Scordo; active weddings 2023-2025 per testimonials; Facebook posts (via FindGlocal) show 2027 bookings open as of Jan 2026. RE-CONFIRMED 2026-10-18: FAQ page re-read live — inclusions unchanged (barn/lot/restrooms, tables/chairs with linen, officiant, Wi-Fi, bridal suite, stocked bar staffed 2-3 bartenders, Fri setup / Sat event / Sun pickup, rehearsal 5-7 pm); still NO pricing published anywhere on the site. Google place card shows review excerpts but no rating/count in the rendered card.",
     sources: ["http://www.windmillacresbarn.com/",
     "https://windmillacresbarn.com/faq/"],
     confidence: "high"
