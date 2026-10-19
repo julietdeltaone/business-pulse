@@ -203,8 +203,8 @@ window.PULSE_VENUES = [
     coverage: ["Northern New York", "Southern Ontario"],
     platform: null,
     since: null,
-    site_note: "Google business listing categories: Event Space / Banquet Hall / Wedding Venue. Offers a 360-degree virtual tour. Open daily 9 AM-9 PM (Fri/Sat to 11 PM).",
-    sources: ["https://cmbarnevents.com/"],
+    site_note: "Google business listing categories: Event Space / Banquet Hall / Wedding Venue. Offers a 360-degree virtual tour. Open daily 9 AM-9 PM (Fri/Sat to 11 PM). Rechecked 2026-10-19: own site re-read live — still NO capacity and NO total rental fee published; the Facility Use Agreement (v1.02) reconfirms only the $250 reservation hold payment, balance due 60 days before the event. Google place info surfaced (212 State Highway 37C, Massena) with no rating in the rendered card — Birdeye 3 / 5.0 stands at its prior verification.",
+    sources: ["https://cmbarnevents.com/", "https://img1.wsimg.com/blobby/go/dac4ec6f-463d-40de-bdd5-c88112351d06/Facilities%20Use%20Agreement%20Version%201.02%20-dcb83ea.pdf"],
     confidence: "high"
   },
   {
@@ -298,8 +298,8 @@ window.PULSE_VENUES = [
     website: "https://www.creekstonefarmsllc.com/",
     ig_handle: null, followers: null,
     last_post_date: null, last_post_type: null, last_post_topic: null,
-    capacity: "Up to 175 guests",
-    capacity_num: 150,
+    capacity: "Up to 200 guests for weddings (own FAQ, verified 2026-10-19; sweet spot ~150; events hosted up to 275)",
+    capacity_num: 200,
     price_note: "Weekend wedding packages (Fri-Sun access): Heirloom $7,900; Hayloft $11,500; Creekstone $14,500. Open bar for up to 150 guests included in Hayloft/Creekstone; bar staffing & setup included in all.",
     setting: "Authentic post-and-beam barn (heat + AC) on a 150-acre private farm in Adams Center, NY",
     season: "Year-round (fully heated/air-conditioned barn; December weddings documented in reviews)",
@@ -308,8 +308,8 @@ window.PULSE_VENUES = [
     coverage: ["Adams Center, NY / Northern NY"],
     platform: "Wix",
     since: null,
-    site_note: "Capacity conflict: packages page intro says 'up to 175 guests'; Hayloft/Creekstone open-bar lines say 'up to 150 guests'; MapQuest (auto-generated) says 200. Used 175 per the package page intro. One review mentions 'the first wedding held at the farm' (October, year unstated) - the venue appears newly opened, but no founding year is published. Address: 11040 Fuller Road, Adams Center NY 13606; phone 315-291-5138.",
-    sources: ["https://www.creekstonefarmsllc.com/"],
+    site_note: "Capacity conflict: packages page intro says 'up to 175 guests'; Hayloft/Creekstone open-bar lines say 'up to 150 guests'; MapQuest (auto-generated) says 200. Used 175 per the package page intro. One review mentions 'the first wedding held at the farm' (October, year unstated) - the venue appears newly opened, but no founding year is published. Address: 11040 Fuller Road, Adams Center NY 13606; phone 315-291-5138. Rechecked 2026-10-19: own FAQ now states maximum wedding capacity is 200 (hosted weddings as small as 50, events as large as 275, sweet spot ~150) — capacity updated to the FAQ figure; the packages-page intro and Zola still say up to 175, and Zola starting prices ($3,500-$4,200 across its town pages, ratings 5.0 with 2-16 reviews depending on page) conflict with the recorded weekend packages ($7,900+) and were NOT merged into price_note. Homepage announces refreshed packages for 2027 and beyond — the refreshed package prices were not re-read today, so price_note keeps its prior verification. FAQ also confirms a $1,000 non-refundable retainer and farmhouse (VanMar House) hosting up to 6 registered guests.",
+    sources: ["https://www.creekstonefarmsllc.com/", "https://www.creekstonefarmsllc.com/questions"],
     confidence: "high"
   },
   {
@@ -438,6 +438,10 @@ window.PULSE_VENUES = [
   },
   {
     id: "great-camp-sagamore",
+  review_url: "http://sagamore.org/",
+  review_source: "google",
+  review_rating: 4.8,
+  review_count: 133,
     name: "Great Camp Sagamore",
     town: "Raquette Lake, NY",
     county: "Hamilton",
@@ -457,7 +461,7 @@ window.PULSE_VENUES = [
     coverage: [],
     platform: "Squarespace",
     since: 1897,
-    site_note: "National Historic Landmark built 1895-1897 by William West Durant; Vanderbilt retreat from 1901 (Alfred Gwynne Vanderbilt); NRHP 1976, NHL designated 2000. Operated by nonprofit Sagamore Institute of the Adirondacks.",
+    site_note: "National Historic Landmark built 1895-1897 by William West Durant; Vanderbilt retreat from 1901 (Alfred Gwynne Vanderbilt); NRHP 1976, NHL designated 2000. Operated by nonprofit Sagamore Institute of the Adirondacks. Rechecked 2026-10-19: Google place card verified in search — 4.8 stars / 133 reviews (added as this record's review fields; review_url is the listing's website, sagamore.org). The only wedding pricing document indexed is the 2024 base package (overnight accommodation rental $11,400 for 2 nights + $3,000 ceremony/venue fee + $100/person dining & activity fee + $35/guest day-guest fee; dinners buffet $75 / family-style $100 / plated $125; +18% staffing; +$1,000 maintenance) — OLDER than the recorded 2025 package ($13,600 accommodation), so price_note was kept unchanged; no 2026 pricing found.",
     sources: ["http://sagamore.org/"],
     confidence: "high"
   }
