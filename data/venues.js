@@ -16,7 +16,7 @@ window.PULSE_VENUES = [
     last_post_date: null, last_post_type: null, last_post_topic: null,
     capacity: "Up to 300 guests (official site)",
     capacity_num: 300,
-    price_note: "2026 base price $7,500 — re-verified live on official rates page 2026-10-17; no 2027 pricing posted; Eventective corroborates $7,500/wedding",
+    price_note: "2026 base price $7,500 — re-verified live on official rates page 2026-10-24; no 2027 pricing posted; Eventective corroborates $7,500/wedding",
     setting: "Barn-style, riverfront on the Raquette River",
     season: "May through October",
     spaces: ["5,400 sq ft main hall (hand-cut white maple)", "Patio and porches", "Waterfront grounds, fields, woods", "Ceremony sites with pews/benches (up to 100)", "Private get-ready suite"],
@@ -24,7 +24,7 @@ window.PULSE_VENUES = [
     coverage: ["Northern NY"],
     platform: "Squarespace",
     since: null,
-    site_note: "Barn-style riverfront venue less than two miles from downtown Potsdam; 5,400 sq ft main hall seating up to 300. The Knot: 4.8 stars (4 reviews, Potsdam, 251-300 guests). Season note: record says May-October but the venue's own Google business description says open April-November — unresolved. Founding year not verifiable (earliest reviews 2018). Deep-dive 2026-10-10: Knot 4.8/4 reviews rechecked on live listing (matches record); season conflict still unresolved; no founding year found.",
+    site_note: "Barn-style riverfront venue less than two miles from downtown Potsdam; 5,400 sq ft main hall seating up to 300. The Knot: 4.8 stars (4 reviews, Potsdam, 251-300 guests). Season note: record says May-October but the venue's own Google business description says open April-November — unresolved. Founding year not verifiable (earliest reviews 2018). Deep-dive 2026-10-10: Knot 4.8/4 reviews rechecked on live listing (matches record); season conflict still unresolved; no founding year found. Deep-dive 2026-10-24: $7,500 re-verified on official packages page; Knot 4.8/4 re-confirmed; season conflict is now INSIDE the venue's own site — homepage says May through October, availability page says April to November — both kept, unresolved; no 2027 pricing or founding year; no Google place card surfaced.",
     sources: ["http://www.windypointstables.com/", "http://windypointstables.com/packages", "https://www.theknot.com/marketplace/the-stables-at-windy-point-potsdam-ny-2007814", "https://www.eventective.com/potsdam-ny/the-stables-at-windy-point-698098.html"],
     confidence: "high"
   },
@@ -411,7 +411,7 @@ window.PULSE_VENUES = [
     coverage: ["Franklin County", "Malone area"],
     platform: "Squarespace",
     since: null,
-    site_note: "In-house catering team, full-service kitchen, newly remodeled bar area; indoor and outdoor event areas. WeddingWire: 5.0 across 3 reviews, 100% recommend; books year-round, peak May-Oct (WeddingWire). Google listing: 5.0 (3 reviews), price level moderate. The Knot review-count CONFLICT (2026-10-03): a qa-beta listing URL (the-upper-lodge-at-titus-malone-ny-2065079) showed 0 reviews, while an earlier pass read 5.0 (4) on marketplace aggregate pages — unresolved; staging vs live URL may explain it. Own site shows no published pricing or founding year. Deep-dive 2026-10-10: Knot conflict RESOLVED — live listing shows 5.0/4 reviews; the 0-review page was qa-beta.theknot.com (staging mirror), not the live listing. Google listing 5.0/3; no pricing/packages page on own site (/weddings 404s); no founding year found; peak season May-Oct per WeddingWire.",
+    site_note: "In-house catering team, full-service kitchen, newly remodeled bar area; indoor and outdoor event areas. WeddingWire: 5.0 across 3 reviews, 100% recommend; books year-round, peak May-Oct (WeddingWire). Google listing: 5.0 (3 reviews), price level moderate. The Knot review-count CONFLICT (2026-10-03): a qa-beta listing URL (the-upper-lodge-at-titus-malone-ny-2065079) showed 0 reviews, while an earlier pass read 5.0 (4) on marketplace aggregate pages — unresolved; staging vs live URL may explain it. Own site shows no published pricing or founding year. Deep-dive 2026-10-10: Knot conflict RESOLVED — live listing shows 5.0/4 reviews; the 0-review page was qa-beta.theknot.com (staging mirror), not the live listing. Google listing 5.0/3; no pricing/packages page on own site (/weddings 404s); no founding year found; peak season May-Oct per WeddingWire. Deep-dive 2026-10-24: Google place card re-verified 5.0 from 3 reviews (unchanged); Knot 5.0/4 re-confirmed; capacity conflict flagged — listing description text says banquet room hosts up to 240 guests vs 225 (200 with dance floor) in main venue text, 225 kept; WeddingWire $3,000/$1,500 fees could NOT be re-verified today (fee figures absent from the fetched WeddingWire page) — kept as prior verification (2026-10-17), not same-day confirmed; own site still publishes no pricing; no founding year.",
     sources: ["http://www.theupperlodge.com/", "https://www.weddingwire.com/biz/the-upper-lodge-at-titus/275409031efc7577.html", "https://www.theknot.com/marketplace/wedding-reception-venues-willsboro-ny/mountain?page=3"],
     confidence: "high"
   },
