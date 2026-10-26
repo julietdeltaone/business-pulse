@@ -564,6 +564,9 @@ h1, .page-h h1, .brief-head h1, .dr-head h2, .brand-t b { font-family: var(--fon
 .sp-ai b { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg); }
 .sp-aibar { display: block; height: 10px; border-radius: 3px; background: rgba(255, 255, 255, .05); overflow: hidden; }
 .sp-aibar i { display: block; height: 100%; border-radius: 3px; background: var(--ice-2); transform: scaleX(0); transform-origin: left; transition: transform 1s var(--spring) .3s; }
+.sp-aibar i.me { background: var(--amber); }
+.sp-rvname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-ai:has(.sp-rvname) { grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 74px; }
 .spot-slide.on .sp-aibar i { transform: none; }
 .spot-price { padding: 8px 2px; }
 .sp-track { position: relative; height: 14px; }
