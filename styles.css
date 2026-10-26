@@ -6,13 +6,13 @@
    and top marks, red for losses and stalled, amber for late and dated. (Semantic color added
    2026-10-26 at JD's direction.) */
 :root {
-  --bg: #05070b;
-  --bg-2: #080c12;
-  --panel: #0b1017;
-  --panel-2: #0f1620;
-  --raised: #17202e;
-  --line: rgba(150, 180, 220, .10);
-  --line-2: rgba(150, 180, 220, .18);
+  --bg: #0a0a0a;
+  --bg-2: #0c0c0e;
+  --panel: #101013;
+  --panel-2: #141418;
+  --raised: #1d1d21;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .15);
   --fg: #eef2f8;
   --fg-2: #a6b1c3;
   --fg-3: #6f7c90;
@@ -34,11 +34,12 @@
   --violet-bg: rgba(180, 154, 224, .13);
   --teal: #4fbfa5;
   --teal-bg: rgba(79, 191, 165, .12);
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font: "Archivo", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-d: "Space Grotesk", "Archivo", -apple-system, system-ui, sans-serif;
   --spring: cubic-bezier(.32, .72, 0, 1);
   --ease: cubic-bezier(.2, .8, .2, 1);
-  --r-lg: 18px;
-  --r-md: 12px;
+  --r-lg: 6px;
+  --r-md: 4px;
   --gutter: 20px;
   --bar-h: 62px;
   --drawer-w: 440px;
@@ -56,13 +57,7 @@ body {
   text-rendering: optimizeLegibility;
   overflow: hidden;
 }
-body::before {
-  content: "";
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(900px 520px at 12% -8%, rgba(94, 166, 230, .13), transparent 62%),
-    radial-gradient(700px 480px at 96% 108%, rgba(210, 191, 159, .07), transparent 60%);
-}
+body::before { content: none; }
 * { scrollbar-width: thin; scrollbar-color: rgba(150, 180, 220, .22) transparent; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -129,9 +124,8 @@ button { font: inherit; color: inherit; }
 @keyframes view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .panel {
-  background: linear-gradient(180deg, rgba(17, 24, 35, .72), rgba(11, 16, 23, .72));
+  background: var(--panel);
   border: 1px solid var(--line); border-radius: var(--r-lg); min-width: 0; min-height: 0;
-  backdrop-filter: blur(18px) saturate(130%); -webkit-backdrop-filter: blur(18px) saturate(130%);
   display: flex; flex-direction: column; overflow: hidden;
 }
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px 6px; }
@@ -153,7 +147,7 @@ button { font: inherit; color: inherit; }
 .brief-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-top: 6px; }
 .brief-head h1 { margin: 0; font-size: 28px; font-weight: 650; letter-spacing: -.028em; line-height: 1.1; }
 .brief-head p { margin: 4px 0 0; color: var(--fg-3); font-size: 13px; }
-.fresh { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.fresh { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 .fchip { display: grid; gap: 3px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: rgba(11, 16, 23, .6); cursor: pointer; text-align: left; transition: border-color .2s, background .2s; min-width: 0; }
 .fchip:hover { border-color: var(--line-2); background: rgba(17, 24, 35, .8); }
 .fchip .l { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--fg-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -423,7 +417,7 @@ svg.spark { width: 78px; height: 24px; display: block; overflow: visible; }
 @container (max-width: 520px) { .tbl .c-sess, .tbl .c-rev { display: none; } }
 
 /* ---------- heroes, movers, watch line (2026-10-26) ---------- */
-.heroes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.heroes { display: grid; grid-template-columns: repeat(var(--hn, 5), minmax(0, 1fr)); gap: 10px; }
 .hero { padding: 13px 14px; border-radius: 14px; background: rgba(150, 180, 220, .045); border: 1px solid var(--line); min-width: 0; }
 .hero .n { font-size: 31px; font-weight: 600; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero .n small { font-size: 14px; color: var(--fg-3); font-weight: 500; margin-left: 4px; }
@@ -442,3 +436,44 @@ svg.spark { width: 78px; height: 24px; display: block; overflow: visible; }
 .recstrip .legend { margin: 0; }
 @media (max-width: 1100px) { .heroes { grid-template-columns: repeat(3, 1fr); } .row2 { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .heroes { grid-template-columns: 1fr 1fr; } .mv2 { grid-template-columns: 1fr; } }
+
+/* ---------- Swiss skin pass + drawer fit (2026-10-26, quality redesign) ---------- */
+h1, .page-h h1, .brief-head h1, .dr-head h2, .brand-t b { font-family: var(--font-d); }
+.hero .n, .tile .n, .fig .v, .hero .nm-hero { font-family: var(--font-d); }
+.panel-h h2 { font-family: var(--font-d); font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--fg-2); }
+.dr-sec h3 { font-family: var(--font-d); letter-spacing: .07em; text-transform: uppercase; font-size: 10.5px; }
+.seg { border-radius: 10px; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(255, 255, 255, .04); }
+.seg button { border-radius: 7px; }
+.seg .thumb { border-radius: 7px; box-shadow: none; }
+.fchip, .hero, .tile, .fig, .spread { border-radius: var(--r-lg); }
+.tblwrap { border-radius: var(--r-lg); }
+.tbl th { background: #121215; }
+.lb-h { background: #121215; }
+.mapcard { background: #0c0c0e; }
+#tip { background: rgba(20, 20, 24, .97); }
+
+/* Drawer: solid, and nothing inside it may force sideways scrolling. It auto-sizes to the
+   viewport and every text block wraps within its own box. */
+#drawer {
+  width: min(480px, calc(100vw - 28px)); border-radius: 8px;
+  background: var(--panel-2);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .55);
+}
+#drawer * { min-width: 0; }
+.dr-body { overflow-x: hidden; }
+.dr-head h2, .dr-head .where, .dr-text { overflow-wrap: anywhere; }
+.fig .v { white-space: normal; overflow: visible; text-overflow: clip; }
+.fig .k { white-space: normal; overflow: visible; text-overflow: clip; }
+.tags .pill, .gaps .pill { white-space: normal; height: auto; min-height: 21px; padding-top: 3px; padding-bottom: 3px; }
+.dr-links a { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.ailine { grid-template-columns: minmax(0, 1fr) auto; }
+.ailine span { overflow-wrap: anywhere; }
+.dr-chart svg { max-width: 100%; }
+
+/* Trends + watch change list */
+.trends { display: grid; gap: 14px; align-content: start; padding-bottom: 10px; }
+.watchlist { display: grid; gap: 6px; margin-top: 10px; }
+.watchchg { display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 1fr); gap: 10px; font-size: 12.5px; align-items: baseline; }
+.watchchg b { font-weight: 550; overflow-wrap: anywhere; }
+.watchchg span { color: var(--fg-2); overflow-wrap: anywhere; }
