@@ -143,7 +143,7 @@ button { font: inherit; color: inherit; }
 .pill.gray { background: var(--gray-bg); color: var(--fg-3); }
 
 /* ---------- brief ---------- */
-.brief { display: grid; gap: 14px; grid-template-rows: auto auto 1fr 1fr; }
+.brief { display: grid; gap: 14px; grid-template-rows: auto auto auto 1fr; align-content: start; }
 .brief-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-top: 6px; }
 .brief-head h1 { margin: 0; font-size: 28px; font-weight: 650; letter-spacing: -.028em; line-height: 1.1; }
 .brief-head p { margin: 4px 0 0; color: var(--fg-3); font-size: 13px; }
