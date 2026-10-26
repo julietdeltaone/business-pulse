@@ -329,9 +329,9 @@ function panel(title, sub, body, link) {
 function liRow(b, rt, sb) {
   return '<button class="li" data-open="' + esc(b.id) + '"><span><span class="nm">' + esc(b.name) + '</span><br><span class="sb">' + esc(sb || b.town) + '</span></span><span class="rt">' + rt + '</span></button>';
 }
-/* ---------- SPOTLIGHT (Brief hero slideshow with the Current x Sonar orb) ---------- */
-let spotTimer = null, SPOTDECK = [];
-const SPOTPULSE = {};   /* business id -> 0..1: how strong this slide's headline figure is vs the market best; drives the sonar rings */
+/* ---------- SPOTLIGHT (Brief hero slideshow) ---------- */
+let spotTimer = null;
+let briefIntro = false;   /* one-shot: the Brief load-in plays on the first render only */
 function spotHist(b) { const hs = (D.igFollowersHistory[b.c.ig_handle] || []).slice(-60); return hs.length >= 2 ? hs : null; }
 function spotFigs(b) {
   const f = [];
@@ -373,29 +373,15 @@ function spotReviewsViz(b) {
   const rows = top.map(x => '<div class="sp-ai"><span class="sp-rvname">' + esc(x.name) + '</span><span class="sp-aibar"><i class="' + (x.id === b.id ? 'me' : '') + '" style="width:' + Math.max(3, Math.round(x.rev.count / mx * 100)) + '%"></i></span><b>' + fmt(x.rev.count) + (x.rev.rating != null ? ' · ' + Number(x.rev.rating).toFixed(1) : '') + '</b></div>').join('');
   return '<div class="spot-aibars">' + rows + '</div>';
 }
-function spotLegend() {
-  return '<div class="spot-legend" aria-label="How to read the animation">' +
-    '<span class="sl-item"><i class="sl-dot live"></i>Live count</span>' +
-    '<span class="sl-item"><i class="sl-dot priced"></i>Price / reviews only</span>' +
-    '<span class="sl-item"><i class="sl-dot quiet"></i>No current figures</span>' +
-    '<span class="sl-item">Dot size = followers (reviews if no live count)</span>' +
-    '<span class="sl-item">Nearer the core = bigger audience</span>' +
-    '<span class="sl-item">Speed and wake = 7-day follower change</span>' +
-    '<span class="sl-item"><i class="sl-dot gold"></i>Featured<i class="sl-dot peer"></i>Its town</span>' +
-    '<span class="sl-item">Rings widen with the featured figure</span>' +
-    '</div>';
-}
 function spotlight() {
   const used = new Set(), slides = [];
-  Object.keys(SPOTPULSE).forEach(k => delete SPOTPULSE[k]);
-  const take = (b, make, pulse) => { if (b && !used.has(b.id) && slides.length < 6) { const s = make(b); if (s) { used.add(b.id); slides.push({ id: b.id, html: s }); SPOTPULSE[b.id] = pulse == null || isNaN(pulse) ? null : Math.max(.12, Math.min(1, pulse)); } } };
+  const take = (b, make) => { if (b && !used.has(b.id) && slides.length < 6) { const s = make(b); if (s) { used.add(b.id); slides.push({ id: b.id, html: s }); } } };
   const by = (list, f) => list.slice().sort((a, c) => f(c) - f(a))[0];
-  const maxFol = Math.max.apply(null, LIVEIG.map(b => b.ig.count).concat([1]));
   const wFol = by(LIVEIG, b => b.ig.count);
-  take(wFol, b => spotShell('Spotlight · Most followers', b, { v: b.ig.count, f: 'int', text: fmt(b.ig.count), label: 'Instagram followers · live today' }, spotSpark(b), 'The largest live audience in the market.'), wFol && wFol.ig.count / maxFol);
-  const posD7 = LIVEIG.filter(b => b.d7 > 0), maxUp = Math.max.apply(null, posD7.map(b => b.d7).concat([1]));
+  take(wFol, b => spotShell('Spotlight · Most followers', b, { v: b.ig.count, f: 'int', text: fmt(b.ig.count), label: 'Instagram followers · live today' }, spotSpark(b), 'The largest live audience in the market.'));
+  const posD7 = LIVEIG.filter(b => b.d7 > 0);
   const wUp = by(posD7, b => b.d7);
-  take(wUp, b => spotShell('Spotlight · Biggest mover', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The fastest-growing live account this week.'), wUp && wUp.d7 / maxUp);
+  take(wUp, b => spotShell('Spotlight · Biggest mover', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The fastest-growing live account this week.'));
   if (ENGS.length) {
     const ac = aiCompute('all');
     const topId = Object.keys(ac.ids).sort((a, c) => ac.ids[c].total - ac.ids[a].total)[0];
@@ -403,170 +389,23 @@ function spotlight() {
       const o = ac.ids[b.id];
       const bars = ENGS.map(e => '<div class="sp-ai"><span>' + esc(e) + '</span><span class="sp-aibar"><i style="width:' + (ac.den[e] ? Math.round(o[e] / ac.den[e] * 100) : 0) + '%"></i></span><b>' + o[e] + ' of ' + ac.den[e] + '</b></div>').join('');
       return spotShell('Spotlight · Most named by AI', b, { v: o.total, f: 'int', suffix: ' of ' + ac.answered, text: o.total + ' of ' + ac.answered, label: 'assistant answers named this business' }, '<div class="spot-aibars">' + bars + '</div>', 'Latest audit · ' + esc(dshort(DATES.ai)) + ' · directional.');
-    }, ac.answered ? (ac.ids[topId].total / ac.answered) : null);
+    });
   }
-  const wedVals = B.map(b => b.wedLive).filter(v => v != null);
-  const maxWed = Math.max.apply(null, wedVals.concat([1])), minWed = Math.min.apply(null, wedVals.concat([maxWed]));
   const wHi = by(B.filter(b => b.wedLive != null), b => b.wedLive);
-  take(wHi, b => spotShell('Spotlight · Highest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The top of the verified price ladder.'), wHi && wHi.wedLive / maxWed);
+  take(wHi, b => spotShell('Spotlight · Highest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The top of the verified price ladder.'));
   const revRanked = B.filter(b => b.rev.live && b.rev.count != null).sort((a, c) => c.rev.count - a.rev.count);
   const wRev = revRanked.find(b => !used.has(b.id));
-  take(wRev, b => spotShell('Spotlight · Most reviews', b, { v: b.rev.count, f: 'int', text: fmt(b.rev.count), label: 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : '') }, spotReviewsViz(b), 'The deepest review book in the market · top five shown.'), wRev && revRanked[0] ? wRev.rev.count / revRanked[0].rev.count : null);
+  take(wRev, b => spotShell('Spotlight · Most reviews', b, { v: b.rev.count, f: 'int', text: fmt(b.rev.count), label: 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : '') }, spotReviewsViz(b), 'The deepest review book in the market · top five shown.'));
   const wLo = by(B.filter(b => b.wedLive != null), b => -b.wedLive);
-  take(wLo, b => spotShell('Spotlight · Lowest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The floor of the verified price ladder.'), wLo && (maxWed - wLo.wedLive) / Math.max(1, maxWed - minWed));
-  const negD7 = LIVEIG.filter(b => b.d7 <= -2), maxDn = Math.max.apply(null, negD7.map(b => -b.d7).concat([1]));
+  take(wLo, b => spotShell('Spotlight · Lowest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The floor of the verified price ladder.'));
+  const negD7 = LIVEIG.filter(b => b.d7 <= -2);
   const wDn = by(negD7, b => -b.d7);
-  take(wDn, b => spotShell('Spotlight · Biggest drop', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The sharpest slide among live accounts this week.'), wDn && (-wDn.d7) / maxDn);
-  if (slides.length < 2) { SPOTDECK = []; return ''; }
-  SPOTDECK = slides.map(s => s.id);
+  take(wDn, b => spotShell('Spotlight · Biggest drop', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The sharpest slide among live accounts this week.'));
+  if (slides.length < 2) return '';
   const segs = slides.map((s, i) => '<button class="sseg' + (i === 0 ? ' on' : '') + '" data-spot="' + i + '" aria-label="Spotlight ' + (i + 1) + '"><i></i></button>').join('');
   const html = slides.map((s, i) => i === 0 ? s.html.replace('class="spot-slide"', 'class="spot-slide on"') : s.html).join('');
-  return '<section class="panel spot" id="spot"><div class="spot-stage"><canvas id="spotcv" aria-hidden="true"></canvas>' + html + '</div>' + spotLegend() + '<div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
+  return '<section class="panel spot" id="spot"><div class="spot-stage">' + html + '</div><div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
 }
-/* --- The Current x Sonar (JD pick, Oct 26: merge orbs 5 + 2, data live from the contacts).
-   The orb IS the market, and every moving part states its number (JD, Oct 26: no motion
-   that does not encode data; the legend under the stage prints this key):
-   - particle SIZE = follower count (live), else review count, else the minimum dot;
-   - ORBIT RADIUS = audience gravity (live accounts, log-scaled: biggest nearest the core);
-     accounts with no live count sit on fixed outer bands (.70 priced/reviewed, .88 quiet);
-   - STREAM SPEED and wake length = |7-day follower change|, capped at ±35;
-   - COLOR = live ice-blue / priced-or-reviewed pale / quiet grey;
-   - AMBER TINT = shares the featured business's town;
-   - SONAR RINGS: emission rate and reach scale with SPOTPULSE, the featured slide's own
-     headline figure normalized against the market best (followers vs the biggest account,
-     7-day move vs the biggest move, AI mentions vs answers given, rate vs the ladder,
-     reviews vs the deepest book) — never a composite of unrelated fields.
-   The featured particle leaves the stream and gathers gold at a fixed point at the front
-   of the core, labelled on canvas with its business name; a ring burst fires on the change. --- */
-let S3 = null;
-function spotEnergy(b) {   /* fallback only, when a slide carries no SPOTPULSE of its own */
-  if (!b) return .4;
-  if (b.d7 != null && b.d7 !== 0) return .35 + .65 * Math.min(1, Math.abs(b.d7) / 35);
-  if (b.ig.state === 'live' && b.ig.count) return .3 + .5 * Math.min(1, b.ig.count / 3300);
-  if (b.rev.live && b.rev.count) return .3 + .5 * Math.min(1, b.rev.count / 244);
-  if (b.wedLive != null) return .45;
-  return .35;
-}
-function spot3DNodes() {
-  const GA = Math.PI * (3 - Math.sqrt(5));
-  const counts = B.filter(b => b.ig.state === 'live' && b.ig.count > 0).map(b => b.ig.count);
-  const lmax = Math.log10(Math.max.apply(null, counts.concat([10]))), lmin = Math.log10(Math.min.apply(null, counts.concat([10])));
-  return B.map((b, i) => {
-    let band;
-    if (b.ig.state === 'live' && b.ig.count > 0) band = .30 + .56 * (1 - (Math.log10(b.ig.count) - lmin) / Math.max(.001, lmax - lmin));
-    else if (b.wedLive != null || (b.rev.live && b.rev.count != null)) band = .70;
-    else band = .88;
-    const jit = (((i * 2654435761) % 1000) / 1000 - .5) * .07;
-    return {
-      id: b.id, a: GA * i, r: Math.max(.16, Math.min(.97, band + jit)),
-      sp: .015 + .20 * Math.min(1, Math.abs(b.d7 || 0) / 35),
-      size: b.ig.state === 'live' ? Math.min(4.6, 1.1 + Math.sqrt(b.ig.count || 0) / 16) : (b.rev.live && b.rev.count ? Math.min(2.3, 1.15 + Math.sqrt(b.rev.count) / 22) : 1.15),
-      live: b.ig.state === 'live', priced: b.wedLive != null, town: b.town || '',
-      x: 0, y: 0, mode: 'stream', gT0: 0, rT0: 0, fx: 0, fy: 0
-    };
-  });
-}
-function spot3DFlyTo(id, instant) {
-  if (!S3) return;
-  const prev = S3.nodes.find(n => n.id === S3.featId);
-  if (prev && prev.id !== id && prev.mode !== 'stream') { prev.mode = 'rejoin'; prev.rT0 = performance.now(); prev.fx = prev.x; prev.fy = prev.y; }
-  S3.featId = id;
-  const n = S3.nodes.find(x => x.id === id); if (!n) return;
-  const fb = B.find(x => x.id === id);
-  S3.energy = SPOTPULSE[id] != null ? SPOTPULSE[id] : spotEnergy(fb);
-  S3.featName = fb ? fb.name : '';
-  S3.featTown = fb ? (fb.town || '') : '';
-  n.mode = instant ? 'staged' : 'gather';
-  n.gT0 = performance.now(); n.fx = n.x; n.fy = n.y;
-  const now = performance.now();
-  S3.rings.push({ t0: now, burst: true }, { t0: now + 200, burst: true });
-}
-function spot3DStart() {
-  const cv = document.getElementById('spotcv'); if (!cv || !B.length) return;
-  if (S3 && S3.cv === cv) return;
-  spot3DStop();
-  const ctx = cv.getContext('2d'); if (!ctx) return;
-  S3 = { cv, ctx, nodes: spot3DNodes(), featId: null, featName: '', featTown: '', energy: .4, rings: [], lastEmit: 0, raf: 0, last: 0, d: 1, w: 0, h: 0 };
-  const size = () => { const r = cv.parentElement.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.max(50, r.width * d); cv.height = Math.max(50, r.height * d); S3.d = d; S3.w = r.width; S3.h = r.height; ctx.setTransform(d, 0, 0, d, 0, 0); ctx.fillStyle = '#0d0d11'; ctx.fillRect(0, 0, S3.w, S3.h); };
-  size();
-  S3.resize = size;
-  window.addEventListener('resize', size);
-  spot3DFlyTo(SPOTDECK[state.spotIdx] || null, true);
-  const frame = t => {
-    if (!S3) return;
-    const dt = S3.last ? Math.min(60, t - S3.last) : 16; S3.last = t;
-    const { ctx, w, h } = S3;
-    ctx.fillStyle = 'rgba(13,13,17,.20)';
-    ctx.fillRect(0, 0, w, h);
-    const cx = w * .70, cy = h * .50, R = Math.min(w * .335, h * .40);
-    if (t - S3.lastEmit > 2500 - S3.energy * 700) { S3.rings.push({ t0: t, burst: false }); S3.lastEmit = t; }
-    S3.rings = S3.rings.filter(r => t - r.t0 < 3200);
-    S3.rings.forEach(r => {
-      if (t < r.t0) return;
-      const p = (t - r.t0) / (r.burst ? 2100 : 2800), rad = R * (.12 + p * (.95 + S3.energy * .5));
-      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(143,202,255,' + ((r.burst ? .30 : .19) * (1 - p)).toFixed(3) + ')';
-      ctx.lineWidth = r.burst ? 1.8 : 1.3; ctx.stroke();
-    });
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.10)'; ctx.lineWidth = 1; ctx.stroke();
-    const sa = Math.PI * .94;
-    const sx = cx + Math.cos(sa) * R * .36, sy = cy + Math.sin(sa) * R * .36;
-    const easeIO = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-    S3.nodes.forEach(n => {
-      if (n.mode === 'stream' || n.mode === 'rejoin') n.a += n.sp * dt / 1000;
-      const ox = cx + Math.cos(n.a) * R * n.r, oy = cy + Math.sin(n.a) * R * n.r * .96;
-      if (n.mode === 'stream') { n.x = ox; n.y = oy; }
-      else if (n.mode === 'gather') {
-        const p = Math.min(1, (t - n.gT0) / 1150), e = easeIO(p);
-        n.x = n.fx + (sx - n.fx) * e; n.y = n.fy + (sy - n.fy) * e - Math.sin(p * Math.PI) * 12;
-        if (p >= 1) n.mode = 'staged';
-      } else if (n.mode === 'staged') { n.x = sx; n.y = sy; }
-      else if (n.mode === 'rejoin') {
-        const p = Math.min(1, (t - n.rT0) / 900), e = 1 - Math.pow(1 - p, 3);
-        n.x = n.fx + (ox - n.fx) * e; n.y = n.fy + (oy - n.fy) * e;
-        if (p >= 1) n.mode = 'stream';
-      }
-    });
-    const feat = S3.nodes.find(n => n.id === S3.featId);
-    S3.nodes.forEach(n => {
-      if (feat && n.id === feat.id) return;
-      const peer = !!(feat && S3.featTown && n.town && n.town === S3.featTown);
-      const base = n.live ? .8 : n.priced ? .5 : .34;
-      ctx.beginPath(); ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
-      ctx.fillStyle = peer ? 'rgba(242,181,82,' + (base * .6).toFixed(3) + ')' : n.live ? 'rgba(143,202,255,' + base + ')' : n.priced ? 'rgba(201,212,230,' + base + ')' : 'rgba(120,132,152,' + base + ')';
-      ctx.fill();
-    });
-    const gp = .5 + S3.energy * .5;
-    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * .30);
-    cg.addColorStop(0, 'rgba(190,220,255,' + (0.28 * gp).toFixed(3) + ')'); cg.addColorStop(1, 'rgba(190,220,255,0)');
-    ctx.beginPath(); ctx.arc(cx, cy, R * .30, 0, Math.PI * 2); ctx.fillStyle = cg; ctx.fill();
-    ctx.beginPath(); ctx.arc(cx, cy, 3.2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(235,242,252,.9)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.30)'; ctx.lineWidth = 1; ctx.stroke();
-    if (feat) {
-      const pr = feat.size + 6;
-      const glow = ctx.createRadialGradient(feat.x, feat.y, 0, feat.x, feat.y, 30);
-      glow.addColorStop(0, 'rgba(242,181,82,.32)'); glow.addColorStop(1, 'rgba(242,181,82,0)');
-      ctx.beginPath(); ctx.arc(feat.x, feat.y, 30, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
-      ctx.beginPath(); ctx.arc(feat.x, feat.y, pr, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(242,181,82,.65)'; ctx.lineWidth = 1.2; ctx.stroke();
-      ctx.beginPath(); ctx.arc(feat.x, feat.y, Math.max(3.6, feat.size + 1), 0, Math.PI * 2); ctx.fillStyle = '#f2b552'; ctx.fill();
-      ctx.beginPath(); ctx.arc(feat.x, feat.y, Math.max(1.6, feat.size * .42), 0, Math.PI * 2); ctx.fillStyle = '#fff6e3'; ctx.fill();
-      if (S3.featName) {
-        ctx.font = '600 11px Archivo, sans-serif';
-        ctx.textBaseline = 'middle';
-        const tw = ctx.measureText(S3.featName).width;
-        let lx = feat.x + pr + 7; if (lx + tw > w - 4) lx = feat.x - pr - 7 - tw; if (lx < 4) lx = 4;
-        const ly = Math.max(9, feat.y - pr - 9);
-        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(10,10,12,.85)';
-        ctx.strokeText(S3.featName, lx, ly);
-        ctx.fillStyle = 'rgba(255,233,189,.96)';
-        ctx.fillText(S3.featName, lx, ly);
-      }
-    }
-    if (!REDUCED) S3.raf = requestAnimationFrame(frame);
-  };
-  S3.raf = requestAnimationFrame(frame);
-}
-function spot3DStop() { if (S3) { cancelAnimationFrame(S3.raf); if (S3.resize) window.removeEventListener('resize', S3.resize); S3 = null; } }
 function spotCount(slide) {
   const el = slide && slide.querySelector('.spot-num[data-count]'); if (!el) return;
   const target = parseFloat(el.dataset.count), kind = el.dataset.cfmt, suf = el.dataset.csuffix || '';
@@ -587,18 +426,16 @@ function spotGo(i) {
   state.spotIdx = ((i % n) + n) % n;
   slides.forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
   root.querySelectorAll('.sseg').forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
-  spot3DFlyTo(SPOTDECK[state.spotIdx] || null, false);
   spotCount(slides[state.spotIdx]);
 }
 function startSpot() {
   if (spotTimer) { clearInterval(spotTimer); spotTimer = null; }
   const root = $('#spot'); if (!root) return;
-  spot3DStart();
   spotGo(state.spotIdx || 0);
   if (REDUCED) return;
   spotTimer = setInterval(() => { if (document.visibilityState === 'visible') spotGo(state.spotIdx + 1); }, 5000);
 }
-function stopSpot() { if (spotTimer) { clearInterval(spotTimer); spotTimer = null; } spot3DStop(); }
+function stopSpot() { if (spotTimer) { clearInterval(spotTimer); spotTimer = null; } }
 
 function moveWidget() {
   if (!LIVEIG.length) return '';
@@ -636,6 +473,7 @@ function priceWidget() {
   return panel('Pricing', 'Verified · every rate on the ladder', head + '<div class="ladder">' + rowsHtml + '</div>', ['All businesses', 'market']);
 }
 function viewBrief() {
+  const introCls = briefIntro ? '' : ' intro'; briefIntro = true;
   const n = B.length;
   const reg = { slc: 0, adjacent: 0, unconfirmed: 0 }; B.forEach(b => reg[b.region] = (reg[b.region] || 0) + 1);
   const wed = B.map(b => b.wedLive).filter(x => x != null), ses = B.map(b => b.sessLive).filter(x => x != null);
@@ -668,9 +506,9 @@ function viewBrief() {
 
   const spot = spotlight();
   const head = '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + (LIVEIG.length ? pill(LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live', 'ice') : '') + '</div>';
-  if (!spot) return '<div class="view brief">' + head + fchips() + heroes + moveWidget() + priceWidget() +
+  if (!spot) return '<div class="view brief' + introCls + '">' + head + fchips() + heroes + moveWidget() + priceWidget() +
     ((aiPanel || watchPanel) ? '<div class="row2" style="' + (aiPanel && watchPanel ? '' : 'grid-template-columns:1fr') + '">' + aiPanel + watchPanel + '</div>' : '') + '</div>';
-  return '<div class="view brief">' + head +
+  return '<div class="view brief' + introCls + '">' + head +
     '<div class="toprow">' + spot + '<div class="topside">' + moveWidget() + aiPanel + '</div></div>' +
     fchips() + heroes + priceWidget() +
     (watchPanel ? '<div>' + watchPanel + '</div>' : '') + '</div>';
