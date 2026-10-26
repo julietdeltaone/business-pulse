@@ -861,7 +861,7 @@ document.addEventListener('click', e => {
   if ((el = q('[data-open]'))) { e.stopPropagation(); return openAny(el.dataset.open); }
   if ((el = q('[data-bp]'))) { state.briefPrice = el.dataset.bp; const y = stage.firstChild ? stage.firstChild.scrollTop : 0; render(); if (stage.firstChild) stage.firstChild.scrollTop = y; return; }
   if ((el = q('[data-tsel]'))) { state.trendSel = el.dataset.tsel; render(); const vs = stage.firstChild; if (vs) vs.scrollTop = 0; return; }
-  if (q('[data-spread]')) { state.sort = state.sort.k === 'wed' ? { k: 'wed', dir: -state.sort.dir } : { k: 'wed', dir: -1 }; return fillMarket(); }
+  if (q('[data-spread]')) { const cur = state.sort.k === 'wed' ? state.sort.dir : -1; state.sort = { k: 'wed', dir: -cur }; return fillMarket(); }
   if ((el = q('[data-sort]'))) {
     const k = el.dataset.sort; state.sort = state.sort.k === k ? { k, dir: -state.sort.dir } : { k, dir: k === 'name' || k === 'region' ? 1 : -1 }; return fillMarket();
   }
