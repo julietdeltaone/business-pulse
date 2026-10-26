@@ -404,11 +404,39 @@ function spotlight() {
 let S3 = null;
 function spot3DNodes() {
   const GA = Math.PI * (3 - Math.sqrt(5)), n = B.length;
-  return B.map((b, i) => {
+  const raw = B.map((b, i) => {
     const y = 1 - (i / Math.max(1, n - 1)) * 2, rr = Math.sqrt(Math.max(0, 1 - y * y)), th = GA * i;
     const shell = b.ig.state === 'live' ? .74 : (b.wedLive != null || (b.rev.live && b.rev.count != null)) ? .88 : 1;
     return { id: b.id, x: Math.cos(th) * rr * shell, y: y * shell, z: Math.sin(th) * rr * shell, live: b.ig.state === 'live', priced: b.wedLive != null, size: b.ig.state === 'live' ? 1.15 + Math.sqrt(b.ig.count || 0) / 20 : 1.05 };
   });
+  /* Field rotation: the raw Fibonacci layout can park a spotlighted business near a pole,
+     where no camera tilt can center it. Pick the fixed whole-field rotation (X then Z) that
+     brings every deck node's latitude closest to the equator, so each flight can settle
+     its node dead-center. Recomputed per deck at engine start. */
+  const deck = SPOTDECK.map(id => raw.find(r => r.id === id)).filter(Boolean);
+  if (deck.length) {
+    let bestW = Infinity, rot = null;
+    for (let a = 0; a < Math.PI * 2; a += .02) for (let b = 0; b < Math.PI * 2; b += .02) {
+      const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b);
+      let worst = 0;
+      for (const v of deck) {
+        const y1 = v.y * ca - v.z * sa, z1 = v.y * sa + v.z * ca;
+        const x2 = v.x * cb - y1 * sb, y2 = v.x * sb + y1 * cb;
+        const l = Math.abs(Math.atan2(y2, Math.hypot(x2, z1)));
+        if (l > worst) worst = l;
+        if (worst >= bestW) break;
+      }
+      if (worst < bestW) { bestW = worst; rot = { a, b }; }
+    }
+    if (rot) {
+      const ca = Math.cos(rot.a), sa = Math.sin(rot.a), cb = Math.cos(rot.b), sb = Math.sin(rot.b);
+      raw.forEach(v => {
+        const y1 = v.y * ca - v.z * sa, z1 = v.y * sa + v.z * ca, x0 = v.x;
+        v.x = x0 * cb - y1 * sb; v.y = x0 * sb + y1 * cb; v.z = z1;
+      });
+    }
+  }
+  return raw;
 }
 function spot3DStars() {
   const GA = Math.PI * (3 - Math.sqrt(5)), out = [];
@@ -426,7 +454,7 @@ function spot3DFlyTo(id, instant) {
   const rho = Math.hypot(n.x, n.z);
   let toA = -Math.atan2(n.x, n.z);
   toA += Math.PI * 2 * Math.round((S3.az - toA) / (Math.PI * 2));
-  const toT = Math.max(-.12, Math.min(.85, Math.atan2(n.y, rho)));
+  const toT = Math.max(-1.05, Math.min(1.05, Math.atan2(n.y, rho)));
   if (instant) { S3.az = toA; S3.tilt = toT; S3.zoom = 1.07; S3.fly = null; return; }
   S3.fly = { t0: performance.now(), dur: 1650, fromA: S3.az, toA, fromT: S3.tilt, toT, fromZ: S3.zoom, toZ: 1.07, dir: Math.sign(toA - S3.az) || 1 };
 }
