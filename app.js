@@ -329,8 +329,8 @@ function panel(title, sub, body, link) {
 function liRow(b, rt, sb) {
   return '<button class="li" data-open="' + esc(b.id) + '"><span><span class="nm">' + esc(b.name) + '</span><br><span class="sb">' + esc(sb || b.town) + '</span></span><span class="rt">' + rt + '</span></button>';
 }
-/* ---------- SPOTLIGHT (Brief hero slideshow) ---------- */
-let spotTimer = null, spotPaused = false;
+/* ---------- SPOTLIGHT (Brief hero slideshow with 3D sphere) ---------- */
+let spotTimer = null, spotPaused = false, SPOTDECK = [];
 function spotHist(b) { const hs = (D.igFollowersHistory[b.c.ig_handle] || []).slice(-60); return hs.length >= 2 ? hs : null; }
 function spotFigs(b) {
   const f = [];
@@ -340,14 +340,22 @@ function spotFigs(b) {
   if (b.rev.live && b.rev.count != null) f.push(['Reviews', fmt(b.rev.count) + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) : '')]);
   return f.map(x => '<span class="sfig"><small>' + x[0] + '</small><b>' + x[1] + '</b></span>').join('');
 }
-function spotShell(eyebrow, b, heroNum, heroLabel, diagram, note) {
+function spotShell(eyebrow, b, num, diagram, note) {
   return '<article class="spot-slide"><div class="spot-txt"><div class="spot-eye">' + eyebrow + '</div>' +
     '<h3 class="spot-name">' + esc(b.name) + '</h3><div class="spot-town">' + esc(b.town) + '</div>' +
-    '<div class="spot-num">' + heroNum + '</div><div class="spot-lab">' + heroLabel + '</div>' +
-    '<div class="spot-figs">' + spotFigs(b) + '</div>' + (note ? '<div class="spot-note">' + note + '</div>' : '') + '</div>' +
-    '<div class="spot-viz">' + diagram + '</div></article>';
+    '<div class="spot-num" data-count="' + num.v + '" data-cfmt="' + num.f + '" data-csuffix="' + esc(num.suffix || '') + '">' + num.text + '</div><div class="spot-lab">' + num.label + '</div>' +
+    '<div class="spot-figs">' + spotFigs(b) + '</div>' +
+    (diagram ? '<div class="spot-mini">' + diagram + '</div>' : '') +
+    (note ? '<div class="spot-note">' + note + '</div>' : '') + '</div></article>';
 }
-function spotChart(b) { const hs = spotHist(b); return hs ? wideChart(hs.map(e => e.count), hs.map(e => e.date), b.name + ' followers') : ''; }
+function spotSpark(b) {
+  const hs = spotHist(b); if (!hs) return '';
+  const a = hs.map(e => e.count), w = 320, h = 62, mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const pts = a.map((v, i) => [(i / (a.length - 1)) * w, 6 + (h - 14) - ((v - mn) / r) * (h - 14)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;display:block" aria-hidden="true"><path d="' + line + 'L' + w + ' ' + h + 'L0 ' + h + 'Z" fill="rgba(94,166,230,.14)"/><path class="spot-line" d="' + line + '" fill="none" stroke="#8fcaff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '<div class="sp-cap">' + esc(dshort(hs[0].date)) + ' · ' + fmt(a[0]) + ' → ' + esc(dshort(hs[hs.length - 1].date)) + ' · ' + fmt(a[a.length - 1]) + '</div>';
+}
 function spotPriceTrack(b, kind) {
   const vals = B.map(x => kind === 'wed' ? x.wedLive : x.sessLive).filter(v => v != null).sort((a, c) => a - c);
   if (vals.length < 3) return '';
@@ -358,7 +366,6 @@ function spotPriceTrack(b, kind) {
     '<div class="sp-scale"><span>' + money(mn) + '</span><span>median ' + money(md) + '</span><span>' + money(mx) + '</span></div>' +
     '<div class="sp-cap">' + vals.length + ' verified ' + (kind === 'wed' ? 'wedding' : 'session') + ' rates · this business in amber</div></div>';
 }
-
 function spotReviewsViz(b) {
   const top = B.filter(x => x.rev.live && x.rev.count != null).sort((a, c) => c.rev.count - a.rev.count).slice(0, 5);
   const mx = top.length ? top[0].rev.count : 1;
@@ -367,28 +374,116 @@ function spotReviewsViz(b) {
 }
 function spotlight() {
   const used = new Set(), slides = [];
-  const take = (b, make) => { if (b && !used.has(b.id) && slides.length < 6) { const s = make(b); if (s) { used.add(b.id); slides.push(s); } } };
+  const take = (b, make) => { if (b && !used.has(b.id) && slides.length < 6) { const s = make(b); if (s) { used.add(b.id); slides.push({ id: b.id, html: s }); } } };
   const by = (list, f) => list.slice().sort((a, c) => f(c) - f(a))[0];
-  take(by(LIVEIG, b => b.ig.count), b => spotShell('Spotlight · Most followers', b, fmt(b.ig.count), 'Instagram followers · live today', spotChart(b), 'The largest live audience in the market.'));
-  take(by(LIVEIG.filter(b => b.d7 > 0), b => b.d7), b => spotShell('Spotlight · Biggest mover', b, signed(b.d7), 'followers in the last 7 days', spotChart(b), 'The fastest-growing live account this week.'));
+  take(by(LIVEIG, b => b.ig.count), b => spotShell('Spotlight · Most followers', b, { v: b.ig.count, f: 'int', text: fmt(b.ig.count), label: 'Instagram followers · live today' }, spotSpark(b), 'The largest live audience in the market.'));
+  take(by(LIVEIG.filter(b => b.d7 > 0), b => b.d7), b => spotShell('Spotlight · Biggest mover', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The fastest-growing live account this week.'));
   if (ENGS.length) {
     const ac = aiCompute('all');
     const topId = Object.keys(ac.ids).sort((a, c) => ac.ids[c].total - ac.ids[a].total)[0];
     if (topId && BY[topId]) take(BY[topId], b => {
       const o = ac.ids[b.id];
       const bars = ENGS.map(e => '<div class="sp-ai"><span>' + esc(e) + '</span><span class="sp-aibar"><i style="width:' + (ac.den[e] ? Math.round(o[e] / ac.den[e] * 100) : 0) + '%"></i></span><b>' + o[e] + ' of ' + ac.den[e] + '</b></div>').join('');
-      return spotShell('Spotlight · Most named by AI', b, o.total + ' of ' + ac.answered, 'assistant answers named this business', '<div class="spot-aibars">' + bars + '</div>', 'Latest audit · ' + esc(dshort(DATES.ai)) + ' · directional.');
+      return spotShell('Spotlight · Most named by AI', b, { v: o.total, f: 'int', suffix: ' of ' + ac.answered, text: o.total + ' of ' + ac.answered, label: 'assistant answers named this business' }, '<div class="spot-aibars">' + bars + '</div>', 'Latest audit · ' + esc(dshort(DATES.ai)) + ' · directional.');
     });
   }
-  take(by(B.filter(b => b.wedLive != null), b => b.wedLive), b => spotShell('Spotlight · Highest verified wedding rate', b, money(b.wedLive), 'wedding, from · verified ' + esc(dshort(DATES.pricing)), spotPriceTrack(b, 'wed'), 'The top of the verified price ladder.'));
+  take(by(B.filter(b => b.wedLive != null), b => b.wedLive), b => spotShell('Spotlight · Highest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The top of the verified price ladder.'));
   const revRanked = B.filter(b => b.rev.live && b.rev.count != null).sort((a, c) => c.rev.count - a.rev.count);
-  take(revRanked.find(b => !used.has(b.id)), b => spotShell('Spotlight · Most reviews', b, fmt(b.rev.count), 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : ''), spotReviewsViz(b), 'The deepest review book in the market · the top five, this business in amber.'));
-  take(by(B.filter(b => b.wedLive != null), b => -b.wedLive), b => spotShell('Spotlight · Lowest verified wedding rate', b, money(b.wedLive), 'wedding, from · verified ' + esc(dshort(DATES.pricing)), spotPriceTrack(b, 'wed'), 'The floor of the verified price ladder.'));
-  take(by(LIVEIG.filter(b => b.d7 <= -2), b => -b.d7), b => spotShell('Spotlight · Biggest drop', b, signed(b.d7), 'followers in the last 7 days', spotChart(b), 'The sharpest slide among live accounts this week.'));
-  if (slides.length < 2) return '';
+  take(revRanked.find(b => !used.has(b.id)), b => spotShell('Spotlight · Most reviews', b, { v: b.rev.count, f: 'int', text: fmt(b.rev.count), label: 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : '') }, spotReviewsViz(b), 'The deepest review book in the market · top five shown.'));
+  take(by(B.filter(b => b.wedLive != null), b => -b.wedLive), b => spotShell('Spotlight · Lowest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The floor of the verified price ladder.'));
+  take(by(LIVEIG.filter(b => b.d7 <= -2), b => -b.d7), b => spotShell('Spotlight · Biggest drop', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The sharpest slide among live accounts this week.'));
+  if (slides.length < 2) { SPOTDECK = []; return ''; }
+  SPOTDECK = slides.map(s => s.id);
   const segs = slides.map((s, i) => '<button class="sseg' + (i === 0 ? ' on' : '') + '" data-spot="' + i + '" aria-label="Spotlight ' + (i + 1) + '"><i></i></button>').join('');
-  slides[0] = slides[0].replace('class="spot-slide"', 'class="spot-slide on"');
-  return '<section class="panel spot" id="spot"><div class="spot-stage">' + slides.join('') + '</div><div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
+  const html = slides.map((s, i) => i === 0 ? s.html.replace('class="spot-slide"', 'class="spot-slide on"') : s.html).join('');
+  return '<section class="panel spot" id="spot"><div class="spot-stage"><canvas id="spotcv" aria-hidden="true"></canvas>' + html + '</div><div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
+}
+/* --- 3D sphere: every business a node on a Fibonacci sphere; the camera flies to the spotlighted node, then holds it front with a slow idle wobble. --- */
+let S3 = null;
+function spot3DNodes() {
+  const GA = Math.PI * (3 - Math.sqrt(5)), n = B.length;
+  return B.map((b, i) => {
+    const y = 1 - (i / Math.max(1, n - 1)) * 2, rr = Math.sqrt(Math.max(0, 1 - y * y)), th = GA * i;
+    const shell = b.ig.state === 'live' ? .74 : (b.wedLive != null || (b.rev.live && b.rev.count != null)) ? .88 : 1;
+    return { id: b.id, x: Math.cos(th) * rr * shell, y: y * shell, z: Math.sin(th) * rr * shell, live: b.ig.state === 'live', priced: b.wedLive != null, size: b.ig.state === 'live' ? 1.15 + Math.sqrt(b.ig.count || 0) / 20 : 1.05 };
+  });
+}
+function spot3DTarget(id) {
+  const n = S3 && S3.nodes.find(x => x.id === id); if (!n) return;
+  let t = -Math.atan2(n.x, n.z);
+  t += Math.PI * 2 * Math.round((S3.focus - t) / (Math.PI * 2));
+  S3.tx = t;
+}
+function spot3DStart() {
+  const cv = document.getElementById('spotcv'); if (!cv || !B.length) return;
+  spot3DStop();
+  const ctx = cv.getContext('2d'); if (!ctx) return;
+  S3 = { cv, ctx, nodes: spot3DNodes(), focus: 0, tx: 0, raf: 0, hi: SPOTDECK[state.spotIdx] || null };
+  if (S3.hi) { const n = S3.nodes.find(x => x.id === S3.hi); if (n) { S3.focus = -Math.atan2(n.x, n.z); S3.tx = S3.focus; } }
+  const size = () => { const r = cv.parentElement.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.max(50, r.width * d); cv.height = Math.max(50, r.height * d); S3.d = d; S3.w = r.width; S3.h = r.height; };
+  size();
+  S3.resize = size;
+  window.addEventListener('resize', size);
+  const TILT = .34, F = 3.4;
+  const frame = t => {
+    if (!S3) return;
+    S3.focus += (S3.tx - S3.focus) * .045;
+    const rot = S3.focus + Math.sin(t * .00042) * .13, wob = Math.cos(t * .00031) * .05;
+    const { ctx, w, h, d } = S3;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const cx = w * .74, cy = h * .52, R = Math.min(h * .37, w * .30);
+    const cosR = Math.cos(rot), sinR = Math.sin(rot), cosT = Math.cos(TILT + wob), sinT = Math.sin(TILT + wob);
+    const proj = S3.nodes.map(n => {
+      const xr = n.x * cosR + n.z * sinR, zr = -n.x * sinR + n.z * cosR;
+      const yr = n.y * cosT - zr * sinT, z2 = n.y * sinT + zr * cosT;
+      const s = F / (F - z2);
+      return { n, sx: cx + xr * R * s, sy: cy - yr * R * s, z: z2, s };
+    });
+    ctx.beginPath(); ctx.arc(cx, cy, R * 1.02, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.07)'; ctx.lineWidth = 1; ctx.stroke();
+    const hi = proj.find(p => p.n.id === S3.hi);
+    if (hi) {
+      const pulse = .55 + .3 * Math.sin(t * .004);
+      const g = ctx.createLinearGradient(cx, cy, hi.sx, hi.sy);
+      g.addColorStop(0, 'rgba(242,181,82,.05)'); g.addColorStop(1, 'rgba(242,181,82,' + (pulse * .8).toFixed(3) + ')');
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(hi.sx, hi.sy); ctx.strokeStyle = g; ctx.lineWidth = 1.4; ctx.stroke();
+    }
+    proj.slice().sort((a, b) => a.z - b.z).forEach(p => {
+      if (p.n.id === S3.hi) return;
+      const a = .16 + .6 * ((p.z + 1) / 2);
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, Math.max(.6, p.n.size * p.s * 1.35), 0, Math.PI * 2);
+      ctx.fillStyle = p.n.live ? 'rgba(143,202,255,' + a.toFixed(3) + ')' : p.n.priced ? 'rgba(201,212,230,' + (a * .8).toFixed(3) + ')' : 'rgba(120,132,152,' + (a * .65).toFixed(3) + ')';
+      ctx.fill();
+    });
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(230,238,250,.85)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 8 + Math.sin(t * .0016) * 1.6, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.28)'; ctx.lineWidth = 1; ctx.stroke();
+    if (hi) {
+      const hr = Math.max(3.4, hi.n.size * hi.s * 1.9), pr = hr + 5 + Math.sin(t * .004) * 2.2;
+      const glow = ctx.createRadialGradient(hi.sx, hi.sy, 0, hi.sx, hi.sy, hr * 3.4);
+      glow.addColorStop(0, 'rgba(242,181,82,.30)'); glow.addColorStop(1, 'rgba(242,181,82,0)');
+      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, hr * 3.4, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
+      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, pr, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(242,181,82,.65)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, hr, 0, Math.PI * 2); ctx.fillStyle = '#f2b552'; ctx.fill();
+      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, hr * .42, 0, Math.PI * 2); ctx.fillStyle = '#fff6e3'; ctx.fill();
+    }
+    if (!REDUCED) S3.raf = requestAnimationFrame(frame);
+  };
+  S3.raf = requestAnimationFrame(frame);
+}
+function spot3DStop() { if (S3) { cancelAnimationFrame(S3.raf); if (S3.resize) window.removeEventListener('resize', S3.resize); S3 = null; } }
+function spotCount(slide) {
+  const el = slide && slide.querySelector('.spot-num[data-count]'); if (!el) return;
+  const target = parseFloat(el.dataset.count), kind = el.dataset.cfmt, suf = el.dataset.csuffix || '';
+  const render = v => kind === 'money' ? money(v) : kind === 'signed' ? signed(v) : fmt(v);
+  if (REDUCED || isNaN(target)) { el.textContent = render(target) + suf; return; }
+  const t0 = performance.now(), dur = 950;
+  const step = t => {
+    if (!el.isConnected) return;
+    const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = render(Math.round(target * e)) + suf;
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 function spotGo(i) {
   const root = $('#spot'); if (!root) return;
@@ -396,10 +491,13 @@ function spotGo(i) {
   state.spotIdx = ((i % n) + n) % n;
   slides.forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
   root.querySelectorAll('.sseg').forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
+  if (S3) { S3.hi = SPOTDECK[state.spotIdx] || null; spot3DTarget(S3.hi); }
+  spotCount(slides[state.spotIdx]);
 }
 function startSpot() {
   stopSpot();
   const root = $('#spot'); if (!root) return;
+  spot3DStart();
   spotGo(state.spotIdx || 0);
   if (!root.__wired) {
     root.__wired = true;
@@ -407,9 +505,9 @@ function startSpot() {
     root.addEventListener('mouseleave', () => { spotPaused = false; });
   }
   if (REDUCED) return;
-  spotTimer = setInterval(() => { if (!spotPaused && document.visibilityState === 'visible') spotGo(state.spotIdx + 1); }, 6500);
+  spotTimer = setInterval(() => { if (!spotPaused && document.visibilityState === 'visible') spotGo(state.spotIdx + 1); }, 5000);
 }
-function stopSpot() { if (spotTimer) { clearInterval(spotTimer); spotTimer = null; } }
+function stopSpot() { if (spotTimer) { clearInterval(spotTimer); spotTimer = null; } spot3DStop(); }
 
 function moveWidget() {
   if (!LIVEIG.length) return '';
@@ -477,10 +575,14 @@ function viewBrief() {
     watchPanel = panel('Website watch', 'Sweep ' + dshort(sw.date), '<div class="watchline"><span><b>' + sw.ch + '</b> ' + plural(sw.ch, 'page') + ' changed</span><span>' + sw.fetched + ' of ' + sw.of + ' pages checked</span></div>' + (list ? '<div class="watchlist">' + list + '</div>' : ''), ['Details', 'data']);
   }
 
-  return '<div class="view brief">' +
-    '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + (LIVEIG.length ? pill(LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live', 'ice') : '') + '</div>' +
-    spotlight() + fchips() + heroes + moveWidget() + priceWidget() +
+  const spot = spotlight();
+  const head = '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + (LIVEIG.length ? pill(LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live', 'ice') : '') + '</div>';
+  if (!spot) return '<div class="view brief">' + head + fchips() + heroes + moveWidget() + priceWidget() +
     ((aiPanel || watchPanel) ? '<div class="row2" style="' + (aiPanel && watchPanel ? '' : 'grid-template-columns:1fr') + '">' + aiPanel + watchPanel + '</div>' : '') + '</div>';
+  return '<div class="view brief">' + head +
+    '<div class="toprow">' + spot + '<div class="topside">' + moveWidget() + aiPanel + '</div></div>' +
+    fchips() + heroes + priceWidget() +
+    (watchPanel ? '<div>' + watchPanel + '</div>' : '') + '</div>';
 }
 
 /* ---------- MARKET ---------- */
