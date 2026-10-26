@@ -588,7 +588,6 @@ h1, .page-h h1, .brief-head h1, .dr-head h2, .brand-t b { font-family: var(--fon
 .sseg i::after { content: ""; position: absolute; inset: 0; width: 0; background: var(--ice-2); border-radius: 2px; }
 .sseg.on i::after { animation: segfill 5s linear both; }
 @keyframes segfill { from { width: 0; } to { width: 100%; } }
-.spot:hover .sseg.on i::after { animation-play-state: paused; }
 .spot-nav { display: flex; gap: 6px; }
 .spot-nav button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-2); background: none; color: var(--fg-2); font-size: 17px; line-height: 1; cursor: pointer; transition: background .15s, color .15s; }
 .spot-nav button:hover { background: rgba(255, 255, 255, .07); color: var(--fg); }
