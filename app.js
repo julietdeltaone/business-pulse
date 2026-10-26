@@ -224,7 +224,7 @@ function sweepInfo(w) {
 }
 
 /* ---------- ui bits ---------- */
-const state = { view: 'brief', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false };
+const state = { view: 'brief', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false, briefPrice: 'wed', trendSel: 'all' };
 const stage = $('#stage'), drawer = $('#drawer');
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800); }
 function copyText(text, msg) {
@@ -329,6 +329,41 @@ function panel(title, sub, body, link) {
 function liRow(b, rt, sb) {
   return '<button class="li" data-open="' + esc(b.id) + '"><span><span class="nm">' + esc(b.name) + '</span><br><span class="sb">' + esc(sb || b.town) + '</span></span><span class="rt">' + rt + '</span></button>';
 }
+function moveWidget() {
+  if (!LIVEIG.length) return '';
+  const gain = LIVEIG.filter(b => b.d7 > 0).sort((a, b) => b.d7 - a.d7 || a.name.localeCompare(b.name)).slice(0, 5);
+  const lose = LIVEIG.filter(b => b.d7 < 0).sort((a, b) => a.d7 - b.d7 || a.name.localeCompare(b.name)).slice(0, 5);
+  if (!gain.length && !lose.length) return '';
+  const mx = Math.max.apply(null, LIVEIG.map(b => Math.abs(b.d7 || 0)).concat([1]));
+  const rows = list => list.map(b => {
+    const up = b.d7 > 0, w = Math.max(4, Math.abs(b.d7) / mx * 100);
+    return '<button class="mrow" data-open="' + esc(b.id) + '"><span class="mnm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></span>' +
+      '<span class="mbar"><i class="' + (up ? 'up' : 'down') + '" style="width:' + w.toFixed(1) + '%"></i></span>' +
+      '<span class="mval"><span class="dchip ' + (up ? 'up' : 'down') + '">' + signed(b.d7) + '</span><small>' + fmt(b.ig.count) + ' followers</small></span></button>';
+  }).join('');
+  const col = (list, title, cls) => list.length ? '<div class="mcol"><h4 class="' + cls + '">' + title + '</h4>' + rows(list) + '</div>' : '';
+  return panel('Movement', 'Last 7 days · live accounts', '<div class="mv2 big" style="' + (gain.length && lose.length ? '' : 'grid-template-columns:1fr') + '">' + col(gain, 'Gaining', 'g') + col(lose, 'Losing', 'l') + '</div>', ['Trends', 'trends']);
+}
+function priceWidget() {
+  const k = state.briefPrice;
+  const list = B.filter(b => (k === 'wed' ? b.wedLive : b.sessLive) != null)
+    .map(b => ({ b, v: k === 'wed' ? b.wedLive : b.sessLive }))
+    .sort((a, b) => b.v - a.v || a.b.name.localeCompare(b.b.name));
+  if (list.length < 3) return '';
+  const vals = list.map(x => x.v), md = median(vals), mx = vals[0], mn = vals[vals.length - 1];
+  let lastAbove = true;
+  const rowsHtml = list.map(x => {
+    const w = Math.max(3, x.v / mx * 100);
+    let line = '';
+    if (lastAbove && x.v <= md) { line = '<div class="medline"><span>Median ' + money(md) + '</span></div>'; lastAbove = false; }
+    return line + '<button class="mrow prow" data-open="' + esc(x.b.id) + '"><span class="mnm"><b>' + esc(x.b.name) + '</b><span>' + esc(x.b.town) + '</span></span>' +
+      '<span class="mbar"><i class="price" style="width:' + w.toFixed(1) + '%"></i></span>' +
+      '<span class="mval"><b class="pnum">' + money(x.v) + '</b><small>' + (k === 'wed' ? 'wedding, from' : 'session, from') + '</small></span></button>';
+  }).join('');
+  const head = '<div class="phead"><div class="pmed"><div class="n">' + money(md) + '</div><div class="t">Median ' + (k === 'wed' ? 'wedding' : 'session') + ', from</div><div class="s">' + list.length + ' verified rates · ' + money(mn) + ' to ' + money(mx) + ' · read from their own sites ' + esc(dshort(DATES.pricing)) + '</div></div>' +
+    '<div class="chips"><button class="fc" data-bp="wed" aria-pressed="' + (k === 'wed') + '">Wedding</button><button class="fc" data-bp="sess" aria-pressed="' + (k === 'sess') + '">Session</button></div></div>';
+  return panel('Pricing', 'Verified · every rate on the ladder', head + '<div class="ladder">' + rowsHtml + '</div>', ['All businesses', 'market']);
+}
 function viewBrief() {
   const n = B.length;
   const reg = { slc: 0, adjacent: 0, unconfirmed: 0 }; B.forEach(b => reg[b.region] = (reg[b.region] || 0) + 1);
@@ -353,16 +388,6 @@ function viewBrief() {
   }
   const heroes = '<div class="heroes" style="--hn:' + tiles.length + '">' + tiles.join('') + '</div>';
 
-  let movers = '';
-  if (LIVEIG.length) {
-    const gain = LIVEIG.filter(b => b.d7 > 0).sort((a, b) => b.d7 - a.d7 || a.name.localeCompare(b.name)).slice(0, 3);
-    const lose = LIVEIG.filter(b => b.d7 < 0).sort((a, b) => a.d7 - b.d7 || a.name.localeCompare(b.name)).slice(0, 3);
-    if (gain.length || lose.length) {
-      const col = (list, title, cls) => '<div><h4 class="' + cls + '">' + title + '</h4><div class="list">' + list.map(b => liRow(b, '<span class="dchip ' + (b.d7 > 0 ? 'up' : 'down') + '">' + signed(b.d7) + '</span><small>' + fmt(b.ig.count) + '</small>')).join('') + '</div></div>';
-      movers = '<div class="mv2" style="' + (gain.length && lose.length ? '' : 'grid-template-columns:1fr') + '">' + (gain.length ? col(gain, 'Gaining', 'g') : '') + (lose.length ? col(lose, 'Losing', 'l') : '') + '</div>';
-    }
-  }
-
   const sw = sweepInfo(SW[SW.length - 1]);
   let watchPanel = '';
   if (sw && sw.ch > 0) {
@@ -370,10 +395,10 @@ function viewBrief() {
     watchPanel = panel('Website watch', 'Sweep ' + dshort(sw.date), '<div class="watchline"><span><b>' + sw.ch + '</b> ' + plural(sw.ch, 'page') + ' changed</span><span>' + sw.fetched + ' of ' + sw.of + ' pages checked</span></div>' + (list ? '<div class="watchlist">' + list + '</div>' : ''), ['Details', 'data']);
   }
 
-  const row2 = (movers || aiPanel) ? '<div class="row2" style="' + (movers && aiPanel ? '' : 'grid-template-columns:1fr') + '">' + (movers ? panel('Movement', 'Last 7 days, live accounts', movers, ['All businesses', 'market']) : '') + aiPanel + '</div>' : '';
   return '<div class="view brief">' +
     '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + (LIVEIG.length ? pill(LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live', 'ice') : '') + '</div>' +
-    fchips() + heroes + row2 + watchPanel + '</div>';
+    fchips() + heroes + moveWidget() + priceWidget() +
+    ((aiPanel || watchPanel) ? '<div class="row2" style="' + (aiPanel && watchPanel ? '' : 'grid-template-columns:1fr') + '">' + aiPanel + watchPanel + '</div>' : '') + '</div>';
 }
 
 /* ---------- MARKET ---------- */
@@ -406,11 +431,13 @@ function sorted(list) {
 function spreadStrip(list) {
   const pts = list.filter(b => b.wedLive != null);
   if (pts.length < 3) return '';
+  const dir = state.sort.k === 'wed' ? state.sort.dir : -1;
   const vals = pts.map(b => b.wedLive), mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), r = mx - mn || 1, md = median(vals);
-  const x = v => 6 + ((v - mn) / r) * 588;
-  const dots = pts.map(b => '<circle class="sd" data-open="' + esc(b.id) + '" data-tip="' + esc(b.name) + ' · ' + money(b.wedLive) + '" cx="' + x(b.wedLive).toFixed(1) + '" cy="17" r="4.5" fill="#5ea6e6" fill-opacity=".55" stroke="#8fcaff" stroke-opacity=".7" style="cursor:pointer"/>').join('');
-  return '<div class="spread"><span class="t"><b>Wedding, from</b><br>' + pts.length + ' verified prices</span><svg viewBox="0 0 600 34" preserveAspectRatio="none"><line x1="6" x2="594" y1="17" y2="17" stroke="rgba(150,180,220,.18)"/><line x1="' + x(md).toFixed(1) + '" x2="' + x(md).toFixed(1) + '" y1="4" y2="30" stroke="#f2b552" stroke-width="1.5"/>' + dots + '</svg><span class="t" style="text-align:right">' + money(mn) + ' to ' + money(mx) + '<br>median <b>' + money(md) + '</b></span></div>';
+  const x = v => dir < 0 ? 6 + ((mx - v) / r) * 588 : 6 + ((v - mn) / r) * 588;
+  const dots = pts.map(b => '<circle class="sd" data-open="' + esc(b.id) + '" data-tip="' + esc(b.name) + ' · ' + money(b.wedLive) + '" cx="' + x(b.wedLive).toFixed(1) + '" cy="21" r="4.5" fill="#5ea6e6" fill-opacity=".55" stroke="#8fcaff" stroke-opacity=".7" style="cursor:pointer"/>').join('');
+  return '<div class="spread" data-spread="1" data-tip="Click to reverse the wedding price order" style="cursor:pointer"><span class="t"><b>Wedding, from</b><br>' + pts.length + ' verified prices · ' + (dir < 0 ? 'highest first' : 'lowest first') + ' ⇅</span><svg viewBox="0 0 600 34" preserveAspectRatio="none"><line x1="6" x2="594" y1="21" y2="21" stroke="rgba(150,180,220,.18)"/><line x1="' + x(md).toFixed(1) + '" x2="' + x(md).toFixed(1) + '" y1="10" y2="32" stroke="#f2b552" stroke-width="1.5"/><text x="' + Math.min(592, Math.max(8, x(md))).toFixed(1) + '" y="8" text-anchor="middle" fill="#f2b552" font-size="9.5" font-weight="600">median ' + money(md) + '</text>' + dots + '</svg><span class="t" style="text-align:right">' + (dir < 0 ? money(mx) + ' → ' + money(mn) : money(mn) + ' → ' + money(mx)) + '<br>price range</span></div>';
 }
+
 function tableBiz(list) {
   const head = COLS.map(c => '<th class="' + (c.cls || '') + (c.r ? ' r' : '') + (c.ns ? '' : ' s') + (state.sort.k === c.k ? ' on' : '') + '"' + (c.ns ? '' : ' data-sort="' + c.k + '"') + '>' + esc(c.l) + (state.sort.k === c.k ? '<span class="ar">' + (state.sort.dir < 0 ? '↓' : '↑') + '</span>' : '<span class="ar"></span>') + '</th>').join('');
   const body = list.map(b => '<tr data-open="' + esc(b.id) + '" aria-selected="' + (state.sel === b.id) + '"><td class="nm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></td><td class="c-reg">' + regPill(b.region) + '</td><td class="c-lanes"><div class="lanes">' + b.lanes.slice(0, 3).map(l => '<span class="lane l-' + l + '">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="lane">+' + (b.lanes.length - 3) + '</span>' : '') + '</div></td><td class="r">' + cFollowers(b) + '</td><td class="r c-d7">' + cD7(b) + '</td><td class="c-trend">' + (b.ig.state === 'live' ? spark(b.spark) : '<span class="muted">—</span>') + '</td><td class="r">' + cPrice(b, 'wed') + '</td><td class="r">' + cPrice(b, 'sess') + '</td><td class="r">' + cRev(b) + '</td></tr>').join('');
@@ -575,9 +602,46 @@ function viewMap() {
   mapPoints();
   const towns = {}; MAPPTS.filter(p => p.kind === 'b').forEach(p => towns[p.tn] = (towns[p.tn] || 0) + 1);
   const list = Object.keys(towns).sort((a, b) => towns[b] - towns[a] || a.localeCompare(b)).map(t => '<button class="li" data-town="' + esc(t) + '" style="' + (state.mapTown === t ? 'background:var(--ice-bg)' : '') + '"><span class="nm">' + esc(t) + '</span><span class="rt">' + towns[t] + '</span></button>').join('');
-  return '<div class="view mapv"><div class="mapcard"><div class="mapctl"><div class="seg sm" id="boxseg"><i class="thumb"></i><button data-box="all" aria-selected="true">North Country</button><button data-box="slc" aria-selected="false">St. Lawrence County</button></div><button class="fc" id="venToggle" aria-pressed="' + state.mapVen + '" style="height:32px;background:rgba(5,7,11,.6)">Venues</button></div>' + mapSvg() +
-    '<div class="mapnote">Schematic outline. Solid circles are live Instagram accounts sized by followers; dashed circles are not refreshed. ' + (MAPMISS ? MAPMISS + ' without a mapped town.' : '') + '</div></div>' +
+  return '<div class="view mapv"><div class="mapcard"><div class="mapctl"><div class="seg sm" id="boxseg"><i class="thumb"></i><button data-box="all" aria-selected="true">North Country</button><button data-box="slc" aria-selected="false">St. Lawrence County</button></div><button class="fc" id="venToggle" aria-pressed="' + state.mapVen + '" style="height:32px;background:rgba(5,7,11,.6)">Venues</button></div><div id="mapid"></div>' +
+    '<div class="mapnote">Drag to pan, scroll to zoom. Solid circles are live Instagram accounts sized by followers; hollow circles are not refreshed. ' + (MAPMISS ? MAPMISS + ' without a mapped town.' : '') + '</div></div>' +
     '<section class="panel maplist"><div class="panel-h"><h2>Towns</h2><span class="sub">' + MAPPTS.filter(p => p.kind === 'b').length + ' businesses</span></div><div class="panel-b list">' + list + '</div></section></div>';
+}
+let bpMap = null, bpBounds = { all: null, slc: null };
+function initMap() {
+  const el = document.getElementById('mapid'); if (!el) return;
+  if (!window.L) { el.innerHTML = mapSvg(); const s = $('#mapsvg'); if (s) applyBox(curBox); return; }
+  if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
+  bpMap = L.map(el, { zoomControl: false, scrollWheelZoom: true });
+  L.control.zoom({ position: 'bottomright' }).addTo(bpMap);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }).addTo(bpMap);
+  const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {}, cnt = {};
+  const all = [], slcPts = [];
+  const placeLL = (id, name, town, region, kind, ll, ig) => {
+    if (!ll) return;
+    const i = cnt[town] = (cnt[town] || 0) + 1;
+    const ang = i * 2.4, rr = i > 1 ? 0.014 * Math.sqrt(i - 1) : 0;
+    const lat = ll[0] + Math.sin(ang) * rr, lng = ll[1] + Math.cos(ang) * rr * 1.4;
+    all.push([lat, lng]); if (region === 'slc') slcPts.push([lat, lng]);
+    const live = ig && ig.state === 'live';
+    const col = kind === 'v' ? '#f2b552' : (RCOL[region] || RCOL.unconfirmed);
+    const m = L.circleMarker([lat, lng], { radius: live ? Math.max(6, Math.min(17, 3.2 + Math.sqrt(ig.count) / 5)) : 5, color: col, weight: 1.4, dashArray: live ? null : '2 3', fillColor: col, fillOpacity: live ? .6 : .22 }).addTo(bpMap);
+    m.bindTooltip(name + (kind === 'v' ? ' · venue' : live ? ' · ' + fmt(ig.count) + ' followers' : ''), { direction: 'top', offset: [0, -6] });
+    m.on('click', () => openAny(id));
+  };
+  B.forEach(b => { const c = coords[al[b.town] || b.town]; placeLL(b.id, b.name, b.town, b.region, 'b', c ? [c.lat, c.lng] : null, b.ig); });
+  if (state.mapVen) V.forEach(x => placeLL(x.id, x.name, x.town, x.region, 'v', x.v.lat != null ? [x.v.lat, x.v.lng] : null, x.ig));
+  bpBounds = { all: all.length ? all : null, slc: slcPts.length ? slcPts : null };
+  if (state.mapTown) flyTown(state.mapTown);
+  else if (all.length) bpMap.fitBounds(all, { padding: [28, 28] });
+  else bpMap.setView([44.55, -75.35], 8);
+  setTimeout(() => { if (bpMap) bpMap.invalidateSize(); }, 60);
+}
+function flyTown(t) {
+  if (!bpMap) return;
+  const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {};
+  const b = B.find(x => tname(x.town) === t);
+  const c = b && coords[al[b.town] || b.town];
+  if (c) bpMap.flyTo([c.lat, c.lng], 10, { duration: REDUCED ? 0 : 0.7 });
 }
 
 /* ---------- TRENDS ---------- */
@@ -605,23 +669,37 @@ function trendSeries() {
   const now = vals[vals.length - 1], v7 = at(7), v30 = at(30);
   return { dates: use, vals, n: cohort.length, now, d7: v7 == null ? null : now - v7, d30: v30 == null ? null : now - v30 };
 }
+function trendSelData() {
+  if (state.trendSel === 'all') {
+    const ts = trendSeries();
+    return ts ? { title: 'All live accounts', dates: ts.dates, vals: ts.vals, now: ts.now, d7: ts.d7, d30: ts.d30, sub: ts.n + ' accounts with 30+ days of history' } : null;
+  }
+  const b = BY[state.trendSel];
+  if (!b || b.ig.state !== 'live') return trendSelDataAll();
+  const hs = (D.igFollowersHistory[b.c.ig_handle] || []).slice(-60);
+  if (hs.length < 2) return trendSelDataAll();
+  return { title: b.name, dates: hs.map(e => e.date), vals: hs.map(e => e.count), now: b.ig.count, d7: b.d7, d30: b.d30, sub: b.town };
+}
+function trendSelDataAll() { state.trendSel = 'all'; const ts = trendSeries(); return ts ? { title: 'All live accounts', dates: ts.dates, vals: ts.vals, now: ts.now, d7: ts.d7, d30: ts.d30, sub: ts.n + ' accounts with 30+ days of history' } : null; }
 function viewTrends() {
   const parts = [];
-  const ts = trendSeries();
-  if (ts) {
+  const sel = trendSelData();
+  if (sel) {
+    const top = LIVEIG.slice().sort((a, b) => b.ig.count - a.ig.count).slice(0, 8);
+    const chips = '<div class="chips" style="margin-bottom:12px"><button class="fc" data-tsel="all" aria-pressed="' + (state.trendSel === 'all') + '">All live accounts</button>' +
+      top.map(b => '<button class="fc" data-tsel="' + esc(b.id) + '" aria-pressed="' + (state.trendSel === b.id) + '">' + esc(b.name) + '</button>').join('') + '</div>';
     const stat3 = '<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">' +
-      '<div class="tile"><div class="n">' + fmt(ts.now) + '</div><div class="t">Followers across ' + ts.n + ' live accounts</div></div>' +
-      '<div class="tile"><div class="n ' + (ts.d7 > 0 ? 'up' : ts.d7 < 0 ? 'down' : '') + '">' + (ts.d7 == null ? '—' : signed(ts.d7)) + '</div><div class="t">Last 7 days</div></div>' +
-      '<div class="tile"><div class="n ' + (ts.d30 > 0 ? 'up' : ts.d30 < 0 ? 'down' : '') + '">' + (ts.d30 == null ? '—' : signed(ts.d30)) + '</div><div class="t">Last 30 days</div></div></div>';
-    parts.push(panel('Instagram, all live accounts', 'Daily pulls · ' + ts.n + ' accounts with 30+ days of history', stat3 + '<div style="padding:10px 2px 2px">' + wideChart(ts.vals, ts.dates, 'Total followers') + '</div>'));
-    const use30 = LIVEIG.filter(b => b.d30 != null).length >= 3;
-    const key = use30 ? 'd30' : 'd7', lbl = use30 ? '30 days' : '7 days';
-    const gain = LIVEIG.filter(b => b[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 5);
-    const lose = LIVEIG.filter(b => b[key] < 0).sort((a, b) => a[key] - b[key]).slice(0, 5);
-    if (gain.length || lose.length) {
-      const col = (list, title, cls) => '<div><h4 class="' + cls + '">' + title + '</h4><div class="list">' + list.map(b => liRow(b, '<span class="dchip ' + (b[key] > 0 ? 'up' : 'down') + '">' + signed(b[key]) + '</span><small>' + fmt(b.ig.count) + '</small>')).join('') + '</div></div>';
-      parts.push(panel('Movers, ' + lbl, 'Live accounts', '<div class="mv2" style="' + (gain.length && lose.length ? '' : 'grid-template-columns:1fr') + '">' + (gain.length ? col(gain, 'Gaining', 'g') : '') + (lose.length ? col(lose, 'Losing', 'l') : '') + '</div>'));
-    }
+      '<div class="tile"><div class="n">' + fmt(sel.now) + '</div><div class="t">Followers · ' + esc(sel.sub) + '</div></div>' +
+      '<div class="tile"><div class="n ' + (sel.d7 > 0 ? 'up' : sel.d7 < 0 ? 'down' : '') + '">' + (sel.d7 == null ? '—' : signed(sel.d7)) + '</div><div class="t">Last 7 days</div></div>' +
+      '<div class="tile"><div class="n ' + (sel.d30 > 0 ? 'up' : sel.d30 < 0 ? 'down' : '') + '">' + (sel.d30 == null ? '—' : signed(sel.d30)) + '</div><div class="t">Last 30 days</div></div></div>';
+    parts.push(panel('Followers · ' + sel.title, 'Daily pulls', chips + stat3 + '<div style="padding:10px 2px 2px">' + wideChart(sel.vals, sel.dates, 'Followers') + '</div>'));
+    const rows = LIVEIG.slice().sort((a, b) => b.ig.count - a.ig.count).map(b =>
+      '<button class="mrow tsel' + (state.trendSel === b.id ? ' on' : '') + '" data-tsel="' + esc(b.id) + '"><span class="mnm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></span>' +
+      '<span class="tspark">' + spark(b.spark) + '</span>' +
+      '<span class="mval"><b>' + fmt(b.ig.count) + '</b><small>' +
+      (b.d7 != null ? '<span class="' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + ' / 7d</span>' : '') +
+      (b.d30 != null ? ' · <span class="' + (b.d30 > 0 ? 'up' : b.d30 < 0 ? 'down' : 'flat') + '">' + signed(b.d30) + ' / 30d</span>' : '') + '</small></span></button>').join('');
+    parts.push(panel('Accounts', 'Select one to chart it', '<div class="acctlist">' + rows + '</div>'));
   }
   const groups = {};
   AIROWS.forEach(r => { const k = r.date + '|' + r.engine; (groups[k] = groups[k] || { date: r.date, engine: r.engine, rows: [] }).rows.push(r); });
@@ -645,7 +723,7 @@ function viewTrends() {
     const rows = TP.map(p => '<tr><td>' + esc(dshort(p.date)) + '</td><td class="r">' + (p.medWed == null ? '—' : money(p.medWed)) + '</td><td class="r">' + (p.nWed || 0) + '</td><td class="r">' + (p.medSess == null ? '—' : money(p.medSess)) + '</td><td class="r">' + (p.nSess || 0) + '</td><td class="r">' + (p.revTotal == null ? '—' : fmt(p.revTotal)) + '</td></tr>').join('');
     parts.push(panel('Market levels, by build date', 'Medians from verified pricing only', '<table class="mini"><thead><tr><th>Date</th><th class="r">Median wedding</th><th class="r">Rates</th><th class="r">Median session</th><th class="r">Rates</th><th class="r">Reviews, total</th></tr></thead><tbody>' + rows + '</tbody></table>'));
   }
-  return '<div class="view scroll"><div class="trends"><div class="page-h"><div><h1>Trends</h1><p>Movement over time, drawn only from series that were actually recorded. A series appears when it has the points to support it.</p></div></div>' +
+  return '<div class="view scroll"><div class="trends"><div class="page-h"><div><h1>Trends</h1><p>Movement over time, drawn only from series that were actually recorded. Pick an account and the chart follows it.</p></div></div>' +
     (parts.length ? '<div style="display:grid;gap:14px">' + parts.join('') + '</div>' : empty('No series has enough recorded points yet')) + '</div></div>';
 }
 
@@ -761,7 +839,8 @@ function render() {
   stage.scrollTop = 0;
   if (v === 'market') fillMarket();
   $$('.seg.sm').forEach(thumb);
-  if (v === 'map') { const s = $('#mapsvg'); if (s) applyBox(curBox); }
+  if (v === 'map') initMap();
+  else if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
 }
 function show(v) { if (VIEWS.indexOf(v) < 0 || (v === 'ai' && !ENGS.length)) v = 'brief'; state.view = v; try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) { } render(); }
 function route() { let h = (location.hash || '').replace('#', ''); if (VIEWS.indexOf(h) < 0 || (h === 'ai' && !ENGS.length)) h = 'brief'; if (h !== state.view || !stage.firstChild) { state.view = h; render(); } }
@@ -776,6 +855,9 @@ document.addEventListener('click', e => {
   if (q('[data-close]')) return closeDrawer();
   if ((el = q('[data-go]'))) return show(el.dataset.go);
   if ((el = q('[data-open]'))) { e.stopPropagation(); return openAny(el.dataset.open); }
+  if ((el = q('[data-bp]'))) { state.briefPrice = el.dataset.bp; const y = stage.firstChild ? stage.firstChild.scrollTop : 0; render(); if (stage.firstChild) stage.firstChild.scrollTop = y; return; }
+  if ((el = q('[data-tsel]'))) { state.trendSel = el.dataset.tsel; render(); const vs = stage.firstChild; if (vs) vs.scrollTop = 0; return; }
+  if (q('[data-spread]')) { state.sort = state.sort.k === 'wed' ? { k: 'wed', dir: -state.sort.dir } : { k: 'wed', dir: -1 }; return fillMarket(); }
   if ((el = q('[data-sort]'))) {
     const k = el.dataset.sort; state.sort = state.sort.k === k ? { k, dir: -state.sort.dir } : { k, dir: k === 'name' || k === 'region' ? 1 : -1 }; return fillMarket();
   }
@@ -785,8 +867,8 @@ document.addEventListener('click', e => {
   if (q('#csv')) return copyText(state.kind === 'biz' ? csvBiz() : '', 'Copied ' + filtered().length + ' rows');
   if ((el = q('[data-ailane]'))) { state.aiLane = el.dataset.ailane; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
   if ((el = q('[data-mx]'))) { const id = el.dataset.mx; state.aiOpen[id] = !state.aiOpen[id]; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
-  if ((el = q('[data-town]'))) { state.mapTown = state.mapTown === el.dataset.town ? null : el.dataset.town; const keep = curBox.slice(); render(); applyBox(keep); return; }
-  if ((el = q('[data-box]'))) { $$('[data-box]').forEach(b => b.setAttribute('aria-selected', String(b === el))); thumb($('#boxseg')); return animBox(boxFor(el.dataset.box)); }
+  if ((el = q('[data-town]'))) { const t = el.dataset.town; state.mapTown = state.mapTown === t ? null : t; if (bpMap && state.mapTown) { $$('[data-town]').forEach(x => x.style.background = x.dataset.town === t ? 'var(--ice-bg)' : ''); flyTown(t); return; } const keep = curBox.slice(); render(); applyBox(keep); return; }
+  if ((el = q('[data-box]'))) { $$('[data-box]').forEach(b => b.setAttribute('aria-selected', String(b === el))); thumb($('#boxseg')); if (bpMap && bpBounds[el.dataset.box]) { bpMap.flyToBounds(bpBounds[el.dataset.box], { padding: [28, 28], duration: REDUCED ? 0 : 0.7 }); return; } return animBox(boxFor(el.dataset.box)); }
   if (q('#venToggle')) { state.mapVen = !state.mapVen; const keep = curBox.slice(); render(); applyBox(keep); return; }
   if ((el = q('[data-copy]'))) {
     const k = el.dataset.copy;
