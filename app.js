@@ -429,13 +429,16 @@ function sorted(list) {
   });
 }
 function spreadStrip(list) {
-  const pts = list.filter(b => b.wedLive != null);
-  if (pts.length < 3) return '';
   const dir = state.sort.k === 'wed' ? state.sort.dir : -1;
+  const pts = list.filter(b => b.wedLive != null);
+  const left = '<span class="t"><b>Wedding, from</b><br>' + (pts.length >= 3 ? pts.length + ' verified prices · ' + (dir < 0 ? 'highest first' : 'lowest first') + ' ⇅' : '') + '</span>';
+  if (pts.length < 3) return '<div class="spread">' + left + '<span class="track"></span><span class="t r"></span></div>';
   const vals = pts.map(b => b.wedLive), mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), r = mx - mn || 1, md = median(vals);
-  const x = v => dir < 0 ? 6 + ((mx - v) / r) * 588 : 6 + ((v - mn) / r) * 588;
-  const dots = pts.map(b => '<circle class="sd" data-open="' + esc(b.id) + '" data-tip="' + esc(b.name) + ' · ' + money(b.wedLive) + '" cx="' + x(b.wedLive).toFixed(1) + '" cy="21" r="4.5" fill="#5ea6e6" fill-opacity=".55" stroke="#8fcaff" stroke-opacity=".7" style="cursor:pointer"/>').join('');
-  return '<div class="spread" data-spread="1" data-tip="Click to reverse the wedding price order" style="cursor:pointer"><span class="t"><b>Wedding, from</b><br>' + pts.length + ' verified prices · ' + (dir < 0 ? 'highest first' : 'lowest first') + ' ⇅</span><svg viewBox="0 0 600 34" preserveAspectRatio="none"><line x1="6" x2="594" y1="21" y2="21" stroke="rgba(150,180,220,.18)"/><line x1="' + x(md).toFixed(1) + '" x2="' + x(md).toFixed(1) + '" y1="10" y2="32" stroke="#f2b552" stroke-width="1.5"/><text x="' + Math.min(592, Math.max(8, x(md))).toFixed(1) + '" y="8" text-anchor="middle" fill="#f2b552" font-size="9.5" font-weight="600">median ' + money(md) + '</text>' + dots + '</svg><span class="t" style="text-align:right">' + (dir < 0 ? money(mx) + ' → ' + money(mn) : money(mn) + ' → ' + money(mx)) + '<br>price range</span></div>';
+  const pct = v => ((dir < 0 ? mx - v : v - mn) / r * 100).toFixed(2);
+  const dots = pts.map(b => '<i class="sd" data-open="' + esc(b.id) + '" data-tip="' + esc(b.name) + ' · ' + money(b.wedLive) + '" style="left:' + pct(b.wedLive) + '%"></i>').join('');
+  return '<div class="spread" data-spread="1" data-tip="Click to reverse the wedding price order">' + left +
+    '<span class="track"><i class="smed" style="left:' + pct(md) + '%"></i>' + dots + '</span>' +
+    '<span class="t r"><b>median ' + money(md) + '</b><br>' + (dir < 0 ? money(mx) + ' → ' + money(mn) : money(mn) + ' → ' + money(mx)) + '</span></div>';
 }
 
 function tableBiz(list) {
