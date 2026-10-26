@@ -143,7 +143,7 @@ button { font: inherit; color: inherit; }
 .pill.gray { background: var(--gray-bg); color: var(--fg-3); }
 
 /* ---------- brief ---------- */
-.brief { display: grid; gap: 14px; grid-template-rows: auto auto auto 1fr; align-content: start; }
+.brief { display: grid; gap: 14px; grid-template-rows: none; align-content: start; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
 .brief-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-top: 6px; }
 .brief-head h1 { margin: 0; font-size: 28px; font-weight: 650; letter-spacing: -.028em; line-height: 1.1; }
 .brief-head p { margin: 4px 0 0; color: var(--fg-3); font-size: 13px; }
@@ -477,3 +477,44 @@ h1, .page-h h1, .brief-head h1, .dr-head h2, .brand-t b { font-family: var(--fon
 .watchchg { display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 1fr); gap: 10px; font-size: 12.5px; align-items: baseline; }
 .watchchg b { font-weight: 550; overflow-wrap: anywhere; }
 .watchchg span { color: var(--fg-2); overflow-wrap: anywhere; }
+
+/* ---------- Brief hero widgets + Trends picker (2026-10-26) ---------- */
+.mv2.big { gap: 4px 30px; }
+.mrow { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; padding: 8px 10px; margin: 0 -10px; width: calc(100% + 20px); border: 0; background: none; cursor: pointer; text-align: left; border-radius: 8px; transition: background .15s; }
+.mrow:hover { background: rgba(255, 255, 255, .05); }
+.mnm { min-width: 0; }
+.mnm b { display: block; font-size: 13.5px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mnm span { display: block; font-size: 11.5px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mbar { display: block; height: 10px; border-radius: 3px; background: rgba(255, 255, 255, .05); overflow: hidden; }
+.mbar i { display: block; height: 100%; border-radius: 3px; transform-origin: left; animation: grow .8s var(--spring) both; }
+.mbar i.up { background: var(--green); }
+.mbar i.down { background: var(--red); }
+.mbar i.price { background: var(--ice-2); }
+.mval { text-align: right; white-space: nowrap; }
+.mval small { display: block; font-size: 11px; color: var(--fg-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.mval .pnum { font-family: var(--font-d); font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.mval b { font-variant-numeric: tabular-nums; }
+.phead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.pmed .n { font-family: var(--font-d); font-size: 34px; font-weight: 600; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.pmed .t { margin-top: 5px; font-size: 12px; color: var(--fg-2); }
+.pmed .s { margin-top: 2px; font-size: 11.5px; color: var(--fg-3); }
+.ladder { max-height: 430px; overflow-y: auto; padding-right: 4px; }
+.medline { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.medline::before, .medline::after { content: ""; flex: 1; border-top: 1px dashed rgba(242, 181, 82, .55); }
+.medline span { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--amber); white-space: nowrap; }
+.acctlist { display: grid; }
+.mrow.tsel { grid-template-columns: minmax(0, 1fr) auto auto; }
+.mrow.tsel.on { background: var(--ice-bg); }
+.tspark { display: block; }
+@media (max-width: 760px) { .mrow { grid-template-columns: minmax(0, 1fr) auto; } .mbar { display: none; } .tspark { display: none; } }
+
+/* ---------- Leaflet map (2026-10-26) ---------- */
+#mapid { position: absolute; inset: 0; z-index: 0; background: #0a0a0a; }
+.mapcard .mapnote { z-index: 500; background: rgba(10, 10, 10, .72); padding: 4px 8px; border-radius: 6px; }
+.leaflet-container { font: inherit; background: #0a0a0a; }
+.leaflet-tooltip { background: rgba(20, 20, 24, .96); border: 1px solid var(--line-2); color: var(--fg); box-shadow: 0 8px 24px rgba(0, 0, 0, .5); font-size: 12px; font-weight: 500; }
+.leaflet-tooltip:before { display: none; }
+.leaflet-bar a { background: #141418; color: var(--fg-2); border-color: var(--line-2); }
+.leaflet-bar a:hover { background: #1d1d21; color: var(--fg); }
+.leaflet-control-attribution { background: rgba(10, 10, 10, .72) !important; color: #5a6270 !important; font-size: 9px !important; }
+.leaflet-control-attribution a { color: #6b7280 !important; }
