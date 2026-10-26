@@ -609,7 +609,7 @@ function viewMap() {
     '<div class="mapnote">Drag to pan, scroll to zoom. Solid circles are live Instagram accounts sized by followers; hollow circles are not refreshed. ' + (MAPMISS ? MAPMISS + ' without a mapped town.' : '') + '</div></div>' +
     '<section class="panel maplist"><div class="panel-h"><h2>Towns</h2><span class="sub">' + MAPPTS.filter(p => p.kind === 'b').length + ' businesses</span></div><div class="panel-b list">' + list + '</div></section></div>';
 }
-let bpMap = null, bpBounds = { all: null, slc: null };
+let bpMap = null, bpBounds = { all: null, slc: null }, bpVenLayer = null;
 function initMap() {
   const el = document.getElementById('mapid'); if (!el) return;
   if (!window.L) { el.innerHTML = mapSvg(); const s = $('#mapsvg'); if (s) applyBox(curBox); return; }
@@ -633,7 +633,9 @@ function initMap() {
     m.on('click', () => openAny(id));
   };
   B.forEach(b => { const c = coords[al[b.town] || b.town]; placeLL(b.id, b.name, b.town, b.region, 'b', c ? [c.lat, c.lng] : null, b.ig); });
-  if (state.mapVen) V.forEach(x => placeLL(x.id, x.name, x.town, x.region, 'v', x.v.lat != null ? [x.v.lat, x.v.lng] : null, x.ig));
+  bpVenLayer = L.layerGroup();
+  V.forEach(x => { if (x.v.lat == null) return; const m = L.circleMarker([x.v.lat, x.v.lng], { radius: 6, color: '#f2b552', weight: 1.4, fillColor: '#f2b552', fillOpacity: .5 }); m.bindTooltip(x.name + ' · venue', { direction: 'top', offset: [0, -6] }); m.on('click', () => openAny(x.id)); bpVenLayer.addLayer(m); });
+  if (state.mapVen) bpVenLayer.addTo(bpMap);
   bpBounds = { all: all.length ? all : null, slc: slcPts.length ? slcPts : null };
   if (state.mapTown) flyTown(state.mapTown);
   else if (all.length) bpMap.fitBounds(all, { padding: [28, 28] });
@@ -645,7 +647,7 @@ function flyTown(t) {
   const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {};
   const b = B.find(x => tname(x.town) === t);
   const c = b && coords[al[b.town] || b.town];
-  if (c) bpMap.flyTo([c.lat, c.lng], 10, { duration: REDUCED ? 0 : 0.7 });
+  if (c) bpMap.flyTo([c.lat, c.lng], 11, { duration: REDUCED ? 0 : 0.7 });
 }
 
 /* ---------- TRENDS ---------- */
@@ -871,9 +873,9 @@ document.addEventListener('click', e => {
   if (q('#csv')) return copyText(state.kind === 'biz' ? csvBiz() : '', 'Copied ' + filtered().length + ' rows');
   if ((el = q('[data-ailane]'))) { state.aiLane = el.dataset.ailane; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
   if ((el = q('[data-mx]'))) { const id = el.dataset.mx; state.aiOpen[id] = !state.aiOpen[id]; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
-  if ((el = q('[data-town]'))) { const t = el.dataset.town; state.mapTown = state.mapTown === t ? null : t; if (bpMap && state.mapTown) { $$('[data-town]').forEach(x => x.style.background = x.dataset.town === t ? 'var(--ice-bg)' : ''); flyTown(t); return; } const keep = curBox.slice(); render(); applyBox(keep); return; }
+  if ((el = q('[data-town]'))) { const t = el.dataset.town; const on = state.mapTown !== t; state.mapTown = on ? t : null; if (bpMap) { $$('[data-town]').forEach(x => x.style.background = on && x.dataset.town === t ? 'var(--ice-bg)' : ''); if (on) flyTown(t); return; } const keep = curBox.slice(); render(); applyBox(keep); return; }
   if ((el = q('[data-box]'))) { $$('[data-box]').forEach(b => b.setAttribute('aria-selected', String(b === el))); thumb($('#boxseg')); if (bpMap && bpBounds[el.dataset.box]) { bpMap.flyToBounds(bpBounds[el.dataset.box], { padding: [28, 28], duration: REDUCED ? 0 : 0.7 }); return; } return animBox(boxFor(el.dataset.box)); }
-  if (q('#venToggle')) { state.mapVen = !state.mapVen; const keep = curBox.slice(); render(); applyBox(keep); return; }
+  if (q('#venToggle')) { state.mapVen = !state.mapVen; const tg = $('#venToggle'); if (tg) tg.setAttribute('aria-pressed', String(state.mapVen)); if (bpMap && bpVenLayer) { if (state.mapVen) bpVenLayer.addTo(bpMap); else bpMap.removeLayer(bpVenLayer); return; } const keep = curBox.slice(); render(); applyBox(keep); return; }
   if ((el = q('[data-copy]'))) {
     const k = el.dataset.copy;
     if (k === 'csv') return copyText(csvBiz(), 'Copied businesses CSV');
