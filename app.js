@@ -760,7 +760,6 @@ function render() {
   stage.innerHTML = RENDER[v]();
   stage.scrollTop = 0;
   if (v === 'market') fillMarket();
-  if (v === 'brief') countUp(stage);
   $$('.seg.sm').forEach(thumb);
   if (v === 'map') { const s = $('#mapsvg'); if (s) applyBox(curBox); }
 }
