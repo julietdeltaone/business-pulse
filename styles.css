@@ -531,17 +531,16 @@ h1, .page-h h1, .brief-head h1, .dr-head h2, .brand-t b { font-family: var(--fon
 .brief .panel-b { overflow: visible; }
 
 
-/* ---------- Spotlight v2: half-width hero + 3D sphere (2026-10-26) ---------- */
+/* ---------- Spotlight: half-width hero slideshow (2026-10-26) ---------- */
 .toprow { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
 .topside { display: grid; gap: 14px; align-content: start; min-width: 0; }
 .topside .mv2 { grid-template-columns: 1fr; }
 .panel.spot { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-.spot-stage { position: relative; flex: 1; min-height: 400px; }
-.spot-stage::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(10, 10, 10, .88) 0%, rgba(10, 10, 10, .55) 46%, rgba(10, 10, 10, 0) 72%); pointer-events: none; }
-#spotcv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
-.spot-slide { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; padding: 24px 28px; opacity: 0; transform: translateY(16px); transition: opacity .65s var(--ease), transform .65s var(--spring); pointer-events: none; }
+.spot-stage { position: relative; flex: 1; min-height: 400px; background: radial-gradient(115% 90% at 80% 40%, rgba(94, 166, 230, .08), rgba(94, 166, 230, 0) 55%), radial-gradient(70% 60% at 88% 88%, rgba(242, 181, 82, .05), rgba(242, 181, 82, 0) 60%), linear-gradient(180deg, #0d0d10, #0b0b0d); }
+.spot-stage::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(10, 10, 10, .55) 0%, rgba(10, 10, 10, .28) 46%, rgba(10, 10, 10, 0) 72%); pointer-events: none; }
+.spot-slide { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; padding: 24px 28px; opacity: 0; transform: translateY(10px); transition: opacity .6s var(--ease), transform .6s var(--ease); pointer-events: none; }
 .spot-slide.on { opacity: 1; transform: none; pointer-events: auto; }
-.spot-txt { min-width: 0; max-width: 62%; }
+.spot-txt { min-width: 0; max-width: 66%; }
 .spot-eye { font-family: var(--font-d); font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--amber); }
 .spot-name { margin: 8px 0 0; font-family: var(--font-d); font-size: 27px; font-weight: 600; letter-spacing: -.025em; line-height: 1.12; height: 2.24em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .spot-town { margin-top: 2px; font-size: 12.5px; color: var(--fg-3); }
@@ -581,14 +580,15 @@ h1, .page-h h1, .brief-head h1, .dr-head h2, .brand-t b { font-family: var(--fon
 .spot-slide.on .pt-me { transform: none; }
 .sp-scale { display: flex; justify-content: space-between; margin-top: 10px; font-size: 11px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .sp-cap { margin-top: 6px; font-size: 11px; color: var(--fg-3); }
-.spot-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 14px; padding: 10px 20px 1px; border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.5; color: var(--fg-3); }
-.sl-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.sl-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.sl-dot.live { background: #8fcaff; }
-.sl-dot.priced { background: #c9d4e6; }
-.sl-dot.quiet { background: #78849a; }
-.sl-dot.gold { background: var(--amber); }
-.sl-dot.peer { background: var(--amber); opacity: .45; }
+/* Brief load-in (JD, Oct 26 PM): panels fade and rise in once on first load, short stagger.
+   The .intro class is added by viewBrief() on the first render only, so navigation never replays it. */
+@keyframes briefin { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.brief.intro > * { animation: briefin .7s var(--ease) both; }
+.brief.intro > *:nth-child(2) { animation-delay: .06s; }
+.brief.intro > *:nth-child(3) { animation-delay: .12s; }
+.brief.intro > *:nth-child(4) { animation-delay: .18s; }
+.brief.intro > *:nth-child(5) { animation-delay: .24s; }
+.brief.intro > *:nth-child(n+6) { animation-delay: .3s; }
 .spot-bar { display: flex; align-items: center; gap: 14px; padding: 10px 20px 14px; }
 .spot-segs { display: flex; gap: 6px; flex: 1; }
 .sseg { flex: 1; height: 14px; padding: 0; border: 0; background: none; cursor: pointer; display: flex; align-items: center; }
@@ -614,6 +614,7 @@ h1, .page-h h1, .brief-head h1, .dr-head h2, .brand-t b { font-family: var(--fon
   .topside .mv2 { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .brief.intro > * { animation: none; }
   .spot-slide { transition: none; }
   .spot-slide .spot-txt > * { transition: none; }
   .sseg.on i::after { animation: none; width: 100%; }
