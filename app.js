@@ -330,7 +330,7 @@ function liRow(b, rt, sb) {
   return '<button class="li" data-open="' + esc(b.id) + '"><span><span class="nm">' + esc(b.name) + '</span><br><span class="sb">' + esc(sb || b.town) + '</span></span><span class="rt">' + rt + '</span></button>';
 }
 /* ---------- SPOTLIGHT (Brief hero slideshow with 3D sphere) ---------- */
-let spotTimer = null, spotPaused = false, SPOTDECK = [];
+let spotTimer = null, SPOTDECK = [];
 function spotHist(b) { const hs = (D.igFollowersHistory[b.c.ig_handle] || []).slice(-60); return hs.length >= 2 ? hs : null; }
 function spotFigs(b) {
   const f = [];
@@ -398,7 +398,9 @@ function spotlight() {
   const html = slides.map((s, i) => i === 0 ? s.html.replace('class="spot-slide"', 'class="spot-slide on"') : s.html).join('');
   return '<section class="panel spot" id="spot"><div class="spot-stage"><canvas id="spotcv" aria-hidden="true"></canvas>' + html + '</div><div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
 }
-/* --- 3D sphere: every business a node on a Fibonacci sphere; the camera flies to the spotlighted node, then holds it front with a slow idle wobble. --- */
+/* --- 3D flyover: every business a node on a Fibonacci sphere. On each slide the camera
+   flies to that node: lifts off (dolly out), sweeps the arc with a slight bank, dives back in
+   and settles with the node front-and-center. A far starfield shell drifts constantly behind. --- */
 let S3 = null;
 function spot3DNodes() {
   const GA = Math.PI * (3 - Math.sqrt(5)), n = B.length;
@@ -408,42 +410,82 @@ function spot3DNodes() {
     return { id: b.id, x: Math.cos(th) * rr * shell, y: y * shell, z: Math.sin(th) * rr * shell, live: b.ig.state === 'live', priced: b.wedLive != null, size: b.ig.state === 'live' ? 1.15 + Math.sqrt(b.ig.count || 0) / 20 : 1.05 };
   });
 }
-function spot3DTarget(id) {
-  const n = S3 && S3.nodes.find(x => x.id === id); if (!n) return;
-  let t = -Math.atan2(n.x, n.z);
-  t += Math.PI * 2 * Math.round((S3.focus - t) / (Math.PI * 2));
-  S3.tx = t;
+function spot3DStars() {
+  const GA = Math.PI * (3 - Math.sqrt(5)), out = [];
+  for (let i = 0; i < 110; i++) {
+    const y = 1 - (i / 109) * 2, rr = Math.sqrt(Math.max(0, 1 - y * y)), th = GA * (i + 40);
+    out.push({ x: Math.cos(th) * rr * 1.6, y: y * 1.6, z: Math.sin(th) * rr * 1.6, ph: (i * 1.37) % 6.28 });
+  }
+  return out;
+}
+function spot3DFlyTo(id, instant) {
+  if (!S3) return;
+  const n = S3.nodes.find(x => x.id === id);
+  S3.hi = id;
+  if (!n) { S3.fly = null; return; }
+  const rho = Math.hypot(n.x, n.z);
+  let toA = -Math.atan2(n.x, n.z);
+  toA += Math.PI * 2 * Math.round((S3.az - toA) / (Math.PI * 2));
+  const toT = Math.max(-.12, Math.min(.85, Math.atan2(n.y, rho)));
+  if (instant) { S3.az = toA; S3.tilt = toT; S3.zoom = 1.07; S3.fly = null; return; }
+  S3.fly = { t0: performance.now(), dur: 1650, fromA: S3.az, toA, fromT: S3.tilt, toT, fromZ: S3.zoom, toZ: 1.07, dir: Math.sign(toA - S3.az) || 1 };
 }
 function spot3DStart() {
   const cv = document.getElementById('spotcv'); if (!cv || !B.length) return;
+  if (S3 && S3.cv === cv) return;
   spot3DStop();
   const ctx = cv.getContext('2d'); if (!ctx) return;
-  S3 = { cv, ctx, nodes: spot3DNodes(), focus: 0, tx: 0, raf: 0, hi: SPOTDECK[state.spotIdx] || null };
-  if (S3.hi) { const n = S3.nodes.find(x => x.id === S3.hi); if (n) { S3.focus = -Math.atan2(n.x, n.z); S3.tx = S3.focus; } }
+  S3 = { cv, ctx, nodes: spot3DNodes(), stars: spot3DStars(), az: 0, tilt: .34, zoom: 1.07, starRot: 0, last: 0, raf: 0, hi: null, fly: null, beamA: 1 };
+  spot3DFlyTo(SPOTDECK[state.spotIdx] || null, true);
   const size = () => { const r = cv.parentElement.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.max(50, r.width * d); cv.height = Math.max(50, r.height * d); S3.d = d; S3.w = r.width; S3.h = r.height; };
   size();
   S3.resize = size;
   window.addEventListener('resize', size);
-  const TILT = .34, F = 3.4;
+  const F = 3.4;
   const frame = t => {
     if (!S3) return;
-    S3.focus += (S3.tx - S3.focus) * .045;
-    const rot = S3.focus + Math.sin(t * .00042) * .13, wob = Math.cos(t * .00031) * .05;
+    const dt = S3.last ? Math.min(60, t - S3.last) : 16; S3.last = t;
+    S3.starRot += dt * .00002;
+    let az, tilt, zoom, roll = 0;
+    if (S3.fly) {
+      const f = S3.fly, p = Math.min(1, (t - f.t0) / f.dur), e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      az = f.fromA + (f.toA - f.fromA) * e;
+      tilt = f.fromT + (f.toT - f.fromT) * e;
+      zoom = (f.fromZ + (f.toZ - f.fromZ) * e) * (1 - .30 * Math.sin(Math.PI * p));
+      roll = Math.sin(Math.PI * p) * .055 * f.dir;
+      S3.beamA = Math.max(0, (p - .25) / .75);
+      S3.az = az; S3.tilt = tilt; S3.zoom = zoom;
+      if (p >= 1) S3.fly = null;
+    } else {
+      az = S3.az + Math.sin(t * .0004) * .02;
+      tilt = S3.tilt + Math.cos(t * .00033) * .012;
+      zoom = S3.zoom + Math.sin(t * .0009) * .015;
+      S3.beamA = Math.min(1, S3.beamA + .02);
+    }
     const { ctx, w, h, d } = S3;
     ctx.setTransform(d, 0, 0, d, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    const cx = w * .74, cy = h * .52, R = Math.min(h * .37, w * .30);
-    const cosR = Math.cos(rot), sinR = Math.sin(rot), cosT = Math.cos(TILT + wob), sinT = Math.sin(TILT + wob);
-    const proj = S3.nodes.map(n => {
-      const xr = n.x * cosR + n.z * sinR, zr = -n.x * sinR + n.z * cosR;
-      const yr = n.y * cosT - zr * sinT, z2 = n.y * sinT + zr * cosT;
+    const cx = w * .74, cy = h * .52, R = Math.min(h * .37, w * .30) * zoom;
+    const cosT = Math.cos(tilt), sinT = Math.sin(tilt), cosR = Math.cos(roll), sinR = Math.sin(roll);
+    const project = (x, y, z, rot) => {
+      const cr = Math.cos(rot), sr = Math.sin(rot);
+      const xr = x * cr + z * sr, zr = -x * sr + z * cr;
+      const yr = y * cosT - zr * sinT, z2 = y * sinT + zr * cosT;
       const s = F / (F - z2);
-      return { n, sx: cx + xr * R * s, sy: cy - yr * R * s, z: z2, s };
+      let sx = cx + xr * R * s, sy = cy - yr * R * s;
+      if (roll) { const dx = sx - cx, dy = sy - cy; sx = cx + dx * cosR - dy * sinR; sy = cy + dx * sinR + dy * cosR; }
+      return { sx, sy, z: z2, s };
+    };
+    S3.stars.forEach(st => {
+      const p = project(st.x, st.y, st.z, S3.starRot);
+      const tw = .05 + .10 * (0.5 + 0.5 * Math.sin(t * .0011 + st.ph));
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, .8, 0, Math.PI * 2); ctx.fillStyle = 'rgba(170,195,230,' + tw.toFixed(3) + ')'; ctx.fill();
     });
     ctx.beginPath(); ctx.arc(cx, cy, R * 1.02, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.07)'; ctx.lineWidth = 1; ctx.stroke();
+    const proj = S3.nodes.map(n => Object.assign({ n }, project(n.x, n.y, n.z, az)));
     const hi = proj.find(p => p.n.id === S3.hi);
-    if (hi) {
-      const pulse = .55 + .3 * Math.sin(t * .004);
+    if (hi && S3.beamA > 0) {
+      const pulse = (.55 + .3 * Math.sin(t * .004)) * S3.beamA;
       const g = ctx.createLinearGradient(cx, cy, hi.sx, hi.sy);
       g.addColorStop(0, 'rgba(242,181,82,.05)'); g.addColorStop(1, 'rgba(242,181,82,' + (pulse * .8).toFixed(3) + ')');
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(hi.sx, hi.sy); ctx.strokeStyle = g; ctx.lineWidth = 1.4; ctx.stroke();
@@ -491,21 +533,16 @@ function spotGo(i) {
   state.spotIdx = ((i % n) + n) % n;
   slides.forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
   root.querySelectorAll('.sseg').forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
-  if (S3) { S3.hi = SPOTDECK[state.spotIdx] || null; spot3DTarget(S3.hi); }
+  spot3DFlyTo(SPOTDECK[state.spotIdx] || null, false);
   spotCount(slides[state.spotIdx]);
 }
 function startSpot() {
-  stopSpot();
+  if (spotTimer) { clearInterval(spotTimer); spotTimer = null; }
   const root = $('#spot'); if (!root) return;
   spot3DStart();
   spotGo(state.spotIdx || 0);
-  if (!root.__wired) {
-    root.__wired = true;
-    root.addEventListener('mouseenter', () => { spotPaused = true; });
-    root.addEventListener('mouseleave', () => { spotPaused = false; });
-  }
   if (REDUCED) return;
-  spotTimer = setInterval(() => { if (!spotPaused && document.visibilityState === 'visible') spotGo(state.spotIdx + 1); }, 5000);
+  spotTimer = setInterval(() => { if (document.visibilityState === 'visible') spotGo(state.spotIdx + 1); }, 5000);
 }
 function stopSpot() { if (spotTimer) { clearInterval(spotTimer); spotTimer = null; } spot3DStop(); }
 
