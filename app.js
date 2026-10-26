@@ -224,7 +224,7 @@ function sweepInfo(w) {
 }
 
 /* ---------- ui bits ---------- */
-const state = { view: 'brief', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false, briefPrice: 'wed', trendSel: 'all' };
+const state = { view: 'brief', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false, briefPrice: 'wed', trendSel: 'all', spotIdx: 0 };
 const stage = $('#stage'), drawer = $('#drawer');
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800); }
 function copyText(text, msg) {
@@ -329,6 +329,84 @@ function panel(title, sub, body, link) {
 function liRow(b, rt, sb) {
   return '<button class="li" data-open="' + esc(b.id) + '"><span><span class="nm">' + esc(b.name) + '</span><br><span class="sb">' + esc(sb || b.town) + '</span></span><span class="rt">' + rt + '</span></button>';
 }
+/* ---------- SPOTLIGHT (Brief hero slideshow) ---------- */
+let spotTimer = null, spotPaused = false;
+function spotHist(b) { const hs = (D.igFollowersHistory[b.c.ig_handle] || []).slice(-60); return hs.length >= 2 ? hs : null; }
+function spotFigs(b) {
+  const f = [];
+  if (b.ig.state === 'live') { f.push(['Followers', fmt(b.ig.count)]); if (b.d7 != null) f.push(['7 days', signed(b.d7)]); if (b.d30 != null) f.push(['30 days', signed(b.d30)]); }
+  if (b.wedLive != null) f.push(['Wedding, from', money(b.wedLive)]);
+  if (b.sessLive != null) f.push(['Session, from', money(b.sessLive)]);
+  if (b.rev.live && b.rev.count != null) f.push(['Reviews', fmt(b.rev.count) + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) : '')]);
+  return f.map(x => '<span class="sfig"><small>' + x[0] + '</small><b>' + x[1] + '</b></span>').join('');
+}
+function spotShell(eyebrow, b, heroNum, heroLabel, diagram, note) {
+  return '<article class="spot-slide"><div class="spot-txt"><div class="spot-eye">' + eyebrow + '</div>' +
+    '<h3 class="spot-name">' + esc(b.name) + '</h3><div class="spot-town">' + esc(b.town) + '</div>' +
+    '<div class="spot-num">' + heroNum + '</div><div class="spot-lab">' + heroLabel + '</div>' +
+    '<div class="spot-figs">' + spotFigs(b) + '</div>' + (note ? '<div class="spot-note">' + note + '</div>' : '') + '</div>' +
+    '<div class="spot-viz">' + diagram + '</div></article>';
+}
+function spotChart(b) { const hs = spotHist(b); return hs ? wideChart(hs.map(e => e.count), hs.map(e => e.date), b.name + ' followers') : ''; }
+function spotPriceTrack(b, kind) {
+  const vals = B.map(x => kind === 'wed' ? x.wedLive : x.sessLive).filter(v => v != null).sort((a, c) => a - c);
+  if (vals.length < 3) return '';
+  const mn = vals[0], mx = vals[vals.length - 1], md = median(vals), r = mx - mn || 1, v = kind === 'wed' ? b.wedLive : b.sessLive;
+  const pct = x => ((x - mn) / r * 100).toFixed(1);
+  const dots = vals.map(x => '<i class="pt-dot" style="left:' + pct(x) + '%"></i>').join('');
+  return '<div class="spot-price"><div class="sp-track">' + dots + '<i class="pt-med" style="left:' + pct(md) + '%"></i><i class="pt-me" style="left:' + pct(v) + '%"></i></div>' +
+    '<div class="sp-scale"><span>' + money(mn) + '</span><span>median ' + money(md) + '</span><span>' + money(mx) + '</span></div>' +
+    '<div class="sp-cap">' + vals.length + ' verified ' + (kind === 'wed' ? 'wedding' : 'session') + ' rates · this business in amber</div></div>';
+}
+function spotlight() {
+  const used = new Set(), slides = [];
+  const take = (b, make) => { if (b && !used.has(b.id) && slides.length < 6) { const s = make(b); if (s) { used.add(b.id); slides.push(s); } } };
+  const by = (list, f) => list.slice().sort((a, c) => f(c) - f(a))[0];
+  take(by(LIVEIG, b => b.ig.count), b => spotShell('Spotlight · Most followers', b, fmt(b.ig.count), 'Instagram followers · live today', spotChart(b), 'The largest live audience in the market.'));
+  take(by(LIVEIG.filter(b => b.d7 > 0), b => b.d7), b => spotShell('Spotlight · Biggest mover', b, signed(b.d7), 'followers in the last 7 days', spotChart(b), 'The fastest-growing live account this week.'));
+  if (ENGS.length) {
+    const ac = aiCompute('all');
+    const topId = Object.keys(ac.ids).sort((a, c) => ac.ids[c].total - ac.ids[a].total)[0];
+    if (topId && BY[topId]) take(BY[topId], b => {
+      const o = ac.ids[b.id];
+      const bars = ENGS.map(e => '<div class="sp-ai"><span>' + esc(e) + '</span><span class="sp-aibar"><i style="width:' + (ac.den[e] ? Math.round(o[e] / ac.den[e] * 100) : 0) + '%"></i></span><b>' + o[e] + ' of ' + ac.den[e] + '</b></div>').join('');
+      return spotShell('Spotlight · Most named by AI', b, o.total + ' of ' + ac.answered, 'assistant answers named this business', '<div class="spot-aibars">' + bars + '</div>', 'Latest audit · ' + esc(dshort(DATES.ai)) + ' · directional.');
+    });
+  }
+  take(by(B.filter(b => b.wedLive != null), b => b.wedLive), b => spotShell('Spotlight · Highest verified wedding rate', b, money(b.wedLive), 'wedding, from · verified ' + esc(dshort(DATES.pricing)), spotPriceTrack(b, 'wed'), 'The top of the verified price ladder.'));
+  take(by(B.filter(b => b.rev.live && b.rev.count != null), b => b.rev.count), b => {
+    const dg = spotChart(b) || (b.wedLive != null ? spotPriceTrack(b, 'wed') : '');
+    if (!dg) return null;
+    return spotShell('Spotlight · Most reviews', b, fmt(b.rev.count), 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : ''), dg, 'The deepest review book in the market.');
+  });
+  take(by(B.filter(b => b.wedLive != null), b => -b.wedLive), b => spotShell('Spotlight · Lowest verified wedding rate', b, money(b.wedLive), 'wedding, from · verified ' + esc(dshort(DATES.pricing)), spotPriceTrack(b, 'wed'), 'The floor of the verified price ladder.'));
+  take(by(LIVEIG.filter(b => b.d7 <= -2), b => -b.d7), b => spotShell('Spotlight · Biggest drop', b, signed(b.d7), 'followers in the last 7 days', spotChart(b), 'The sharpest slide among live accounts this week.'));
+  if (slides.length < 2) return '';
+  const segs = slides.map((s, i) => '<button class="sseg' + (i === 0 ? ' on' : '') + '" data-spot="' + i + '" aria-label="Spotlight ' + (i + 1) + '"><i></i></button>').join('');
+  slides[0] = slides[0].replace('class="spot-slide"', 'class="spot-slide on"');
+  return '<section class="panel spot" id="spot"><div class="spot-stage">' + slides.join('') + '</div><div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
+}
+function spotGo(i) {
+  const root = $('#spot'); if (!root) return;
+  const slides = root.querySelectorAll('.spot-slide'), n = slides.length; if (!n) return;
+  state.spotIdx = ((i % n) + n) % n;
+  slides.forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
+  root.querySelectorAll('.sseg').forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
+}
+function startSpot() {
+  stopSpot();
+  const root = $('#spot'); if (!root) return;
+  spotGo(state.spotIdx || 0);
+  if (!root.__wired) {
+    root.__wired = true;
+    root.addEventListener('mouseenter', () => { spotPaused = true; });
+    root.addEventListener('mouseleave', () => { spotPaused = false; });
+  }
+  if (REDUCED) return;
+  spotTimer = setInterval(() => { if (!spotPaused && document.visibilityState === 'visible') spotGo(state.spotIdx + 1); }, 6500);
+}
+function stopSpot() { if (spotTimer) { clearInterval(spotTimer); spotTimer = null; } }
+
 function moveWidget() {
   if (!LIVEIG.length) return '';
   const gain = LIVEIG.filter(b => b.d7 > 0).sort((a, b) => b.d7 - a.d7 || a.name.localeCompare(b.name)).slice(0, 5);
@@ -397,7 +475,7 @@ function viewBrief() {
 
   return '<div class="view brief">' +
     '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + (LIVEIG.length ? pill(LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live', 'ice') : '') + '</div>' +
-    fchips() + heroes + moveWidget() + priceWidget() +
+    spotlight() + fchips() + heroes + moveWidget() + priceWidget() +
     ((aiPanel || watchPanel) ? '<div class="row2" style="' + (aiPanel && watchPanel ? '' : 'grid-template-columns:1fr') + '">' + aiPanel + watchPanel + '</div>' : '') + '</div>';
 }
 
@@ -837,6 +915,7 @@ function health() {
   const aiBtn = $('#nav [data-v="ai"]'); if (aiBtn) aiBtn.style.display = ENGS.length ? '' : 'none';
 }
 function render() {
+  stopSpot();
   const v = state.view;
   $$('#nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === v)));
   thumb($('#nav'));
@@ -845,6 +924,7 @@ function render() {
   stage.scrollTop = 0;
   if (v === 'market') fillMarket();
   $$('.seg.sm').forEach(thumb);
+  if (v === 'brief') startSpot();
   if (v === 'map') initMap();
   else if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
 }
@@ -861,6 +941,8 @@ document.addEventListener('click', e => {
   if (q('[data-close]')) return closeDrawer();
   if ((el = q('[data-go]'))) return show(el.dataset.go);
   if ((el = q('[data-open]'))) { e.stopPropagation(); return openAny(el.dataset.open); }
+  if ((el = q('[data-spot]'))) { spotGo(+el.dataset.spot); startSpot(); return; }
+  if ((el = q('[data-spotnav]'))) { spotGo(state.spotIdx + (+el.dataset.spotnav)); startSpot(); return; }
   if ((el = q('[data-bp]'))) { state.briefPrice = el.dataset.bp; const y = stage.firstChild ? stage.firstChild.scrollTop : 0; render(); if (stage.firstChild) stage.firstChild.scrollTop = y; return; }
   if ((el = q('[data-tsel]'))) { state.trendSel = el.dataset.tsel; render(); const vs = stage.firstChild; if (vs) vs.scrollTop = 0; return; }
   if (q('[data-spread]')) { const cur = state.sort.k === 'wed' ? state.sort.dir : -1; state.sort = { k: 'wed', dir: -cur }; return fillMarket(); }
