@@ -1,3265 +1,713 @@
-/* Business Pulse command center — full-viewport map/bubble market view.
-   Reads window.PULSE_DATA from data/data.js (built by scripts/build_data_js.py). */
-(function(){
-document.body.classList.add("fp"); /* entrance animations run on first paint only */
-"use strict";
-var D = window.PULSE_DATA || {};
-var $ = function(s,r){ return (r||document).querySelector(s); };
-var $$ = function(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
-var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* Business Pulse front end. One file, no dependencies, works from file://.
+   Reads window.PULSE_DATA (data/data.js) plus three research bundles. Never fetches anything.
+   Rule that shapes everything below: a figure is live, dated (muted, with its date) or absent.
+   Dated figures never enter a ranking, a median or a count. */
+(function () {
+'use strict';
 
-/* ---------- small helpers ---------- */
-/* strip emoji/ZWJ sequences so source-data emoji never reach the UI */
-function deemoji(s){ return String(s==null?"":s)
-  .replace(/\p{Extended_Pictographic}\uFE0F?(\u200D\p{Extended_Pictographic}\uFE0F?)*/gu,"")
-  .replace(/[\u2600-\u27BF\u2B00-\u2BFF\uFE00-\uFE0F\u200D]/gu,""); }
-function esc(s){ return deemoji(String(s==null?"":s)).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
-function fmt(n){ if(n==null||isNaN(n)) return "—"; return n.toLocaleString("en-US"); }
-function money(n){ if(n==null) return "—"; return "$"+Number(n).toLocaleString("en-US"); }
-function pctStr(p){ if(p==null||!isFinite(p)) return "—"; return (p>0?"+":"")+p.toFixed(1)+"%"; }
-function daysSince(ds){ if(!ds) return null; var d=new Date(ds+"T12:00:00"); if(isNaN(d)) return null;
-  return Math.floor((Date.now()-d.getTime())/864e5); }
-function dstr(ds){ if(!ds) return "—"; var d=new Date(ds+"T12:00:00");
-  return d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); }
-function hashN(s){ var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return Math.abs(h); }
-function toast(msg){ var t=$("#toast"); t.textContent=msg; t.classList.add("show");
-  clearTimeout(t._h); t._h=setTimeout(function(){ t.classList.remove("show"); },2600); }
-function countUp(el,to,ms){ if(REDUCED||to==null){ el.textContent=fmt(to); return; }
-  var from=0,t0=null; function step(t){ if(!t0)t0=t; var p=Math.min(1,(t-t0)/(ms||500));
-    var e=1-Math.pow(1-p,3); el.textContent=fmt(Math.round(to*e)); if(p<1)requestAnimationFrame(step); }
-  requestAnimationFrame(step); }
-/* first paint done: entrance stagger stops replaying on re-renders */
-setTimeout(function(){ document.body.classList.remove("fp"); },1600);
+/* ---------- data ---------- */
+const D = Object.assign({ competitors: [], excluded: [], connections: [], igFollowersHistory: {}, igActivity: [], webSweepHistory: [],
+  aiChecks: [], aiPrompts: { prompts: [] }, townCoords: { coords: {}, aliases: {} }, seedDates: {}, seedMeta: {}, freshness: { sources: [] } }, window.PULSE_DATA || {});
+const DET = window.PULSE_DETAILS || {};
+const VEN = window.PULSE_VENUES || [];
+const WI = (window.PULSE_WEBSITE_INTEL || {}).intel || {};
 
-/* ---------- pricing parse (from roster text) ---------- */
-function priceFloors(p){
-  if(!p) return {wedding:null,session:null,weddingHourly:null};
-  var wedding=null, weddingHourly=null, m=/wedding[^$;]*?\$([\d,]+)(\/hr)?/i.exec(p);
-  if(m){ if(m[2]) weddingHourly=+m[1].replace(/,/g,""); else wedding=+m[1].replace(/,/g,""); }
-  var re=/\$([\d,]+)/g,x,big=[],small=[];
-  while((x=re.exec(p))){ var v=+x[1].replace(/,/g,""),
-    before=p.slice(Math.max(0,x.index-18),x.index).toLowerCase(),
-    after=p.slice(x.index+x[0].length,x.index+x[0].length+10).toLowerCase();
-    if(/deposit/.test(after)||/sports/.test(before)||/^\/((hr|event))/.test(after)) continue;
-    (v>=1000?big:small).push(v); }
-  if(wedding==null&&big.length) wedding=Math.min.apply(null,big);
-  /* the wedding floor never doubles as the session floor */
-  if(wedding!=null) small=small.filter(function(v){ return v!==wedding; });
-  return {wedding:wedding,session:small.length?Math.min.apply(null,small):null,weddingHourly:weddingHourly};
+/* ---------- helpers ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const EMO = /[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu;
+const clean = s => String(s == null ? '' : s).replace(EMO, '').replace(/\s+/g, ' ').trim();
+const DAY = 864e5;
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dn = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / DAY : null; };
+function etToday() {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
+  catch (e) { return new Date().toISOString().slice(0, 10); }
 }
+const QS = new URLSearchParams(location.search);
+const ASOF_S = /^\d{4}-\d{2}-\d{2}$/.test(QS.get('asof') || '') ? QS.get('asof') : etToday();
+const ASOF = dn(ASOF_S);
+const dshort = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? MON[+m[2] - 1] + ' ' + (+m[3]) : ''; };
+const dlong = new Date(ASOF * DAY).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+const age = s => { const n = dn(s); return n == null ? null : ASOF - n; };
+const ageText = a => a == null ? 'no date' : a <= 0 ? 'today' : a === 1 ? 'yesterday' : a + ' days ago';
+const fmt = n => n == null ? '—' : Number(n).toLocaleString('en-US');
+const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-US');
+const signed = n => n == null ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toLocaleString('en-US');
+const median = a => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const plural = (n, a, b) => n === 1 ? a : (b || a + 's');
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---------- JD Meyers Productions as a regular data point ----------
-   Not in the roster file; appended here with the same fields as every
-   other business. No special flags, no special rendering, no feed
-   exclusions: it appears in rankings, feeds, and the map like any entry. */
-(function(){
-  var jdHist=(D.ownAccounts||[]).filter(function(r){return r.account==="jdmeyersproductions"&&/^\d{4}-\d{2}-\d{2}$/.test(r.date);})
-    .map(function(r){return {date:r.date,count:r.follower_count};})
-    .sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});
-  (D.igFollowersHistory=D.igFollowersHistory||{})["jdmeyersproductions"]=jdHist;
-  /* latest per-handle recency + engagement from the Graph API snapshots —
-     the same feed every roster business gets its last_post_date/engagement from */
-  var _lmd={};
-  (D.igActivity||[]).forEach(function(r){
-    if(!r.handle) return;
-    var p=_lmd[r.handle];
-    if(!p||String(r.date||"")>String(p.date||"")) _lmd[r.handle]=r;
-  });
-  var _lm=_lmd["jdmeyersproductions"]||{};
-  var _rs=((D.reviewsSeed||{})["jd-meyers-productions"])||{};
-  var has=(D.competitors||[]).some(function(c){return c.id==="jd-meyers-productions";});
-  if(!has) (D.competitors=D.competitors||[]).push({
-    id:"jd-meyers-productions",name:"JD Meyers Productions",specialty:"both",town:"Potsdam, NY (SLC)",
-    region:"slc",county:"St. Lawrence",website:"jdmeyersjr.com",ig_handle:"jdmeyersproductions",
-    services:"Weddings, Portraits, Drone, Real Estate, Video",est_year:2016,
-    pricing:"Wedding $1,400 starting",pricing_url:"https://jdmeyersjr.com",notes:"",
-    status:"active",flags:[],source:"directory",source_label:"Directory",
-    last_post_date:_lm.last_media_date||null,engagement:_lm.engagement||null,
-    review_count:_rs.count!=null?_rs.count:null,review_rating:_rs.rating!=null?_rs.rating:null,
-    review_source:_rs.source||null,review_url:_rs.url||null});
-})();
-
-/* ---------- town coords ---------- */
-var TC=D.townCoords||{aliases:{},coords:{}};
-function townCanon(t){ var a=TC.aliases||{}; return a[t]||t; }
-function townLatLng(town){
-  var c=(TC.coords||{})[townCanon(town)];
-  if(c) return {lat:c.lat,lng:c.lng,real:true};
-  return null; /* no fake pinpoint: unmapped towns get no map pin */
-}
-function jitter(id,lat,lng){ return {lat:lat,lng:lng}; } /* replaced by town spiral below */
-
-/* ---------- enrich roster ---------- */
-var IGH=D.igFollowersHistory||{};
-var WI=(window.PULSE_WEBSITE_INTEL||{}).intel||{}; /* pilot website sweep, Sep 2026 */
-var CONF=D.confidence||{}; /* per-business info confidence, rebuilt by scripts/score_confidence.py */
-var B=(D.competitors||[]).map(function(c){
-  var e=Object.assign({},c);
-  e.price=priceFloors(c.pricing);
-  /* roster services sometimes arrive as a raw string; the profile renderer
-     calls .map on this, so normalize once here. */
-  if(typeof e.services==="string")
-    e.services=e.services.split(/[,;]+/).map(function(x){return x.trim();}).filter(Boolean);
-  var h=c.ig_handle&&IGH[c.ig_handle];
-  if(h&&h.length){ e.followHist=h.slice().sort(function(a,b){return a.date<b.date?-1:1;});
-    e.followers=e.followHist[e.followHist.length-1].count; }
-  else{ var fm=/\((\d{1,3}(?:,\d{3})+|\d+), verified/.exec(c.notes||"");
-    e.followers=fm?+fm[1].replace(/,/g,""):null; e.followHist=[]; }
-  e.postAge=daysSince(c.last_post_date);
-  e.hasPrice=e.price.wedding!=null||e.price.session!=null||e.price.weddingHourly!=null;
-  var tc=townLatLng(e.town);
-  e._geo=!!tc; /* false = no real coordinates: no map pin, no heat contribution */
-  e.lat=tc?tc.lat:null; e.lng=tc?tc.lng:null; /* spiral placement below */
-  e.townShort=(e.town||"").split(",")[0];
-  return e;
-});
-var B_BY_ID={}; B.forEach(function(c){B_BY_ID[c.id]=c;});
-/* ordered golden-angle spiral per town so same-town pins read as a cluster, not noise */
-(function(){
-  var groups={};
-  B.forEach(function(b){ var k=townCanon(b.town); (groups[k]=groups[k]||[]).push(b); });
-  Object.keys(groups).forEach(function(k){
-    var g=groups[k].sort(function(a,b){return (b.followers||0)-(a.followers||0);});
-    var cl=townLatLng(g[0].town);
-    if(!cl){ g.forEach(function(b){ b.lat=null; b.lng=null; }); return; } /* unmapped town: no pins */
-    g.forEach(function(b,i){
-      if(i===0){ b.lat=cl.lat; b.lng=cl.lng; return; }
-      var a=i*2.39996, r=0.011*Math.sqrt(i);
-      b.lat=cl.lat+Math.sin(a)*r; b.lng=cl.lng+Math.cos(a)*r*1.35;
-    });
-  });
-})();
-
-/* ---------- venues: separate dataset, hard-switched via S.mode ----------
-   Venues never mix with the competitor roster: separate collection, separate
-   stats, separate medians. C / BY_ID below always point at the ACTIVE set. */
-var V=(window.PULSE_VENUES||[]).map(function(v){
-  var e=Object.assign({},v);
-  e.type="venue"; e.specialty="venue";
-  e.followHist=[]; e.followers=(v.followers==null?null:v.followers);
-  e.postAge=daysSince(v.last_post_date);
-  e.price={wedding:null,session:null,weddingHourly:null}; e.hasPrice=false;
-  e._geo=(v.lat!=null&&v.lng!=null);
-  e.townShort=(v.town||"").split(",")[0];
-  return e;
-});
-var V_BY_ID={}; V.forEach(function(v){V_BY_ID[v.id]=v;});
-var C=B, BY_ID=B_BY_ID;
-
-/* ---------- web-research detail enrichment (data/details-enrichment.js) ----------
-   Fills only empty fields; never overwrites curated data. Businesses merge into
-   the Website-intel section, venues merge onto the venue record. */
-(function(){
-  var DET=window.PULSE_DETAILS||{}, ids=Object.keys(DET);
-  if(!ids.length) return;
-  ids.forEach(function(id){
-    var d=DET[id]; if(!d) return;
-    var v=V_BY_ID[id];
-    if(v){
-      ["site_note","pricing_note","setting","season","since"].forEach(function(k){ if((v[k]==null||v[k]==="")&&d[k]!=null) v[k]=d[k]; });
-      ["services","spaces","coverage"].forEach(function(k){ if((!v[k]||!v[k].length)&&d[k]&&d[k].length) v[k]=d[k].slice(); });
-      return;
-    }
-    var b=B_BY_ID[id]; if(!b) return;
-    var w=WI[id];
-    if(!w){ w={}; WI[id]=w; }
-    if(w.unreachable) return;
-    if(d.services&&d.services.length&&(!w.services||!w.services.length)) w.services=d.services.slice();
-    if(d.coverage&&d.coverage.length&&(!w.coverage||!w.coverage.length)) w.coverage=d.coverage.slice();
-    if(d.platform&&!w.platform) w.platform=d.platform;
-    if(d.since&&!w.since&&w.years_in_business==null) w.since=d.since;
-    else if(d.years_in_business!=null&&w.years_in_business==null&&!w.since) w.years_in_business=d.years_in_business;
-    var note=d.blurb||d.site_note;
-    if(note&&!w.site_note) w.site_note=note;
-    if(!w.fetched) w.fetched="Web research, Sep 2026";
-  });
-})();
-
-/* ---------- snapshot dates ---------- */
-var DATES=[]; (function(){ var s={};
-  Object.keys(IGH).forEach(function(h){ IGH[h].forEach(function(r){ s[r.date]=1; }); });
-  DATES=Object.keys(s).sort(); })();
-if(!DATES.length) DATES=[new Date().toISOString().slice(0,10)];
-function followersAt(b,di){ var h=b.followHist; if(!h||!h.length) return b.followers;
-  var dt=DATES[di],best=null;
-  for(var i=0;i<h.length;i++){ if(h[i].date<=dt) best=h[i].count; else break; }
-  return best==null?b.followers:best; }
-function pctChange(b,fromDi,toDi){ var a=followersAt(b,fromDi),c=followersAt(b,toDi);
-  if(a==null||c==null||a<=0) return null; return (c-a)/a*100; }
-
-/* ---------- momentum / recency ---------- */
-function momentumOf(b,di){
-  var ch=pctChange(b,Math.max(0,di-7),di);
-  if(ch!=null&&ch>=3) return "gaining";
-  if(ch!=null&&ch<=-3) return "slipping";
-  if(b.postAge==null) return "dormant";
-  if(b.postAge<=30) return "active";
-  if(b.postAge<=90) return "quiet";
-  return "dormant";
-}
-function recencyDot(b){
-  if(b.postAge==null) return "#6b7484";
-  if(b.postAge<=14) return "#6fd3e7";
-  if(b.postAge<=45) return "#e8b34b";
-  return "#e06c6c";
-}
-var LANE_COLOR={photo:"#e8b34b",video:"#6db3f2",both:"#b9c2cf",drone:"#6fd3e7",venue:"#d98e4a"};
-var LANE_LABEL={photo:"Photo",video:"Video",both:"Photo + Video",drone:"Drone",venue:"Venue"};
-var REG_LABEL={slc:"St. Lawrence Co",adjacent:"Nearby counties",unconfirmed:"Unconfirmed"};
-
-/* ---------- state ---------- */
-var S={ view:"map", mode:"businesses", tab:"explore", sortBy:"audience", shareBy:"providers", rankMode:"audience", di:DATES.length-1, q:"", lane:"", mom:"", reg:"",
-        sel:null, playing:false, dsort:null, dq:"", railX:false, expanded:false, glanceX:false, lsWide:false, ptab:"overview", qx:{}, qall:{} };
-
-/* ---------- undo / redo history (back-forward) + home ----------
-   Every meaningful action pushes a full snapshot; back/forward restore it.
-   pushHist is a no-op while a snapshot is being applied (HIST.busy) or while
-   a programmatic map move is in flight (HIST.noPush, cleared on moveend). */
-var HIST={stack:[],i:-1,busy:false,noPush:false};
-function snapState(){
-  var c=null; try{ if(map){ var ll=map.getCenter(); c={lat:ll.lat,lng:ll.lng}; } }catch(e){}
-  return {view:S.view,mode:S.mode,tab:S.tab,sel:S.sel,q:S.q,lane:S.lane,mom:S.mom,reg:S.reg,
-    rankMode:S.rankMode,rankDir:S.rankDir,dq:S.dq,railX:S.railX,dsort:S.dsort?{key:S.dsort.key,dir:S.dsort.dir}:null,
-    z:map?map.getZoom():null,c:c};
-}
-function statesEq(a,b){ return JSON.stringify(a)===JSON.stringify(b); }
-function pushHist(){
-  if(HIST.busy||!map) return;
-  var s=snapState(), cur=HIST.stack[HIST.i];
-  if(cur&&statesEq(cur,s)) return;
-  HIST.stack=HIST.stack.slice(0,HIST.i+1);
-  HIST.stack.push(s);
-  if(HIST.stack.length>60) HIST.stack.shift();
-  HIST.i=HIST.stack.length-1;
-  updNav();
-}
-function updNav(){
-  var b=$("#navback"), f=$("#navfwd");
-  if(b) b.disabled=HIST.i<=0;
-  if(f) f.disabled=HIST.i>=HIST.stack.length-1;
-}
-function syncChrome(){
-  /* view + mode toggles */
-  $$(".viewtoggle button").forEach(function(x){ var on=x.getAttribute("data-view")===S.view;
-    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
-  $$(".modetoggle button").forEach(function(x){ var on=x.getAttribute("data-mode")===S.mode;
-    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false"); });
-  /* filters */
-  $("#flane").value=S.lane; $("#fmom").value=S.mom; $("#freg").value=S.reg; $("#fq").value=S.q;
-  var biz=S.mode!=="venues";
-  $("#flane").style.display=biz?"":"none";
-  $("#fmom").style.display=biz?"":"none";
-  $("#fq").setAttribute("placeholder",biz?"Search businesses…":"Search venues…");
-  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo, video & drone market":"North Country venue watch";
-  document.title=biz?"Business Pulse · North Country photo, video & drone market":"Business Pulse · North Country venues";
-  /* sections */
-  $$(".pagenav button").forEach(function(x){ var on=x.getAttribute("data-tab")===S.tab;
-    x.classList.toggle("on",on); x.setAttribute("aria-selected",on?"true":"false");
-    if(x.getAttribute("data-tab")==="network") x.style.display=networkWindowOpen()?"":"none"; });
-  var ex=S.tab==="explore", rk=ex&&S.view==="rankings";
-  document.body.classList.toggle("pgmode",!ex);
-  $("#page").hidden=ex;
-  $("#rankings").hidden=!rk;
-  $("#map").style.visibility=(ex&&!rk)?"visible":"hidden";
-  syncSort();
-}
-function applyState(st){
-  HIST.busy=true;
-  try{
-    S.view=st.view; S.mode=st.mode; S.tab=st.tab; S.sel=st.sel;
-    if(S.tab==="network"&&!networkWindowOpen()) S.tab="explore";
-    S.q=st.q; S.lane=st.lane; S.mom=st.mom; S.reg=st.reg;
-    S.rankMode=st.rankMode; S.rankDir=st.rankDir; S.dq=st.dq; S.railX=!!st.railX;
-    S.dsort=st.dsort?{key:st.dsort.key,dir:st.dsort.dir}:null;
-    C=(S.mode==="venues"?V:B); BY_ID=(S.mode==="venues"?V_BY_ID:B_BY_ID);
-    computeModeStats();
-    syncChrome();
-    if(map&&st.c){ HIST.noPush=true; map.setView([st.c.lat,st.c.lng],st.z,{animate:false}); }
-    renderPins();
-    if(S.view==="rankings") renderRankings();
-    renderLeft(); renderRight();
-    $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
-    if(S.sel){ var row=$('#leftbody .row[data-open="'+S.sel+'"]'); if(row) row.classList.add("sel"); }
-  }finally{ HIST.busy=false; }
-  updNav();
-}
-/* home: back to the map, default framing, selection + filters cleared */function goHome(){
-  S.tab="explore"; S.sel=null; S.q=""; S.lane=""; S.mom=""; S.reg=""; S.view="map";
-  C=(S.mode==="venues"?V:B); BY_ID=(S.mode==="venues"?V_BY_ID:B_BY_ID);
-  computeModeStats();
-  syncChrome();
-  var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
-  if(map&&pts.length){ HIST.noPush=true;
-    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts),{paddingTopLeft:L.point(450,90),paddingBottomRight:L.point(380,90)});
-    else map.fitBounds(L.latLngBounds(pts).pad(0.15)); }
-  renderPins(); renderLeft(); renderRight();
-  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
-  pushHist();
-  toast("Back home — selection cleared.");
-}
-/* history back / forward — driven by the persistent topbar arrows */
-function goBack(){ if(HIST.i>0){ HIST.i--; applyState(HIST.stack[HIST.i]); } }
-function goFwd(){ if(HIST.i<HIST.stack.length-1){ HIST.i++; applyState(HIST.stack[HIST.i]); } }
-
-/* ---------- filtering ---------- */
-function norm(s){ return (s||"").toLowerCase(); }
-function passes(b){
-  if(S.q){ var q=norm(S.q);
-    if(norm(b.name).indexOf(q)<0&&norm(b.ig_handle).indexOf(q)<0&&norm(b.townShort).indexOf(q)<0&&norm(b.town).indexOf(q)<0) return false; }
-  if(S.mode!=="venues"&&S.lane&&b.specialty!==S.lane) return false;
-  if(S.reg&&b.region!==S.reg) return false;
-  if(S.mode!=="venues"&&S.mom){ var m=momentumOf(b,S.di);
-    if(S.mom==="gaining"){ if(m!=="gaining") return false; }
-    else if(m!==S.mom) return false; }
-  return true;
-}
-function filtered(){ return C.filter(passes); }
-function scopeList(){ return S.tab==="explore"?filtered():C.slice(); }
-
-/* ---------- "what changed since yesterday" ---------- */
-function todayChanges(){
-  var di=S.di, ydi=Math.max(0,di-1), today=DATES[di], yd=DATES[ydi];
-  var out={date:today,prev:yd,newBiz:[],jumps:[],small:[],prices:[],promo:[]};
-  C.forEach(function(b){
-    var first=b.followHist.length?b.followHist[0].date:null;
-    /* the injected JD Meyers Productions entry is a permanent anchor, never a new discovery */
-    if(b.id!=="jd-meyers-productions"&&first&&first>=yd){ out.newBiz.push(b); return; }
-    var ch=pctChange(b,ydi,di), from=followersAt(b,ydi), to=followersAt(b,di);
-    if(ch!=null&&Math.abs(ch)>=3) out.jumps.push({b:b,ch:ch,from:from,to:to});
-    /* sub-threshold moves are still moves: track them honestly instead of
-       claiming the market stood still */
-    else if(from!=null&&to!=null&&to!==from) out.small.push({b:b,delta:to-from,from:from,to:to});
-  });
-  out.jumps.sort(function(a,b2){return Math.abs(b2.ch)-Math.abs(a.ch);});
-  out.small.sort(function(a,b2){return Math.abs(b2.delta)-Math.abs(a.delta);});
-  /* price changes: scan latest sweep runs for price-change language */
-  var runs=(D.webSweepHistory||[]).slice(-2);
-  var seen={};
-  runs.forEach(function(run){ Object.keys(run.pages||{}).forEach(function(pid){
-    var p=run.pages[pid], note=String(p.note||"");
-    if(/pric/i.test(note)&&/chang|rais|lower|cut|increas|now\s*\$|was\s*\$/i.test(note)&&!seen[pid]){
-      seen[pid]=1;
-      var comp=C.filter(function(c){return c.id===pid;})[0];
-      if(comp) out.prices.push({b:comp,note:note,run:run.date});
-    }}); });
-  /* promo posts from today's activity rows */
-  (D.igActivity||[]).forEach(function(r){
-    if(r.date!==today) return;
-    if(/promo|sale|minis|booking now|giveaway|discount|limited/i.test(r.activity||"")){
-      var comp=C.filter(function(c){return c.ig_handle===r.handle;})[0];
-      if(comp) out.promo.push({b:comp,note:r.activity});
-    }});
-  return out;
-}
-
-/* why a business is "new on the radar": usually newly tracked on Instagram,
-   not a new business. Explain honestly from the record. */
-function newWhy(b){
-  var first=b.followHist.length?b.followHist[0].date:null, parts=[];
-  if(first) parts.push("IG tracking started "+dstrShort(first));
-  var m=/verified (\d{4}-\d{2}-\d{2})/.exec(b.notes||"");
-  if(m&&m[1]&&first&&m[1]<first) parts.push("in our records since "+dstrShort(m[1]));
-  else if(b.est_year&&first&&b.est_year<+first.slice(0,4)) parts.push("in business since "+b.est_year);
-  return parts.join(" · ")||"Recently picked up";
-}
-/* ---------- live feed: one chronological stream of the last 7 days ---------- */
-var FEED_CATS=[
-  {k:"post",t:"Posts",icon:"mega",c:"#6db3f2"},
-  {k:"move",t:"Moves",icon:"bolt",c:"#f5b942"},
-  {k:"new",t:"New",icon:"radar",c:"#8fd18f"},
-  {k:"promo",t:"Promos",icon:"tag",c:"#c9a0f2"},
-  {k:"price",t:"Prices",icon:"dollar",c:"#f2d06d"}
-];
-function feedCat(k){ for(var i=0;i<FEED_CATS.length;i++) if(FEED_CATS[i].k===k) return FEED_CATS[i]; return FEED_CATS[0]; }
-function feedEvents(){
-  var di=S.di, d0=Math.max(0,di-6), lo=DATES[d0], hi=DATES[di], ev=[];
-  function compByHandle(h){
-    var hn=String(h||"").replace(/^@/,"").toLowerCase();
-    for(var i=0;i<C.length;i++) if(String(C[i].ig_handle||"").toLowerCase()===hn) return C[i];
-    return null;
-  }
-  function compById(id){ for(var i=0;i<C.length;i++) if(C[i].id===id) return C[i]; return null; }
-  /* NOTE: follower "move" events are intentionally excluded — the Activity page
-     is a general-activity feed (posts, promos, prices, new faces),
-     not a follower-change ticker. Only active happenings appear here. */
-  /* posts + promos from the IG activity rows */
-  (D.igActivity||[]).forEach(function(r){
-    if(!r.date||r.date<lo||r.date>hi) return;
-    var comp=compByHandle(r.handle); if(!comp) return;
-    var n=postCount(r), note=String(r.activity||"").slice(0,110);
-    if(n>0) ev.push({date:r.date,kind:"post",b:comp,sub:note});
-    if(/promo|sale|minis|booking now|giveaway|discount|limited/i.test(r.activity||""))
-      ev.push({date:r.date,kind:"promo",b:comp,sub:note});
-  });
-  /* price changes from web sweep runs inside the window */
-  (D.webSweepHistory||[]).forEach(function(run){
-    if(!run.date||run.date<lo||run.date>hi) return;
-    Object.keys(run.pages||{}).forEach(function(pid){
-      var p=run.pages[pid], note=String(p.note||"");
-      if(/pric/i.test(note)&&/chang|rais|lower|cut|increas|now\s*\$|was\s*\$/i.test(note)){
-        var comp=compById(pid);
-        if(comp) ev.push({date:run.date,kind:"price",b:comp,sub:note.slice(0,110)});
-      }});
-  });
-  /* new on the radar */
-  C.forEach(function(b){
-    var first=b.followHist.length?b.followHist[0].date:null;
-    if(b.id!=="jd-meyers-productions"&&first&&first>=lo&&first<=hi)
-      ev.push({date:first,kind:"new",b:b,sub:newWhy(b)});
-  });
-  var ko={new:0,price:1,promo:2,post:3,move:4};
-  ev.sort(function(a,b2){
-    if(a.date!==b2.date) return a.date<b2.date?1:-1;
-    return (ko[a.kind]-ko[b2.kind])||(a.b.name<b2.b.name?-1:1);
-  });
-  return ev;
-}
-function feedFresh(){
-  var di=S.di, out=[["Follower data",DATES[di]]], mx=null;
-  (D.igActivity||[]).forEach(function(r){ if(r.date&&(!mx||r.date>mx)) mx=r.date; });
-  if(mx) out.push(["IG posts",mx]);
-  var runs=D.webSweepHistory||[], lr=runs.length?runs[runs.length-1].date:null;
-  if(lr) out.push(["Site sweep",lr]);
-  return out;
-}
-function feedPillsHTML(){
-  var f=S.feedf||"all", evs=feedEvents();
-  var counts={}; evs.forEach(function(e){ counts[e.kind]=(counts[e.kind]||0)+1; });
-  return '<div class="feed-filters"><button class="feed-pill'+(f==="all"?" on":"")+'" data-feedf="all">All · '+evs.length+'</button>'+
-    FEED_CATS.map(function(c){
-      if(c.k==="move") return ""; /* follower moves are excluded from this feed */
-      return '<button class="feed-pill'+(f===c.k?" on":"")+'" data-feedf="'+c.k+'">'+c.t+' · '+(counts[c.k]||0)+'</button>';
-    }).join("")+'</div>';
-}
-function feedRowsHTML(){
-  var di=S.di, f=S.feedf||"all";
-  var shown=feedEvents().filter(function(e){ return f==="all"||e.kind===f; }).slice(0,80);
-  if(!shown.length)
-    return '<div class="act-empty"><div class="act-empty-t">Nothing here.</div>'+
-      '<div class="act-empty-s">No '+(f==="all"?"activity":f)+' in the last 7 days.</div></div>';
-  var h="", lastDay=null;
-  shown.forEach(function(e){
-    if(e.date!==lastDay){ lastDay=e.date;
-      var lbl=e.date===DATES[di]?"Today":(di>0&&e.date===DATES[di-1]?"Yesterday":dstrShort(e.date));
-      h+='<div class="feed-day">'+lbl+' · '+dstrShort(e.date)+'</div>'; }
-    var fc=feedCat(e.kind);
-    h+='<div class="feed-row" data-open="'+e.b.id+'">'+
-      '<span class="feed-ic" style="color:'+fc.c+'">'+actIcon(fc.icon)+'</span>'+
-      '<div class="feed-nm"><b>'+esc(e.b.name)+'</b><span>'+esc(e.sub||"")+'</span></div>'+
-      (e.val?'<span class="feed-val '+(e.up?"up":"dn")+'">'+esc(e.val)+'</span>':"")+
-      '<span class="feed-kind" style="--acc:'+fc.c+'">'+fc.t+'</span></div>';
-  });
-  return h;
-}
-/* live-feed sidebar auto-scroll: drifts slowly, yields to the user, resumes when idle */
-var feedTimer=null, feedHold=false, feedIdleT=null;
-function feedAutoStop(){ if(feedTimer){ clearInterval(feedTimer); feedTimer=null; } feedHold=false; clearTimeout(feedIdleT); }
-function feedUserTakeover(){ feedHold=true; clearTimeout(feedIdleT); feedIdleT=setTimeout(function(){ feedHold=false; },4000); }
-var radarPlayed=false;
-function radarOnce(){
-  if(radarPlayed||REDUCED||!("IntersectionObserver" in window)) return;
-  var t=document.querySelector('.act-tile[data-radar]');
-  if(!t) return;
-  var io=new IntersectionObserver(function(es){
-    es.forEach(function(e){ if(e.isIntersecting){ radarPlayed=true; t.classList.add("radar-on"); io.disconnect(); } });
-  },{threshold:.35});
-  io.observe(t);
-}
-function feedAutoStart(){
-  feedAutoStop();
-  if(REDUCED) return;
-  var side=document.getElementById("feedside");
-  if(!side) return;
-  side.addEventListener("wheel",feedUserTakeover,{passive:true});
-  side.addEventListener("touchmove",feedUserTakeover,{passive:true});
-  feedTimer=setInterval(function(){
-    var s=document.getElementById("feedside");
-    if(!s||feedHold||document.hidden) return;
-    if(s.scrollTop+s.clientHeight>=s.scrollHeight-6){
-      feedHold=true; /* linger at the bottom, then loop to the top */
-      setTimeout(function(){
-        var s2=document.getElementById("feedside");
-        if(s2&&s2.scrollTop+s2.clientHeight>=s2.scrollHeight-6) s2.scrollTop=0;
-        feedHold=false;
-      },2800);
-    } else s.scrollTop+=1;
-  },60);
-}
-
-/* ---------- week's highlights: top businesses + why ---------- */
-/* The daily IG activity notes are free text from the sweep ("Pull failed — carried
-   last-known count.", "last post Jul 12 ...", "6 posts in one burst", ...).
-   Count explicit posts only; status notes are 0. Deliberately conservative:
-   ambiguous phrasing counts as nothing rather than an invented post. */
-function postCount(r){
-  var t=String((r&&r.activity)||"");
-  if(/quiet|no new|pull failed|not pulled|private account|carried last-known|\blast post\b/i.test(t)) return 0;
-  var m=t.match(/(\d+)\s+(posts?|reels?)\b/i);
-  if(m) return parseInt(m[1],10);
-  if(/posted today|new post/i.test(t)) return 1;
-  return 0;
-}
-/* ---------- Activity dashboard: icons ---------- */
-function actIcon(n){
-  var P={
-    bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>',
-    wave:'<path d="M2 12c2.5 0 2.5-4 5-4s2.5 4 5 4 2.5-4 5-4 2.5 4 5 4"/>',
-    radar:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
-    tag:'<path d="M20.6 13.4 13.4 20.6a1 1 0 0 1-1.4 0L3 11.6V3h8.6l9 9a1 1 0 0 1 0 1.4z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/>',
-    dollar:'<circle cx="12" cy="12" r="9"/><path d="M12 6.5v11M14.8 9.2c-.6-.9-1.6-1.4-2.8-1.4-1.7 0-3 .9-3 2.4 0 3.4 6 1.6 6 4.9 0 1.5-1.3 2.4-3 2.4-1.2 0-2.2-.5-2.8-1.4"/>',
-    moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
-    flame:'<path d="M12 22c4 0 7-2.8 7-6.8 0-3.8-2.8-5.9-4.3-8.7C13.4 4 12 2.5 12 2.5s-.4 2.8-2.3 4.9C7.8 9.5 5 12 5 15.2 5 19.2 8 22 12 22z"/><path d="M12 22c-2 0-3.5-1.4-3.5-3.2 0-1.9 1.4-2.9 2.2-4.3.7 1.2 3.3 2.6 3.3 4.7 0 1.6-1 2.8-2 2.8z"/>',
-    mega:'<path d="M4 10.5v3h3.5L14 18V6l-6.5 4.5H4z"/><path d="M17.5 9.5a4 4 0 0 1 0 5M20 7a7.5 7.5 0 0 1 0 10"/>',
-    crown:'<path d="M3 8.5 7 12l5-6.5L17 12l4-3.5L19.5 18h-15L3 8.5z"/>',
-    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
-    shield:'<path d="M12 2.5 4.5 5.5v6c0 4.5 3.2 7.8 7.5 10 4.3-2.2 7.5-5.5 7.5-10v-6L12 2.5z"/><path d="M9 12l2 2 4-4"/>',
-    users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 15.2c2.6.3 4.7 1.8 5.5 4.8"/>',
-    camera:'<path d="M4 8h3l2-2.5h6L17 8h3a1.5 1.5 0 0 1 1.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 19V9.5A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="13.5" r="3.5"/>',
-    pulse:'<path d="M2 12h4l2.5-6 4 12 2.5-6H22"/>'
-  };
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(P[n]||P.pulse)+'</svg>';
-}
-
-function weekHighlightCards(){
-  var di=S.di, d0=Math.max(0,di-7), list=scopeList(), cards=[];
-  function norm(h){ return String(h||"").replace(/^@/,"").toLowerCase(); }
-  /* activity per handle over the last 7 days */
-  var actBy={};
-  (D.igActivity||[]).forEach(function(r){
-    var n=postCount(r); if(!n) return;
-    var age=(new Date(DATES[di]+"T12:00:00")-new Date((r.date||"")+"T12:00:00"))/864e5;
-    if(isNaN(age)||age<0||age>7) return;
-    var h=norm(r.handle); if(!h) return;
-    actBy[h]=(actBy[h]||0)+n;
-  });
-  /* fastest growing */
-  var growers=list.map(function(b){ return {b:b,ch:pctChange(b,d0,di)}; })
-    .filter(function(x){ return x.ch!=null&&x.ch>=3; })
-    .sort(function(a,c){ return c.ch-a.ch; });
-  if(growers.length){
-    var g=growers[0], from=followersAt(g.b,d0), to=followersAt(g.b,di);
-    cards.push({k:"Fastest growing",icon:"flame",c:"#f5b942",b:g.b,
-      stat:"+"+g.ch.toFixed(1)+"%",sub:"followers this week",
-      why:(from!=null&&to!=null?fmt(from)+" → "+fmt(to):""),
-      top3:growers.slice(0,3).map(function(x){ return {b:x.b,stat:"+"+x.ch.toFixed(1)+"%"}; })});
-  }
-  /* most active */
-  var act=list.map(function(b){ var h=norm(b.ig_handle);
-      return {b:b,n:(h&&actBy[h])||0}; })
-    .filter(function(x){ return x.n>0; }).sort(function(a,c){ return c.n-a.n; });
-  if(act.length){
-    cards.push({k:"Most active",icon:"mega",c:"#6db3f2",b:act[0].b,
-      stat:String(act[0].n),sub:act[0].n===1?"post in 7 days":"posts in 7 days",why:"",
-      top3:act.slice(0,3).map(function(x){ return {b:x.b,stat:x.n+(x.n===1?" post":" posts")}; })});
-  }
-  /* biggest audience */
-  var big=list.filter(function(b){ return followersAt(b,di)!=null; })
-    .sort(function(a,c){ return followersAt(c,di)-followersAt(a,di); });
-  if(big.length){
-    cards.push({k:"Biggest audience",icon:"crown",c:"#c9a0f2",b:big[0],
-      stat:fmt(followersAt(big[0],di)),sub:"followers · largest tracked",why:"",
-      top3:big.slice(0,3).map(function(b){ return {b:b,stat:fmt(followersAt(b,di))+" followers"}; })});
-  }
-  /* new on the radar (first tracked inside the 7-day window) */
-  var newW=list.filter(function(b){
-    var first=b.followHist.length?b.followHist[0].date:null;
-    return b.id!=="jd-meyers-productions"&&first&&first>=DATES[d0]&&first<=DATES[di];
-  }).sort(function(a,b){ var fa=a.followHist[0].date, fb=b.followHist[0].date;
-    return fa<fb?1:fa>fb?-1:0; });
-  if(newW.length){
-    cards.push({k:"New on the radar",icon:"radar",c:"#8fd18f",b:newW[0],
-      stat:String(newW.length),sub:newW.length===1?"new business this week":"new businesses this week",
-      names:newW.slice(0,3).map(function(b){ return b.name; }),
-      why:newW.length>3?("+"+(newW.length-3)+" more"):"",
-      top3:newW.slice(0,3).map(function(b){ return {b:b,stat:""}; })});
-  }
-  /* promos live */
-  var seenP={}, promoB=[];
-  feedEvents().forEach(function(e){
-    if(e.kind!=="promo"||seenP[e.b.id]) return;
-    seenP[e.b.id]=1; promoB.push(e.b);
-  });
-  var promoN=promoB.map(function(b){ return b.name; });
-  if(promoN.length){
-    cards.push({k:"Promos live",icon:"tag",c:"#c9a0f2",b:null,
-      stat:String(promoN.length),sub:promoN.length===1?"promotion running":"promotions running",
-      names:promoN.slice(0,3),
-      why:promoN.length>3?("+"+(promoN.length-3)+" more"):"",
-      top3:promoB.slice(0,3).map(function(b){ return {b:b,stat:"promo running"}; })});
-  }
-  /* market output: total posts across the market in 7 days */
-  var totalPosts=act.reduce(function(a,x){ return a+x.n; },0);
-  if(totalPosts>0){
-    cards.push({k:"Market output",icon:"pulse",c:"#6fd3e7",b:act[0].b,
-      stat:String(totalPosts),sub:"posts across the market in 7 days",
-      why:"Top poster: "+act[0].b.name+" ("+act[0].n+")",
-      top3:act.slice(0,3).map(function(x){ return {b:x.b,stat:x.n+(x.n===1?" post":" posts")}; })});
-  }
-  return cards;
-}
-function weekHighlights(){
-  var cards=weekHighlightCards();
-  if(!cards.length) return "";
-  return '<div class="act-hl-grid">'+cards.map(function(c,i){
-    var nm=c.names?c.names.map(function(n){ return '<div class="act-hl-w">'+esc(n)+'</div>'; }).join("")
-      :'<div class="act-hl-n">'+esc(c.b.name)+'</div>';
-    var runners="";
-    if(c.top3&&c.top3.length>1){
-      runners='<button class="act-hl-top3" data-hl>Top 3 <span class="act-hl-chev">\u25be</span></button>'+
-        '<div class="act-hl-runners"><div>'+
-        c.top3.slice(1).map(function(r,j){
-          return '<div class="act-hl-r"'+(r.b?' data-open="'+r.b.id+'"':"")+'><span class="act-hl-rrk">'+(j+2)+
-            '</span><span class="act-hl-rn">'+esc(r.b?r.b.name:"")+'</span>'+
-            (r.stat?'<span class="act-hl-rst">'+esc(r.stat)+'</span>':"")+'</div>';
-        }).join("")+'</div></div>';
-    }
-    return '<div class="act-hl-card"'+(c.b?' data-open="'+c.b.id+'"':"")+
-      ' style="--d:'+(0.08*i).toFixed(2)+'s;--acc:'+c.c+'">'+
-      '<div class="act-hl-ic">'+actIcon(c.icon)+'</div>'+
-      '<div class="act-hl-stat">'+esc(c.stat)+'</div>'+
-      '<div class="act-hl-sub">'+esc(c.sub)+'</div>'+
-      '<div class="act-hl-k">'+esc(c.k)+'</div>'+nm+
-      (c.why?'<div class="act-hl-w">'+esc(c.why)+'</div>':"")+runners+'</div>';
-  }).join("")+"</div>";
-}
-
-/* venue-mode Today: no change history exists yet — overview instead */
-function renderVenueToday(){
-  var h='<div class="sec"><h3>Venue watch</h3><div class="sub">Tracking started Sep 29, 2026 · '+V.length+' venues</div>';
-  var counties={};
-  V.forEach(function(v){ counties[v.county]=(counties[v.county]||0)+1; });
-  var ig=V.filter(function(v){return v.ig_handle;}).length;
-  h+='<div class="statgrid">'+
-    '<div class="stat"><div class="v">'+V.length+'</div><div class="l">Venues</div></div>'+
-    '<div class="stat"><div class="v">'+Object.keys(counties).length+'</div><div class="l">Counties</div></div>'+
-    '<div class="stat"><div class="v">'+ig+'</div><div class="l">On Instagram</div></div></div>';
-  h+='<div class="sub" style="margin:8px 0 0">Change history builds from here — check back as daily updates accumulate.</div></div>';
-  h+='<div class="sec"><h3>All venues</h3><div class="stagger">'+V.map(venueRow).join("")+"</div></div>";
-  return h;
-}
-
-function renderToday(){
-  if(S.mode==="venues") return '<div class="actx"><div class="actx-top pg-hero"><div><h1>Activity</h1>'+
-    '<p>Instagram presence for North Country venues</p></div>'+
-    pgPull(dataPullDate())+'</div><div class="actx-pad">'+renderVenueToday()+'</div></div>';
-  var h='<div class="actx">';
-  h+='<div class="actx-top pg-hero"><div><h1>Activity</h1>'+
-    '<p>Every post, promo and price move across the market · last 7 days</p></div>'+
-    pgPull(dataPullDate())+'</div>';
-  h+='<section class="actx-hl"><div class="actx-hl-h"><span>Week&rsquo;s highlights</span>'+
-    '<em>Top of the market · last 7 days</em></div>'+weekHighlights()+'</section>';
-  h+='<section class="actx-feed"><div class="actx-feed-h"><span>The feed</span>'+
-    feedPillsHTML()+'</div><div id="feedlist">'+feedRowsHTML()+'</div></section>';
-  return h+'</div>';
-}
-
-/* ---------- confidence badges + price-conflict flags ---------- */
-function confOf(b){ var c=CONF[b.id]; return c?c.score:null; }
-function confBand(s){ return s>=70?"hi":s>=40?"mid":"lo"; }
-function pcTitle(b){ var c=CONF[b.id]; if(!c||!c.conflict) return "";
-  return "Price conflict — "+c.conflict.values.map(function(v){ return v.label+": "+v.text; }).join(" vs "); }
-function confBadge(b){
-  var s=confOf(b); if(s==null) return "";
-  var cls=confBand(s);
-  var t="Information confidence "+s+"% — click to see what this measures.";
-  var cf=(CONF[b.id]&&CONF[b.id].conflict)?' <span class="pcflag" title="'+esc(pcTitle(b))+'">price conflict</span>':"";
-  return ' <span class="cf '+cls+'" data-cf="'+b.id+'" title="'+t+'">'+s+'%</span>'+cf;
-}
-/* ---------- business scores: information, activity, momentum, value, reviews ---------- */
-function actScore(b){
-  var d=b.postAge;
-  if(d==null) return {score:null,band:"Unknown",why:"No recent-post date on record."};
-  var s=d<=7?100:d<=14?85:d<=30?70:d<=60?50:d<=90?30:d<=180?15:5;
-  var band=s>=70?"Active":s>=30?"Cooling":"Low";
-  var ago=d===0?"today":d+" day"+(d>1?"s":"")+" ago";
-  return {score:s,band:band,why:"Last posted "+ago+".",days:d};
-}
-function momScore(b){
-  var ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
-  if(ch30==null) return {score:null,band:"Unknown",why:"No follower history to measure.",ch7:ch7,ch30:ch30};
-  var s=Math.max(5,Math.min(100,Math.round(50+ch30*8)));
-  var band=s>=75?"Surging":s>=60?"Gaining":s>=40?"Steady":s>=25?"Slipping":"Falling";
-  return {score:s,band:band,ch7:ch7,ch30:ch30,
-    why:"Followers "+(ch30>=0?"+":"")+ch30.toFixed(1)+"% over the last 30 days."};
-}
-var _wedArr=null;
-function wedRank(b){
-  if(!_wedArr) _wedArr=B.filter(function(x){return x.price.wedding!=null;})
-    .sort(function(a,c){return a.price.wedding-c.price.wedding;});
-  var i=_wedArr.indexOf(b); if(i<0) return null;
-  var n=_wedArr.length, med=_wedArr[Math.floor(n/2)].price.wedding;
-  return {rank:i+1,n:n,med:med,pct:n>1?Math.round(100*(1-i/(n-1))):50};
-}
-function valScore(b){
-  var r=wedRank(b);
-  if(!r){
-    if(b.price.weddingHourly!=null) return {score:null,band:"Hourly",r:null,
-      why:money(b.price.weddingHourly)+"/hr wedding rate — hourly pricing isn't ranked against package floors."};
-    return {score:null,band:"Unknown",why:"No published wedding floor.",r:null};
-  }
-  var q=r.rank/r.n, band=q<=0.25?"Budget":q<=0.5?"Mid-market":q<=0.75?"Premium":"Luxury";
-  return {score:r.pct,band:band,r:r,
-    why:money(b.price.wedding)+" wedding floor — cheaper than "+r.pct+"% of "+r.n+" tracked businesses."};
-}
-function reviewInfo(b){
-  if(b.review_count!=null) return {count:b.review_count,rating:b.review_rating||null,
-    src:b.review_source?(b.review_source.charAt(0).toUpperCase()+b.review_source.slice(1)):"Google"};
-  var fl=b.flags||[], txt=(fl.join?fl.join(" "):String(fl))+" "+(b.notes||"");
-  var m=/(\d+)[- ]?(google|fb|facebook|yelp)[- ]reviews/i.exec(txt);
-  if(!m) return null;
-  var src=m[2].toLowerCase(), after=txt.slice(m.index,m.index+64), rm=/(\d)[\-.](\d)/.exec(after);
-  return {count:+m[1],rating:rm?(+rm[1]+"."+ +rm[2]):null,
-    src:src==="fb"||src==="facebook"?"Facebook":src==="yelp"?"Yelp":"Google"};
-}
-function revScore(b){
-  var r=reviewInfo(b);
-  if(!r) return {score:null,band:"Not researched",
-    why:"Review count not yet collected — the daily deep-dive pass is gathering it from live listings.",r:null};
-  var s=Math.round(100*Math.log10(1+r.count)/Math.log10(201));
-  var band=s>=70?"Well reviewed":s>=40?"Some reviews":"Few reviews";
-  return {score:s,band:band,r:r,
-    why:r.count+" "+r.src+" reviews"+(r.rating?" · "+r.rating+" / 5":"")+"."};
-}
-function engScore(b){
-  var e=b.engagement;
-  if(!e||e.rate_pct==null) return {score:null,band:"Unknown",e:null,
-    why:"No Instagram engagement data — not in the API pull roster or too few recent posts."};
-  /* peer-relative: the old absolute scale saturated at 100 for many businesses.
-     The top observed rate maps to 98 so scores can actually distinguish. */
-  var s=Math.max(2,Math.min(98,Math.round(e.rate_pct/ENG_MAX*98)));
-  var band=s>=60?"Strong":s>=35?"Solid":s>=15?"Light":"Minimal";
-  var rank=ENG_RATES.filter(function(r){return r>e.rate_pct;}).length+1;
-  return {score:s,band:band,e:e,rank:rank,of:ENG_RATES.length,
-    why:e.posts+" recent posts · "+e.rate_pct+"% mean engagement · "+e.avg_likes+" avg likes"};
-}
-/* ---------- detail panel: collapsed (scan) vs expanded (study) ----------
-   Raw data is the product; scores are annotations. The collapsed panel shows
-   headline numbers + four small score badges. The expanded panel widens to half
-   the screen with tabs: Overview / Social / Pricing / Website / Scorecard. */
-/* peer-relative engagement stats: the old 0-100 saturated (many businesses hit
-   100). Scores are now relative to the observed max so they can distinguish. */
-var ENG_MAX=1, ENG_MED=null, ENG_RATES=[], REV_MED=null, HOURLY_N=0;
-function engStats(){
-  ENG_RATES=B.filter(function(b){return b.engagement&&b.engagement.rate_pct!=null;})
-    .map(function(b){return b.engagement.rate_pct;}).sort(function(a,b){return a-b;});
-  ENG_MAX=ENG_RATES.length?ENG_RATES[ENG_RATES.length-1]:1;
-  ENG_MED=ENG_RATES.length?ENG_RATES[Math.floor(ENG_RATES.length/2)]:null;
-  var rc=B.map(function(b){var r=reviewInfo(b);return r?r.count:null;})
-    .filter(function(v){return v!=null;}).sort(function(a,b){return a-b;});
-  REV_MED=rc.length?rc[Math.floor(rc.length/2)]:null;
-  HOURLY_N=B.filter(function(b){return b.price.weddingHourly!=null;}).length;
-}
-function dstrShort(ds){ if(!ds) return "\u2014"; var d=new Date(ds+"T12:00:00");
-  return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
-function profHead(b){
-  var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
-  return '<div class="prof-head"><div class="prof-ava">'+esc(ini)+"</div>"+
-    "<div><h2>"+esc(b.name)+"</h2>"+
-    '<div class="sub">'+esc(b.town)+locTag(b)+" · "+(LANE_LABEL[b.specialty]||b.specialty)+
-    (b.region==="slc"?" · St. Lawrence Co":"")+"</div></div></div>";
-}
-/* ---------- right panel: one shared header in every state ----------
-   Title left, one chevron control right, same height and padding whether the
-   panel shows the market glance or a business profile, collapsed or expanded.
-   The chevron points where the panel edge moves: ⟨ expands left, ⟩ collapses right. */
-function pheadHTML(title,px){
-  var btn="";
-  if(px==="glance")
-    btn='<button class="pxlink" data-gexpand title="Open the full market landscape">Landscape &rarr;</button>';
-  else if(px==="profile")
-    btn='<button class="pxbtn" data-px="profile" title="'+(S.expanded?"Collapse the profile":"Expand the profile")+'">'+(S.expanded?"\u27E9":"\u27E8")+"</button>";
-  return '<div class="phead"><span class="pt">'+title+"</span>"+btn+"</div>";
-}
-function pheadTitle(b){
-  var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
-  return '<span class="pava">'+esc(ini)+'</span><span class="pname">'+esc(b.name)+"</span>";
-}
-function linkChips(b){
-  var h='<div class="chiprow">';
-  if(b.ig_handle) h+='<span class="chip">@'+esc(b.ig_handle)+"</span>";
-  if(b.website) h+='<a class="chip extlink" href="'+esc(/^https?:/.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a>';
-  if(b.pricing_url) h+='<a class="chip extlink" href="'+esc(b.pricing_url)+'" target="_blank" rel="noopener">Pricing ↗</a>';
-  return h+"</div>";
-}
-/* ---------- business profile: simple two-state panel ----------
-   Collapsed: overview info + score bar charts, spread across the full
-   vertical rail, top to bottom. Expanded: EVERYTHING at once — no tabs,
-   no scrolling. One click opens, one click (⟩ Collapse or Esc) closes.
-   Both states live in the same footprints as the market glance
-   (348px collapsed / 700px expanded). */
-/* latest IG activity row (media_count + biography) */
-function latestIgAct(b){
-  var best=null;
-  (D.igActivity||[]).forEach(function(r){
-    if(r.handle!==b.ig_handle) return;
-    if(r.media_count==null&&!r.biography) return;
-    if(!best||String(r.date||"")>String(best.date||"")) best=r; });
-  return best;
-}
-function yearsStr(b){
-  var w=WI[b.id]||{}, wOk=!w.unreachable;
-  var yrs=wOk?(w.years_in_business!=null?w.years_in_business+" yrs":(w.since?"since "+w.since:null)):null;
-  if(!yrs&&b.est_year!=null){ var yyb=new Date().getFullYear()-b.est_year;
-    yrs=yyb+" yrs · est. "+b.est_year; }
-  return yrs;
-}
-function servicesOf2(b){
-  var w=WI[b.id], wOk=w&&!w.unreachable;
-  if(wOk&&w.services&&w.services.length) return w.services;
-  return (b.services&&b.services.length)?b.services:null;
-}
-function coverageOf(b){
-  var w=WI[b.id];
-  return (w&&!w.unreachable&&w.coverage&&w.coverage.length)?w.coverage.join(" · "):null;
-}
-/* headline numbers, shared by the collapsed rows and the expanded strip */
-function snapData(b){
-  var f=followersAt(b,S.di), ri=reviewInfo(b), s=confOf(b);
-  var price=b.price.wedding!=null?money(b.price.wedding)
-    :b.price.session!=null?money(b.price.session)
-    :b.price.weddingHourly!=null?money(b.price.weddingHourly)+"/hr":"—";
-  var lastFull=b.last_post_date?dstr(b.last_post_date):null;
-  var last=lastFull?dstrShort(b.last_post_date):(b.postAge!=null?b.postAge+"d ago":"—");
-  return {f:f,ri:ri,s:s,price:price,
-    priceT:price!=="—"?("Starting price: "+price):"",
-    last:last,
-    lastT:lastFull?("Last post: "+lastFull):(b.postAge!=null?("Last post: "+b.postAge+" days ago"):""),
-    lastFull:lastFull,yrs:yearsStr(b)};
-}
-function snapRowsHTML(b){
-  var d=snapData(b);
-  function row(l,v,t){ return '<div class="xkv"><span>'+l+'</span><b'+(t?' title="'+esc(t)+'"':"")+'>'+v+"</b></div>"; }
-  return row("Followers",d.f!=null?fmt(d.f):"—",d.f!=null?("Followers: "+d.f):"")+
-    row("Last post",esc(d.last),d.lastT)+
-    row("Reviews",d.ri?fmt(d.ri.count):"—",d.ri?("Reviews: "+d.ri.count):"");
-}
-/* pricing summary strip for the collapsed profile: every known figure plus
-   the wedding-floor rank across tracked businesses */
-function priceSummaryHTML(b){
-  var p=b.price, bits=[];
-  if(p.wedding!=null) bits.push('Wedding <b>'+money(p.wedding)+'+</b>');
-  if(p.session!=null) bits.push('Session <b>'+money(p.session)+'+</b>');
-  if(p.weddingHourly!=null) bits.push('<b>'+money(p.weddingHourly)+'/hr</b>');
-  var full=b.pricing?(' title="'+esc(b.pricing)+'"'):"";
-  if(!bits.length)
-    return '<div class="ppsum none"'+full+'>Not published</div>';
-  var rank="";
-  if(p.wedding!=null){
-    var wArr=C.filter(function(x){return x.price.wedding!=null;});
-    rank='<span class="pprank">#'+(wArr.filter(function(x){return x.price.wedding<p.wedding;}).length+1)+' of '+wArr.length+'</span>';
-  }
-  return '<div class="ppsum"'+full+'>'+bits.join('<i>·</i>')+rank+'</div>';
-}
-/* hero: the digital-footprint score as a big ring gauge at the top of the collapsed profile */
-function fpHeroHTML(b){
-  var s=confOf(b), pct=s==null?0:Math.max(0,Math.min(100,Math.round(s)));
-  var band=s==null?"unknown":(s>=80?"strong":s>=60?"decent":s>=40?"thin":"weak");
-  var col=s==null?"#8b93a3":s>=80?"#e8b34b":s>=60?"#6db3f2":s>=40?"#d08a4e":"#e05a4e";
-  var r=30, c=(2*Math.PI*r).toFixed(1), fill=(c*pct/100).toFixed(1);
-  return '<div class="fphero" data-cf="'+b.id+'" title="Digital footprint \u2014 '+band+' \u2014 expand for everything">'+
-    '<svg class="fring" width="92" height="92" viewBox="0 0 76 76" role="img" aria-label="Digital footprint '+pct+' of 100">'+
-    '<circle cx="38" cy="38" r="'+r+'" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>'+
-    '<circle cx="38" cy="38" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="7" stroke-linecap="round" '+
-    'stroke-dasharray="'+fill+" "+c+'" transform="rotate(-90 38 38)"/>'+
-    '<text x="38" y="40" text-anchor="middle" dominant-baseline="central" class="fringnum">'+(s==null?"\u2014":pct)+"</text></svg>"+
-    '<div class="fphl">Digital Footprint</div>'+
-    '<div class="fphb" style="color:'+col+'">'+band+"</div></div>";
-}
-/* how-AI-sees-it framing: the digital footprint paragraph (the score itself is the hero above) */
-function footprintHTML(b){
-  return '<div class="plab">How AI sees this business</div>'+
-    '<div class="footprint"><p>This business\u2019s digital footprint \u2014 what AI assistants and search engines see when they look it up.</p></div>';
-}
-/* overview: bio, services, coverage, years */
-function ovBioHTML(b){
-  var igAct=latestIgAct(b), wi=WI[b.id], wOk=wi&&!wi.unreachable;
-  var bio=igAct&&igAct.biography;
-  var h="";
-  if(bio) h+='<div class="sub bio clamp3">“'+esc(bio)+"”</div>";
-  if(wOk&&wi.site_note) h+='<div class="sub clamp3">'+esc(wi.site_note)+"</div>";
-  var sv=servicesOf2(b);
-  if(sv) h+='<div class="chiprow">'+sv.map(function(s){return '<span class="chip">'+esc(s)+"</span>";}).join(" ")+"</div>";
-  var cov=coverageOf(b), yrs=yearsStr(b);
-  /* long coverage lists left-align on their own lines instead of wrapping ragged on the right */
-  if(cov) h+='<div class="cov"><span>Coverage</span><b>'+esc(cov)+"</b></div>";
-  if(yrs){
-    h+='<dl class="kv">';
-    h+="<dt>In business</dt><dd><b>"+esc(yrs)+"</b></dd>";
-    h+="</dl>";
-  }
-  return h;
-}
-/* score bar charts — blue fill is data, gold band is state */
-function scoreBarsHTML(b,clickable){
-  var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
-  return '<div class="pbars">'+defs.map(function(d){
-    var r=d[1], s=r.score, pct=s==null?0:Math.max(0,Math.min(100,s));
-    /* hourly-only pricing isn't ranked — label it instead of showing an empty row; no pricing at all hides the row */
-    if(s==null){
-      if(d[0]==="Price position"&&b.price.weddingHourly!=null)
-        return '<div class="pbar"><span class="pbl">Price position</span>'+
-          '<span class="pbtrack"><i style="width:0%;background:rgba(255,255,255,.14)"></i></span>'+
-          '<span class="pbv"><small>Hourly</small> '+money(b.price.weddingHourly)+"/hr</span></div>";
-      return "";
-    }
-    return '<div class="pbar"'+(clickable?' data-cf="'+b.id+'" title="'+esc(r.band+(r.why?" — "+r.why:"")+" — expand for everything")+'"':"")+'>'+
-      '<span class="pbl">'+d[0]+'</span>'+
-      '<span class="pbtrack"><i style="width:'+pct+'%"></i></span>'+
-      '<span class="pbv">'+s+' <small>'+esc(r.band)+"</small></span></div>";
-  }).join("")+"</div>";
-}
-/* collapsed: headline numbers first, then score bars, then links — fits the rail, no scrolling */
-function profileCollapsedHTML(b){
-  return '<div class="pcol">'+
-    fpHeroHTML(b)+
-    '<div class="plab">Headline numbers</div>'+snapRowsHTML(b)+
-    '<div class="plab">Pricing</div>'+priceSummaryHTML(b)+
-    '<div class="pspace"></div>'+
-    footprintHTML(b)+
-    '<div class="plab">Scores</div>'+scoreBarsHTML(b,true)+
-    '<div class="pspace"></div>'+
-    linkChips(b)+
-  "</div>";
-}
-/* ---------- expanded: everything at once, no tabs, no scrolling ---------- */
-function estat6HTML(b){
-  var d=snapData(b);
-  function stat(v,l,t){ return '<div class="hstat"><div class="v"'+(t?' title="'+esc(t)+'"':"")+'>'+v+'</div><div class="l">'+l+"</div></div>"; }
-  return '<div class="hstats6">'+
-    stat(d.f!=null?fmt(d.f):"—","Followers",d.f!=null?("Followers: "+d.f):"")+
-    stat(esc(d.last),"Last post",d.lastT)+
-    stat(esc(d.price),"Starting price",d.priceT)+
-    stat(d.ri?fmt(d.ri.count):"—","Reviews",d.ri?("Reviews: "+d.ri.count):"")+
-    stat(d.s!=null?d.s+"%":"—","Confidence",d.s!=null?("Information confidence: "+d.s+"%"):"")+
-    stat(d.yrs?esc(d.yrs):"—","In business",d.yrs?("In business: "+d.yrs):"")+"</div>";
-}
-function xsecAbout(b){
-  var h=ovBioHTML(b);
-  return '<section class="xsec"><h4>About</h4>'+(h||'<div class="xdim">No overview data yet.</div>')+"</section>";
-}
-function xsecSocial(b){
-  var rows="";
-  if(b.last_post_date) rows+="<dt>Last post</dt><dd><b>"+dstr(b.last_post_date)+"</b>"+(b.postAge!=null?' <span class="xdim">('+b.postAge+"d ago)</span>":"")+"</dd>";
-  if(b.last_post_type) rows+="<dt>Format</dt><dd>"+esc(b.last_post_type)+"</dd>";
-  if(b.last_post_topic) rows+="<dt>Topic</dt><dd>"+esc(b.last_post_topic)+"</dd>";
-  var igAct=latestIgAct(b);
-  if(igAct&&igAct.media_count!=null) rows+="<dt>Posts</dt><dd><b>"+fmt(igAct.media_count)+"</b></dd>";
-  var ch7=pctChange(b,Math.max(0,S.di-7),S.di), ch30=pctChange(b,Math.max(0,S.di-30),S.di);
-  function chRow(l,c){ return '<div class="xkv"><span>'+l+'</span><b class="pct '+(c==null?"fl":c>=0?"up":"dn")+'">'+pctStr(c)+"</b></div>"; }
-  var h='<section class="xsec"><h4>Instagram'+
-    (b.ig_handle?'<a class="dsrc" href="https://instagram.com/'+esc(b.ig_handle)+'" target="_blank" rel="noopener">Instagram ↗</a>':"")+"</h4>";
-  if(rows) h+='<dl class="kv">'+rows+"</dl>";
-  h+=chRow("7-day change",ch7)+chRow("30-day change",ch30);
-  h+=(b.followHist&&b.followHist.length>=2)?sparkline(b.followHist,300,46):'<div class="xdim">Not enough history for a trend yet.</div>';
-  return h+"</section>";
-}
-function xsecPricing(b){
-  var wArr=C.filter(function(x){return x.price.wedding!=null;}).sort(function(a,c){return a.price.wedding-c.price.wedding;});
-  var rW=b.price.wedding!=null?wArr.indexOf(b)+1:null;
-  var rows="";
-  if(b.price.wedding!=null) rows+="<dt>Wedding from</dt><dd><b>"+money(b.price.wedding)+"</b>"+(rW?' <span class="xdim">#'+rW+" of "+wArr.length+"</span>":"")+"</dd>";
-  if(b.price.weddingHourly!=null) rows+="<dt>Wedding rate</dt><dd><b>"+money(b.price.weddingHourly)+"/hr</b></dd>";
-  if(b.price.session!=null) rows+="<dt>Session from</dt><dd><b>"+money(b.price.session)+"</b></dd>";
-  var cfd=CONF[b.id];
-  if(cfd&&cfd.conflict) rows+='<dt>Price conflict</dt><dd><span class="pcflag">needs review</span><br>'+
-    cfd.conflict.values.map(function(v){ return '<span class="xdim">'+esc(v.label)+":</span> <b>"+esc(v.text)+"</b>"; }).join("<br>")+"</dd>";
-  var h='<section class="xsec"><h4>Pricing</h4>';
-  if(rows){
-    h+='<dl class="kv">'+rows+"</dl>";
-    var r=wedRank(b);
-    if(r) h+='<div class="xdim">Cheaper than <b>'+r.pct+'%</b> of '+r.n+" · median "+money(r.med)+".</div>";
-  } else h+='<div class="xdim">No published pricing found.</div>';
-  if(b.pricing_url) h+='<div class="sc-link"><a class="dsrc" href="'+esc(/^https?:/i.test(b.pricing_url)?b.pricing_url:"https://"+b.pricing_url)+'" target="_blank" rel="noopener">Pricing source ↗</a></div>';
-  return h+"</section>";
-}
-function xsecWebsite(b){
-  var wi=WI[b.id], wOk=wi&&!wi.unreachable;
-  var rows="";
-  if(wOk&&wi.platform) rows+="<dt>Site built on</dt><dd>"+esc(wi.platform)+"</dd>";
-  var h='<section class="xsec"><h4>Website</h4>';
-  if(rows){
-    h+='<dl class="kv">'+rows+"</dl>";
-    if(wOk&&wi.site_note) h+='<div class="xdim clamp3">'+esc(wi.site_note)+"</div>";
-    h+='<div class="xdim">Checked '+esc((wi&&wi.fetched)||"Sep 2026")+"</div>";
-  } else if(b.website) h+='<div class="xdim">Site not analyzed.</div>';
-  else h+='<div class="xdim">No website on record.</div>';
-  if(b.website) h+='<div class="sc-link"><a class="dsrc" href="'+esc(/^https?:/i.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a></div>';
-  return h+"</section>";
-}
-/* compact raw evidence shown inline in each expanded score row */
-function scoreRaw(b,label,res){
-  if(label==="Activity") return b.last_post_date?dstrShort(b.last_post_date):"no post date";
-  if(label==="Momentum"){ var c=pctChange(b,Math.max(0,S.di-30),S.di);
-    return c!=null?((c>=0?"+":"")+c.toFixed(1)+"% / 30d"):"no trend"; }
-  if(label==="Engagement") return res.e?res.e.rate_pct+"% mean":"no data";
-  if(label==="Price position")
-    return b.price.wedding!=null?(money(b.price.wedding)+" floor")
-      :(b.price.weddingHourly!=null?(money(b.price.weddingHourly)+"/hr hourly"):"no pricing");
-  if(label==="Reviews"){ var ri=reviewInfo(b);
-    return ri?(fmt(ri.count)+(ri.rating!=null?" · "+ri.rating+" / 5":"")):"not collected"; }
-  return "";
-}
-/* expanded score bars: label, bar, and the raw figure right-aligned in the row */
-function xscoreBarsHTML(b){
-  var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
-  var rows="";
-  defs.forEach(function(d){
-    var r=d[1], s=r.score;
-    if(s==null&&!(d[0]==="Price position"&&b.price.weddingHourly!=null)) return;
-    var pct=s==null?0:Math.max(0,Math.min(100,s));
-    rows+='<div class="pbar"><span class="pbl">'+d[0]+'</span>'+
-      '<span class="pbtrack"><i style="width:'+pct+'%'+(s==null?";background:rgba(255,255,255,.14)":"")+'"></i></span>'+
-      '<span class="pbv">'+(s==null?"—":s)+' <span class="praw">'+esc(scoreRaw(b,d[0],r))+"</span></span></div>";
-  });
-  return '<div class="pbars">'+rows+"</div>";
-}
-function xsecScores(b){
-  var defs=[["Activity",actScore(b)],["Momentum",momScore(b)],["Engagement",engScore(b)],["Price position",valScore(b)],["Reviews",revScore(b)]];
-  var parts=defs.filter(function(d){return d[1].score!=null;});
-  var h='<section class="xsec"><h4>Scores</h4>';
-  if(!parts.length) h+='<div class="xdim">No scored signals yet.</div>';
-  h+=xscoreBarsHTML(b);
-  return h+"</section>";
-}
-function xsecConf(b){
-  var s=confOf(b); if(s==null) return "";
-  var cfd=CONF[b.id]||{}, parts=cfd.parts||{};
-  var igUrl=b.ig_handle?("https://instagram.com/"+b.ig_handle):null;
-  var FACTORS=[
-    ["website","Website",25,b.website,"site"],
-    ["prices","Prices",15,b.pricing_url,"pricing"],
-    ["services","Services",15,null,null],
-    ["ig","Instagram",15,igUrl,"profile"],
-    ["location","Location",10,null,null],
-    ["years","History",10,null,null],
-    ["corroboration","Third source",10,b.review_url,"listing"]
-  ];
-  var verified=0, segs="", missed="";
-  FACTORS.forEach(function(f){
-    var er=parts[f[0]]||0, got=er>0; if(got) verified++;
-    segs+='<span class="dcseg" style="flex:'+f[2]+' 1 0%" title="'+f[1]+": "+er+"/"+f[2]+'"><i style="width:'+Math.round(100*er/f[2])+'%"></i></span>';
-    if(!got) missed+='<div class="xkv missed"><span>'+f[1]+'</span><b>missing</b></div>';
-  });
-  var h='<section class="xsec"><h4>Information confidence</h4>'+
-    '<div class="cf2-bar"><span class="dcsegs wide">'+segs+'</span></div>'+
-    '<div class="xkv"><span>Score</span><b>'+s+"% · "+verified+" of "+FACTORS.length+" verified</b></div>"+missed;
-  if(cfd.conflict) h+='<div class="xkv missed"><span>Price conflict</span><b>−20 penalty</b></div>';
-  return h+"</section>";
-}
-function profileExpandedHTML(b){
-  return '<div class="sec xall">'+
-    estat6HTML(b)+
-    '<div class="xgrid">'+xsecAbout(b)+xsecSocial(b)+xsecPricing(b)+xsecWebsite(b)+"</div>"+
-    '<div class="xgrid2">'+xsecScores(b)+xsecConf(b)+"</div>"+
-    linkChips(b)+"</div>";
-}
-
-/* ---------- directory ---------- */
-function venueRow(b,i){
-  return '<div class="row wrap'+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
-    '<span class="dot" style="background:'+recencyDot(b)+'"></span>'+
-    '<div class="nm"><b>'+esc(b.name)+'</b>'+
-    '<span>'+esc(b.townShort)+locTag(b)+' · '+(b.capacity?esc(b.capacity):"Venue")+'</span></div>'+
-    '<div class="meta"><b>'+(b.capacity_num!=null?fmt(b.capacity_num):"—")+'</b><span>max guests'+
-    (b.followers!=null?' · '+fmt(b.followers)+' IG':"")+'</span></div></div>';
-}
-function dirRow(b,i){
-  if(b.type==="venue") return venueRow(b,i);
-  var f=followersAt(b,S.di), ch=pctChange(b,Math.max(0,S.di-7),S.di);
-  var pcls=ch==null?"fl":(ch>=0?"up":"dn");
-  return '<div class="row'+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'"'+(i<20?' style="animation-delay:'+(i*0.03)+'s"':"")+'>'+
-    '<span class="dot" style="background:'+recencyDot(b)+'"></span>'+
-    '<div class="nm"><b>'+esc(b.name)+'</b>'+
-    '<span>'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+'</span></div>'+
-    '<div class="meta"><b>'+fmt(f)+'</b><span>'+(b.hasPrice?(b.price.wedding!=null?money(b.price.wedding):(b.price.session!=null?money(b.price.session):money(b.price.weddingHourly)+"/hr")):"price n/a")+
-    ' · <span class="pct '+pcls+'">'+pctStr(ch)+'</span></span>'+confBadge(b)+'</div></div>';
-}
-/* explicit county labeling: adjacent-county businesses are named as such everywhere */
-function locTag(b){
-  if(b.region==="adjacent"&&b.county) return ' <span class="adj">· '+esc(b.county)+' Co (adjacent)</span>';
-  if(b.region==="unconfirmed"||(b.flags||[]).indexOf("location-unverified")>=0) return ' <span class="unv">· location unverified</span>';
-  return "";
-}
-function sortDir(list){
-  var by=S.sortBy||"audience";
-  function nul(x,y,fn){ if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return fn(x,y); }
-  var key={
-    audience:function(b){return b.followers;}, capacity:function(b){return b.capacity_num;},
-    growth:function(b){return pctChange(b,Math.max(0,S.di-7),S.di);},
-    recent:function(b){return b.postAge;},
-    price:function(b){return b.price.wedding!=null?b.price.wedding:(b.price.session!=null?b.price.session:null);},
-    name:function(b){return b.name.toLowerCase();}
-  }[by]||function(b){return b.followers;};
-  var dir=(by==="recent"||by==="price"||by==="name")?1:-1;
-  return list.slice().sort(function(a,b){
-    var r=nul(key(a),key(b),function(x,y){ return (typeof x==="string"?x.localeCompare(y):(x-y))*dir; });
-    return r||a.name.localeCompare(b.name);
-  });
-}
-function renderDir(){
-  var list=sortDir(filtered());
-  var noun=S.mode==="venues"?"venues":"businesses";
-  if(!list.length) return '<div class="empty-note">No '+noun+' match these filters.<br><button class="ghostbtn" id="clearf">Clear filters</button></div>';
-  return '<div class="stagger dirlist">'+list.map(dirRow).join("")+"</div>";
-}
-
-/* ---------- data tab: every gathered data point, sortable + filterable ---------- */
-var MC_MAP={}; (D.igActivity||[]).forEach(function(r){
-  if(r.media_count==null||!r.handle) return;
-  var p=MC_MAP[r.handle];
-  if(!p||String(r.date||"")>String(p.date||"")) MC_MAP[r.handle]=r; });
-function postsOf(b){ if(b.media_count!=null) return b.media_count;
-  var r=b.ig_handle&&MC_MAP[b.ig_handle]; return r?r.media_count:null; }
-function servicesOf(b){ var w=WI[b.id];
-  if(w&&w.services&&w.services.length) return w.services.join(", ");
-  return b.services||""; }
-function yearsOf(b){ var w=WI[b.id]||{};
-  if(w.years_in_business!=null) return w.years_in_business+" yrs";
-  if(w.since) return "since "+w.since;
-  if(b.est_year!=null) return "est. "+b.est_year;
-  return ""; }
-function townCounty(b){ return b.townShort+((b.county&&b.region==="adjacent")?" · "+b.county+" Co":""); }
-/* ---------- service landscape ---------- */
-var SVC_NORM={
- "weddings":"Weddings","wedding photography":"Weddings","wedding photo+video":"Weddings",
- "elopements":"Elopements",
- "engagements":"Engagements","engagement":"Engagements",
- "couples":"Couples",
- "portraits":"Portraits",
- "seniors":"Seniors","senior":"Seniors","school/team photos":"School & team",
- "families":"Families","family":"Families","family portraits":"Families","some family photography":"Families",
- "children":"Children & newborns","child photography":"Children & newborns","newborns":"Children & newborns",
- "maternity":"Maternity","boudoir":"Boudoir","events":"Events",
- "branding":"Commercial & branding","photobooth":"Photo booth","pets":"Pets","dj package":"DJ services",
- "videography":"Videography","video":"Videography","wedding videography":"Videography","memory videos":"Videography","promotional video":"Videography",
- "drone":"Drone","drone photo+video":"Drone","aerial photo/video":"Drone",
- "real estate":"Real estate","real estate/commercial aerial + ground photo/video":"Real estate"};
-var LS_COUNTIES=["St. Lawrence","Essex","Franklin","Jefferson","Clinton","Lewis","Herkimer"];
-var LS_CSHORT={"St. Lawrence":"St. Law.","Essex":"Essex","Franklin":"Frank.","Jefferson":"Jeff.","Clinton":"Clinton","Lewis":"Lewis","Herkimer":"Herk."};
-function svcList(b){ var out=[],seen={};
-  /* B normalizes services to an array at load; tolerate a raw string too. */
-  var arr=Array.isArray(b.services)?b.services:String(b.services||"").split(/[,;]+/);
-  arr.forEach(function(s){ s=String(s).replace(/\s*\(.*$/,"").trim().toLowerCase();
-    var n=SVC_NORM[s]||null;
-    if(n&&!seen[n]){ seen[n]=1; out.push(n); } });
-  return out; }
-/* ---------- market landscape: consolidated categories ----------
-   Hundreds of raw service strings collapse into six groups. A business counts in
-   every group it offers, so shares overlap; that is stated on the page. */
-var SVC_GROUPS=[
-  {k:"wed",label:"Weddings & couples",color:"#e8b34b"},
-  {k:"port",label:"Portraits & family",color:"#b48ce8"},
-  {k:"evt",label:"Events & commercial",color:"#e08bb8"},
-  {k:"vid",label:"Video",color:"#6db3f2"},
-  {k:"re",label:"Real estate",color:"#c7d2e0"},
-  {k:"dr",label:"Drone & aerial",color:"#6fd3e7"}];
-/* assistant colors + citation-tier color: applied to every business equally, data only */
-/* AI Visibility — neutral third-party redesign (2026-10-06).
-   Market stats first, identical leaderboard rows, detail only on selection.
-   One accent (amber) = selected. Rank bars use a 3-step scale: green/amber/mute. */
-var AI_TIER3=["#34d399","#e8b34b","#6b7484"];
-function aiTier3(pct){ return pct>=66?AI_TIER3[0]:pct>=33?AI_TIER3[1]:AI_TIER3[2]; }
-
-var GRP_RX=[
-  ["dr",/drone|aerial|\bfaa\b|\buav\b/],
-  ["re",/real estate|matterport|floor plan|inspection|street view|\b360\b|architectur|video tours/],
-  ["vid",/video|cinematic|motion graphics|voiceover|vhs|\bdvd\b|\btape\b|documentary|filming|pre-production|post-production|color grading/],
-  ["wed",/wedding|nuptial|elop|bridal|engage|couple|proposal|trash.{0,3}the.{0,3}dress|intimate celebration|save-the-date|second shooter/],
-  ["evt",/\bevents?\b|party|parties|birthday|photo ?booth|\bdj\b|corporate|commercial|brand|business|marketing|product|social|concert|athlete|\brace\b|sports photography/],
-  ["port",/portrait|senior|famil|child|newborn|infant|baby|babies|maternity|motherhood|prenatal|birth|boudoir|\bpets?\b|mini|milestone|cake smash|tween|teen|\bgrads?\b|graduation|prom\b|school|\bteam\b|headshot|lifestyle|studio|fashion|model|editorial|glamour|relationship|holiday|session/]];
-function svcGroupsOf(b){
-  var raw=(Array.isArray(b.services)?b.services:[]).map(String);
-  var w=WI[b.id]; if(w&&!w.unreachable&&w.services) w.services.forEach(function(x){ raw.push(String(x)); });
-  var out={}, listed=false;
-  raw.forEach(function(x){
-    var t=x.toLowerCase(), m=[];
-    GRP_RX.forEach(function(p){ if(p[1].test(t)) m.push(p[0]); });
-    if(!m.length) return;
-    (m.indexOf("dr")>=0&&m.indexOf("re")>=0?["dr","re"]:[m[0]]).forEach(function(k){ out[k]=1; listed=true; });
-  });
-  if(!listed){ if(b.specialty==="video"||b.specialty==="both") out.vid=1; if(b.specialty==="drone") out.dr=1; }
-  return {groups:Object.keys(out),listed:listed};
-}
-function hexRGB(h){ return parseInt(h.slice(1,3),16)+","+parseInt(h.slice(3,5),16)+","+parseInt(h.slice(5,7),16); }
-function landscapeData(list){
-  var g={}; SVC_GROUPS.forEach(function(x){ g[x.k]={g:x,members:[],fol:0,county:{}}; });
-  var totFol=0, listed=0, none=0;
-  list.forEach(function(b){
-    var f=followersAt(b,S.di); if(f!=null) totFol+=f;
-    var r=svcGroupsOf(b); if(r.listed) listed++;
-    if(!r.groups.length){ none++; return; }
-    r.groups.forEach(function(k){ var e=g[k]; e.members.push(b); if(f!=null) e.fol+=f;
-      if(b.county) e.county[b.county]=(e.county[b.county]||0)+1; });
-  });
-  return {rows:SVC_GROUPS.map(function(x){return g[x.k];}),total:list.length,totFol:totFol,listed:listed,none:none};
-}
-function lsMatrixHTML(d,rows){
-  var mx=1; rows.forEach(function(r){ LS_COUNTIES.forEach(function(c){ mx=Math.max(mx,r.county[c]||0); }); });
-  var h='<div class="mx"><div></div>'+LS_COUNTIES.map(function(c){ return '<div class="mx-ch">'+esc(c)+'</div>'; }).join("");
-  rows.forEach(function(r){
-    h+='<div class="mx-lab"><i class="share-sw" style="background:'+r.g.color+'"></i>'+esc(r.g.label)+'</div>';
-    LS_COUNTIES.forEach(function(c){ var v=r.county[c]||0, a=v?0.14+0.62*(v/mx):0;
-      h+='<div class="mx-c" title="'+esc(r.g.label)+' \u00b7 '+esc(c)+' Co: '+v+' business'+(v===1?'':'es')+'" style="background:rgba('+hexRGB(r.g.color)+','+a.toFixed(2)+')">'+(v||'<span class="ls-zero">\u2014</span>')+'</div>'; });
-  });
-  return h+'</div>';
-}
-function landscapeHTML(list){
-  var d=landscapeData(list);
-  var rows=d.rows.slice().sort(function(a,b){ return b.members.length-a.members.length; });
-  var h='';
-  h+='<section class="sec card"><div class="card-head"><div><h3>Where each service is offered</h3><div class="sub">Businesses per category in each county. Deeper color means deeper coverage.</div></div></div>'+lsMatrixHTML(d,rows)+'</section>';
-  return h;
-}
-function dataPullDate(){
-  var g=(D.meta||{}).generated_at;
-  if(!g) return "\u2014";
-  try{ return new Date(g).toLocaleDateString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric"}); }
-  catch(e){ return "\u2014"; }
-}
-function pgPull(date){
-  return '<div class="pg-pull"><span class="pg-pull-l">Latest data pull</span><span class="pg-pull-v">'+esc(date)+'</span></div>';
-}
-function pageHeadHTML(title,sub){
-  return '<div class="pg-head pg-hero"><div><h2>'+title+'</h2>'+(sub?'<p>'+sub+'</p>':'')+'</div>'+
-    pgPull(dataPullDate())+'</div>';
-}
-var DCOLS=[
-  ["name","Name","str"],["town","Town/County","str"],["followers","Followers","num"],
-  ["ch7","7d","num"],["ch30","30d","num"],["posts","Posts","num"],
-  ["services","Services","str"],["price","Price range","num"],["years","Years","str"],
-  ["website","Website","str"],["ig","IG handle","str"],["conf","Conf.","num"]];
-function dCellVal(b,k){
-  switch(k){
-    case "name": return b.name;
-    case "town": return townCounty(b);
-    case "followers": return followersAt(b,S.di);
-    case "ch7": return pctChange(b,Math.max(0,S.di-7),S.di);
-    case "ch30": return pctChange(b,Math.max(0,S.di-30),S.di);
-    case "posts": return postsOf(b);
-    case "services": return servicesOf(b);
-    case "price": return b.price.wedding!=null?b.price.wedding:(b.price.session!=null?b.price.session:null);
-    case "years": return yearsOf(b);
-    case "website": return b.website||"";
-    case "ig": return b.ig_handle||"";
-    case "conf": return confOf(b);
-  } return null;
-}
-function dCellHTML(b,k){
-  var v=dCellVal(b,k);
-  switch(k){
-    case "followers": return fmt(v);
-    case "ch7": case "ch30": return v==null?"—":'<span class="pct '+(v>=0?"up":"dn")+'">'+pctStr(v)+"</span>";
-    case "posts": return fmt(v);
-    case "price": return v==null?"—":money(v);
-    case "website": return v?'<a href="'+esc(/^https?:/.test(v)?v:"https://"+v)+'" target="_blank" rel="noopener">site ↗</a>':"—";
-    case "ig": return v?"@"+esc(v):"—";
-    case "conf": return v==null?"—":confBadge(b);
-    case "name": return "<b>"+esc(v)+"</b>";
-    case "town": return '<span title="'+esc(v)+'">'+esc(b.townShort||v)+"</span>";
-    default: return esc(v==null||v===""?"—":v);
-  }
-}
-function dSortRows(rows,s){
-  var num=(DCOLS.filter(function(c){return c[0]===s.key;})[0]||DCOLS[2])[2]==="num";
-  rows.sort(function(a,b2){
-    var x=dCellVal(a,s.key), y=dCellVal(b2,s.key);
-    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
-    var r=num?(x-y):String(x).localeCompare(String(y));
-    return r*s.dir;
-  });
-}
-function renderData(){
-  var s=S.dsort||{key:"followers",dir:-1};
-  var q=(S.dq||"").toLowerCase();
-  var rows=B.filter(function(b){
-    if(!q) return true;
-    return (b.name+" "+(b.town||"")+" "+(b.ig_handle||"")+" "+(b.website||"")).toLowerCase().indexOf(q)>=0; });
-  dSortRows(rows,s);
-  var h='<div class="sec">'+
-    '<input id="dq" class="dfilter" type="search" placeholder="Filter rows…" value="'+esc(S.dq||"")+'" aria-label="Filter data rows">';
-  h+='<div class="dsub">Businesses · '+rows.length+'</div><div class="dtable-wrap"><table class="dtable">'+
-    '<colgroup><col style="width:16%"><col style="width:9%"><col style="width:8%">'+
-    '<col style="width:5%"><col style="width:5%"><col style="width:5%"><col style="width:17%">'+
-    '<col style="width:8%"><col style="width:5%"><col style="width:7%"><col style="width:11%">'+
-    '<col style="width:4%"></colgroup><thead><tr>'+
-    DCOLS.map(function(c){ return '<th data-dk="'+c[0]+'" class="'+(s.key===c[0]?"sorted":"")+'">'+c[1]+(s.key===c[0]?(s.dir<0?" ▼":" ▲"):"")+'</th>'; }).join("")+
-    '</tr></thead><tbody>'+
-    rows.map(function(b){ return '<tr data-open="'+b.id+'">'+DCOLS.map(function(c){ return "<td>"+dCellHTML(b,c[0])+"</td>"; }).join("")+"</tr>"; }).join("")+
-    '</tbody></table></div>';
-  var vs=V.filter(function(v){ if(!q) return true;
-    return (v.name+" "+(v.town||"")+" "+(v.website||"")).toLowerCase().indexOf(q)>=0; });
-  h+='<div class="dsub">Venues · '+vs.length+'</div><div class="dtable-wrap"><table class="dtable"><thead><tr>'+
-    ["Name","Town/County","Type","Capacity","Website","IG"].map(function(t){ return "<th>"+t+"</th>"; }).join("")+
-    '</tr></thead><tbody>'+
-    vs.map(function(v){
-      var site=v.website?('<a href="'+esc(/^https?:/.test(v.website)?v.website:"https://"+v.website)+'" target="_blank" rel="noopener">site ↗</a>'):"—";
-      return '<tr data-open="'+v.id+'"><td><b>'+esc(v.name)+'</b></td><td>'+esc(townCounty(v))+'</td>'+
-      '<td>'+esc(v.setting||"Venue")+'</td><td>'+esc(v.capacity||"—")+'</td><td>'+site+'</td>'+
-      '<td>'+(v.ig_handle?"@"+esc(v.ig_handle):"—")+'</td></tr>'; }).join("")+
-    '</tbody></table></div></div>';
-  return h;
-}
-/* ---------- AI search visibility ---------- */
-/* Rival-name -> roster id for the names the audit returns most often.
-   Names the AIs cite that aren't here are shown as untracked. */
-var RIVAL2ID={
- "McCluskey Photography":"mccluskey-photography","McCluskey Photography LLC":"mccluskey-photography",
- "Adirondack Drone":"adirondack-drone-corey-james",
- "Natalie's Studio Portrait Photography":"natalie-s-studio","Natalie's Studio":"natalie-s-studio",
- "Carey White Photography":"carey-white-photography",
- "Kathleen Chapman Photography":"kathleen-chapman-photography",
- "Frisina's Photography":"frisina-s-photography",
- "Apex Pack Media":"apex-pack-media-jay-hicks",
- "Horizon Aerial Media Services":"horizon-aerial-media-services","Horizon Aerial Media":"horizon-aerial-media-services",
- "Pamela Perrin Photography":"pamela-perrin-photography",
- "Willow Tree Images":"willow-tree-images",
- "Jordan Craig Video & Photo":"jordan-craig-media-llc",
- "Amanda Hill Photography":"amanda-hill-photography",
- "Nicole's Photography":"nicole-s-photography-nicole-charleson",
- "Heath Photography":"heath-photography",
- "Allison Lee Photography":"allison-lee-photography",
- "Julia Kia Photography":"julia-kia-photography",
- "The Video Lab":"wendy-o-brien-the-video-lab",
- "La Belle Amour Photography":"la-belle-amour-photography"
+/* ---------- freshness ---------- */
+const SRC = {}; (D.freshness.sources || []).forEach(s => SRC[s.id] = s);
+function stat(id, a) {
+  const s = SRC[id]; if (!s || a == null) return 'none';
+  if (a >= s.stalled_after_days) return 'stalled';
+  if (a > s.late_after_days) return 'late';
+  return 'ok';
+}
+const maxDate = arr => arr.reduce((m, x) => x && (!m || x > m) ? x : m, null);
+const ACTIVE = (D.aiPrompts.prompts || []).filter(p => !p.retired);
+const ACTIVE_IDS = new Set(ACTIVE.map(p => p.id));
+const AIROWS = (D.aiChecks || []).filter(r => ACTIVE_IDS.has(r.prompt_id));
+const SD = D.seedDates || {};
+const DATES = {
+  ig: maxDate(D.igActivity.map(r => r.date)),
+  ai: maxDate(AIROWS.map(r => r.date)),
+  web: maxDate(D.webSweepHistory.map(w => w.date)),
+  reviews: SD.reviews && SD.reviews.collected,
+  pricing: SD.pricing && SD.pricing.collected,
+  recency: (D.seedMeta || {}).recency,
+  roster: (D.builtAt || '').slice(0, 10)
 };
+const SS = (D.freshness.sources || []).map(s => {
+  const a = age(DATES[s.id]);
+  return Object.assign({}, s, { date: DATES[s.id], age: a, st: stat(s.id, a) });
+});
+const SSBY = {}; SS.forEach(s => SSBY[s.id] = s);
+const STTXT = { ok: 'Current', late: 'Late', stalled: 'Stalled', none: 'No data' };
 
-function aiMed(xs){ var a=xs.filter(function(x){return x!=null;}).sort(function(x,y){return x-y;});
-  return a.length?a[Math.floor(a.length/2)]:null; }
-/* ---------- AI visibility: 50/50 split explorer ---------- */
-var AI={};
-function computeAI(){
-  /* Claude and Perplexity are cut from the tab (2026-10-02): neither offers guest
-     access for neutral audits, so their legs are permanently blocked. Historical rows
-     stay in ai-visibility.json and the log, but the tab only renders the two live engines. */
-  var rows=(D.aiVisibility||[]).filter(function(r){return r.jd_named!=="unreachable"&&(r.engine==="ChatGPT"||r.engine==="Gemini");});
-  var dates=rows.map(function(r){return r.date;}).sort();
-  var engines=["ChatGPT","Gemini"];
-  var engOK=engines.filter(function(e){return rows.some(function(r){return r.engine===e;});});
-  var prompts=[]; rows.forEach(function(r){if(prompts.indexOf(r.prompt)<0)prompts.push(r.prompt);});
-  /* rows don't carry services — join them from the prompt catalog so the
-     per-lane ("By service") breakdown has real checks instead of "no checks yet" */
-  var promptSvc={};
-  ((D.aiPrompts||{}).prompts||[]).forEach(function(p){ promptSvc[p.text]=(p.services&&p.services.length)?p.services:["general"]; });
-  var nameDays={}, nameEng={}, nameSvc={}, svcKeys={}, promptChecks={};
-  var reg=function(n,id,key,eng,svcs){
-    var e=nameDays[n]=nameDays[n]||{days:{},id:id};
-    e.days[key]=1;
-    var ne=nameEng[n]=nameEng[n]||{};
-    (ne[eng]=ne[eng]||{})[key]=1;
-    var ns=nameSvc[n]=nameSvc[n]||{};
-    (svcs||["general"]).forEach(function(g){ (ns[g]=ns[g]||{})[key]=1; });
-  };
-  rows.forEach(function(r){
-    var key=r.date+"|"+r.engine, hit=r.jd_named==="yes"||r.jd_named==="partial";
-    var svcs=(r.services&&r.services.length)?r.services:(promptSvc[r.prompt]||["general"]);
-    svcs.forEach(function(g){ (svcKeys[g]=svcKeys[g]||{})[key]=1; });
-    (promptChecks[r.prompt]=promptChecks[r.prompt]||{})[key]=1;
-    (r.rivals||[]).forEach(function(n){reg(n,RIVAL2ID[n]||null,key,r.engine,svcs);});
-    if(hit) reg("JD Meyers Productions","jd-meyers-productions",key,r.engine,svcs);
+/* ---------- instagram state ---------- */
+const ROWS = {};
+D.igActivity.forEach(r => (ROWS[r.handle] = ROWS[r.handle] || []).push(r));
+Object.keys(ROWS).forEach(h => ROWS[h].sort((a, b) => a.date < b.date ? -1 : 1));
+const CARRIED = /pull failed|carried|not pulled/i;
+function igState(h) {
+  const rows = h && ROWS[h]; if (!rows) return { state: 'none' };
+  const last = rows[rows.length - 1];
+  const liveRows = rows.filter(r => !CARRIED.test(r.activity || '') && r.followers != null);
+  const lastLive = liveRows[liveRows.length - 1];
+  if (!lastLive) return { state: 'carried', count: last.followers, date: null };
+  if (last === lastLive && age(last.date) <= SRC.ig.late_after_days) return { state: 'live', count: last.followers, date: last.date };
+  return { state: CARRIED.test(last.activity || '') ? 'carried' : 'late', count: lastLive.followers, date: lastLive.date };
+}
+function delta7(h) {
+  const hs = D.igFollowersHistory[h]; if (!hs || hs.length < 2) return null;
+  const last = hs[hs.length - 1], t = dn(last.date) - 7; let base = null;
+  hs.forEach(e => { if (dn(e.date) <= t) base = e; });
+  return base ? last.count - base.count : null;
+}
+
+/* ---------- pricing parse (derived from the verified text, which is always shown in full) ---------- */
+const P_SKIP = /deposit|retainer|booth|print|travel|second[- ]?shooter|disk|usb|add-?on|extra|album|mini/i;
+const AMT = /\$\s?(\d[\d,]*(?:\.\d+)?)/;
+function parsePrice(txt) {
+  const out = { wed: null, sess: null };
+  if (!txt) return out;
+  const w = [], s = [];
+  String(txt).split(/;|\||,(?!\d{3})/).forEach(cl => {
+    const c = cl.toLowerCase(); if (P_SKIP.test(c)) return;
+    const m = AMT.exec(cl); if (!m) return;
+    const a = parseFloat(m[1].replace(/,/g, '')); if (a < 50) return;
+    if (/\/\s?(hr|hour)|per hour|hourly/.test(c)) return;
+    if (/wedding|elopement|bridal/.test(c) && !/video|film|cinema/.test(c)) { if (a >= 500) w.push(a); }
+    else if (/portrait|session|senior|family|families|headshot|maternity|newborn|couple/.test(c) && !/wedding|video|film|drone|real estate/.test(c)) s.push(a);
   });
-  var nChecks={}; rows.forEach(function(r){nChecks[r.date+"|"+r.engine]=1;});
-  var nDays=Object.keys(nChecks).length;
-  var engChecks={};
-  engines.forEach(function(e){
-    var ds={}; rows.forEach(function(r){if(r.engine===e)ds[r.date]=1;});
-    engChecks[e]=Object.keys(ds).length;
-  });
-  var idDaySets={}, idEng={};
-  Object.keys(nameDays).forEach(function(n){
-    var e=nameDays[n], id=e.id;
-    if(!id) return;
-    var s=idDaySets[id]=idDaySets[id]||{};
-    Object.keys(e.days).forEach(function(k){s[k]=1;});
-    var ie=idEng[id]=idEng[id]||{}, ne=nameEng[n]||{};
-    Object.keys(ne).forEach(function(eng){
-      var se=ie[eng]=ie[eng]||{};
-      Object.keys(ne[eng]).forEach(function(k){se[k]=1;});
-    });
-  });
-  var idDays={};
-  Object.keys(idDaySets).forEach(function(id){idDays[id]=Object.keys(idDaySets[id]).length;});
-  var idSvc={};
-  Object.keys(nameSvc).forEach(function(n){
-    var nid=(nameDays[n]||{}).id; if(!nid) return;
-    var is=idSvc[nid]=idSvc[nid]||{}, ns=nameSvc[n];
-    Object.keys(ns).forEach(function(g){
-      var sg=is[g]=is[g]||{};
-      Object.keys(ns[g]).forEach(function(k){sg[k]=1;});
-    });
-  });
-  var svcChecks={};
-  Object.keys(svcKeys).forEach(function(g){svcChecks[g]=Object.keys(svcKeys[g]).length;});
-  var board=B.map(function(b){return {name:b.name,id:b.id,days:idDays[b.id]||0};});
-  Object.keys(nameDays).forEach(function(n){
-    if(!nameDays[n].id) board.push({name:n,id:null,days:Object.keys(nameDays[n].days).length});
-  });
-  board.sort(function(a,b){return b.days-a.days||(a.name<b.name?-1:1);});
-  /* most-cited group benchmarks */
-  var topIds=board.filter(function(t){return t.id&&t.days>0;}).slice(0,10).map(function(t){return t.id;});
-  var heavy=B.filter(function(b){return topIds.indexOf(b.id)>=0;});
-  var pct=function(rs,f){return rs.length?Math.round(100*rs.filter(f).length/rs.length):0;};
-  var rest=B.filter(function(b){return !idDays[b.id];});
-  AI={rows:rows,dates:dates,cov:dates.length?dates[0]+" → "+dates[dates.length-1]:"",
-    engines:engines,engOK:engOK,prompts:prompts,
-    board:board,nDays:nDays,nameEng:nameEng,idEng:idEng,engChecks:engChecks,
-    idSvc:idSvc,nameSvc:nameSvc,svcKeys:svcKeys,svcChecks:svcChecks,
-    promptChecks:promptChecks,promptCatalog:((D.aiPrompts||{}).prompts||[]),
-    webPct:pct(heavy,function(b){return !!b.website;}),
-    medYrs:aiMed(heavy.map(function(b){return b.est_year?2026-b.est_year:null;})),
-    medRev:aiMed(heavy.map(function(b){return b.review_count;})),
-    pricePct:pct(heavy,function(b){return b.hasPrice;}),
-    restWebPct:pct(rest,function(b){return !!b.website;}),
-    restMedYrs:aiMed(rest.map(function(b){return b.est_year?2026-b.est_year:null;})),
-    restMedRev:aiMed(rest.map(function(b){return b.review_count;})),
-    restPricePct:pct(rest,function(b){return b.hasPrice;}),
-    nNamed:Object.keys(nameDays).length};
-}
-
-
-
-/* Plain data for the selected business's AI profile. The fleshed-out detail section
-   re-renders per selection; bar widths animate via aiAnimateBars() after insert. */
-function aiPromptScope(){
-  var p=S.aiPrompt; if(!p||!AI.rows) return null;
-  var keys={}, engC={};
-  AI.rows.forEach(function(r){
-    if(r.prompt!==p) return;
-    var k=r.date+"|"+r.engine; keys[k]=1;
-    engC[r.engine]=engC[r.engine]||{}; engC[r.engine][r.date]=1;
-  });
-  var n=Object.keys(keys).length;
-  var cites={};
-  function add(nm,id,eng,key){
-    var c=cites[nm]=cites[nm]||{name:nm,id:id,days:{},eng:{}};
-    c.days[key]=1; (c.eng[eng]=c.eng[eng]||{})[key]=1;
-  }
-  AI.rows.forEach(function(r){
-    if(r.prompt!==p) return;
-    var key=r.date+"|"+r.engine;
-    (r.rivals||[]).forEach(function(nm){ add(nm,RIVAL2ID[nm]||null,r.engine,key); });
-    if(r.jd_named==="yes"||r.jd_named==="partial") add("JD Meyers Productions","jd-meyers-productions",r.engine,key);
-  });
-  var board=Object.keys(cites).map(function(nm){
-    var c=cites[nm];
-    return {name:nm,id:c.id,days:Object.keys(c.days).length,eng:c.eng};
-  }).sort(function(a,b){return b.days-a.days||(a.name<b.name?-1:1);});
-  var engChecks={}; Object.keys(engC).forEach(function(e){engChecks[e]=Object.keys(engC[e]).length;});
-  var cat=(AI.promptCatalog||[]).filter(function(x){return x.text===p;})[0]||null;
-  var byName={}; board.forEach(function(t){byName[t.name]=t;});
-  return {prompt:p,n:n,board:board,byName:byName,engChecks:engChecks,
-    services:cat?(cat.services||[]):[]};
-}
-
-/* ---------- AI visibility: fleshed-out two-engine explorer (2026-10-02) ----------
-   Claude and Perplexity were cut from the tab: neither offers guest access for
-   neutral audits, so their legs are permanently blocked. Only ChatGPT + Gemini
-   render here; historical rows stay in ai-visibility.json and the log. */
-
-/* Selected business for the AI tab: null until the user picks a row. */
-function aiSelT(){
-  if(!S.aiSel) return null;
-  var f=AI.board.filter(function(x){return x.name===S.aiSel;});
-  return f[0]||null;
-}
-function aiEngChecks(e){ return AI.engChecks[e]||0; }
-function aiNamedDays(t,e){
-  var sets=t.id?(AI.idEng[t.id]||{}):(AI.nameEng[t.name]||{});
-  var se=sets[e]; return se?Object.keys(se).length:0;
-}
-/* latest check for one prompt + engine */
-function aiLatestPrompt(prompt,e){
-  var best=null;
-  AI.rows.forEach(function(r){
-    if(r.engine!==e||r.prompt!==prompt) return;
-    if(!best||r.date>best.date) best=r;
-  });
-  return best;
-}
-function aiNamedInRow(t,r){
-  if(t.id==="jd-meyers-productions") return r.jd_named==="yes"||r.jd_named==="partial";
-  return (r.rivals||[]).indexOf(t.name)>=0;
-}
-/* animate [data-bw] bars from 0 to their target width */
-function aiAnimateBars(root){
-  var bars=root.querySelectorAll("[data-bw]");
-  if(REDUCED) return; /* widths are already set inline */
-  bars.forEach(function(b){ b.style.width="0%"; });
-  requestAnimationFrame(function(){ requestAnimationFrame(function(){
-    bars.forEach(function(b){ b.style.width=b.getAttribute("data-bw")+"%"; });
-  }); });
-}
-/* two big engine hero cards for the selected business */
-
-/* prompt-by-prompt: latest check per assistant for each tested prompt */
-
-/* recent audits: share of each day's prompts naming the business, per assistant */
-
-/* fleshed-out detail for the selected business (reuses aiDetailData) */
-/* headline block for the selected business: name + verdict up top (numbers live in the right drawer) */
-
-/* right-drawer hero numbers: mega citation tile + the two engine cards */
-
-/* lane chip, color-coded by service-lane color */
-
-/* everything in the center column: headline, prompt-by-prompt, trend */
-
-
-
-/* ---------- AI Visibility: sidebar explorer (2026-10-06) ----------
-   Three columns: businesses (left), detail (center), prompts (right).
-   Business/prompt navigation wraps the state change in a view transition,
-   so rows morph to their new order and the center cross-fades instead of
-   flashing on every click. */
-function aiNav(fn){
-  if(!REDUCED && document.startViewTransition){
-    window.__aiVT=true;
-    try{
-      var tr=document.startViewTransition(function(){ fn(); });
-      if(tr&&tr.finished) tr.finished.then(function(){window.__aiVT=false;},function(){window.__aiVT=false;});
-      else window.__aiVT=false;
-    }catch(e){ window.__aiVT=false; fn(); }
-  } else fn();
-}
-function aiSlug(s){
-  return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"x";
-}
-function aiSecHead(t,d){
-  return '<div class="ai-sec-h"><h3>'+esc(t)+'</h3>'+(d?'<p>'+esc(d)+'</p>':'')+'</div>';
-}
-/* compact business rows for the left rail; re-sorts when a prompt is picked */
-function aiBizRows(){
-  var scope=S.aiPrompt?aiPromptScope():null;
-  var sBoard=scope?scope.board:AI.board, sN=scope?scope.n:AI.nDays;
-  var list=S.aiAll?sBoard:sBoard.slice(0,20);
-  var h='<div class="ai-bizrows">';
-  list.forEach(function(t,i){
-    var pct=sN?Math.round(t.days/sN*100):0;
-    h+='<div class="ai-bizrow'+(S.aiSel===t.name?" sel":"")+'" role="button" tabindex="0" aria-pressed="'+(S.aiSel===t.name)+'"'+
-      ' style="view-transition-name:ai-b-'+aiSlug(t.name)+'" data-ai="'+esc(t.name)+'">'+
-      '<span class="ai-brk">'+(i+1)+'</span>'+
-      '<span class="ai-brb"><span class="ai-brn">'+esc(t.name)+'</span>'+
-      '<span class="bar"><i data-bw="'+Math.max(2,pct)+'" style="width:'+Math.max(2,pct)+'%;background:'+aiTier3(pct)+'"></i></span></span>'+
-      '<span class="ai-brc">'+(sN>0?t.days+'/'+sN:"\u2014")+'</span></div>';
-  });
-  h+='</div>';
-  if(sBoard.length>20)
-    h+='<button class="ai-more" data-aiall>'+(S.aiAll?"Show fewer":"Show all "+sBoard.length)+'</button>';
-  return h;
-}
-/* prompt list for the right rail */
-function aiPromptList(){
-  var h='<div class="ai-plist">';
-  h+='<div class="ai-pitem'+(!S.aiPrompt?" on":"")+'" style="view-transition-name:ai-pr-all" role="button" tabindex="0" data-aiprompt="">'+
-    '<span class="ai-pin">All prompts</span><span class="ai-pic">'+AI.promptCatalog.length+'</span></div>';
-  AI.promptCatalog.forEach(function(p,i){
-    h+='<div class="ai-pitem'+(S.aiPrompt===p.text?" on":"")+'" style="view-transition-name:ai-pr-'+i+'" role="button" tabindex="0" data-aiprompt="'+esc(p.text)+'">'+
-      '<span class="ai-pin">'+esc(p.text)+'</span></div>';
-  });
-  return h+'</div>';
-}
-/* per-prompt, per-engine naming counts (prompt overview); one check = one date per engine */
-function aiPromptCounts(prompt){
-  var out={};
-  AI.engines.forEach(function(e){ out[e]={names:{},total:0,seen:{}}; });
-  AI.rows.forEach(function(r){
-    if(r.prompt!==prompt||!out[r.engine]) return;
-    var oe=out[r.engine];
-    if(oe.seen[r.date]) return;
-    oe.seen[r.date]=1; oe.total++;
-    var seen={};
-    (r.rivals||[]).forEach(function(n){ seen[n]=1; });
-    if(r.jd_named==="yes"||r.jd_named==="partial") seen["JD Meyers Productions"]=1;
-    Object.keys(seen).forEach(function(n){ oe.names[n]=(oe.names[n]||0)+1; });
-  });
+  out.wed = w.length ? Math.min.apply(null, w) : null;
+  out.sess = s.length ? Math.min.apply(null, s) : null;
   return out;
 }
-function aiPromptTop(prompt,e,n){
-  var oe=aiPromptCounts(prompt)[e];
-  var arr=Object.keys(oe.names).map(function(nm){ return {name:nm,n:oe.names[nm]}; });
-  arr.sort(function(a,b){ return b.n-a.n||(a.name<b.name?-1:1); });
-  return {list:arr.slice(0,n||5),total:oe.total};
-}
-function aiBizPromptCount(t,p,e){
-  var named={},tot={};
-  AI.rows.forEach(function(r){
-    if(r.prompt!==p||r.engine!==e) return;
-    tot[r.date]=1;
-    if(aiNamedInRow(t,r)) named[r.date]=1;
-  });
-  return {n:Object.keys(named).length,tot:Object.keys(tot).length};
-}
-/* center column: four states */
-function aiCenter(){
-  var t=aiSelT(), p=S.aiPrompt;
-  var h='<div class="ai-main">';
-  if(!t&&!p) h+=aiEmpty();
-  else if(t&&!p) h+=aiBizDetail(t);
-  else if(!t&&p) h+=aiPromptDetail(p);
-  else h+=aiBizPrompt(t,p);
-  return h+'</div>';
-}
-function aiEmpty(){
-  return '<div class="ai-empty"><h3>Explore AI visibility</h3>'+
-    '<p>Select a business on the left to see how often assistants cite it, or pick a prompt on the right to see which businesses lead for that question.</p></div>';
-}
-function aiBizDetail(t){
-  var sN=AI.nDays, pct=sN?Math.round(t.days/sN*100):0;
-  var h='<div class="ai-detail">';
-  h+='<div class="ai-detail-h"><div class="ai-sec-h"><h3>'+esc(t.name)+'</h3><p>Cited in '+t.days+' of '+sN+' checks ('+pct+'%).</p></div>'+
-     '<button class="ai-x" data-aix aria-label="Close detail">\u00d7</button></div>';
-  if(t.id) h+='<div class="ai-dopen"><span class="linkish" data-open="'+esc(t.id)+'">Open profile \u2192</span></div>';
-  h+='<div class="ai-deng">';
-  AI.engines.forEach(function(e){
-    var ec=aiEngChecks(e), nd=aiNamedDays(t,e);
-    h+='<div class="ai-deng-c"><span class="ai-deng-v">'+nd+' of '+ec+'</span><span class="ai-deng-l">'+esc(e)+' checks</span></div>';
-  });
-  h+='</div><div class="ai-dp">';
-  AI.promptCatalog.forEach(function(p){
-    h+='<div class="ai-dp-r"><span class="ai-dp-q">'+esc(p.text)+'</span><span class="ai-dp-c">';
-    AI.engines.forEach(function(e){
-      var r=aiLatestPrompt(p.text,e), lab, cls;
-      if(!r){ lab="no check"; cls="is-mut"; }
-      else if(!aiNamedInRow(t,r)){ lab="not named"; cls="is-mut"; }
-      else if(t.id==="jd-meyers-productions"&&r.jd_rank){ lab="#"+r.jd_rank+" of "+r.of_total; cls=r.jd_rank===1?"is-win":"is-hit"; }
-      else { lab="named"; cls="is-hit"; }
-      h+='<span class="ai-chip '+cls+'"><b>'+esc(e)+'</b>'+esc(lab)+'</span>';
-    });
-    h+='</span></div>';
-  });
-  return h+'</div></div>';
-}
-function aiPromptDetail(p){
-  var h='<div class="ai-detail">';
-  h+='<div class="ai-detail-h"><div class="ai-sec-h"><h3>'+esc(p)+'</h3><p>Most-cited businesses per assistant, across all checks. Select a business to see its result for this prompt.</p></div>'+
-     '<button class="ai-x" data-aipx aria-label="Clear prompt">\u00d7</button></div>';
-  h+='<div class="ai-peng">';
-  AI.engines.forEach(function(e){
-    var top=aiPromptTop(p,e,5);
-    h+='<div class="ai-peng-c"><div class="ai-peng-t">'+esc(e)+'</div>';
-    top.list.forEach(function(x,i){
-      var pct=top.total?Math.round(x.n/top.total*100):0;
-      h+='<div class="ai-peng-r" role="button" tabindex="0" data-ai="'+esc(x.name)+'">'+
-        '<span class="ai-brk">'+(i+1)+'</span>'+
-        '<span class="ai-brb"><span class="ai-brn">'+esc(x.name)+'</span>'+
-        '<span class="bar"><i style="width:'+Math.max(2,pct)+'%;background:'+aiTier3(pct)+'"></i></span></span>'+
-        '<span class="ai-brc">'+x.n+'/'+top.total+'</span></div>';
-    });
-    h+='</div>';
-  });
-  return h+'</div></div>';
-}
-function aiBizPrompt(t,p){
-  var h='<div class="ai-detail">';
-  h+='<div class="ai-detail-h"><div class="ai-sec-h"><h3>'+esc(t.name)+'</h3><p>'+esc(p)+'</p></div>'+
-     '<button class="ai-x" data-aix aria-label="Close detail">\u00d7</button></div>';
-  if(t.id) h+='<div class="ai-dopen"><span class="linkish" data-open="'+esc(t.id)+'">Open profile \u2192</span></div>';
-  h+='<div class="ai-deng">';
-  AI.engines.forEach(function(e){
-    var r=aiLatestPrompt(p,e), c=aiBizPromptCount(t,p,e), big, sub, cls;
-    if(!r){ big="No check"; sub=""; cls="is-mut"; }
-    else{
-      if(!aiNamedInRow(t,r)){ big="Not named"; cls="is-mut"; }
-      else if(t.id==="jd-meyers-productions"&&r.jd_rank){ big="#"+r.jd_rank+" of "+r.of_total; cls=r.jd_rank===1?"is-win":"is-hit"; }
-      else { big="Named"; cls="is-hit"; }
-      sub="named in "+c.n+" of "+c.tot+" "+e+" checks";
-    }
-    h+='<div class="ai-deng-c"><span class="ai-deng-v '+cls+'">'+esc(big)+'</span><span class="ai-deng-l">'+esc(sub||e)+'</span></div>';
-  });
-  h+='</div><div class="ai-dopen"><span class="linkish" data-aipx>View all '+AI.promptCatalog.length+' prompts for this business \u2192</span></div>';
-  return h+'</div>';
-}
-function aiDateStr(ds){
-  var m={"01":"Jan","02":"Feb","03":"Mar","04":"Apr","05":"May","06":"Jun",
-         "07":"Jul","08":"Aug","09":"Sep","10":"Oct","11":"Nov","12":"Dec"};
-  var p=String(ds).split("-");
-  return p.length===3&&m[p[1]] ? m[p[1]]+" "+(+p[2])+", "+p[0] : String(ds);
-}
-function renderAI(){
-  if(S.mode==="venues")
-    return '<div class="ai-wrap"><div class="page-head pg-hero"><div><h1>AI Visibility</h1>'+
-      '<p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>'+
-      pgPull(dataPullDate())+'</div>'+
-      '<div class="ai-empty"><h3>No venue audits yet</h3>'+
-      '<p>AI visibility audits cover photo, video and drone businesses. Venue audits haven\u2019t started.</p></div></div>';
-  computeAI();
-  if(!AI.rows.length)
-    return '<div class="page-head"><h1>AI Visibility</h1><div class="empty-note">No AI visibility data yet \u2014 the daily audit feeds this tab.</div></div>';
-  var h='<div class="ai-wrap">';
-  h+='<div class="page-head pg-hero"><div><h1>AI Visibility</h1><p>How AI assistants answer local search questions, and which businesses they recommend.</p></div>'+
-    pgPull(AI.dates.length?aiDateStr(AI.dates[AI.dates.length-1]):"\u2014")+'</div>';
-  h+='<div class="ai-dash">';
-  h+='<aside class="ai-side ai-side-l">'+aiSecHead("Businesses","Ranked by how often assistants name them.")+aiBizRows()+'</aside>';
-  h+=aiCenter();
-  h+='<aside class="ai-side ai-side-r">'+aiSecHead("Prompts","Filter the market by question.")+aiPromptList()+'</aside>';
-  return h+'</div></div>';
+
+/* ---------- lanes ---------- */
+const LANES = [['wed', 'Wedding'], ['port', 'Portrait'], ['vid', 'Video'], ['re', 'Real estate'], ['dr', 'Drone'], ['com', 'Commercial']];
+const LANE_NAME = {}; LANES.forEach(l => LANE_NAME[l[0]] = l[1]);
+function lanesOf(c) {
+  const det = DET[c.id] || {}, wi = WI[c.id] || {};
+  const t = [(c.services || []).join(' '), (det.services || []).join(' '), (wi.services || []).join(' '), c.pricing || ''].join(' ').toLowerCase();
+  const L = [];
+  if (/wedding|elopement|bridal/.test(t)) L.push('wed');
+  if (/portrait|family|families|senior|headshot|maternity|newborn|couple|session/.test(t)) L.push('port');
+  if (c.specialty === 'video' || c.specialty === 'both' || /video|film|cinema/.test(t)) L.push('vid');
+  if (/real estate|realty|listing|property|mls/.test(t)) L.push('re');
+  if (c.specialty === 'drone' || /drone|aerial|fpv/.test(t)) L.push('dr');
+  if (/commercial|brand|corporate|product|marketing|promo/.test(t)) L.push('com');
+  return L;
 }
 
-
-/* ---------- market aggregates ---------- */
-function postEvents(){
-  var ev=[];
-  (D.igActivity||[]).forEach(function(r){
-    var n=postCount(r);
-    for(var i=0;i<n;i++) ev.push({handle:r.handle,date:r.date});
-  });
-  return ev;
-}
-var EVENTS=postEvents();
-
-/* venue-mode Market: venue-only aggregates, never business medians */
-function renderVenueMarket(){
-  var list=C.slice(), h='<div class="mkt mktx">'+pageHeadHTML("Venue landscape","Wedding and event venues across the North Country: size, location and reach across "+list.length+" venues.");
-  var caps=list.filter(function(b){return b.capacity_num!=null;}).map(function(b){return b.capacity_num;}).sort(function(a,b){return a-b;});
-  var med=caps.length?caps[Math.floor(caps.length/2)]:null;
-  var ig=list.filter(function(b){return b.ig_handle;}).length;
-  var counties={}; list.forEach(function(b){ counties[b.county]=1; });
-  h+='<div class="statgrid">'+
-    '<div class="stat"><div class="v" data-count="'+list.length+'">0</div><div class="l">Venues</div></div>'+
-    '<div class="stat"><div class="v" data-count="'+(med||0)+'">0</div><div class="l">Median max guests</div></div>'+
-    '<div class="stat"><div class="v">'+ig+'</div><div class="l">On Instagram</div></div>'+
-    '<div class="stat"><div class="v">'+Object.keys(counties).length+'</div><div class="l">Counties</div></div></div>';
-  h+='<div class="cardgrid">'+marketGlanceHTML(true)+'</div></div>';
-  return h;
-}
-
-function renderMarket(){
-  if(S.mode==="venues") return renderVenueMarket();
-  var list=C.slice(), h='<div class="mkt mktx">'+pageHeadHTML("Market landscape",null);
-
-  h+='<div class="cardgrid">'+marketGlanceHTML(true);
-
-  /* post-type mix */
-  var types={};
-  list.forEach(function(b){ if(b.last_post_type) types[b.last_post_type]=(types[b.last_post_type]||0)+1; });
-  var tkeys=Object.keys(types);
-  if(tkeys.length){
-    var ttot=tkeys.reduce(function(a,k){return a+types[k];},0);
-    var tcols={carousel:"#e8b34b",photo:"#6db3f2",reel:"#b48ce8"};
-    var circ=2*Math.PI*34, off=0, segs="";
-    tkeys.forEach(function(k){ var frac=types[k]/ttot;
-      segs+='<circle cx="42" cy="42" r="34" fill="none" stroke="'+(tcols[k]||"#6fd3e7")+'" stroke-width="14" '+
-        'stroke-dasharray="'+(frac*circ).toFixed(1)+' '+circ.toFixed(1)+'" stroke-dashoffset="'+(-off*circ).toFixed(1)+'" transform="rotate(-90 42 42)"/>';
-      off+=frac; });
-    h+='<div class="sec"><h3>Post-type mix</h3><div class="sub">Latest known post format</div><div class="donutwrap">'+
-      '<svg class="donut" width="84" height="84" viewBox="0 0 84 84">'+segs+
-      '<text x="42" y="47" text-anchor="middle" fill="#ece9e2" font-size="15" font-weight="700">'+ttot+'</text></svg>'+
-      '<div class="dlegend">'+tkeys.map(function(k){ return '<div><i style="background:'+(tcols[k]||"#6fd3e7")+'"></i>'+
-        esc(k)+' <b>'+types[k]+'</b></div>'; }).join("")+'</div></div></div>';
-  }
-
-  /* cadence heatmap: weekday x week from accumulated post events */
-  var weeks={}; /* weekStart -> [7 counts] */
-  EVENTS.forEach(function(e){
-    var d=new Date(e.date+"T12:00:00"); if(isNaN(d)) return;
-    var dow=(d.getDay()+6)%7, ws=new Date(d); ws.setDate(ws.getDate()-dow);
-    var key=ws.toISOString().slice(0,10);
-    weeks[key]=weeks[key]||[0,0,0,0,0,0,0]; weeks[key][dow]++;
-  });
-  var wkeys=Object.keys(weeks).sort().slice(-10);
-  if(wkeys.length){
-    var maxc=1; wkeys.forEach(function(k){weeks[k].forEach(function(v){if(v>maxc)maxc=v;});});
-    var dows=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-    h+='<div class="sec"><h3>Posting cadence</h3><div class="sub">Posts per weekday × week, from accumulated daily data</div>'+
-      '<div class="hm" style="--hmcols:'+wkeys.length+'">'+
-      dows.map(function(dn,di2){
-        return '<div class="hmr"><span class="dow">'+dn+'</span>'+wkeys.map(function(k){
-          var v=weeks[k][di2], a=v?0.15+0.85*v/maxc:0;
-          return '<span class="cell" style="background:rgba(232,179,75,'+a.toFixed(2)+')" title="'+v+' posts"></span>';
-        }).join("")+'</div>';
-      }).join("")+
-      '<div class="hmr"><span></span>'+wkeys.map(function(k){ var d=new Date(k+"T12:00:00");
-        return '<span class="wk">'+(d.getMonth()+1)+'/'+d.getDate()+'</span>'; }).join("")+'</div>'+
-      '</div></div>';
-  }
-  h+="</div>";
-  h+=landscapeHTML(list);
-  h+="</div>";
-  return h;
-}
-
-/* ---------- sparkline (indexed to 100, padded scale, no overlap) ---------- */
-function sparkline(hist, w, h){
-  w=w||320; h=h||64;
-  if(!hist||hist.length<2) return '<div class="empty-note">Not enough history for a trend yet.</div>';
-  var pts=hist.map(function(r){return r.count||0;});
-  var dMn=Math.min.apply(null,pts), dMx=Math.max.apply(null,pts);
-  var d0=hist[0].date||null, d1=hist[hist.length-1].date||null;
-  var X=function(i){return 6+i*(w-12)/(pts.length-1);};
-  function albl(yv,txt){ return '<text class="al" x="6" y="'+yv+'">'+esc(txt)+'</text>'; }
-  function xlbl(xv,txt,anchor){ return '<text class="sx" x="'+xv+'" y="'+(h-3)+'"'+(anchor?' text-anchor="'+anchor+'"':"")+'>'+esc(txt)+'</text>'; }
-  function xaxis(){ return (d0?xlbl(6,dstrShort(d0)):"")+(d1?xlbl(w-6,dstrShort(d1),"end"):""); }
-  if(dMx===dMn){
-    var Y0=Math.round(h/2);
-    return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
-      '<line x1="6" y1="'+Y0+'" x2="'+(w-6)+'" y2="'+Y0+'" stroke="#e8b34b" stroke-width="2"/>'+
-      '<circle cx="'+(w-6)+'" cy="'+Y0+'" r="3.5" fill="#e8b34b"/>'+albl(12,fmt(dMx)+" (flat)")+xaxis()+'</svg>';
-  }
-  var pad=(dMx-dMn)*0.15, mn=dMn-pad, mx=dMx+pad;
-  var Y=function(v){return h-18-(v-mn)/(mx-mn)*(h-32);};
-  var d="M"+pts.map(function(v,i){return X(i).toFixed(1)+" "+Y(v).toFixed(1);}).join(" L");
-  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
-    '<path d="'+d+'" fill="none" stroke="#e8b34b" stroke-width="2"/>'+
-    '<circle cx="'+X(pts.length-1).toFixed(1)+'" cy="'+Y(pts[pts.length-1]).toFixed(1)+'" r="3.5" fill="#e8b34b"/>'+
-    albl(12,fmt(dMx))+xaxis()+'</svg>';
-}
-
-/* ---------- glance-card charts: compact SVGs that fill the card's whitespace ---------- */
-function histSVG(labels,counts,colors){
-  var w=300,h=78,n=counts.length;
-  var max=Math.max.apply(null,counts.concat([1]));
-  var gap=8,bw=(w-gap*(n-1))/n,s="";
-  for(var i=0;i<n;i++){
-    var c=counts[i],bh=Math.round(c/max*(h-24)),x=(gap+bw)*i;
-    s+='<rect x="'+x.toFixed(1)+'" y="'+(h-18-bh)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(bh,2)+
-      '" rx="3" fill="'+(colors[i]||"#6db3f2")+'"><title>'+esc(labels[i]+": "+c)+"</title></rect>"+
-      '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(h-18-bh-4)+'" text-anchor="middle" class="qhnum">'+c+"</text>"+
-      '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(h-5)+'" text-anchor="middle" class="qhlab">'+esc(labels[i])+"</text>";
-  }
-  return '<svg class="qhist" viewBox="0 0 '+w+" "+h+'" preserveAspectRatio="xMidYMid meet" role="img">'+s+"</svg>";
-}
-function seq(a,b,step){ var r=[]; for(var x=a;x<=b+1e-9;x+=step) r.push(+x.toFixed(6)); return r; }
-/* Granular distribution histogram with a smooth density (KDE) curve overlay,
-   so the shape of the market (bell, skew, bimodal) reads at a glance.
-   vals: numbers; edges: sorted bin lower-bounds (last bin = >= edges[last]).
-   Use -Infinity as edges[0] for an underflow bin. KDE input is winsorized
-   at the 1st/99th percentiles so outliers don't flatten the curve; bars
-   always show exact counts. */
-function distHistSVG(vals, edges, o){
-  o=o||{};
-  var v=vals.filter(function(x){return x!=null&&isFinite(x);});
-  var W=320,H=118,padB=18,padT=10;
-  if(!v.length||edges.length<2) return '<div class="empty-note">No data yet.</div>';
-  var nb=edges.length, counts=[], i, k, j;
-  for(i=0;i<nb;i++) counts.push(0);
-  v.forEach(function(x){ var bi=0; for(i=0;i<nb;i++){ if(x>=edges[i]) bi=i; } counts[bi]++; });
-  var max=Math.max.apply(null,counts.concat([1]));
-  var bw=(W-8)/nb, bh=function(c){return Math.round(c/max*(H-padB-padT));};
-  var fmt=o.fmt||function(x){return String(Math.round(x));};
-  function edgeLab(i){
-    if(edges[i]===-Infinity) return "<"+fmt(edges[i+1]);
-    if(i===nb-1) return fmt(edges[i])+"+";
-    return fmt(edges[i]);
-  }
-  var s="";
-  for(i=0;i<nb;i++){
-    var x=4+bw*i, hgt=bh(counts[i]);
-    var lo=edges[i]===-Infinity?"<"+fmt(edges[i+1]):fmt(edges[i]);
-    var tlab=i===nb-1?lo+"+":lo+" to "+fmt(edges[i+1]);
-    var col=o.colorFn?o.colorFn(edges[i]):(o.color||"#6db3f2");
-    s+='<rect x="'+x.toFixed(1)+'" y="'+(H-padB-hgt)+'" width="'+Math.max(bw-1.5,0.5).toFixed(1)+
-      '" height="'+Math.max(hgt,1.5)+'" rx="1.5" fill="'+col+'" opacity="0.85">'+
-      '<title>'+esc(tlab+": "+counts[i])+"</title></rect>";
-  }
-  var n=v.length, sv=v.slice().sort(function(a,b){return a-b;});
-  var wv=sv.slice(Math.floor(n*0.01), Math.ceil(n*0.99));
-  var wn=wv.length, mean=wv.reduce(function(a,b){return a+b;},0)/wn;
-  var sd=Math.sqrt(wv.reduce(function(a,b){return a+(b-mean)*(b-mean);},0)/wn);
-  var loX=edges[0]===-Infinity?edges[1]:edges[0], hiX=edges[nb-1];
-  var kbw=1.06*sd*Math.pow(wn,-0.2);
-  if(kbw>0&&sd>0&&wn>=3){
-    var M=72, pts=[], dmax=0, d, px, dd, z;
-    for(k=0;k<M;k++){
-      px=loX+(hiX-loX)*k/(M-1); dd=0;
-      for(j=0;j<wn;j++){ z=(px-wv[j])/kbw; dd+=Math.exp(-0.5*z*z); }
-      d=dd/(wn*kbw); pts.push(d); if(d>dmax) dmax=d;
-    }
-    if(dmax>0){
-      var X=function(q){return 4+(q-loX)/(hiX-loX)*(W-8);};
-      var Y=function(q){return H-padB-(q/dmax)*(H-padB-padT);};
-      var path="M"+pts.map(function(q,k2){return X(loX+(hiX-loX)*k2/(M-1)).toFixed(1)+" "+Y(q).toFixed(1);}).join(" L");
-      s+='<path d="'+path+'" fill="none" stroke="'+(o.curve||"#f2b13d")+'" stroke-width="2"/>';
-    }
-  }
-  var mx=4+(mean-loX)/(hiX-loX)*(W-8);
-  if(mx>=4&&mx<=W-4){
-    s+='<line x1="'+mx.toFixed(1)+'" y1="'+(H-padB)+'" x2="'+mx.toFixed(1)+'" y2="'+(H-padB-6)+
-      '" stroke="#ece9e2" stroke-width="1.5" opacity="0.7"><title>Mean: '+esc(fmt(mean))+"</title></line>";
-  }
-  var mid=Math.floor(nb/2);
-  [[0,"start"],[mid,"middle"],[nb-1,"end"]].forEach(function(t){
-    var lx=4+bw*t[0]+bw/2;
-    s+='<text x="'+lx.toFixed(1)+'" y="'+(H-5)+'" text-anchor="'+t[1]+'" class="qhlab">'+esc(edgeLab(t[0]))+"</text>";
-  });
-  return '<svg class="qdist" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="xMidYMid meet" role="img">'+s+"</svg>";
-}
-function donutSVG(parts){
-  var size=88,total=0,i;
-  for(i=0;i<parts.length;i++) total+=parts[i].val;
-  total=total||1;
-  var r=32,C=2*Math.PI*r,off=0,s="";
-  for(i=0;i<parts.length;i++){
-    var f=parts[i].val/total;
-    if(f<=0) continue;
-    s+='<circle cx="44" cy="44" r="'+r+'" fill="none" stroke="'+parts[i].color+'" stroke-width="13"'+
-      ' stroke-dasharray="'+(f*C).toFixed(1)+" "+C.toFixed(1)+'" stroke-dashoffset="'+(-off*C).toFixed(1)+'"'+
-      ' transform="rotate(-90 44 44)"><title>'+esc(parts[i].label+": "+parts[i].val)+"</title></circle>";
-    off+=f;
-  }
-  s+='<text x="44" y="50" text-anchor="middle" class="qdnum">'+total+"</text>";
-  var leg=parts.map(function(p){
-    return '<div><i style="background:'+p.color+'"></i>'+esc(p.label)+"<b>"+p.val+"</b></div>";
-  }).join("");
-  return '<div class="qdonutwrap"><svg class="qdonut" viewBox="0 0 '+size+" "+size+'" width="'+size+'" height="'+size+'" role="img">'+s+
-    '</svg><div class="qdleg">'+leg+"</div></div>";
-}
-/* ---------- right panel ---------- */
-function rankOf(b,key,desc){
-  var arr=C.filter(function(x){return x[key]!=null;}).sort(function(a,c){return desc?c[key]-a[key]:a[key]-c[key];});
-  var i=arr.indexOf(b); return i<0?null:{rank:i+1,of:arr.length};
-}
-/* venue detail panel: capacity, setting, spaces, services — no business comparisons */
-function venueProfileHTML(b){
-  var ini=b.name.split(/\s+/).slice(0,2).map(function(x){return x[0];}).join("");
-  var h='<div class="sec"><div class="prof-head"><div class="prof-ava">'+esc(ini)+'</div>'+
-    '<div><h2>'+esc(b.name)+'</h2>'+
-    '<div class="sub">'+esc(b.town)+locTag(b)+' · Venue</div></div></div>';
-  h+='<div class="chiprow">';
-  if(b.ig_handle) h+='<span class="chip">@'+esc(b.ig_handle)+'</span>';
-  if(b.website) h+='<a class="chip extlink" href="'+esc(/^https?:/.test(b.website)?b.website:"https://"+b.website)+'" target="_blank" rel="noopener">Website ↗</a>';
-  h+='</div>';
-  var rows="";
-  if(b.capacity) rows+='<dt>Capacity</dt><dd><b>'+esc(b.capacity)+'</b></dd>';
-  if(b.price_note) rows+='<dt>Pricing note</dt><dd>'+esc(b.price_note)+'</dd>';
-  if(b.setting) rows+='<dt>Setting</dt><dd>'+esc(b.setting)+'</dd>';
-  if(b.season) rows+='<dt>Season</dt><dd>'+esc(b.season)+'</dd>';
-  if(b.spaces&&b.spaces.length) rows+='<dt>Spaces</dt><dd>'+b.spaces.map(function(s){return '<span class="chip">'+esc(s)+'</span>';}).join(" ")+'</dd>';
-  if(b.services&&b.services.length) rows+='<dt>Services</dt><dd>'+b.services.map(function(s){return '<span class="chip">'+esc(s)+'</span>';}).join(" ")+'</dd>';
-  if(b.coverage&&b.coverage.length) rows+='<dt>Coverage</dt><dd>'+esc(b.coverage.join(" · "))+'</dd>';
-  if(b.platform) rows+='<dt>Site built on</dt><dd>'+esc(b.platform)+'</dd>';
-  if(b.since) rows+='<dt>Since</dt><dd><b>'+esc(b.since)+'</b></dd>';
-  if(b.address) rows+='<dt>Address</dt><dd>'+esc(b.address)+'</dd>';
-  if(rows) h+='<h3>Venue</h3><dl class="kv">'+rows+'</dl>';
-  if(b.site_note) h+='<div class="sub">'+esc(b.site_note)+'</div>';
-  var f=b.followers, igRows="";
-  if(b.ig_handle&&(b.followHist.length||f!=null||b.postAge!=null)){
-    if(f!=null) igRows+='<dt>Followers</dt><dd><b>'+fmt(f)+'</b></dd>';
-    if(b.last_post_date) igRows+='<dt>Last post</dt><dd><b>'+dstr(b.last_post_date)+'</b>'+(b.postAge!=null?' <span style="color:var(--dim)">('+b.postAge+'d ago)</span>':"")+'</dd>';
-    if(b.last_post_type) igRows+='<dt>Format</dt><dd>'+esc(b.last_post_type)+'</dd>';
-    if(b.last_post_topic) igRows+='<dt>Topic</dt><dd>'+esc(b.last_post_topic)+'</dd>';
-  }
-  /* latest IG activity row may carry media_count + biography — show only when present */
-  var igAct=null;
-  (D.igActivity||[]).forEach(function(r){
-    if(r.handle!==b.ig_handle) return;
-    if(r.media_count==null&&!r.biography) return;
-    if(!igAct||String(r.date||"")>String(igAct.date||"")) igAct=r; });
-  if(igAct&&igAct.media_count!=null) igRows+='<dt>Posts</dt><dd><b>'+fmt(igAct.media_count)+'</b></dd>';
-  if(igRows){ h+='<h3>Instagram</h3><dl class="kv">'+igRows+'</dl>';
-    if(igAct&&igAct.biography) h+='<div class="sub" style="margin-top:2px">“'+esc(igAct.biography)+'”</div>'; }
-  h+='<div class="sub" style="opacity:.65">Researched Sep 29, 2026</div>';
-  h+='</div>';
-  return h;
-}
-function yearsNum(b){ var w=WI[b.id]||{}, Y=new Date().getFullYear();
-  if(w.years_in_business!=null) return w.years_in_business;
-  if(w.since) return Y-w.since;
-  if(b.est_year!=null) return Y-b.est_year;
-  return null; }
-function marketGlanceHTML(full){
-  /* The questions our data answers best, as roomy cards in a no-scroll grid.
-     Every bucket row expands inline to list the businesses inside it.
-     Collapsed state: each question also records a one-line glance stat for the
-     slim sidebar (stat + label), collected in parallel with the cards.
-     Bar rule, everywhere: length is relative to the card's biggest bucket.
-     Color rule: one blue hue for plain counts; gold/red reserved for status
-     (Active/strong, Low/weak/declining); no-data buckets are muted and
-     always shown as the last row so the buckets add up to the total. */
-  var glances=[];
-  function qCardG(q,sub,bars,ci,g,chart){
-    glances.push(g||null);
-    return qCard(q,sub,bars,ci,chart);
-  }
-  function qCard(q,sub,bars,ci,chart){
-    var showAll=S.qall[ci];
-    var visCount=0;
-    var rows=bars.map(function(r,oi){
-      if(!showAll&&oi>=4&&!r.nodata) return "";
-      visCount++;
-      var key=ci+":"+oi, open=S.qx[key];
-      var attrs=r.id?' data-open="'+r.id+'"':(r.members?' data-qx="'+key+'"':"");
-      var h='<div class="qrow'+(r.members?" qx":"")+(r.nodata?" nodata":"")+'"'+attrs+'>'+
-        '<span class="qn"'+(r.full?' title="'+esc(r.full)+'"':"")+'>'+esc(r.label)+'</span>'+
-        '<span class="qv"'+(r.vcol?' style="color:'+r.vcol+'"':"")+'>'+r.val+"</span>"+
-        '<span class="qtrack"><i style="width:'+r.pct+"%;background:"+r.color+'"></i></span></div>';
-      if(r.members&&open){
-        var ms=r.members.slice(0,12);
-        h+='<div class="qmem">'+ms.map(function(m){
-          return '<div class="qmemrow" data-open="'+m.id+'" title="'+esc(m.name)+'">'+
-            '<span class="qn">'+esc(m.name)+'</span><span class="qv">'+esc(m.sub||"")+"</span></div>";
-        }).join("")+(r.members.length>12?'<div class="qmore">+'+(r.members.length-12)+" more in this bucket</div>":"")+"</div>";
-      }
-      return h;
-    }).join("");
-    if(bars.length>visCount||showAll){
-      rows+='<div class="qmore" data-qall="'+ci+'">'+(showAll?"Show fewer \u25B4":"Show all "+bars.length+" rows \u25B8")+"</div>";
-    }
-    var QICONS=S.mode==="venues"?
-      [["radar","#6db3f2"],["users","#f2d06d"],["camera","#e08bb8"],["tag","#c9a0f2"]]:
-      [["pulse","#6fd3e7"],["crown","#c9a0f2"],["dollar","#f2d06d"],["flame","#f5b942"],["clock","#8fd18f"],["shield","#6db3f2"]];
-    var qi=QICONS[ci]||["pulse","#6fd3e7"];
-    return '<div class="sec qcard"><div class="qcard-top"><span class="qcard-ic" style="color:'+qi[1]+'">'+actIcon(qi[0])+'</span><h3>'+q+'</h3></div><div class="sub">'+sub+'</div>'+
-      (chart?'<div class="qchart qhero">'+chart+"</div>":"")+'<div class="qbars">'+rows+"</div></div>";
-  }
-  /* members: sorted business/venue list backing an expandable bucket row */
-  function bmem(arr,sortFn,subFn){
-    return arr.slice().sort(sortFn).map(function(x){ return {id:x.id,name:x.name,sub:subFn(x)}; });
-  }
-  function byName(a,b){ return a.name<b.name?-1:(a.name>b.name?1:0); }
-  if(S.mode==="venues"){
-    var cards=[];
-    /* Q1: where are the venues? */
-    var co={},com={};
-    V.forEach(function(v){ var c=v.county||"Unknown"; co[c]=(co[c]||0)+1; (com[c]=com[c]||[]).push(v); });
-    var ckeys=Object.keys(co).sort(function(a,b){return co[b]-co[a];});
-    var cmax=co[ckeys[0]]||1;
-    cards.push(qCardG("Locations","All "+V.length+" venues by county",
-      ckeys.map(function(k,i){ return {label:k,full:k,val:co[k],pct:Math.round(co[k]/cmax*100),color:"#6db3f2",
-        members:bmem(com[k],byName,function(v){return v.town||""})}; }),
-      0,
-      {stat:(co["St. Lawrence"]||0)+" of "+V.length,label:"venues in St. Lawrence Co",frac:(co["St. Lawrence"]||0)/V.length,color:"#6db3f2"}));
-    /* Q2: how big are they? */
-    var cb=[["Up to 100",[],"#6db3f2"],["101\u2013200",[],"#6db3f2"],["201\u2013300",[],"#6db3f2"],["300+",[],"#6db3f2"],["Unknown",[],"#3a4353"]];
-    V.forEach(function(v){ var c=v.capacity_num,bi=c==null?4:(c<=100?0:(c<=200?1:(c<=300?2:3))); cb[bi][1].push(v); });
-    var bmax=Math.max.apply(null,cb.map(function(x){return x[1].length;}))||1;
-    cards.push(qCardG("Capacity","Max guest capacity, "+(V.length-cb[4][1].length)+" of "+V.length+" known",
-      cb.map(function(x,i){ return {label:x[0]+" guests",val:x[1].length,pct:Math.round(x[1].length/bmax*100),color:x[2],nodata:i===4,
-        members:bmem(x[1],function(a,b){return (b.capacity_num||0)-(a.capacity_num||0);},
-          function(v){return v.capacity_num?v.capacity_num+" guests":"";})}; }),
-      1,
-      {stat:(V.length-cb[4][1].length)+" of "+V.length,label:"venues with known capacity",frac:(V.length-cb[4][1].length)/V.length,color:"#6db3f2"},
-      '<div class="qchartlab">Distribution</div>'+
-      histSVG(["\u2264100","101\u2013200","201\u2013300","300+","Unknown"],
-        cb.map(function(x){return x[1].length;}),cb.map(function(x){return x[2];}))));
-    /* Q3: are they on Instagram? */
-    var ia=[],idm=[],inone=[];
-    V.forEach(function(v){ if(!v.ig_handle){ inone.push(v); return; }
-      var a=v.last_post_date?Math.floor((Date.now()-new Date(v.last_post_date+"T12:00:00"))/864e5):1e9;
-      (a<=90?ia:idm).push(v); });
-    var imax=Math.max(ia.length,idm.length,inone.length,1);
-    function vsub(v){ return v.ig_handle?"@"+v.ig_handle:""; }
-    cards.push(qCardG("Instagram","Verified venue accounts only \u2014 never guessed",
-      [{label:"Posted \u226490d",val:ia.length,pct:Math.round(ia.length/imax*100),color:"#e8b34b",vcol:"#e8b34b",members:bmem(ia,byName,vsub)},
-       {label:"Last post 90d+ ago",val:idm.length,pct:Math.round(idm.length/imax*100),color:"#e06c6c",vcol:"#e06c6c",members:bmem(idm,byName,vsub)},
-       {label:"No verified account",val:inone.length,pct:Math.round(inone.length/imax*100),color:"#3a4353",nodata:true,members:bmem(inone,byName,vsub)}],
-      2,
-      {stat:inone.length+" of "+V.length,label:"venues with no verified Instagram",frac:(ia.length+idm.length)/V.length,color:"#6db3f2"},
-      '<div class="qchartlab">Share of venues</div>'+
-      donutSVG([{label:"Active",val:ia.length,color:"#e8b34b"},
-        {label:"90d+ ago",val:idm.length,color:"#e06c6c"},
-        {label:"No account",val:inone.length,color:"#3a4353"}])));
-    /* Q4: what style of venue? */
-    var st={},stm={};
-    V.forEach(function(v){ var s=v.setting||"Unknown"; st[s]=(st[s]||0)+1; (stm[s]=stm[s]||[]).push(v); });
-    var skeys=Object.keys(st).sort(function(a,b){return st[b]-st[a];}).slice(0,7);
-    var smax=st[skeys[0]]||1;
-    var stop5=skeys.slice(0,5);
-    function shortLab(s){ return s.length>8?s.slice(0,8)+"\u2026":s; }
-    cards.push(qCardG("Settings","Venue style, as listed",
-      skeys.map(function(k,i){ return {label:k,full:k,val:st[k],pct:Math.round(st[k]/smax*100),color:"#6db3f2",
-        members:bmem(stm[k],byName,function(v){return v.town||""})}; }),
-      3,
-      {stat:skeys.length+" styles",label:"across "+V.length+" venues",frac:smax/V.length,color:"#6db3f2"},
-      '<div class="qchartlab">Top styles</div>'+
-      histSVG(stop5.map(shortLab),stop5.map(function(k){return st[k];}),
-        ["#6db3f2","#6db3f2","#6db3f2","#6db3f2","#6db3f2"])));
-    var vHero=V.reduce(function(a,v){return a+(v.followers||0);},0);
-    return full?cards.join(""):pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(vHero),"total venue followers","combined Instagram audience \u00b7 "+V.length+" North Country venues")+glanceCollapsedHTML(glances));
-  }
-  var list=C, cards=[];
-  /* Q1: who is actually posting? */
-  var ab=[["\u226430 days",[],"#e8b34b","#e8b34b"],["31\u201390 days",[],"#6db3f2"],["91\u2013180 days",[],"#6db3f2"],["180+ days",[],"#e06c6c","#e06c6c"],["No post data",[],"#3a4353"]];
-  list.forEach(function(b){ var a=b.postAge,bi=a==null?4:(a<=30?0:(a<=90?1:(a<=180?2:3))); ab[bi][1].push(b); });
-  var amax=Math.max.apply(null,ab.map(function(x){return x[1].length;}))||1;
-  cards.push(qCardG("Posting activity","Last post recency across "+list.length+" businesses",
-    ab.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/amax*100),color:x[2],vcol:x[3]||null,nodata:i===4,
-      members:bmem(x[1],
-        function(a,b){return (a.postAge==null?1e9:a.postAge)-(b.postAge==null?1e9:b.postAge);},
-        function(b){return b.postAge!=null?b.postAge+"d ago":"";})}; }),
-    0,
-    {stat:ab[0][1].length+" of "+list.length,label:"posted in the last 30 days",frac:ab[0][1].length/list.length,color:"#e8b34b"},
-    '<div class="qchartlab">Distribution \u00b7 days since last post</div>'+
-    distHistSVG(list.map(function(b){return b.postAge;}), seq(0,360,15),
-      {fmt:function(x){return Math.round(x)+"d";}})));
-  /* Q2: where does the audience sit? */
-  var aud=list.filter(function(b){return b.followers!=null;})
-    .sort(function(a,b){return b.followers-a.followers;}).slice(0,6);
-  var totAud=list.reduce(function(s,b){return s+(b.followers||0);},0);
-  var topAud=aud.reduce(function(s,b){return s+b.followers;},0);
-  var fmax=aud.length?aud[0].followers:1;
-  var abins=[["<500",0,500],["500\u2013999",500,1000],["1k\u20132.5k",1000,2500],["2.5k\u20135k",2500,5000],["5k+",5000,1e12]];
-  var acounts=abins.map(function(bn){ var n=0;
-    list.forEach(function(b){ if(b.followers!=null&&b.followers>=bn[1]&&b.followers<bn[2]) n++; });
-    return n; });
-  cards.push(qCardG("Audience","Top 6 by Instagram followers",
-    aud.map(function(b,i){ return {label:b.name,full:b.name,val:fmt(b.followers),id:b.id,
-      pct:Math.round(b.followers/fmax*100),color:"#6db3f2"}; }),
-    1,
-    {stat:(totAud?Math.round(topAud/totAud*100):0)+"%",label:"of "+fmt(totAud)+" followers sit in the top 6",frac:totAud?topAud/totAud:0,color:"#6db3f2"},
-    '<div class="qchartlab">Follower distribution</div>'+
-    distHistSVG(list.map(function(b){return b.followers;}), seq(0,5000,250),
-      {fmt:function(x){return x>=1000?((x/1000)%1?(x/1000).toFixed(1):(x/1000))+"k":Math.round(x);}})));
-  /* Q3: what does it cost? */
-  var pb=[["Under $1k",[],"#6db3f2"],["$1k\u2013$2k",[],"#6db3f2"],["$2k\u2013$3.5k",[],"#6db3f2"],
-          ["$3.5k+",[],"#6db3f2"],["Not published",[],"#3a4353"]];
-  list.forEach(function(b){ var w=b.price.wedding,bi=w==null?4:(w<1000?0:(w<2000?1:(w<3500?2:3))); pb[bi][1].push(b); });
-  var pmax=Math.max.apply(null,pb.map(function(x){return x[1].length;}))||1;
-  var pub=pb[0][1].length+pb[1][1].length+pb[2][1].length+pb[3][1].length;
-  cards.push(qCardG("Cost","Starting wedding price, where published",
-    pb.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/pmax*100),color:x[2],nodata:i===4,
-      members:bmem(x[1],function(a,b){return (a.price.wedding||1e9)-(b.price.wedding||1e9);},
-        function(b){return b.price.wedding!=null?money(b.price.wedding):"";})}; }),
-    2,
-    {stat:pub+" of "+list.length,label:"publish a starting wedding price",frac:pub/list.length,color:"#6db3f2"},
-    '<div class="qchartlab">Starting wedding price distribution</div>'+
-    distHistSVG(list.map(function(b){return b.price.wedding;}), seq(0,4000,250),
-      {fmt:function(x){return "$"+(x>=1000?(x/1000)+"k":Math.round(x));}})));
-  /* Q4: who's gaining followers? */
-  var grAll=list.map(function(b){ return pctChange(b,Math.max(0,S.di-30),S.di); }).filter(function(c){return c!=null;});
-  var posFrac=grAll.length?grAll.filter(function(c){return c>0;}).length/grAll.length:0;
-  var gr=list.map(function(b){ return {b:b,ch:pctChange(b,Math.max(0,S.di-30),S.di)}; })
-    .filter(function(x){return x.ch!=null;}).sort(function(a,b){return b.ch-a.ch;}).slice(0,6);
-  if(gr.length){
-    var gmax=Math.max.apply(null,gr.map(function(x){return Math.abs(x.ch);}).concat([0.1]));
-    var gm=gr[0];
-    var mhist=[];
-    for(var tdi=0;tdi<=S.di;tdi++){ var tot=0;
-      list.forEach(function(b){ tot+=followersAt(b,tdi)||0; });
-      mhist.push({date:DATES[tdi],count:tot}); }
-    cards.push(qCardG("Follower growth","30-day follower change, top movers",
-      gr.map(function(x){ return {id:x.b.id,full:x.b.name,label:x.b.name,val:(x.ch>=0?"+":"")+x.ch.toFixed(1)+"%",
-        pct:Math.min(100,Math.round(Math.abs(x.ch)/gmax*100)),color:x.ch>=0?"#6db3f2":"#e06c6c",vcol:x.ch>=0?null:"#e06c6c"}; }),
-      3,
-      {stat:(gm.ch>=0?"+":"")+gm.ch.toFixed(1)+"%",label:"best 30-day mover · "+gm.b.name,frac:posFrac,color:"#6db3f2"},
-      '<div class="qchartlab">30-day change distribution</div>'+
-      distHistSVG(grAll, [-Infinity].concat(seq(-20,20,2)),
-        {fmt:function(x){return Math.round(x)+"%";},
-         colorFn:function(lo){return lo<0?"#e06c6c":"#6db3f2";}})+
-      '<div class="qchartlab" style="margin-top:8px">Total market followers</div>'+sparkline(mhist,300,72)));
-  }
-  /* Q5: how long have they been around? */
-  var yb=[["Under 3 yrs",[],"#6db3f2"],["3\u20135 yrs",[],"#6db3f2"],["6\u201310 yrs",[],"#6db3f2"],
-          ["10+ yrs",[],"#6db3f2"],["Unknown",[],"#3a4353"]];
-  list.forEach(function(b){ var y=yearsNum(b),bi=y==null?4:(y<3?0:(y<=5?1:(y<=10?2:3))); yb[bi][1].push(b); });
-  var ymax=Math.max.apply(null,yb.map(function(x){return x[1].length;}))||1,
-      yk=yb[0][1].length+yb[1][1].length+yb[2][1].length+yb[3][1].length;
-  cards.push(qCardG("Years in business","Track record, "+yk+" of "+list.length+" known",
-    yb.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/ymax*100),color:x[2],nodata:i===4,
-      members:bmem(x[1],function(a,b){return (yearsNum(b)||0)-(yearsNum(a)||0);},
-        function(b){var y=yearsNum(b);return y!=null?y+" yrs":"";})}; }),
-    4,
-    {stat:String(yb[3][1].length),label:"businesses at 10+ years",frac:yb[3][1].length/list.length,color:"#e8b34b"},
-    '<div class="qchartlab">Distribution</div>'+
-    distHistSVG(list.map(function(b){return yearsNum(b);}), seq(0,20,1),
-      {fmt:function(x){return Math.round(x)+"y";}})));
-  /* Q6: how solid is each profile? */
-  var sb=[["80\u2013100 \u00b7 strong",[],"#e8b34b","#e8b34b"],["60\u201379 \u00b7 decent",[],"#6db3f2"],["40\u201359 \u00b7 thin",[],"#6db3f2"],
-          ["Under 40 \u00b7 weak",[],"#e06c6c","#e06c6c"],["Unknown",[],"#3a4353"]];
-  list.forEach(function(b){ var s=confOf(b); if(s==null){ sb[4][1].push(b); return; }
-    var bi=s>=80?0:(s>=60?1:(s>=40?2:3)); sb[bi][1].push(b); });
-  var smax2=Math.max.apply(null,sb.map(function(x){return x[1].length;}))||1;
-  cards.push(qCardG("Profile strength","Information confidence across "+list.length+" businesses",
-    sb.map(function(x,i){ return {label:x[0],val:x[1].length,pct:Math.round(x[1].length/smax2*100),color:x[2],vcol:x[3]||null,nodata:i===4,
-      members:bmem(x[1],function(a,b){return (confOf(b)||0)-(confOf(a)||0);},
-        function(b){var s=confOf(b);return s!=null?s+"%":"";})}; }),
-    5,
-    {stat:sb[0][1].length+" of "+list.length,label:"profiles score 80+ (strong)",frac:sb[0][1].length/list.length,color:"#e8b34b"},
-    '<div class="qchartlab">Distribution</div>'+
-    distHistSVG(list.map(function(b){return confOf(b);}), seq(0,95,5),
-      {fmt:function(x){return String(Math.round(x));}})));
-    var bHero=list.reduce(function(a,b){return a+(b.followers||0);},0);
-    return full?cards.join(""):pheadHTML("Market glance","glance")+(S.glanceX?cards.join(""):gheroHTML(fmt(bHero),"total market followers","combined Instagram audience \u00b7 "+list.length+" photo, video & drone businesses")+glanceCollapsedHTML(glances));
-}
-/* collapsed market glance: one glanceable row per question, each expanding
-   the full view on tap */
-/* collapsed glance hero: one big number for the whole market */
-function gheroHTML(num,label,sub){
-  return '<div class="ghero"><div class="ghnum">'+num+'</div>'+
-    '<div class="ghlab">'+label+'</div><div class="ghsub">'+sub+"</div></div>";
-}
-function glanceCollapsedHTML(glances){
-  return '<div class="gqrows">'+glances.map(function(g){
-    if(!g) return "";
-    return '<button class="gqrow" data-gexpand title="'+esc(g.stat+" \u00b7 "+g.label+" \u2014 open the full market view")+'">'+
-      '<span class="gqtop"><span class="gqstat">'+esc(g.stat)+'</span>'+
-      '<span class="gqlabel" title="'+esc(g.label)+'">'+esc(g.label)+'</span>'+
-      '<span class="gqchev">\u25B8</span></span>'+
-      (g.frac!=null?'<span class="gqmeter"><i style="width:'+Math.round(Math.max(0,Math.min(1,g.frac))*100)+'%;background:'+(g.color||"#6db3f2")+'"></i></span>':"")+
-      "</button>";
-  }).join("")+"</div>";
-}
-function renderRight(){
-  var el=$("#rightbody");
-  var b=S.sel&&BY_ID[S.sel];
-  $("#right").classList.toggle("wide",!S.sel&&S.glanceX);
-  $("#right").classList.toggle("expanded",!!(S.expanded&&b));
-  $("#right").classList.toggle("hassel",!!b);
-  $("#right").classList.toggle("showgfoot",!b&&!S.glanceX);
-  document.body.classList.toggle("panelexp",!!(S.expanded&&b));
-  el.innerHTML=(window.innerWidth<=900?'<button class="mclose" data-mclose>Close</button>':"")+
-    (b?(b.type==="venue"?venueProfileHTML(b)
-        :pheadHTML(pheadTitle(b),"profile")+(S.expanded?profileExpandedHTML(b):profileCollapsedHTML(b)))
-      :marketGlanceHTML());
-  $$("[data-count]",el).forEach(function(n){
-    var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
-    if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
-    var t0=null; (function step(t){ if(!t0)t0=t; var p=Math.min(1,(t-t0)/800), e=1-Math.pow(1-p,3);
-      n.textContent=mon?money(Math.round(to*e)):fmt(Math.round(to*e)); if(p<1)requestAnimationFrame(step); })(performance.now());
-  });
-  if(window.innerWidth<=900&&S.sel) $("#right").classList.add("open");
-}
-
-/* ---------- map ---------- */
-var map=null, pinLayer=null, pinById={}, heatLayer=null;
-function initMap(){
-  map=L.map("map",{zoomControl:false,attributionControl:true}).setView([44.55,-74.9],9);
-  map.attributionControl.setPrefix(false);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {maxZoom:19,opacity:0.9,
-     attribution:"© OpenStreetMap contributors"}).addTo(map);
-  /* heatmap: concentrated where the big, active pages are; dissolves as you zoom in */
-  if(L.heatLayer){
-    heatLayer=L.heatLayer([],{minOpacity:0.3,maxZoom:12,radius:40,blur:30,
-      gradient:{0:"rgba(0,0,0,0)",0.35:"rgba(146,106,32,0.55)",0.65:"#e8b34b",1:"#ffe6a8"}}).addTo(map);
-    if(heatLayer._canvas){ heatLayer._canvas.style.transition="opacity .3s ease"; }
-  }
-  pinLayer=L.layerGroup().addTo(map);
-  map.on("zoomend",refreshLabels);
-  map.on("zoom",refreshHeat); map.on("zoomend",refreshHeat); map.on("moveend",refreshHeat);
-  map.on("moveend",function(){
-    if(HIST.busy||HIST.noPush){ HIST.noPush=false; return; } /* programmatic move: skip */
-    pushHist(); /* user panned/zoomed: record it */
-  });
-  map.on("click",function(e){ /* click-away on empty map deselects */
-    var t=e.originalEvent&&e.originalEvent.target;
-    if(t&&t.closest&&t.closest(".leaflet-marker-icon")) return;
-    clearSel();
-  });
-  renderPins();
-}
-/* heat intensity: bigger follower counts weigh more, recent activity adds more */
-var _maxLogF=1;
-/* heat weights always describe the ACTIVE collection — recomputed on mode switch */
-function computeModeStats(){
-  _maxLogF=1;
-  C.forEach(function(b){ var f=b.followers; if(f!=null) _maxLogF=Math.max(_maxLogF,Math.log10(f+1)); });
-  engStats();
-}
-computeModeStats();
-function heatWeight(b){
-  var f=followersAt(b,S.di), w;
-  if(f!=null) w=0.2+0.8*(Math.log10(f+1)/_maxLogF);
-  else w=0.12;
-  if(b.postAge!=null&&b.postAge<=30) w=Math.min(1,w+0.2);
-  return w;
-}
-/* zoomed out: everyone contributes. Zooming in: the cutoff ramps up, so only the
-   biggest business in the current view keeps radiating. All the way in: one hot spot. */
-function refreshHeat(){
-  if(!heatLayer||!map) return;
-  var z=map.getZoom(), bounds=map.getBounds();
-  var t=Math.max(0,Math.min(1,(z-9)/3.5)); /* 0 at z<=9, 1 at z>=12.5 */
-  var vis=filtered().filter(function(b){ return b._geo&&bounds.contains([b.lat,b.lng]); });
-  var maxW=0;
-  vis.forEach(function(b){ maxW=Math.max(maxW,heatWeight(b)); });
-  var cutoff=maxW*t*0.92, pts=[];
-  vis.forEach(function(b){ var w=heatWeight(b); if(w>0&&w>=cutoff) pts.push([b.lat,b.lng,w]); });
-  heatLayer.setLatLngs(pts);
-  heatLayer.setOptions({radius:Math.max(20,Math.round(58-z*2.6))});
-  var op=z<=10?0.9:Math.max(0.5,0.9-(z-10)*0.1);
-  if(heatLayer._canvas) heatLayer._canvas.style.opacity=op;
-}
-/* readable labels: top businesses always labeled, everything labeled when zoomed into a town */
-
-var pinMode="dots";
-function labelFor(b){
-  var f=followersAt(b,S.di);
-  var loc=b.townShort+((b.region==="adjacent"&&b.county)?" · "+b.county+" Co (adjacent)":
-    ((b.region==="unconfirmed"||(b.flags||[]).indexOf("location-unverified")>=0)?" · location unverified":""));
-  return "<b>"+esc(b.name)+"</b>"+
-    '<br><span style="color:#9aa3b2;font-weight:400">'+esc(loc)+"</span>"+
-    (f!=null?'<br><span style="color:#9aa3b2;font-weight:400">'+fmt(f)+" followers</span>":"");
-}
-function rowEl(id){ return $('#leftbody .row[data-open="'+id+'"]'); }
-function refreshLabels(){
-  if(!map) return;
-  var z=map.getZoom(), wantPills=z>=11, pills=pinMode==="pills";
-  if(wantPills!==pills){ pinMode=wantPills?"pills":"dots"; renderPins(); return; }
-  if(pills) return; /* pill mode declutters itself inside renderPins */
-  /* permanent labels: selected first, then top businesses by followers.
-     Bind every candidate, then measure the REAL tooltip boxes on screen and
-     hide lower-priority labels that would overlap — priority-based declutter
-     that stays correct no matter how wide a label renders. */
-  var cands=[], seen={};
-  function cand(b){ if(b&&b._geo&&!seen[b.id]){ seen[b.id]=1; cands.push(b); } }
-  cand(S.sel&&BY_ID[S.sel]);
-  C.slice().sort(function(a,b){ return (followersAt(b,S.di)||0)-(followersAt(a,S.di)||0); })
-    .slice(0,12).forEach(cand);
-  Object.keys(pinById).forEach(function(id){
-    var m=pinById[id]; if(!m) return;
-    if(seen[id]){ var b=BY_ID[id]; if(!b) return;
-      m.unbindTooltip();
-      m.bindTooltip(labelFor(b),{permanent:true,direction:"top",offset:[0,-13],
-        opacity:.97,className:"mklabel"});
-    } else if(m.getTooltip()) m.unbindTooltip();
-  });
-  var shown=[];
-  cands.forEach(function(b){
-    var m=pinById[b.id]; if(!m) return;
-    var tt=m.getTooltip(), el=tt&&tt.getElement(); if(!el) return;
-    var r=el.getBoundingClientRect(), pad=7;
-    var clash=shown.some(function(q){
-      return r.left<q.right+pad&&r.right>q.left-pad&&r.top<q.bottom+4&&r.bottom>q.top-4; });
-    el.style.display=clash?"none":"";
-    if(!clash) shown.push({left:r.left,top:r.top,right:r.right,bottom:r.bottom});
-  });
-}
-function postedOn(b,di){ /* did this business post on/around the scrub date? */
-  if(!b.last_post_date) return false;
-  var dt=DATES[di], d=new Date(dt+"T12:00:00"), p=new Date(b.last_post_date+"T12:00:00");
-  if(isNaN(d)||isNaN(p)) return false;
-  return Math.abs((d-p)/864e5)<=1.5;
-}
-function renderPins(){
-  if(!map) return;
-  pinLayer.clearLayers(); pinById={};
-  var list=filtered(), selId=S.sel;
-  var geoList=list.filter(function(b){return b._geo&&b.lat!=null;}); /* unmapped: no pin, still in directory/rankings */
-  var newIds={};
-  list.forEach(function(b){ var first=b.followHist.length?b.followHist[0].date:null;
-    if(first&&first>=DATES[Math.max(0,S.di-1)]) newIds[b.id]=1; });
-  /* pill-mode label collision: priority order (selected, then followers desc).
-     A lower-priority pill whose label box would overlap an already-placed one
-     renders as a plain dot instead of a colliding pill. */
-  var pillOk={};
-  if(pinMode==="pills"){
-    var ordered=geoList.slice().sort(function(a,b){
-      if(a.id===selId) return -1; if(b.id===selId) return 1;
-      return (followersAt(b,S.di)||0)-(followersAt(a,S.di)||0); });
-    var boxes=[];
-    ordered.forEach(function(b){
-      var pt=map.latLngToContainerPoint([b.lat,b.lng]), w=116, hgt=32;
-      var box={l:pt.x-w/2,t:pt.y-hgt/2,r:pt.x+w/2,b:pt.y+hgt/2};
-      var clash=boxes.some(function(q){
-        return box.l<q.r+4&&box.r>q.l-4&&box.t<q.b+3&&box.b>q.t-3; });
-      pillOk[b.id]=!clash; if(!clash) boxes.push(box);
-    });
-  }
-  geoList.forEach(function(b){
-    var f=followersAt(b,S.di);
-    var r=f!=null?Math.max(9,Math.min(26,6+Math.sqrt(f)/6)):9;
-    var hollow=b.type==="venue"?false:(f==null||!b.hasPrice);
-    var dim=(selId&&b.id!==selId)?" dim":"";
-    var live=postedOn(b,S.di)?" live":"";
-    var sel=b.id===selId?" sel":"";
-    var html, icon;
-    if(pinMode==="pills"&&pillOk[b.id]){
-      var txt=f!=null?fmt(f):"—";
-      html='<div class="zpin'+sel+live+dim+'" style="--lc:'+(LANE_COLOR[b.specialty]||"#888")+'">'+
-        "<i></i><span>"+txt+"</span></div>";
-      icon=L.divIcon({className:"zwrap",html:html});
-    }else{
-      var cls="mkpin"+(hollow?" hollow":"")+sel+live+dim;
-      html='<div class="'+cls+'" style="width:'+(r*2)+'px;height:'+(r*2)+'px;'+
-        (hollow?"":"background:"+LANE_COLOR[b.specialty]+";")+
-        (newIds[b.id]?"opacity:0;":"")+'"></div>';
-      icon=L.divIcon({className:"",html:html,iconSize:[r*2,r*2],iconAnchor:[r,r]});
-    }
-    var m=L.marker([b.lat,b.lng],{icon:icon,keyboard:false});
-    m.on("click",function(){ select(b.id,{fly:false}); });
-    m.on("mouseover",function(){ var rw=rowEl(b.id); if(rw) rw.classList.add("hot");
-      var el=m.getElement(); if(el&&el.firstChild) el.firstChild.classList.add("hot"); });
-    m.on("mouseout",function(){ var rw=rowEl(b.id); if(rw) rw.classList.remove("hot");
-      var el=m.getElement(); if(el&&el.firstChild) el.firstChild.classList.remove("hot"); });
-    m.addTo(pinLayer); pinById[b.id]=m;
-    if(newIds[b.id]){ /* fade-in for new entrants */
-      var el=m.getElement(); if(el){ var d=el.firstChild;
-        setTimeout(function(){ d.style.transition="opacity .8s"; d.style.opacity="1"; },60); }
-    }
-  });
-  refreshLabels();
-  refreshHeat();
-  if(!map._fitDone){ map._fitDone=true;
-    var pts=geoList.map(function(b){return [b.lat,b.lng];});
-    if(pts.length){ HIST.noPush=true; map.fitBounds(L.latLngBounds(pts).pad(0.12)); } }
-}
-function flyTo(b){ if(map&&b.lat!=null){ HIST.noPush=true; map.flyTo([b.lat,b.lng],Math.max(map.getZoom(),11),{duration:REDUCED?0:1.1}); } }
-
-/* ---------- rankings: stupid-simple leaderboard (replaces the old bubble field) ---------- */
-var RANK_MODES=[{id:"audience",label:"Audience"},{id:"activity",label:"Activity"},{id:"momentum",label:"Momentum"},
-  {id:"price",label:"Price"},{id:"reviews",label:"Reviews"},{id:"strength",label:"Profile strength"}];
-/* composite profile score: mean of the signals that report */
-function ageStr(age){
-  if(age==null) return "—";
-  if(age<=0) return "posted today";
-  if(age===1) return "posted yesterday";
-  if(age<30) return "posted "+age+"d ago";
-  if(age<60) return "posted ~1mo ago";
-  return "posted ~"+Math.round(age/30)+"mo ago";
-}
-function renderRankings(){
-  var el=$("#rankings"); if(!el) return;
-  var mode=S.rankMode||"audience", dir=S.rankDir||"desc", list=filtered();
-  var rows=list.map(function(b){
-    var key,val,frac,cls="",nodata=false;
-    if(mode==="audience"){ var f=followersAt(b,S.di);
-      key=f==null?-1:f; val=f==null?"\u2014":fmt(f); frac=f==null?0:1; nodata=f==null; }
-    else if(mode==="activity"){ var a=b.postAge;
-      key=a==null?1e9:a; val=ageStr(a); frac=a==null?0:Math.max(0.05,1-Math.min(a,120)/120); nodata=a==null; }
-    else if(mode==="momentum"){ var ch=pctChange(b,Math.max(0,S.di-7),S.di);
-      key=ch==null?-1e9:ch; val=ch==null?"\u2014":pctStr(ch); frac=ch==null?0:1;
-      cls=ch==null?"":(ch>=0?"up":"dn"); nodata=ch==null; }
-    else if(mode==="price"){ var w=b.price?b.price.wedding:null;
-      key=w==null?0:w; val=w==null?"\u2014":money(w); frac=w==null?0:1; nodata=w==null; }
-    else if(mode==="reviews"){ var ri=reviewInfo(b);
-      key=!ri?0:ri.count; val=!ri?"\u2014":(ri.count+(!ri.rating?"":" \u00b7 "+ri.rating+"/5")); frac=!ri?0:1; nodata=!ri; }
-    else { var cs=confOf(b); /* one score only: the Digital Footprint score */
-      key=cs==null?0:cs; val=cs==null?"\u2014":String(Math.round(cs)); frac=cs==null?0:cs/100; nodata=cs==null; }
-    return {b:b,key:key,val:val,frac:frac,cls:cls,nodata:nodata};
-  });
-  var mx=0; rows.forEach(function(r){ if(r.nodata) return;
-    if(mode==="momentum") mx=Math.max(mx,Math.abs(r.key)); else mx=Math.max(mx,mode==="activity"?r.frac:r.key); });
-  if(mx<=0) mx=1;
-  rows.sort(function(a,b){
-    if(a.nodata&&b.nodata) return 0;
-    if(a.nodata) return 1;
-    if(b.nodata) return -1;
-    var d=mode==="activity"?a.key-b.key:b.key-a.key; /* desc = current order */
-    return dir==="asc"?-d:d;
-  });
-  var h='<div class="rk-head"><div><h2>Rankings</h2>'+
-    '<div class="rk-sub">Who leads the North Country photo, video & drone market right now · '+esc(dstr(DATES[S.di]))+'</div></div>'+
-    '<div class="rk-modes" role="tablist">'+RANK_MODES.map(function(m){
-      return '<button data-rank="'+m.id+'" class="'+(m.id===mode?"on":"")+'" role="tab" aria-selected="'+(m.id===mode)+'">'+m.label+'</button>'; }).join("")+
-    '<button data-rankdir class="'+(dir==="asc"?"on":"")+'" title="Flip sort direction">'+(dir==="asc"?"&#8593; Low to high":"&#8595; High to low")+'</button></div></div>';
-  var hint=mode==="audience"?"Ranked by follower count.":
-    mode==="activity"?"Ranked by how recently they posted.":
-    mode==="momentum"?"Ranked by follower growth over the last 7 days.":
-    mode==="price"?"Ranked by starting wedding price, where published.":
-    mode==="reviews"?"Ranked by review count.":
-    "Ranked by Digital Footprint score.";
-  h+='<div class="rk-hint">'+hint+' Click a row for detail.</div>';
-  h+='<div class="rk-list">'+rows.map(function(r,i){
-    var b=r.b, w;
-    if(mode==="momentum") w=r.frac?Math.max(3,Math.abs(r.key)/mx*100):0;
-    else w=r.frac?(mode==="audience"?(r.key/mx*100):r.frac*100):0;
-    return '<div class="rk-row'+(b.type==="venue"?" wrap":"")+(S.sel===b.id?" sel":"")+'" data-open="'+b.id+'">'+
-      '<span class="rk-rank">'+(i+1)+'</span>'+
-      '<span class="rk-dot" style="background:'+(LANE_COLOR[b.specialty]||"#888")+'"></span>'+
-      '<div class="rk-main"><div class="rk-top"><b>'+esc(b.name)+'</b>'+
-      '<span class="rk-val '+r.cls+'">'+esc(r.val)+'</span></div>'+
-      '<div class="rk-bar"><i style="width:'+w.toFixed(1)+'%;background:'+(LANE_COLOR[b.specialty]||"#888")+'"></i></div>'+
-      '<div class="rk-sub">'+esc(b.townShort)+locTag(b)+' · '+(LANE_LABEL[b.specialty]||b.specialty)+
-      (mode!=="activity"?' · <span class="rk-age">'+esc(ageStr(b.postAge))+'</span>':"")+confBadge(b)+'</div></div></div>';
-  }).join("")+'</div>';
-  el.innerHTML=h;
-}
-
-/* ---------- selection: highlight everywhere + fly ---------- */
-function clearSel(){
-  if(!S.sel) return;
-  S.sel=null;
-  renderPins(); renderRight();
-  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
-  if(S.view==="rankings") renderRankings();
-  pushHist();
-}
-function select(id,opts){
-  opts=opts||{};
-  S.sel=id; S.expanded=false;
-  var b=BY_ID[id];
-  renderPins(); renderRight();
-  if(S.view==="rankings") renderRankings();  $$("#leftbody .row.sel").forEach(function(r){r.classList.remove("sel");});
-  var row=$('#leftbody .row[data-open="'+id+'"]'); if(row) row.classList.add("sel");
-  if(b&&opts.fly!==false&&S.view==="map") flyTo(b);
-  if(b&&window.innerWidth<=900){ $("#right").classList.add("open"); }
-  pushHist();
-}
-
-/* ============================================================
-   NETWORK tab: who follows who on Instagram (verified edges only).
-   Ported from site-legacy-20260929/app.js; businesses-only (built from B).
-   ============================================================ */
-var FG = D.followGraph || {edges:[], status:{}, note:""};
-var JD_ACCOUNTS = ["jdmeyersproductions"];
-
-/* restored: shared follow-graph foundation */
-function normHandle(h){ return String(h||"").toLowerCase().replace(/^@/,"").trim(); }
-
-var FGN = (function(){
-  var nodes=[], byKey={};
-  function add(n){ if(!byKey[n.key]){ byKey[n.key]=n; nodes.push(n); } return byKey[n.key]; }
-  JD_ACCOUNTS.forEach(function(u){ add({key:"jd:"+u, kind:"jd", label:"@"+u, handle:u}); });
-  B.forEach(function(c){ var h=normHandle(c.ig_handle); if(c.ig_handle&&JD_ACCOUNTS.indexOf(h)<0) add({key:"ig:"+h, kind:"comp", label:c.name.replace(/ \(.*\)/,""), comp:c, handle:h}); });
-  function keyOf(e){ var h=normHandle(e); return JD_ACCOUNTS.indexOf(h)>=0 ? "jd:"+h : "ig:"+h; }
-  var pairs={}, follows={}, followedBy={};
-  (FG.edges||[]).forEach(function(e){
-    var a=keyOf(e.from), b=keyOf(e.to);
-    if(!byKey[a]||!byKey[b]||a===b) return;
-    (follows[a]=follows[a]||[]).push(b);
-    (followedBy[b]=followedBy[b]||[]).push(a);
-    var k=[a,b].sort().join("|");
-    var p=pairs[k]||(pairs[k]={a:a,b:b,mutual:false});
-    if((follows[b]||[]).indexOf(a)>=0) p.mutual=true;
-  });
-  nodes.forEach(function(n){
-    n.follows=(follows[n.key]||[]).map(function(k){return byKey[k];});
-    n.followedBy=(followedBy[n.key]||[]).map(function(k){return byKey[k];});
-    n.deg=n.follows.length+n.followedBy.length;
-  });
-  return {nodes:nodes, byKey:byKey, pairs:Object.keys(pairs).map(function(k){return pairs[k];})};
-})();
-
-function netName(n){ return n.kind==="jd" ? "JD Meyers Productions" : n.label; }
-function igURL(n){ return n.handle ? "https://www.instagram.com/"+encodeURIComponent(n.handle)+"/" : null; }
-var BY_HANDLE = {};
-FGN.nodes.forEach(function(n){ if(n.handle) BY_HANDLE[n.handle.toLowerCase()] = n; });
-function nodeForHandle(h){ return BY_HANDLE[String(h||"").toLowerCase().replace(/^@/,"")] || null; }
-function netChip(n){
-  if(!n) return "";
-  if(n.kind==="jd") return '<span class="chip"><span class="dot"></span>'+esc(netName(n))+'</span>';
-  return '<button class="chip" data-open="'+esc(n.comp.id)+'"><span class="dot"></span>'+esc(n.label)+'</button>';
-}
-
-function netDetailHTML(n){
-  var s='<div class="nd-head"><b style="font-size:18px">'+esc(netName(n))+'</b>';
-  if(n.kind==="comp"){
-    s+=' <button class="linkish" data-open="'+esc(n.comp.id)+'">full profile \u2192</button>';
-    if(n.comp.town) s+='<span class="muted"> \u2014 '+esc(n.comp.town)+'</span>';
-  }
-  if(igURL(n)) s+=' <a class="tbtn" href="'+igURL(n)+'" target="_blank" rel="noopener">Instagram \u2197</a>';
-  s+='</div>';
-  s+='<div class="grid g-2" style="margin-top:10px">';
-  s+='<div><p class="hint" style="margin:0 0 6px">Follows ('+n.follows.length+') <span class="muted">\u2014 who they pay attention to</span></p>'
-    +'<div class="chips">'+(n.follows.length?n.follows.map(netChip).join(""):'<span class="muted">None verified.</span>')+'</div></div>';
-  s+='<div><p class="hint" style="margin:0 0 6px">Followed by ('+n.followedBy.length+') <span class="muted">\u2014 who pays attention to them</span></p>'
-    +'<div class="chips">'+(n.followedBy.length?n.followedBy.map(netChip).join(""):'<span class="muted">None verified.</span>')+'</div></div>';
-  s+='</div>';
-  return s;
-}
-
-/* ============================================================
-   NETWORK — one page: hub-spoke by connectivity.
-   Strongly connected at the center, independents at the edge.
-   ============================================================ */
-/* network hub: tier colors (data coding) */
-var HUBC={strong:"#f2b13d",connected:"#6ea8ff",light:"#4fd1a5",independent:"#8e97a8"};
-var HUBL={strong:"Strongly connected",connected:"Connected",light:"Lightly linked",independent:"Independent"};
-var HUBDOT="#9fb0c3"; /* dots stay uniform: ring position + size already encode tier */
-function hubTiers(){
-  var nodes=FGN.nodes.filter(function(n){ return n.deg>0; })
-    .sort(function(a,b){ return b.deg-a.deg || netName(a).localeCompare(netName(b)); });
-  var q=Math.max(1,Math.ceil(nodes.length/4));
+/* ---------- business model ---------- */
+const REGION = { slc: 'St. Lawrence County', adjacent: 'Adjacent', unconfirmed: 'Unconfirmed' };
+const RCOL = { slc: '#5ea6e6', adjacent: '#d2bf9f', unconfirmed: '#6f7b8f' };
+const REC_ST = stat('recency', age(DATES.recency));
+const B = D.competitors.map(c => {
+  const ig = igState(c.ig_handle);
+  const d7 = ig.state === 'live' ? delta7(c.ig_handle) : null;
+  const hs = D.igFollowersHistory[c.ig_handle];
+  const pv = (SD.pricing && SD.pricing.per && SD.pricing.per[c.id]) || DATES.pricing;
+  const rv = (SD.reviews && SD.reviews.per && SD.reviews.per[c.id]) || DATES.reviews;
+  const pst = c.pricing ? stat('pricing', age(pv)) : 'none';
+  const rst = c.review_count != null ? stat('reviews', age(rv)) : 'none';
+  const pp = parsePrice(c.pricing);
+  const lastLive = c.last_post_date && ((ig.state === 'live') || REC_ST === 'ok');
   return {
-    strong: nodes.slice(0,q),
-    connected: nodes.slice(q,q*2),
-    light: nodes.slice(q*2,q*3),
-    independent: nodes.slice(q*3),
-    all: nodes
+    c, id: c.id, name: clean(c.name), town: c.town || '', region: c.region || 'unconfirmed', county: c.county || '',
+    lanes: lanesOf(c), ig, d7, spark: hs ? hs.slice(-28).map(e => e.count) : null,
+    last: { date: c.last_post_date, live: !!lastLive },
+    pst, pdate: pv, price: pp, wedLive: pst === 'ok' ? pp.wed : null, sessLive: pst === 'ok' ? pp.sess : null,
+    rev: { count: c.review_count, rating: c.review_rating, st: rst, date: rv, live: rst === 'ok' }
   };
+});
+const BY = {}; B.forEach(b => BY[b.id] = b);
+const LIVEIG = B.filter(b => b.ig.state === 'live');
+const V = VEN.map(v => {
+  const ig = igState(v.ig_handle);
+  return { v, id: 'v:' + v.id, name: clean(v.name), town: v.town || '', region: v.region || 'unconfirmed', ig };
+});
+const VBY = {}; V.forEach(x => VBY[x.id] = x);
+
+/* ---------- ai ---------- */
+const STOP = new Set(['photography', 'photographer', 'photographers', 'photo', 'photos', 'llc', 'inc', 'studio', 'studios', 'media', 'films', 'film', 'video', 'videography', 'productions', 'production', 'services', 'the', 'and', 'co', 'company', 'by']);
+const flat = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const stripped = s => flat(s).split(' ').filter(w => !STOP.has(w)).join(' ');
+const ALIAS = {};
+const NAMEMAP = {};
+(function () {
+  const cnt = {};
+  B.forEach(b => { const k = stripped(b.name); if (k) cnt[k] = (cnt[k] || 0) + 1; });
+  B.forEach(b => { NAMEMAP[flat(b.name)] = b.id; const k = stripped(b.name); if (k && cnt[k] === 1) NAMEMAP[k] = b.id; });
+})();
+function matchName(n) {
+  const f = flat(n); if (NAMEMAP[f]) return NAMEMAP[f];
+  const s = stripped(n); if (s && NAMEMAP[s]) return NAMEMAP[s];
+  if (ALIAS[f]) return ALIAS[f];
+  return null;
 }
-/* ---------- network live window: Sat 9:00 AM - Sun 1:00 PM ET ----------
-   The follow graph is scraped once a week (Sat ~7 AM); the Network tab only
-   exists inside this window so stale data is never shown. Outside it the tab
-   button is hidden and any navigation to it falls back to Explore. */
-function networkWindowOpen(){
-  try{
-    var parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"numeric",hour12:false}).formatToParts(new Date());
-    var day=null,hour=-1;
-    parts.forEach(function(p){ if(p.type==="weekday")day=p.value; else if(p.type==="hour")hour=parseInt(p.value,10); });
-    if(day==="Sat") return hour>=9;
-    if(day==="Sun") return hour<13;
-    return false;
-  }catch(e){ return true; }
+function latestFor(engine) {
+  const rows = AIROWS.filter(r => r.engine === engine);
+  const d = maxDate(rows.map(r => r.date));
+  return { date: d, rows: rows.filter(r => r.date === d) };
 }
-if(!window.__netWatch){ window.__netWatch=setInterval(function(){
-  if(typeof S!=="undefined"&&S.tab==="network"&&!networkWindowOpen()) setTab("explore");
-},60000); }
-function renderNetworkHTML(){
-  if(S.mode==="venues")
-    return '<div class="page-head pg-hero"><div><h1>Network</h1>'+
-      '<p>Who follows who across the market.</p></div>'+pgPull(dataPullDate())+'</div>'+
-      '<div class="ai-empty" style="margin:0 max(28px,4vw)"><h3>No venue network data yet</h3>'+
-      '<p>Follow data covers photo, video and drone businesses. Venue follow data isn\u2019t collected.</p></div>';
-  var h='<div class="hub-wrap"><div class="hub-stage" id="hubStage" tabindex="0" aria-label="Interactive network map. Scroll to zoom, drag to pan.">'
-    +'<svg class="hubsvg" id="hubSvg" viewBox="0 0 920 920" role="img" aria-label="Businesses arranged by connectivity: most connected at the center"></svg>'
-    +'<div class="hub-zoom"><button id="hubZoomIn" aria-label="Zoom in">+</button>'
-    +'<button id="hubZoomOut" aria-label="Zoom out">\u2212</button>'
-    +'<button id="hubZoomReset" class="wide" aria-label="Reset view">Reset</button>'
-    +'<span id="hubZoomPct" class="hub-pct">100%</span></div>'
-    +'<div class="hub-detail" id="hubDetail" hidden><button class="hub-detail-x" id="hubDetailX" aria-label="Close details">\u00d7</button><div id="hubDetailBody"></div></div>'
-    +'<div class="hub-ovl hub-ovl-title"><h1 class="hub-h1">Network</h1>'
-    +'<div class="hub-legend">'
-    +'<span><i style="background:'+HUBC.strong+'"></i>Strongly connected</span>'
-    +'<span><i style="background:'+HUBC.connected+'"></i>Connected</span>'
-    +'<span><i style="background:'+HUBC.light+'"></i>Lightly linked</span>'
-    +'<span><i style="background:'+HUBC.independent+'"></i>Independent</span>'
-    +'</div></div>'
-    +'<div class="hub-ovl hub-ovl-pull">'+pgPull(dataPullDate())+'</div>'
-    +'<div class="hub-ovl hub-ovl-tools">'
-    +'<input id="hubSearch" class="hub-search" type="search" placeholder="Find a business\u2026" aria-label="Find a business">'
-    +'<span class="hub-hint" id="hubHint">Scroll to zoom \u00b7 drag to pan \u00b7 double-click a dot to focus</span></div>'
-    +'</div></div>';
-  var iso=FGN.nodes.filter(function(n){ return n.deg===0; });
-  if(iso.length){
-    h+='<p class="hint" style="margin:16px max(28px,4vw) 0">No verified links yet \u2014 '+iso.length+' businesses:</p>'
-      +'<div class="chips" style="margin:0 max(28px,4vw) 20px">'+iso.map(netChip).join("")+'</div>';
+const ENGINES = ['ChatGPT', 'Gemini'];
+const AI = {};
+ENGINES.forEach(e => AI[e] = latestFor(e));
+function aiCompute(lane) {
+  const pids = new Set(ACTIVE.filter(p => !lane || lane === 'all' || (p.services || []).indexOf(lane) >= 0).map(p => p.id));
+  const res = { prompts: pids.size, den: {}, ids: {}, off: {}, answered: 0 };
+  ENGINES.forEach(e => { res.den[e] = 0; });
+  AIROWS.length;
+  ENGINES.forEach(e => {
+    AI[e].rows.forEach(r => {
+      if (!pids.has(r.prompt_id) || !r.completed) return;
+      res.den[e]++; res.answered++;
+      const seen = new Set();
+      (r.named || []).forEach(n => {
+        const id = matchName(n);
+        if (id) { if (seen.has(id)) return; seen.add(id); const o = res.ids[id] = res.ids[id] || { ChatGPT: 0, Gemini: 0, total: 0 }; o[e]++; o.total++; }
+        else if (!/[$()\[\];,]/.test(n)) { const k = flat(n); const o = res.off[k] = res.off[k] || { name: clean(n), ChatGPT: 0, Gemini: 0, total: 0 }; o[e]++; o.total++; }
+      });
+    });
+  });
+  return res;
+}
+
+/* ---------- web sweep ---------- */
+const SW = D.webSweepHistory.slice().sort((a, b) => a.date < b.date ? -1 : 1);
+function sweepInfo(w) {
+  if (!w) return null;
+  const pages = w.pages || {}, ks = Object.keys(pages);
+  let ch = 0, un = 0; const changed = [];
+  ks.forEach(k => { const s = (pages[k].status || '').toLowerCase(); if (s === 'changed') { ch++; changed.push({ id: k, note: pages[k].note }); } else if (s === 'unreachable') un++; });
+  const of = w.of_total != null ? w.of_total : ks.length;
+  const fetched = w.fetched != null ? w.fetched : ks.length - un;
+  return { date: w.date, label: w.run_label, of, fetched, ch, un, changed };
+}
+
+/* ---------- ui bits ---------- */
+const state = { view: 'brief', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false, aiZero: false };
+const stage = $('#stage'), drawer = $('#drawer');
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800); }
+function copyText(text, msg) {
+  const done = () => toast(msg || 'Copied');
+  const fb = () => { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Copy blocked. Select the text manually.'); } ta.remove(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fb); else fb();
+}
+function spark(a, w, h) {
+  w = w || 78; h = h || 24;
+  if (!a || a.length < 2) return '<span class="muted">—</span>';
+  const mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const pts = a.map((v, i) => [(i / (a.length - 1)) * (w - 4) + 2, h - 3 - ((v - mn) / r) * (h - 6)]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const l = pts[pts.length - 1];
+  return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '"><path d="' + d + '" fill="none" stroke="#5ea6e6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + l[0].toFixed(1) + '" cy="' + l[1].toFixed(1) + '" r="2.2" fill="#8fcaff"/></svg>';
+}
+function bigChart(a, dates) {
+  const w = 396, h = 92, pl = 4, pr = 4, pt = 8, pb = 18;
+  const mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const pts = a.map((v, i) => [pl + (i / (a.length - 1)) * (w - pl - pr), pt + (h - pt - pb) - ((v - mn) / r) * (h - pt - pb)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const area = line + 'L' + pts[pts.length - 1][0] + ' ' + (h - pb) + 'L' + pts[0][0] + ' ' + (h - pb) + 'Z';
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Follower history"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ea6e6" stop-opacity=".28"/><stop offset="1" stop-color="#5ea6e6" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#gf)"/><path d="' + line + '" fill="none" stroke="#8fcaff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<text x="' + pl + '" y="' + (h - 3) + '" fill="#6f7c90" font-size="10.5">' + esc(dshort(dates[0])) + ' · ' + fmt(a[0]) + '</text>' +
+    '<text x="' + (w - pr) + '" y="' + (h - 3) + '" text-anchor="end" fill="#a6b1c3" font-size="10.5">' + esc(dshort(dates[dates.length - 1])) + ' · ' + fmt(a[a.length - 1]) + '</text></svg>';
+}
+const pill = (t, c) => '<span class="pill ' + (c || '') + '">' + esc(t) + '</span>';
+const RSHORT = { slc: 'St. Lawrence', adjacent: 'Adjacent', unconfirmed: 'Unconfirmed' };
+const regPill = (r, long) => pill(long ? (REGION[r] || r) : (RSHORT[r] || r), r === 'slc' ? 'ice' : r === 'adjacent' ? 'tan' : 'gray');
+const empty = (t, s) => '<div class="empty"><b>' + esc(t) + '</b>' + (s ? '<span>' + esc(s) + '</span>' : '') + '</div>';
+function countUp(root) {
+  if (REDUCED) return;
+  $$('[data-count]', root).forEach(el => {
+    const to = +el.dataset.count, t0 = performance.now(), dur = 750;
+    const step = t => { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.firstChild.nodeValue = fmt(Math.round(to * e)); if (p < 1) requestAnimationFrame(step); };
+    el.firstChild.nodeValue = '0'; requestAnimationFrame(step);
+  });
+}
+const num = n => '<span class="num" data-count="' + n + '">' + fmt(n) + '</span>';
+
+/* ---------- cells ---------- */
+function cFollowers(b) {
+  if (b.ig.state === 'live') return '<span class="val">' + fmt(b.ig.count) + '</span>';
+  if (b.ig.state === 'none') return '<span class="muted">—</span>';
+  return '<span class="dated" data-tip="Not refreshed today. Excluded from rankings.">' + fmt(b.ig.count) + '<small>' + (b.ig.date ? 'as of ' + esc(dshort(b.ig.date)) : 'carried') + '</small></span>';
+}
+function cD7(b) {
+  if (b.ig.state !== 'live' || b.d7 == null) return '<span class="muted">—</span>';
+  return '<span class="val ' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span>';
+}
+function cLast(b) {
+  if (!b.last.date) return '<span class="muted">—</span>';
+  const a = age(b.last.date);
+  if (b.last.live) return '<span class="val">' + esc(dshort(b.last.date)) + '<small>' + ageText(a) + '</small></span>';
+  return '<span class="dated">' + esc(dshort(b.last.date)) + '<small>unverified</small></span>';
+}
+function cPrice(b, k) {
+  const v = b.price[k]; if (v == null) return '<span class="muted">—</span>';
+  if (b.pst === 'ok') return '<span class="val">' + money(v) + '</span>';
+  return '<span class="dated">' + money(v) + '<small>as of ' + esc(dshort(b.pdate)) + '</small></span>';
+}
+function cRev(b) {
+  if (b.rev.count == null) return '<span class="muted">—</span>';
+  const t = fmt(b.rev.count) + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) : '');
+  return b.rev.live ? '<span class="val">' + t + '</span>' : '<span class="dated">' + t + '<small>as of ' + esc(dshort(b.rev.date)) + '</small></span>';
+}
+
+/* ---------- BRIEF ---------- */
+function fchips() {
+  return '<div class="fresh">' + SS.map(s => {
+    const v = s.date ? ageText(s.age) : 'No data';
+    const a = s.st === 'ok' ? s.cadence : s.st === 'late' ? 'Late. ' + s.cadence : s.st === 'stalled' ? 'Stalled since ' + dshort(s.date) : 'Not recorded';
+    return '<button class="fchip ' + s.st + '" data-go="data" data-tip="' + esc(s.feeds) + '"><span class="l"><i class="dot ' + (s.st === 'ok' ? 'ok' : s.st) + '"></i>' + esc(s.label) + '</span><span class="v">' + esc(v) + '</span><span class="a">' + esc(a) + '</span></button>';
+  }).join('') + '</div>';
+}
+function panel(title, sub, body, link) {
+  return '<section class="panel"><div class="panel-h"><h2>' + esc(title) + '</h2>' + (link ? '<button class="link" data-go="' + link[1] + '">' + esc(link[0]) + '</button>' : '<span class="sub">' + esc(sub || '') + '</span>') + '</div><div class="panel-b">' + body + '</div></section>';
+}
+function liRow(b, rt, sb) {
+  return '<button class="li" data-open="' + esc(b.id) + '"><span><span class="nm">' + esc(b.name) + '</span><br><span class="sb">' + esc(sb || b.town) + '</span></span><span class="rt">' + rt + '</span></button>';
+}
+function viewBrief() {
+  const n = B.length;
+  const reg = { slc: 0, adjacent: 0, unconfirmed: 0 }; B.forEach(b => reg[b.region] = (reg[b.region] || 0) + 1);
+  const wed = B.map(b => b.wedLive).filter(x => x != null), ses = B.map(b => b.sessLive).filter(x => x != null);
+  const withHandle = B.filter(b => b.c.ig_handle).length;
+  const tiles = '<div class="tiles">' +
+    '<div class="tile"><div class="n">' + num(n) + '</div><div class="t">Businesses tracked</div></div>' +
+    '<div class="tile"><div class="n">' + num(LIVEIG.length) + '<small>of ' + withHandle + '</small></div><div class="t">Instagram live today</div></div>' +
+    '<div class="tile"><div class="n">' + (wed.length ? money(median(wed)) : '—') + '</div><div class="t">Median wedding, from · ' + wed.length + ' priced</div></div>' +
+    '<div class="tile"><div class="n">' + (ses.length ? money(median(ses)) : '—') + '</div><div class="t">Median session, from · ' + ses.length + ' priced</div></div></div>' +
+    '<div class="stack">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<i style="flex-grow:' + (reg[r] || 0) + ';background:' + RCOL[r] + '"></i>').join('') + '</div>' +
+    '<div class="legend">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<span><i style="background:' + RCOL[r] + '"></i>' + REGION[r] + ' ' + (reg[r] || 0) + '</span>').join('') + '</div>';
+
+  const mv = LIVEIG.filter(b => b.d7 != null).sort((a, b) => Math.abs(b.d7) - Math.abs(a.d7) || a.name.localeCompare(b.name)).slice(0, 5);
+  const ig = SSBY.ig;
+  let movers;
+  if (ig.st === 'stalled') movers = '<div class="banner red">Instagram has not refreshed since ' + esc(dshort(ig.date)) + '. Movement is hidden until it does.</div>';
+  else movers = mv.length ? '<div class="list">' + mv.map(b => liRow(b, '<span class="' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span><small>' + fmt(b.ig.count) + '</small>')).join('') + '</div>' : empty('No movement yet', 'Needs 7 days of live history.');
+
+  const ac = aiCompute('all');
+  const top = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).sort((a, b) => b.o.total - a.o.total || a.b.name.localeCompare(b.b.name)).slice(0, 5);
+  const aiBody = !ac.answered ? empty('No audit recorded') : SSBY.ai.st === 'stalled' ? '<div class="banner red">The latest audit is from ' + esc(dshort(DATES.ai)) + ' (' + ageText(SSBY.ai.age) + '). Nothing is ranked from it until a new audit is recorded.</div>' :
+    '<div class="list">' + top.map(t => liRow(t.b, '<span class="num">' + t.o.total + '</span><small>of ' + ac.answered + ' answers</small>', 'ChatGPT ' + t.o.ChatGPT + ' of ' + ac.den.ChatGPT + ' · Gemini ' + t.o.Gemini + ' of ' + ac.den.Gemini)).join('') + '</div>';
+
+  const bands = [['Past week', 0, 7, '#8fcaff'], ['8 to 30 days', 8, 30, '#5ea6e6'], ['31 to 90 days', 31, 90, '#d2bf9f'], ['Over 90 days', 91, 1e9, '#6f7b8f']];
+  const tr = LIVEIG.filter(b => b.last.date);
+  const bc = bands.map(x => tr.filter(b => { const a = age(b.last.date); return a >= x[1] && a <= x[2]; }).length);
+  const recBody = tr.length ? '<div class="stack" style="height:12px;margin-top:6px">' + bands.map((x, i) => '<i style="flex-grow:' + bc[i] + ';background:' + x[3] + '"></i>').join('') + '</div>' +
+    '<dl class="kv" style="margin-top:14px">' + bands.map((x, i) => '<dt><span class="legend" style="margin:0"><span><i style="background:' + x[3] + '"></i>' + x[0] + '</span></span></dt><dd>' + bc[i] + ' of ' + tr.length + '</dd>').join('') + '</dl>' : empty('No live posting data');
+
+  const sw = sweepInfo(SW[SW.length - 1]), ws = SSBY.web;
+  let webBody = '';
+  if (ws.st === 'stalled' || ws.st === 'late') webBody += '<div class="banner ' + (ws.st === 'stalled' ? 'red' : 'amber') + '" style="margin-bottom:12px">Last sweep was ' + esc(dshort(ws.date)) + ' (' + ageText(ws.age) + '). Prices and offerings below may have changed since.</div>';
+  webBody += sw ? '<dl class="kv"><dt>Last sweep</dt><dd>' + esc(dshort(sw.date)) + '</dd><dt>Pages checked</dt><dd>' + sw.fetched + ' of ' + sw.of + '</dd><dt>Changed</dt><dd>' + sw.ch + '</dd><dt>Unreachable</dt><dd>' + sw.un + '</dd></dl>' : empty('No sweep recorded');
+
+  const recent = B.filter(b => b.c.discovered_date && age(b.c.discovered_date) <= 30).sort((a, b) => a.c.discovered_date < b.c.discovered_date ? 1 : -1).slice(0, 5);
+  const addBody = recent.length ? '<div class="list">' + recent.map(b => liRow(b, '<span class="flat">' + esc(dshort(b.c.discovered_date)) + '</span>')).join('') + '</div>' : empty('No additions in 30 days');
+
+  return '<div class="view brief">' +
+    '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + pill(LIVEIG.length + ' of ' + B.filter(b => b.c.ig_handle).length + ' Instagram accounts live', LIVEIG.length ? 'ice' : 'amber') + '</div>' +
+    fchips() +
+    '<div class="row3">' + panel('Market', 'Counts from the roster', tiles) + panel('Instagram movement', 'Last 7 days, live accounts', movers, ['All businesses', 'market']) + panel('AI assistants', 'Latest audit ' + dshort(DATES.ai) + ' · directional', aiBody, ['Open', 'ai']) + '</div>' +
+    '<div class="row3b">' + panel('Posting recency', 'Live Instagram accounts', recBody) + panel('Website watch', 'Weekly sweep', webBody, ['Details', 'data']) + panel('Added to roster', 'Discovery, not market growth', addBody) + '</div></div>';
+}
+
+/* ---------- MARKET ---------- */
+const COLS = [
+  { k: 'name', l: 'Business', get: b => b.name.toLowerCase() },
+  { k: 'region', l: 'Region', cls: 'c-reg', get: b => b.region },
+  { k: 'lanes', l: 'Lanes', cls: 'c-lanes', ns: true },
+  { k: 'fol', l: 'Followers', r: 1, get: b => b.ig.state === 'live' ? b.ig.count : null },
+  { k: 'd7', l: '7 days', r: 1, cls: 'c-d7', get: b => b.ig.state === 'live' ? b.d7 : null },
+  { k: 'trend', l: 'Trend', cls: 'c-trend', ns: true },
+  { k: 'last', l: 'Last post', cls: 'c-last', get: b => b.last.live ? dn(b.last.date) : null },
+  { k: 'wed', l: 'Wedding from', r: 1, get: b => b.wedLive },
+  { k: 'sess', l: 'Session from', r: 1, get: b => b.sessLive },
+  { k: 'rev', l: 'Reviews', r: 1, get: b => b.rev.live ? b.rev.count : null }
+];
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  return B.filter(b => (state.lane === 'all' || b.lanes.indexOf(state.lane) >= 0) && (state.region === 'all' || b.region === state.region) &&
+    (!q || (b.name + ' ' + b.town + ' ' + b.county).toLowerCase().indexOf(q) >= 0));
+}
+function sorted(list) {
+  const col = COLS.find(c => c.k === state.sort.k) || COLS[3], d = state.sort.dir;
+  return list.slice().sort((a, b) => {
+    const x = col.get(a), y = col.get(b);
+    if (x == null && y == null) return a.name.localeCompare(b.name);
+    if (x == null) return 1; if (y == null) return -1;
+    if (x < y) return -d; if (x > y) return d;
+    return a.name.localeCompare(b.name);
+  });
+}
+function spreadStrip(list) {
+  const pts = list.filter(b => b.wedLive != null);
+  if (pts.length < 3) return '<div class="spread"><span class="t">Wedding prices</span><span class="muted" style="font-size:12px">Fewer than 3 current prices in this view.</span><span></span></div>';
+  const vals = pts.map(b => b.wedLive), mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), r = mx - mn || 1, md = median(vals);
+  const x = v => 6 + ((v - mn) / r) * 588;
+  const dots = pts.map(b => '<circle class="sd" data-open="' + esc(b.id) + '" data-tip="' + esc(b.name) + ' · ' + money(b.wedLive) + '" cx="' + x(b.wedLive).toFixed(1) + '" cy="17" r="4.5" fill="#5ea6e6" fill-opacity=".55" stroke="#8fcaff" stroke-opacity=".7" style="cursor:pointer"/>').join('');
+  return '<div class="spread"><span class="t"><b>Wedding, from</b><br>' + pts.length + ' current prices</span><svg viewBox="0 0 600 34" preserveAspectRatio="none"><line x1="6" x2="594" y1="17" y2="17" stroke="rgba(150,180,220,.18)"/><line x1="' + x(md).toFixed(1) + '" x2="' + x(md).toFixed(1) + '" y1="4" y2="30" stroke="#f2b552" stroke-width="1.5"/>' + dots + '</svg><span class="t" style="text-align:right">' + money(mn) + ' to ' + money(mx) + '<br>median <b>' + money(md) + '</b></span></div>';
+}
+function tableBiz(list) {
+  const head = COLS.map(c => '<th class="' + (c.cls || '') + (c.r ? ' r' : '') + (c.ns ? '' : ' s') + (state.sort.k === c.k ? ' on' : '') + '"' + (c.ns ? '' : ' data-sort="' + c.k + '"') + '>' + esc(c.l) + (state.sort.k === c.k ? '<span class="ar">' + (state.sort.dir < 0 ? '↓' : '↑') + '</span>' : '<span class="ar"></span>') + '</th>').join('');
+  const body = list.map(b => '<tr data-open="' + esc(b.id) + '" aria-selected="' + (state.sel === b.id) + '"><td class="nm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></td><td class="c-reg">' + regPill(b.region) + '</td><td class="c-lanes"><div class="lanes">' + b.lanes.slice(0, 3).map(l => '<span class="lane">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="lane">+' + (b.lanes.length - 3) + '</span>' : '') + '</div></td><td class="r">' + cFollowers(b) + '</td><td class="r c-d7">' + cD7(b) + '</td><td class="c-trend">' + (b.ig.state === 'live' ? spark(b.spark) : '<span class="muted">—</span>') + '</td><td class="c-last">' + cLast(b) + '</td><td class="r">' + cPrice(b, 'wed') + '</td><td class="r">' + cPrice(b, 'sess') + '</td><td class="r">' + cRev(b) + '</td></tr>').join('');
+  return '<table class="tbl"><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>';
+}
+function tableVen() {
+  const q = state.q.trim().toLowerCase();
+  let list = V.filter(x => (state.region === 'all' || x.region === state.region) && (!q || (x.name + ' ' + x.town).toLowerCase().indexOf(q) >= 0));
+  list = list.sort((a, b) => (b.v.capacity_num || 0) - (a.v.capacity_num || 0) || a.name.localeCompare(b.name));
+  const body = list.map(x => '<tr data-open="' + esc(x.id) + '" aria-selected="' + (state.sel === x.id) + '"><td class="nm"><b>' + esc(x.name) + '</b><span>' + esc(x.town) + '</span></td><td>' + regPill(x.region) + '</td><td class="r">' + (x.v.capacity_num ? fmt(x.v.capacity_num) : '<span class="muted">—</span>') + '</td><td class="r">' + (x.ig.state === 'live' ? '<span class="val">' + fmt(x.ig.count) + '</span>' : '<span class="muted">—</span>') + '</td><td style="white-space:normal;max-width:420px;color:var(--fg-2);font-size:12.5px">' + esc(clean(x.v.price_note || '').slice(0, 130)) + '</td></tr>').join('');
+  return { n: list.length, html: '<table class="tbl"><thead><tr><th>Venue</th><th>Region</th><th class="r">Capacity</th><th class="r">Followers</th><th>Price note</th></tr></thead><tbody>' + body + '</tbody></table>' };
+}
+function viewMarket() {
+  const lanes = [['all', 'All lanes']].concat(LANES);
+  return '<div class="view market"><div class="toolbar">' +
+    '<div class="seg sm" id="kindseg" role="tablist"><i class="thumb"></i><button data-kind="biz" aria-selected="' + (state.kind === 'biz') + '">Businesses</button><button data-kind="ven" aria-selected="' + (state.kind === 'ven') + '">Venues</button></div>' +
+    '<div class="search"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg><input id="q" type="search" placeholder="Search name or town" value="' + esc(state.q) + '" autocomplete="off"><kbd>/</kbd></div>' +
+    '<div class="chips" id="lanechips" ' + (state.kind === 'ven' ? 'hidden' : '') + '>' + lanes.map(l => '<button class="fc" data-lane="' + l[0] + '" aria-pressed="' + (state.lane === l[0]) + '">' + l[1] + '</button>').join('') + '</div>' +
+    '<div class="chips">' + [['all', 'All regions'], ['slc', 'St. Lawrence'], ['adjacent', 'Adjacent'], ['unconfirmed', 'Unconfirmed']].map(r => '<button class="fc" data-reg="' + r[0] + '" aria-pressed="' + (state.region === r[0]) + '">' + r[1] + '</button>').join('') + '</div>' +
+    '<span class="spacer"></span><span class="count" id="cnt"></span><button class="btn" id="csv">Copy CSV</button></div>' +
+    '<div id="spreadwrap"></div><div class="tblwrap" id="tw"></div></div>';
+}
+function fillMarket() {
+  const tw = $('#tw'); if (!tw) return;
+  const keep = tw.scrollTop;
+  if (state.kind === 'ven') {
+    const t = tableVen(); tw.innerHTML = t.html; $('#cnt').textContent = t.n + ' of ' + V.length + ' venues'; $('#spreadwrap').innerHTML = '';
+  } else {
+    const list = filtered(); tw.innerHTML = tableBiz(sorted(list)); $('#cnt').textContent = list.length + ' of ' + B.length + ' businesses'; $('#spreadwrap').innerHTML = spreadStrip(list);
   }
-  return h;
+  tw.scrollTop = keep;
 }
-/* post-render wiring: living-constellation hub — pan, zoom, focus, search */
-function networkInit(){
-  var T=hubTiers();
-  var svg=$("#hubSvg"); if(!svg||!T.all.length) return;
-  var NS="http://www.w3.org/2000/svg";
-  var cx=460, cy=460;
-  var tiers=[
-    {key:"strong",      color:HUBC.strong,      r:150, spin:90},
-    {key:"connected",   color:HUBC.connected,   r:225, spin:130},
-    {key:"light",       color:HUBC.light,       r:300, spin:170},
-    {key:"independent", color:HUBC.independent, r:375, spin:210}
+function csvBiz() {
+  const rows = [['name', 'town', 'county', 'region', 'lanes', 'instagram_followers_live', 'followers_7d', 'last_post_live', 'wedding_from_current', 'session_from_current', 'reviews_current', 'rating_current', 'website']];
+  sorted(filtered()).forEach(b => rows.push([b.name, b.town, b.county, b.region, b.lanes.map(l => LANE_NAME[l]).join('/'), b.ig.state === 'live' ? b.ig.count : '', b.d7 == null ? '' : b.d7, b.last.live ? b.last.date : '', b.wedLive == null ? '' : b.wedLive, b.sessLive == null ? '' : b.sessLive, b.rev.live ? b.rev.count : '', b.rev.live && b.rev.rating != null ? b.rev.rating : '', b.c.website || '']));
+  return rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(',')).join('\n');
+}
+
+/* ---------- DRAWER ---------- */
+function fig(v, k, o) { o = o || {}; return '<div class="fig"><div class="v ' + (o.dated ? 'dated' : '') + '">' + v + '</div><div class="k ' + (o.late ? 'late' : '') + '">' + k + '</div></div>'; }
+function aiFor(id) {
+  const ac = aiCompute('all'), o = ac.ids[id] || { ChatGPT: 0, Gemini: 0, total: 0 };
+  return { o, ac };
+}
+function openBiz(id) {
+  const b = BY[id]; if (!b) return;
+  const c = b.c, det = DET[id] || {}, wi = WI[id] || {};
+  const links = [];
+  if (c.website) links.push('<a href="' + esc(/^https?:/.test(c.website) ? c.website : 'https://' + c.website) + '" target="_blank" rel="noopener">Website</a>');
+  if (c.ig_handle) links.push('<a href="https://instagram.com/' + esc(c.ig_handle) + '" target="_blank" rel="noopener">Instagram</a>');
+  if (c.review_url) links.push('<a href="' + esc(c.review_url) + '" target="_blank" rel="noopener">Reviews</a>');
+  if (c.pricing_url) links.push('<a href="' + esc(c.pricing_url) + '" target="_blank" rel="noopener">Pricing page</a>');
+  const dated = b.ig.state !== 'live';
+  const figs = '<div class="figs">' +
+    fig(b.ig.state === 'none' ? '—' : fmt(b.ig.count), b.ig.state === 'live' ? 'Instagram followers' : b.ig.state === 'none' ? 'No Instagram pull' : 'Followers, ' + (b.ig.date ? 'as of ' + esc(dshort(b.ig.date)) : 'carried'), { dated: dated && b.ig.state !== 'none', late: dated && b.ig.state !== 'none' }) +
+    fig(b.ig.state === 'live' && b.d7 != null ? '<span class="' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span>' : '—', 'Followers, 7 days') +
+    fig(c.last_post_date ? esc(dshort(c.last_post_date)) : '—', b.last.live ? 'Last post, ' + ageText(age(c.last_post_date)) : c.last_post_date ? 'Last post, unverified' : 'Last post', { dated: c.last_post_date && !b.last.live }) +
+    fig(c.review_count != null ? fmt(c.review_count) + (c.review_rating != null ? ' · ' + Number(c.review_rating).toFixed(1) : '') : '—', c.review_count != null ? (b.rev.live ? 'Reviews' : 'Reviews, as of ' + esc(dshort(b.rev.date))) : 'Reviews', { dated: c.review_count != null && !b.rev.live, late: c.review_count != null && !b.rev.live }) +
+    fig(b.price.wed != null ? money(b.price.wed) : '—', b.pst === 'ok' || b.price.wed == null ? 'Wedding, from' : 'Wedding, as of ' + esc(dshort(b.pdate)), { dated: b.price.wed != null && b.pst !== 'ok', late: b.price.wed != null && b.pst !== 'ok' }) +
+    fig(b.price.sess != null ? money(b.price.sess) : '—', b.pst === 'ok' || b.price.sess == null ? 'Session, from' : 'Session, as of ' + esc(dshort(b.pdate)), { dated: b.price.sess != null && b.pst !== 'ok', late: b.price.sess != null && b.pst !== 'ok' }) + '</div>';
+  const hs = D.igFollowersHistory[c.ig_handle];
+  const chart = hs && hs.length > 2 ? '<div class="dr-sec dr-chart"><h3>Followers' + (b.ig.state === 'live' ? '' : ', history to ' + esc(dshort(hs[hs.length - 1].date))) + '</h3>' + bigChart(hs.slice(-30).map(e => e.count), hs.slice(-30).map(e => e.date)) + '</div>' : '';
+  const about = clean(det.blurb || c.biography || '');
+  const svc = (det.services && det.services.length ? det.services : c.services || []).map(clean).filter(s => s && !/^events?$/i.test(s));
+  const cov = (det.coverage ? [].concat(det.coverage) : wi.coverage || []).map(clean).filter(Boolean);
+  const pr = c.pricing ? '<div class="dr-sec"><h3>Published pricing · verified ' + esc(dshort(b.pdate)) + (b.pst === 'ok' ? '' : ' · ' + STTXT[b.pst].toLowerCase()) + '</h3><p class="dr-text">' + esc(clean(c.pricing)) + '</p></div>' : '';
+  const ai = aiFor(id);
+  const aiSec = ai.ac.answered ? '<div class="dr-sec"><h3>In AI assistant answers · ' + esc(dshort(DATES.ai)) + ', directional</h3><div class="ailine"><span>ChatGPT</span><span>' + ai.o.ChatGPT + ' of ' + ai.ac.den.ChatGPT + '</span><span>Gemini</span><span>' + ai.o.Gemini + ' of ' + ai.ac.den.Gemini + '</span></div></div>' : '';
+  const conn = D.connections.filter(x => flat(x.a) === flat(b.name) || flat(x.b) === flat(b.name));
+  const connSec = conn.length ? '<div class="dr-sec"><h3>Worked with</h3><div class="tags">' + conn.map(x => pill((flat(x.a) === flat(b.name) ? x.b : x.a) + (x.type ? ' · ' + x.type : ''), 'gray')).join('') + '</div></div>' : '';
+  const gaps = []; if (!c.website) gaps.push('No website'); if (!c.pricing) gaps.push('No published pricing'); if (!c.ig_handle) gaps.push('No Instagram handle'); else if (b.ig.state === 'none') gaps.push('Instagram not pulled daily'); if (c.review_count == null) gaps.push('No reviews found');
+  const gapSec = gaps.length ? '<div class="dr-sec"><h3>Not available</h3><div class="gaps">' + gaps.map(g => pill(g, 'gray')).join('') + '</div></div>' : '';
+  drawer.innerHTML = '<div class="dr-head"><button class="dr-x" data-close aria-label="Close">×</button><h2>' + esc(b.name) + '</h2><div class="where">' + esc(b.town) + (b.county && b.region !== 'slc' ? ' · ' + esc(b.county) + ' County' : '') + '</div><div class="dr-links">' + regPill(b.region) + links.join('') + '</div></div>' +
+    '<div class="dr-body">' + figs + chart + (about ? '<div class="dr-sec"><h3>About</h3><p class="dr-text">' + esc(about) + '</p></div>' : '') +
+    (svc.length ? '<div class="dr-sec"><h3>Services</h3><div class="tags">' + svc.map(s => pill(s, '')).join('') + '</div></div>' : '') +
+    (cov.length ? '<div class="dr-sec"><h3>Coverage area</h3><div class="tags">' + cov.map(s => pill(s, 'tan')).join('') + '</div></div>' : '') + pr + aiSec + connSec + gapSec + '</div>';
+  showDrawer(id);
+}
+function openVen(id) {
+  const x = VBY[id]; if (!x) return; const v = x.v;
+  const links = [];
+  if (v.website) links.push('<a href="' + esc(v.website) + '" target="_blank" rel="noopener">Website</a>');
+  if (v.ig_handle) links.push('<a href="https://instagram.com/' + esc(v.ig_handle) + '" target="_blank" rel="noopener">Instagram</a>');
+  const figs = '<div class="figs">' + fig(v.capacity_num ? fmt(v.capacity_num) : '—', 'Guest capacity') + fig(x.ig.state === 'live' ? fmt(x.ig.count) : '—', x.ig.state === 'live' ? 'Instagram followers' : 'Instagram not pulled daily') + '</div>';
+  const list = (t, a) => a && a.length ? '<div class="dr-sec"><h3>' + t + '</h3><div class="tags">' + a.map(s => pill(clean(s), '')).join('') + '</div></div>' : '';
+  drawer.innerHTML = '<div class="dr-head"><button class="dr-x" data-close aria-label="Close">×</button><h2>' + esc(x.name) + '</h2><div class="where">' + esc(v.address || x.town) + '</div><div class="dr-links">' + regPill(x.region) + links.join('') + '</div></div>' +
+    '<div class="dr-body">' + figs + (v.price_note ? '<div class="dr-sec"><h3>Price note</h3><p class="dr-text">' + esc(clean(v.price_note)) + '</p></div>' : '') +
+    (v.setting ? '<div class="dr-sec"><h3>Setting</h3><p class="dr-text">' + esc(clean(v.setting)) + (v.season ? ' · ' + esc(clean(v.season)) : '') + '</p></div>' : '') + list('Spaces', v.spaces) + list('Services', (v.services || []).filter(s => !/^events?$/i.test(s))) + '</div>';
+  showDrawer(id);
+}
+function showDrawer(id) {
+  state.sel = id; drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); stage.classList.add('has-drawer');
+  $$('tr[data-open]').forEach(tr => tr.setAttribute('aria-selected', String(tr.dataset.open === id)));
+  $$('.bub').forEach(g => g.classList.toggle('sel', g.dataset.open === id));
+  const body = $('.dr-body', drawer); if (body) body.scrollTop = 0;
+}
+function closeDrawer() {
+  state.sel = null; drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); stage.classList.remove('has-drawer');
+  $$('tr[data-open]').forEach(tr => tr.setAttribute('aria-selected', 'false')); $$('.bub.sel').forEach(g => g.classList.remove('sel'));
+}
+function openAny(id) { if (id.indexOf('v:') === 0) openVen(id); else openBiz(id); }
+
+/* ---------- MAP (tile-free, schematic) ---------- */
+const MK = 423.2, MC = 0.716, MX0 = -76.5, MY0 = 45.1;
+const proj = (lat, lng) => [(lng - MX0) * MC * MK, (MY0 - lat) * MK];
+const poly = pts => pts.map((p, i) => { const q = proj(p[1], p[0]); return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join('');
+const RIVER = [[-76.33, 44.13], [-76.08, 44.24], [-75.92, 44.34], [-75.7, 44.52], [-75.5, 44.70], [-75.2, 44.86], [-74.9, 44.99], [-74.7, 45.0]];
+const tname = t => String(t || '').replace(/,\s*NY.*$/, '').replace(/\s*[\u2014(].*$/, '').trim() || 'Unknown';
+let MAPPTS = [], MAPMISS = 0, curBox = [0, 0, 1000, 677];
+function mapPoints() {
+  const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {}, cnt = {};
+  MAPPTS = []; MAPMISS = 0;
+  const place = (id, name, town, region, kind, ll, ig) => {
+    if (!ll) { if (kind === 'b') MAPMISS++; return; }
+    const i = cnt[town] = (cnt[town] || 0) + 1, p = proj(ll[0], ll[1]);
+    const ang = i * 2.4, rr = i > 1 ? 9 * Math.sqrt(i - 1) : 0;
+    MAPPTS.push({ id, name, town, tn: tname(town), region, kind, x: p[0] + Math.cos(ang) * rr, y: p[1] + Math.sin(ang) * rr, ig });
+  };
+  B.forEach(b => { const c = coords[al[b.town] || b.town]; place(b.id, b.name, b.town, b.region, 'b', c ? [c.lat, c.lng] : null, b.ig); });
+  if (state.mapVen) V.forEach(x => place(x.id, x.name, x.town, x.region, 'v', x.v.lat != null ? [x.v.lat, x.v.lng] : null, x.ig));
+}
+function boxFor(which) {
+  if (which === 'all') return [0, 0, 1000, 677];
+  const pts = MAPPTS.filter(p => p.region === 'slc'); if (!pts.length) return [0, 0, 1000, 677];
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  let w = Math.max(x1 - x0 + 120, (y1 - y0 + 120) * 1000 / 677, 300), h = w * 677 / 1000;
+  return [(x0 + x1) / 2 - w / 2, (y0 + y1) / 2 - h / 2, w, h];
+}
+function applyBox(b) { const s = $('#mapsvg'); if (!s) return; curBox = b; s.setAttribute('viewBox', b.map(v => v.toFixed(1)).join(' ')); s.style.setProperty('--k', (b[2] / 1000).toFixed(4)); }
+function animBox(to) {
+  const from = curBox.slice(), t0 = performance.now(), dur = REDUCED ? 1 : 620;
+  const step = t => { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 4); applyBox(from.map((v, i) => v + (to[i] - v) * e)); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function mapSvg() {
+  let g = '';
+  for (let la = 43.5; la <= 45.01; la += 0.5) { const y = proj(la, MX0)[1]; g += '<line x1="0" x2="1000" y1="' + y + '" y2="' + y + '" stroke="rgba(150,180,220,.06)" vector-effect="non-scaling-stroke"/>'; }
+  for (let ln = -76; ln <= -73.5; ln += 1) { const x = proj(45, ln)[0]; g += '<line y1="0" y2="677" x1="' + x + '" x2="' + x + '" stroke="rgba(150,180,220,.06)" vector-effect="non-scaling-stroke"/>'; }
+  const canada = poly([[-76.5, 44.05]].concat(RIVER, [[-73.34, 45.0], [-73.3, 45.1], [-76.5, 45.1]])) + 'Z';
+  const lake = poly([[-76.5, 44.05], [-76.33, 44.13], [-76.28, 43.85], [-76.35, 43.5], [-76.5, 43.5]]) + 'Z';
+  const champ = poly([[-73.35, 45.0], [-73.4, 44.5], [-73.42, 44.0], [-73.4, 43.6]]);
+  g += '<path d="' + canada + '" fill="rgba(143,202,255,.035)"/><path d="' + lake + '" fill="rgba(143,202,255,.05)"/>' +
+    '<path d="' + poly([[-76.5, 44.05]].concat(RIVER, [[-73.34, 45.0]])) + '" fill="none" stroke="rgba(143,202,255,.32)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>' +
+    '<path d="' + champ + '" fill="none" stroke="rgba(143,202,255,.22)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
+  const lbl = (t, lat, lng) => { const p = proj(lat, lng); return '<text x="' + p[0] + '" y="' + p[1] + '" fill="#465165" font-style="italic" style="font-size:calc(13px*var(--k))">' + t + '</text>'; };
+  g += lbl('Canada', 45.06, -75.6) + lbl('St. Lawrence River', 44.83, -75.95) + lbl('Lake Ontario', 43.8, -76.45) + lbl('Lake Champlain', 44.2, -73.7);
+  const byTown = {}; MAPPTS.forEach(p => { if (p.kind === 'b') byTown[p.tn] = (byTown[p.tn] || 0) + 1; });
+  const rawOf = {}; MAPPTS.forEach(p => { if (!rawOf[p.tn]) rawOf[p.tn] = p.town; });
+  const dim = t => state.mapTown && state.mapTown !== t;
+  const pts = MAPPTS.slice().sort((a, b) => (b.ig && b.ig.count || 0) - (a.ig && a.ig.count || 0)).map(p => {
+    const col = RCOL[p.region] || RCOL.unconfirmed, live = p.ig && p.ig.state === 'live';
+    const r = live ? Math.max(5, Math.min(16, 3.2 + Math.sqrt(p.ig.count) / 5)) : 4.5;
+    const shape = p.kind === 'v' ? '<rect class="core" x="' + (-r * .8) + '" y="' + (-r * .8) + '" width="' + (r * 1.6) + '" height="' + (r * 1.6) + '" transform="rotate(45)" fill="none" stroke="#f2b552" stroke-width="1.6"/>' :
+      '<circle class="core" r="' + r.toFixed(1) + '" fill="' + col + '" fill-opacity="' + (live ? .62 : .28) + '" stroke="' + col + '" stroke-width="1.3"' + (live ? '' : ' stroke-dasharray="2 2"') + '/>';
+    return '<g class="bub ' + (dim(p.tn) ? 'dim' : '') + (state.sel === p.id ? ' sel' : '') + '" data-open="' + esc(p.id) + '" data-tip="' + esc(p.name) + (p.kind === 'v' ? ' · venue' : live ? ' · ' + fmt(p.ig.count) + ' followers' : '') + '" style="transform:translate(' + p.x.toFixed(1) + 'px,' + p.y.toFixed(1) + 'px) scale(var(--k))">' + shape + '</g>';
+  }).join('');
+  const coords = D.townCoords.coords || {};
+  const names = Object.keys(byTown).filter(t => !/county|upstate|adirondacks/i.test(t)).sort((a, b) => byTown[b] - byTown[a]).slice(0, 7).map(t => {
+    const c = coords[(D.townCoords.aliases || {})[rawOf[t]] || rawOf[t]]; if (!c) return ''; const p = proj(c.lat, c.lng);
+    return '<text style="transform:translate(' + p[0].toFixed(1) + 'px,' + (p[1] + 24).toFixed(1) + 'px) scale(var(--k))" text-anchor="middle" fill="#a6b1c3" font-size="12" font-weight="500" pointer-events="none">' + esc(t) + '</text>';
+  }).join('');
+  return '<svg id="mapsvg" viewBox="' + curBox.join(' ') + '" style="--k:' + (curBox[2] / 1000) + '" preserveAspectRatio="xMidYMid meet">' + g + names + pts + '</svg>';
+}
+function viewMap() {
+  mapPoints();
+  const towns = {}; MAPPTS.filter(p => p.kind === 'b').forEach(p => towns[p.tn] = (towns[p.tn] || 0) + 1);
+  const list = Object.keys(towns).sort((a, b) => towns[b] - towns[a] || a.localeCompare(b)).map(t => '<button class="li" data-town="' + esc(t) + '" style="' + (state.mapTown === t ? 'background:var(--ice-bg)' : '') + '"><span class="nm">' + esc(t) + '</span><span class="rt">' + towns[t] + '</span></button>').join('');
+  return '<div class="view mapv"><div class="mapcard"><div class="mapctl"><div class="seg sm" id="boxseg"><i class="thumb"></i><button data-box="all" aria-selected="true">North Country</button><button data-box="slc" aria-selected="false">St. Lawrence County</button></div><button class="fc" id="venToggle" aria-pressed="' + state.mapVen + '" style="height:32px;background:rgba(5,7,11,.6)">Venues</button></div>' + mapSvg() +
+    '<div class="mapnote">Schematic outline. Solid circles are live Instagram accounts sized by followers; dashed circles are not refreshed. ' + (MAPMISS ? MAPMISS + ' without a mapped town.' : '') + '</div></div>' +
+    '<section class="panel maplist"><div class="panel-h"><h2>Towns</h2><span class="sub">' + MAPPTS.filter(p => p.kind === 'b').length + ' businesses</span></div><div class="panel-b list">' + list + '</div></section></div>';
+}
+
+/* ---------- AI VISIBILITY ---------- */
+const AI_LANES = [['all', 'All prompts'], ['wed', 'Wedding photo'], ['vid', 'Wedding video'], ['port', 'Portrait and family'], ['re', 'Real estate'], ['dr', 'Drone'], ['com', 'Commercial']];
+function traitRows(inIds, ac) {
+  const T = [
+    ['Has a website', b => !!b.c.website],
+    ['Publishes pricing', b => !!b.c.pricing],
+    ['Located in St. Lawrence County', b => b.region === 'slc'],
+    ['Has 10 or more reviews', b => b.rev.live ? b.rev.count >= 10 : null],
+    ['Active Instagram, posted in 30 days', b => b.last.live ? age(b.last.date) <= 30 : null],
+    ['Offers three or more lanes', b => b.lanes.length >= 3]
   ];
-  function el(tag,attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
-  function title(t){ var x=el("title",{}); x.textContent=t; return x; }
-  var reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  /* ---------- camera: pan + zoom ---------- */
-  var view={k:1,tx:0,ty:0}, tween=null;
-  var gView=el("g",{id:"hubView"});
-  svg.appendChild(gView);
-  function applyView(){
-    gView.setAttribute("transform","translate("+view.tx.toFixed(1)+" "+view.ty.toFixed(1)+") scale("+view.k.toFixed(4)+")");
-    svg.classList.toggle("zoomed-out",view.k<0.8);
-    var pct=$("#hubZoomPct"); if(pct) pct.textContent=Math.round(view.k*100)+"%";
-    fadeEdgeLabels();
-  }
-  function fadeEdgeLabels(){
-    var active=view.k>1.05||Math.abs(view.tx)+Math.abs(view.ty)>2;
-    var r=svg.getBoundingClientRect(); if(r.width<2) return;
-    var su=r.width/920;
-    for(var fi=0;fi<labInfos.length;fi++){
-      var L=labInfos[fi], o=1;
-      if(active&&L.bw){
-        var x0=(view.tx+view.k*L.bx)*su, y0=(view.ty+view.k*L.by)*su;
-        var x1=x0+view.k*L.bw*su, y1=y0+view.k*L.bh*su;
-        var d=Math.min(x0,y0,r.width-x1,r.height-y1);
-        o=Math.max(0,Math.min(1,d/60));
-      }
-      if(L._fo!==o){ L.tx.setAttribute("opacity",o.toFixed(2)); if(L.lead) L.lead.setAttribute("opacity",o.toFixed(2)); L._fo=o; }
-    }
-  }
-  function svgXY(clientX,clientY){
-    var pt=svg.createSVGPoint(); pt.x=clientX; pt.y=clientY;
-    return pt.matrixTransform(svg.getScreenCTM().inverse());
-  }
-  function zoomAt(sx,sy,f){
-    var k2=Math.min(5,Math.max(0.45,view.k*f));
-    if(k2===view.k) return;
-    var wx=(sx-view.tx)/view.k, wy=(sy-view.ty)/view.k;
-    view.tx=sx-k2*wx; view.ty=sy-k2*wy; view.k=k2; applyView();
-  }
-  function stopTween(){ if(tween){cancelAnimationFrame(tween.raf); tween=null;} }
-  function tweenView(t,dur){
-    stopTween();
-    if(reduced){ view.k=t.k; view.tx=t.tx; view.ty=t.ty; applyView(); return; }
-    var from={k:view.k,tx:view.tx,ty:view.ty}, t0=performance.now(); dur=dur||650;
-    function step(now){
-      var p=Math.min(1,(now-t0)/dur), e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
-      view.k=from.k+(t.k-from.k)*e; view.tx=from.tx+(t.tx-from.tx)*e; view.ty=from.ty+(t.ty-from.ty)*e;
-      applyView();
-      tween=p<1?{raf:requestAnimationFrame(step)}:null;
-    }
-    tween={raf:requestAnimationFrame(step)};
-  }
-  function flyTo(wx,wy,k){
-    k=Math.min(5,Math.max(0.45,k||2.4));
-    tweenView({k:k,tx:cx-k*wx,ty:cy-k*wy});
-  }
-  function resetView(){ tweenView({k:1,tx:0,ty:0}); }
-
-  svg.addEventListener("wheel",function(e){
-    e.preventDefault(); stopTween();
-    var p=svgXY(e.clientX,e.clientY);
-    zoomAt(p.x,p.y,Math.pow(1.0016,-e.deltaY));
-  },{passive:false});
-
-  var pointers={}, panS=null, pinchS=null, dragged=0;
-  function upu(){ return svg.getBoundingClientRect().width/920; }
-  svg.addEventListener("pointerdown",function(e){
-    try{ svg.setPointerCapture(e.pointerId); }catch(err){}
-    pointers[e.pointerId]={x:e.clientX,y:e.clientY};
-    var n=Object.keys(pointers).length;
-    if(n===1){ panS={tx:view.tx,ty:view.ty,x:e.clientX,y:e.clientY}; dragged=0; svg.classList.add("panning"); }
-    else if(n===2){
-      var ks=Object.keys(pointers), a=pointers[ks[0]], b=pointers[ks[1]];
-      pinchS={d:Math.hypot(a.x-b.x,a.y-b.y),k:view.k,tx:view.tx,ty:view.ty,
-              mx:(a.x+b.x)/2,my:(a.y+b.y)/2};
-      panS=null;
-    }
-  });
-  svg.addEventListener("pointermove",function(e){
-    if(!pointers[e.pointerId]) return;
-    pointers[e.pointerId]={x:e.clientX,y:e.clientY};
-    var ks=Object.keys(pointers);
-    if(ks.length===2&&pinchS){
-      var a=pointers[ks[0]], b=pointers[ks[1]];
-      var d=Math.hypot(a.x-b.x,a.y-b.y); if(d<2) return;
-      var k2=Math.min(5,Math.max(0.45,pinchS.k*d/pinchS.d));
-      var mp=svgXY((a.x+b.x)/2,(a.y+b.y)/2), m0=svgXY(pinchS.mx,pinchS.my);
-      var wx=(m0.x-pinchS.tx)/pinchS.k, wy=(m0.y-pinchS.ty)/pinchS.k;
-      view.tx=mp.x-k2*wx; view.ty=mp.y-k2*wy; view.k=k2;
-      stopTween(); applyView(); dragged=99;
-    } else if(ks.length===1&&panS){
-      var u=upu();
-      view.tx=panS.tx+(e.clientX-panS.x)/u;
-      view.ty=panS.ty+(e.clientY-panS.y)/u;
-      dragged=Math.max(dragged,Math.hypot(e.clientX-panS.x,e.clientY-panS.y));
-      stopTween(); applyView();
-    }
-  });
-  function endPointer(e){
-    delete pointers[e.pointerId];
-    var ks=Object.keys(pointers);
-    if(!ks.length){ panS=null; pinchS=null; svg.classList.remove("panning"); }
-    else if(ks.length===1){ panS={tx:view.tx,ty:view.ty,x:pointers[ks[0]].x,y:pointers[ks[0]].y}; pinchS=null; }
-  }
-  svg.addEventListener("pointerup",endPointer);
-  svg.addEventListener("pointercancel",endPointer);
-  svg.addEventListener("dblclick",function(e){
-    var p=svgXY(e.clientX,e.clientY); stopTween(); zoomAt(p.x,p.y,1.7);
-  });
-
-  function wireBtn(id,fn){ var b=$(id); if(b) b.addEventListener("click",function(e){ e.stopPropagation(); fn(); }); }
-  wireBtn("#hubZoomIn",function(){ stopTween(); zoomAt(cx,cy,1.45); });
-  wireBtn("#hubZoomOut",function(){ stopTween(); zoomAt(cx,cy,1/1.45); });
-  wireBtn("#hubZoomReset",function(){ clearSel(); resetView(); });
-  var stage=svg.closest(".hub-stage");
-  if(stage) stage.addEventListener("keydown",function(e){
-    if(e.target&&e.target.id==="hubSearch") return;
-    if(e.key==="+"||e.key==="="){ stopTween(); zoomAt(cx,cy,1.3); }
-    else if(e.key==="-"||e.key==="_"){ stopTween(); zoomAt(cx,cy,1/1.3); }
-    else if(e.key==="0"){ clearSel(); resetView(); }
-    else if(e.key==="Escape"){ clearSel(); }
-  });
-
-  /* ---------- scene ---------- */
-  tiers.forEach(function(t){
-    var rc=el("circle",{cx:cx,cy:cy,r:t.r,fill:"none",stroke:t.color,
-      "stroke-opacity":".45","stroke-width":1.5,"class":"hub-ring"});
-    rc.appendChild(title(HUBL[t.key]+" ring"));
-    gView.appendChild(rc);
-    if(!reduced){
-      var sh=el("circle",{cx:cx,cy:cy,r:t.r,fill:"none",stroke:t.color,"class":"hub-orbit"});
-      sh.appendChild(el("animateTransform",{attributeName:"transform",type:"rotate",
-        from:"0 "+cx+" "+cy,to:"360 "+cx+" "+cy,dur:t.spin+"s",repeatCount:"indefinite"}));
-      gView.appendChild(sh);
-    }
-  });
-  var gE=el("g",{}), gL=el("g",{}), gN=el("g",{});
-  gView.appendChild(gE); gView.appendChild(gL); gView.appendChild(gN);
-  var labInfos=[], nodeList=[], ni=0;
-  var majCut=T.all[Math.min(T.all.length-1,Math.floor(T.all.length*0.25))].deg;
-  tiers.forEach(function(t){
-    var list=T[t.key], n=list.length;
-    list.forEach(function(m,i){
-      var ang=-Math.PI/2+(n?i/n*Math.PI*2:0);
-      var x=cx+Math.cos(ang)*t.r, y=cy+Math.sin(ang)*t.r;
-      var rr=6+Math.min(10,Math.sqrt(m.deg)*1.8);
-      var g=el("g",{"class":"hub-node","data-nk":m.key,"data-major":m.deg>=majCut?"1":"0",
-        tabindex:"0",role:"button","aria-label":netName(m)+", "+m.deg+" verified links"});
-      var dot=el("circle",{"class":"hub-dot",cx:x.toFixed(1),cy:y.toFixed(1),r:rr.toFixed(1),fill:HUBDOT});
-      if(!reduced) dot.setAttribute("style","animation-delay:"+Math.min(ni*12,900)+"ms");
-      dot.appendChild(title(netName(m)+" \u2014 "+m.deg+" verified links"));
-      g.appendChild(dot);
-      var cA=Math.cos(ang), sA=Math.sin(ang);
-      var anc=cA>0.35?"start":(cA<-0.35?"end":"middle");
-      var off=rr+16, lx0=x+cA*off, ly0=y+sA*off;
-      var tx=el("text",{x:lx0.toFixed(1),y:ly0.toFixed(1),"class":"hub-name","text-anchor":anc,
-        dy:anc==="middle"?(sA>0?"1.1em":"-0.5em"):"0.35em"});
-      tx.textContent=netName(m); g.appendChild(tx);
-      labInfos.push({tx:tx,lx:lx0,ly:ly0,dx:x,dy:y,dr:rr});
-      gN.appendChild(g);
-      m._hub={x:x,y:y,g:g}; m._tier=t.key; ni++;
-      nodeList.push({m:m,g:g});
-      g.addEventListener("pointerdown",function(e){ e.stopPropagation(); });
-      g.addEventListener("mouseenter",function(){ if(!pinned) isolate(m); });
-      g.addEventListener("mouseleave",function(){ if(!pinned) clearIso(); });
-      g.addEventListener("focus",function(){ if(!pinned) isolate(m); });
-      g.addEventListener("blur",function(){ if(!pinned) clearIso(); });
-      g.addEventListener("click",function(e){ e.stopPropagation(); selectNode(m); });
-      g.addEventListener("dblclick",function(e){ e.stopPropagation(); selectNode(m); flyTo(m._hub.x,m._hub.y,2.4); });
-      g.addEventListener("keydown",function(e){
-        if(e.key==="Enter"||e.key===" "){ e.preventDefault(); e.stopPropagation(); selectNode(m); }
-      });
-    });
-  });
-  /* label layout: 2D de-collision (label-label + label-dot), clamped to the canvas, then leaders */
-  function setL(L){ L.tx.setAttribute("x",L.lx.toFixed(1)); L.tx.setAttribute("y",L.ly.toFixed(1)); }
-  function clampL(L){
-    var b=L.tx.getBBox(), sx=0, sy=0;
-    if(b.x<8) sx=8-b.x; else if(b.x+b.width>912) sx=912-(b.x+b.width);
-    if(b.y<10) sy=10-b.y; else if(b.y+b.height>910) sy=910-(b.y+b.height);
-    if(sx||sy){ L.lx+=sx; L.ly+=sy; setL(L); return true; }
-    return false;
-  }
-  function ctr(b){ return [b.x+b.width/2, b.y+b.height/2]; }
-  labInfos.forEach(function(L){ clampL(L); });
-  for(var li=0; li<40; li++){
-    var moved=false;
-    var boxes=labInfos.map(function(L){ return L.tx.getBBox(); });
-    for(var ai=0; ai<labInfos.length; ai++){
-      for(var bi=ai+1; bi<labInfos.length; bi++){
-        var A=labInfos[ai], B=labInfos[bi];
-        var ba=boxes[ai], bb=boxes[bi];
-        var ca=ctr(ba), cb=ctr(bb), p=5;
-        var ox=(ba.width+bb.width)/2+p-Math.abs(cb[0]-ca[0]);
-        var oy=(ba.height+bb.height)/2+p-Math.abs(cb[1]-ca[1]);
-        if(ox>0&&oy>0){
-          var s;
-          if(ox<oy){ s=(ox/2+1)*((cb[0]-ca[0])>=0?1:-1); A.lx-=s; B.lx+=s; }
-          else{ s=(oy/2+1)*((cb[1]-ca[1])>=0?1:-1); A.ly-=s; B.ly+=s; }
-          setL(A); setL(B); clampL(A); clampL(B);
-          boxes[ai]=A.tx.getBBox(); boxes[bi]=B.tx.getBBox();
-          moved=true;
-        }
-      }
-      var L0=labInfos[ai];
-      for(var di=0; di<labInfos.length; di++){
-        if(di===ai) continue;
-        var D=labInfos[di], bl=L0.tx.getBBox(), p2=3;
-        var dcx=(bl.x+bl.width/2)-D.dx, dcy=(bl.y+bl.height/2)-D.dy;
-        var ox2=bl.width/2+D.dr+p2-Math.abs(dcx), oy2=bl.height/2+D.dr+p2-Math.abs(dcy);
-        if(ox2>0&&oy2>0){
-          if(ox2<oy2) L0.lx+=(ox2+1)*(dcx>=0?1:-1); else L0.ly+=(oy2+1)*(dcy>=0?1:-1);
-          setL(L0); clampL(L0); moved=true;
-        }
-      }
-      boxes[ai]=labInfos[ai].tx.getBBox();
-    }
-    if(!moved) break;
-  }
-  labInfos.forEach(function(L){ clampL(L); });
-  labInfos.forEach(function(L){
-    L.lead=el("line",{x1:L.dx.toFixed(1),y1:L.dy.toFixed(1),
-      x2:L.lx.toFixed(1),y2:L.ly.toFixed(1),"class":"hub-leader"});
-    gL.appendChild(L.lead);
-    try{ var bb=L.tx.getBBox(); L.bx=bb.x; L.by=bb.y; L.bw=bb.width; L.bh=bb.height; }
-    catch(err){ L.bx=L.lx-60; L.by=L.ly-8; L.bw=120; L.bh=16; }
-  });
-
-  /* ---------- selection + detail ---------- */
-  var pinned=null;
-  function nbrsOf(n){
-    var s={}, out=[];
-    n.follows.concat(n.followedBy).forEach(function(m){ if(m.deg>0&&!s[m.key]){ s[m.key]=1; out.push(m); } });
-    return out;
-  }
-  function isolate(n){
-    clearIso();
-    var lit={}; lit[n.key]=1;
-    if(n._hub&&n._hub.g){
-      n._hub.g.classList.add("sel");
-      if(!reduced){
-        var prr=6+Math.min(10,Math.sqrt(n.deg)*1.8);
-        n._hub.g.appendChild(el("circle",{"class":"hub-pulse",
-          cx:n._hub.x.toFixed(1),cy:n._hub.y.toFixed(1),r:prr.toFixed(1)}));
-      }
-    }
-    nbrsOf(n).forEach(function(m){
-      lit[m.key]=1;
-      var b=m._hub; if(!b) return;
-      var mut=n.follows.indexOf(m)>=0&&n.followedBy.indexOf(m)>=0;
-      var ln=el("line",{x1:n._hub.x.toFixed(1),y1:n._hub.y.toFixed(1),
-        x2:b.x.toFixed(1),y2:b.y.toFixed(1),"class":"hub-spoke"+(mut?" mut":"")});
-      gE.appendChild(ln);
-      if(!reduced&&ln.getTotalLength){
-        var len=ln.getTotalLength();
-        ln.style.strokeDasharray=String(len);
-        ln.style.strokeDashoffset=String(len);
-        void ln.getBoundingClientRect();
-        ln.style.strokeDashoffset="0";
-      }
-    });
-    Array.prototype.forEach.call(gN.childNodes,function(g){
-      var k=g.getAttribute("data-nk"); if(k&&lit[k]) g.classList.add("lit");
-    });
-    svg.classList.add("has-spokes");
-  }
-  function clearIso(){
-    gE.innerHTML=""; svg.classList.remove("has-spokes");
-    Array.prototype.forEach.call(gN.childNodes,function(g){
-      g.classList.remove("lit"); g.classList.remove("sel");
-      var pl=g.querySelector(".hub-pulse"); if(pl) pl.remove();
-    });
-  }
-  function showDetail(n){
-    var d=$("#hubDetail"), b=$("#hubDetailBody");
-    if(!d||!b) return;
-    b.innerHTML='<div class="hub-tier" style="color:'+HUBC[n._tier]+'">'+esc(HUBL[n._tier])+'</div>'+netDetailHTML(n);
-    d.hidden=false;
-  }
-  function hideDetail(){ var d=$("#hubDetail"); if(d) d.hidden=true; }
-  function selectNode(m){ pinned=m; isolate(m); showDetail(m); }
-  function clearSel(){ pinned=null; clearIso(); hideDetail(); }
-  svg.addEventListener("click",function(){ if(dragged>6) return; clearSel(); });
-  var dx=$("#hubDetailX");
-  if(dx) dx.addEventListener("click",function(e){ e.stopPropagation(); clearSel(); });
-
-  /* ---------- search ---------- */
-  var si=$("#hubSearch");
-  if(si){
-    si.addEventListener("input",function(){
-      var q=si.value.trim().toLowerCase();
-      if(!q){ svg.classList.remove("searching"); nodeList.forEach(function(o){ o.g.classList.remove("match"); }); return; }
-      svg.classList.add("searching");
-      nodeList.forEach(function(o){
-        o.g.classList.toggle("match",netName(o.m).toLowerCase().indexOf(q)>=0);
-      });
-    });
-    si.addEventListener("keydown",function(e){
-      e.stopPropagation();
-      if(e.key==="Enter"){
-        var q=si.value.trim().toLowerCase(); if(!q) return;
-        for(var i=0;i<nodeList.length;i++){
-          if(netName(nodeList[i].m).toLowerCase().indexOf(q)>=0){
-            var m=nodeList[i].m;
-            selectNode(m); flyTo(m._hub.x,m._hub.y,2.6);
-            break;
-          }
-        }
-      } else if(e.key==="Escape"){ si.value=""; si.dispatchEvent(new Event("input")); si.blur(); }
-    });
-  }
-
-  
-  
-
-
-  applyView();
+  const A = B.filter(b => inIds.has(b.id)), N = B.filter(b => !inIds.has(b.id));
+  const cnt = (g, f) => { let k = 0, t = 0; g.forEach(b => { const v = f(b); if (v == null) return; t++; if (v) k++; }); return [k, t]; };
+  return { A: A.length, N: N.length, rows: T.map(t => ({ l: t[0], a: cnt(A, t[1]), n: cnt(N, t[1]) })) };
 }
-/* ---------- left body ---------- */
-var PAGE_HEADS={
-  today:["Activity",null],
-  ai:["AI Visibility","How AI assistants answer local search questions, and which businesses they recommend."],
-  data:["Data","Every gathered data point, sortable. Click a column to sort and a row to open the full profile."]};
-function pageHTML(){
-  if(S.tab==="market") return renderMarket();
-  if(S.tab==="ai") return renderAI();
-  if(S.tab==="network") return renderNetworkHTML();
-  if(S.tab==="today") return '<div class="actdash">'+renderToday()+'</div>';
-  var hd=PAGE_HEADS[S.tab];
-  return '<div class="datax">'+pageHeadHTML(hd[0],hd[1])+renderData()+'</div>';
-}
-function animateCounts(el){
-  $$("[data-count]",el).forEach(function(n){
-    var to=+n.getAttribute("data-count"), mon=n.getAttribute("data-money")==="1";
-    if(REDUCED){ n.textContent=mon?money(to):fmt(to); return; }
-    var t0=null; (function step(t){ if(!t0)t0=t; var p=Math.min(1,(t-t0)/800), e=1-Math.pow(1-p,3);
-      n.textContent=mon?money(Math.round(to*e)):fmt(Math.round(to*e)); if(p<1)requestAnimationFrame(step); })(performance.now());
-  });
-}
-function renderLeft(){
-  feedAutoStop();
-  var ex=S.tab==="explore", el=ex?$("#leftbody"):$("#page");
-  if(ex){
-    el.innerHTML=renderDir();
-    var lc=$("#lcount"); if(lc) lc.textContent=filtered().length+" of "+C.length+" "+(S.mode==="venues"?"venues":"businesses");
-  }else{
-    var sc=el.scrollTop;
-    el.innerHTML='<div class="pg pg-'+S.tab+'">'+pageHTML()+'</div>';
-    el.scrollTop=sc;
-  }
-  animateCounts(el);
-  if(S.tab==="ai"){ var pg=$("#page"); if(pg&&!window.__aiVT) aiAnimateBars(pg); }
-  if(S.tab==="network") networkInit();
-}
-function setTab(t,opts){
-  opts=opts||{};
-  if(t==="network"&&!networkWindowOpen()) t="explore";
-  if(S.tab===t) return;
-  S.tab=t;
-  if(t!=="explore") setPlaying(false);
-  syncChrome(); renderLeft(); renderRight();
-  var pg=$("#page"); if(pg) pg.scrollTop=0;
-  if(t==="explore"&&map){ setTimeout(function(){ try{ map.invalidateSize(); }catch(e){} },60); }
-  if(!opts.noPush) pushHist();
-}
-function refreshCards(){ if(S.tab==="explore") renderRight(); else renderLeft(); }
-/* directory sort options follow the dataset */
-function syncSort(){
-  var el=$("#fsort"); if(!el) return;
-  var biz=S.mode!=="venues";
-  var opts=biz?[["audience","Sort: Audience"],["growth","Sort: Growth"],["recent","Sort: Recent post"],["price","Sort: Price"],["name","Sort: A to Z"]]
-              :[["capacity","Sort: Capacity"],["name","Sort: A to Z"]];
-  var want=biz?"b":"v";
-  if(el.getAttribute("data-set")!==want){
-    el.innerHTML=opts.map(function(o){ return '<option value="'+o[0]+'">'+o[1]+'</option>'; }).join("");
-    el.setAttribute("data-set",want);
-  }
-  if(!opts.some(function(o){return o[0]===S.sortBy;})) S.sortBy=opts[0][0];
-  el.value=S.sortBy;
+function viewAI() {
+  const lane = state.aiLane, ac = aiCompute(lane), st = SSBY.ai;
+  const entries = B.map(b => ({ b, o: ac.ids[b.id] || { ChatGPT: 0, Gemini: 0, total: 0 } })).sort((x, y) => y.o.total - x.o.total || x.b.name.localeCompare(y.b.name));
+  const named = entries.filter(e => e.o.total > 0), zero = entries.filter(e => e.o.total === 0);
+  const max = named.length ? named[0].o.total : 1;
+  const offList = Object.keys(ac.off).map(k => ac.off[k]).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const row = (e, i) => '<button class="lb-r" data-open="' + esc(e.b.id) + '"><span class="rk">' + (i + 1) + '</span><span class="nm"><b>' + esc(e.b.name) + '</b><span class="bar2"><i style="width:' + (e.o.total / max * 100).toFixed(1) + '%"></i></span></span>' +
+    '<span class="c ' + (e.o.ChatGPT ? '' : 'zero') + '">' + e.o.ChatGPT + ' of ' + ac.den.ChatGPT + '</span><span class="c ' + (e.o.Gemini ? '' : 'zero') + '">' + e.o.Gemini + ' of ' + ac.den.Gemini + '</span><span class="t">' + e.o.total + ' of ' + ac.answered + ' answers</span></button>';
+  const lb = '<div class="lb"><div class="lb-h"><span></span><span>Business</span><span>ChatGPT</span><span>Gemini</span><span>Both</span></div>' +
+    (named.length ? named.map(row).join('') : empty('Nobody was named for these prompts')) +
+    (zero.length ? (state.aiZero ? zero.map((e, i) => row(e, named.length + i)).join('') : '') + '<button class="link" data-zero style="padding:12px 14px;text-align:left">' + (state.aiZero ? 'Hide' : 'Show') + ' ' + zero.length + ' not named in these answers</button>' : '') + '</div>';
+  const prompts = ACTIVE.filter(p => lane === 'all' || (p.services || []).indexOf(lane) >= 0);
+  const byP = {}; ENGINES.forEach(e => AI[e].rows.forEach(r => { (byP[r.prompt_id] = byP[r.prompt_id] || {})[e] = r; }));
+  const mx = '<div class="mx"><div class="mx-r h"><span>Prompt asked</span><span style="text-align:right">ChatGPT</span><span style="text-align:right">Gemini</span></div>' + prompts.map(p => {
+    const r = byP[p.id] || {}, cell = e => !r[e] || !r[e].completed ? '<span class="muted">—</span>' : (r[e].named || []).length;
+    const open = state.aiOpen[p.id];
+    const names = e => !r[e] || !r[e].completed ? '' : (r[e].named || []).map(n => { const id = matchName(n); return id ? '<button class="pill ice" data-open="' + esc(id) + '" style="border:0;cursor:pointer">' + esc(clean(n)) + '</button>' : pill(clean(n), 'gray'); }).join('') || '<span class="muted" style="font-size:12px">No businesses named</span>';
+    return '<button class="mx-r" data-mx="' + esc(p.id) + '"><span class="p">' + esc(p.text) + '<small>' + (open ? 'Hide' : 'Show') + ' who was named</small></span><span class="c">' + cell('ChatGPT') + '</span><span class="c">' + cell('Gemini') + '</span></button>' +
+      (open ? '<div class="mx-open"><b style="font-size:11.5px;color:var(--fg-3);font-weight:500">ChatGPT</b><div class="tags">' + (names('ChatGPT') || '<span class="muted" style="font-size:12px">No answer recorded</span>') + '</div><b style="font-size:11.5px;color:var(--fg-3);font-weight:500;margin-top:6px">Gemini</b><div class="tags">' + (names('Gemini') || '<span class="muted" style="font-size:12px">No answer recorded</span>') + '</div></div>' : '');
+  }).join('') + '</div>';
+  const tr = traitRows(new Set(named.map(e => e.b.id)), ac);
+  const traits = '<div class="share"><div class="sh-h"><span></span><span>Named by an assistant (' + tr.A + ')</span><span>Not named (' + tr.N + ')</span></div>' + tr.rows.map(r => '<div class="sh-r"><span class="k">' + esc(r.l) + '</span><span class="b"><i style="width:' + (r.a[1] ? r.a[0] / r.a[1] * 100 : 0).toFixed(1) + '%"></i><span>' + r.a[0] + ' of ' + r.a[1] + '</span></span><span class="b"><i class="o" style="width:' + (r.n[1] ? r.n[0] / r.n[1] * 100 : 0).toFixed(1) + '%"></i><span>' + r.n[0] + ' of ' + r.n[1] + '</span></span></div>').join('') + '</div>';
+  const stats = '<div class="stats">' +
+    '<div class="tile"><div class="n">' + ac.answered + '<small>of ' + (ac.prompts * ENGINES.length) + '</small></div><div class="t">Answers recorded</div></div>' +
+    '<div class="tile"><div class="n">' + named.length + '<small>of ' + B.length + '</small></div><div class="t">Roster businesses named</div></div>' +
+    '<div class="tile"><div class="n">' + offList.length + '</div><div class="t">Names not on the roster</div></div>' +
+    ENGINES.map(e => '<div class="tile"><div class="n" style="font-size:26px;padding-top:8px">' + esc(dshort(AI[e].date) || '—') + '</div><div class="t">' + e + ', ' + ageText(age(AI[e].date)) + '</div></div>').join('') + '</div>';
+  const banner = st.st === 'stalled' || st.st === 'late' ? '<div class="banner ' + (st.st === 'stalled' ? 'red' : 'amber') + '">The latest audit is from ' + esc(dshort(st.date)) + ' (' + ageText(st.age) + '). What is shown is history, not today. ' + esc((SRC.ai || {}).fix || '') + '</div>' : '';
+  const method = '<div class="method"><div><b>What is asked</b>' + ACTIVE.length + ' fixed prompts a local customer might type, repeated every audit.</div><div><b>Who answers</b>ChatGPT and Gemini in signed-out sessions. Other assistants are not counted.</div><div><b>How it is counted</b>Each cell is answers that named the business out of answers recorded. A missing answer is missing coverage, never “not named”.</div><div><b>What it cannot tell you</b>Directional only. One audit, two assistants, no percentages and no average positions.</div></div>';
+  return '<div class="view scroll"><div class="ai"><div class="page-h"><div><h1>AI visibility</h1><p>Which businesses ChatGPT and Gemini name when asked about local photo, video and drone work. Every business is measured the same way.</p></div><button class="btn" data-copy="ledger">Copy audit data</button></div>' +
+    '<div class="chips">' + AI_LANES.map(l => '<button class="fc" data-ailane="' + l[0] + '" aria-pressed="' + (lane === l[0]) + '">' + l[1] + '</button>').join('') + '</div>' + banner + stats +
+    '<div class="ai-grid" style="' + (st.st === 'stalled' ? 'opacity:.6' : '') + '"><section class="panel"><div class="panel-h"><h2>Named in answers</h2><span class="sub">Audit ' + esc(dshort(DATES.ai)) + '</span></div><div class="lbscroll">' + lb + '</div></section>' +
+    '<div style="display:grid;gap:14px"><section class="panel"><div class="panel-h"><h2>Prompt by prompt</h2><span class="sub">Names per answer</span></div>' + mx + '</section>' +
+    '<section class="panel"><div class="panel-h"><h2>What named businesses share</h2><span class="sub">Directional</span></div>' + traits + '</section></div></div>' +
+    (offList.length ? '<section class="panel"><div class="panel-h"><h2>Named but not on the roster</h2><span class="sub">' + offList.length + ' names</span></div><div class="panel-b"><div class="tags">' + offList.map(o => pill(o.name + ' · ' + o.total, 'gray')).join('') + '</div></div></section>' : '') +
+    '<section class="panel">' + method + '</section></div></div>';
 }
 
-function dshort(ds){ if(!ds) return "—"; var d=new Date(ds+"T12:00:00");
-  return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
-/* ---------- per-source freshness header ----------
-   Dates come from the data itself: newest ig-YYYY-MM-DD.json in meta.sources,
-   last entry dates of webSweepHistory / aiVisibility, meta.generated_at for the
-   build. Times are approximate schedule labels ("~"), shown only for sources
-   with a completed recent run; anything older than 36h is marked stale. */
-function newestIgDate(){
-  var ds=((D.meta||{}).sources||[]).map(function(s){
-    var m=/^ig-(\d{4}-\d{2}-\d{2})\.json$/.exec(s); return m?m[1]:null; })
-    .filter(Boolean).sort();
-  return ds.length?ds[ds.length-1]:null;
+/* ---------- DATA ---------- */
+function viewData() {
+  const srcs = SS.map(s => '<div class="src"><i class="dot ' + (s.st === 'ok' ? 'ok' : s.st) + '"></i><div class="l"><b>' + esc(s.label) + '</b><span>' + esc(s.feeds) + ' · ' + esc(s.cadence) + '</span></div><div class="num">' + (s.date ? esc(dshort(s.date)) : '—') + '</div><div>' + pill(STTXT[s.st] + (s.age != null ? ' · ' + s.age + 'd' : ''), s.st === 'ok' ? 'ice' : s.st === 'late' ? 'amber' : s.st === 'stalled' ? 'red' : 'gray') + '</div><div class="f ' + (s.st === 'ok' ? '' : 'fix') + '">' + (s.st === 'ok' ? 'Nothing to do.' : esc(s.fix)) + '</div></div>').join('');
+  const cnt = k => { const m = {}; B.forEach(b => { const v = b[k] || 'Unknown'; m[v] = (m[v] || 0) + 1; }); return Object.keys(m).map(x => [x, m[x]]).sort((a, b) => b[1] - a[1]); };
+  const tbl = (rows, h) => '<table class="mini"><thead><tr><th>' + h + '</th><th class="r">Businesses</th></tr></thead><tbody>' + rows.map(r => '<tr><td>' + esc(r[0]) + '</td><td class="r">' + r[1] + '</td></tr>').join('') + '</tbody></table>';
+  const laneRows = LANES.map(l => [l[1], B.filter(b => b.lanes.indexOf(l[0]) >= 0).length]);
+  const n = B.length, wh = B.filter(b => b.c.ig_handle).length;
+  const cov = [['Website listed', B.filter(b => b.c.website).length], ['Instagram handle', wh], ['Instagram live today', LIVEIG.length], ['Published pricing', B.filter(b => b.c.pricing).length], ['Reviews found', B.filter(b => b.c.review_count != null).length], ['Mapped to a town', MAPPTS.length ? B.filter(b => (D.townCoords.coords || {})[(D.townCoords.aliases || {})[b.town] || b.town]).length : B.length]].map(r => [r[0] + ' (of ' + n + ')', r[1]]);
+  const regRows = ['slc', 'adjacent', 'unconfirmed'].map(r => [REGION[r], B.filter(b => b.region === r).length]);
+  const rules = ['A figure is live, dated or absent. Dated figures are shown muted with their date and never enter a ranking, median or count.', 'Instagram counts are live only when pulled within ' + (SRC.ig ? SRC.ig.late_after_days : 2) + ' days. A carried count is dated.', 'Prices and review counts carry the date they were verified. The full verified text is always in the business panel.', '“From” prices are read from that text. Hourly rates, deposits, add-ons and minis are not used.', 'AI figures are counts of answers out of answers recorded. Directional only. No percentages, no average positions.', 'A business added to the roster is discovery, not market growth.', 'Region is St. Lawrence County, Adjacent or Unconfirmed. Nothing is guessed.'];
+  const exc = D.excluded.map(x => '<tr><td style="white-space:nowrap;font-weight:500">' + esc(clean(x.name)) + '</td><td class="muted">' + esc(clean(x.reason)) + '</td></tr>').join('');
+  const nodaily = B.filter(b => b.c.ig_handle && b.ig.state === 'none').length, carried = B.filter(b => b.ig.state === 'carried' || b.ig.state === 'late').length;
+  return '<div class="view scroll"><div class="data"><div class="page-h"><div><h1>Data</h1><p>How current every source is, what the roster covers and how figures are counted. Built ' + esc(dshort(DATES.roster)) + ' · viewing as of ' + esc(ASOF_S) + '.</p></div><div class="chips"><button class="btn" data-copy="csv">Copy businesses CSV</button><button class="btn" data-copy="report">Copy freshness report</button></div></div>' +
+    '<section class="panel"><div class="panel-h"><h2>Source freshness</h2><span class="sub">Windows come from config/freshness.json</span></div>' + srcs + '</section>' +
+    (nodaily || carried ? '<div class="banner gray">' + (carried ? carried + ' Instagram ' + plural(carried, 'account') + ' showing a carried or late count. ' : '') + (nodaily ? nodaily + ' ' + plural(nodaily, 'business has', 'businesses have') + ' a handle but no daily pull.' : '') + '</div>' : '') +
+    '<div class="cols2"><section class="panel"><div class="panel-h"><h2>Roster coverage</h2><span class="sub">' + n + ' businesses</span></div>' + tbl(cov, 'Field') + '</section><section class="panel"><div class="panel-h"><h2>By region</h2></div>' + tbl(regRows, 'Region') + '<div class="panel-h"><h2>By lane</h2></div>' + tbl(laneRows, 'Lane') + '</section></div>' +
+    '<div class="cols2"><section class="panel"><div class="panel-h"><h2>By county</h2></div><div class="scrollbox">' + tbl(cnt('county').slice(0, 20), 'County') + '</div></section><section class="panel"><div class="panel-h"><h2>Counting rules</h2></div><ol class="rules">' + rules.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol></section></div>' +
+    '<section class="panel"><div class="panel-h"><h2>Reviewed and excluded</h2><span class="sub">' + D.excluded.length + ' names kept off the roster</span></div><div class="scrollbox"><table class="mini"><tbody>' + exc + '</tbody></table></div></section></div></div>';
 }
-function lastDate(rows,key){
-  var best=null;
-  rows.forEach(function(r){ if(r[key]&&(best==null||r[key]>best)) best=r[key]; });
-  return best;
-}
-/* wall-clock ET datetime for ds at "HH:MM", returned as a real Date */
-function etStamp(ds,hm){
-  var y=+ds.slice(0,4), mo=+ds.slice(5,7)-1, da=+ds.slice(8,10);
-  var probe=new Date(Date.UTC(y,mo,da,12));
-  var etWall=new Date(probe.toLocaleString("en-US",{timeZone:"America/New_York"}));
-  var offMin=-Math.round((etWall-probe)/60000); /* minutes to add to ET wall time -> UTC */
-  return new Date(Date.UTC(y,mo,da,+hm.slice(0,2),+hm.slice(3,5))+offMin*60000);
-}
-/* "today" or "tomorrow" for the next daily HH:MM ET occurrence */
-function nextET(hm){
-  var now=new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
-  var n=new Date(now); n.setHours(+hm.slice(0,2),+hm.slice(3,5),0,0);
-  var today=n>now; if(!today) n.setDate(n.getDate()+1);
-  return today?"today":"tomorrow";
-}
-function buildFresh(){
-  var el=$("#glancefoot"); if(!el) return;
-  var igD=newestIgDate(), webD=lastDate(D.webSweepHistory||[],"date"),
-      aiD=lastDate(D.aiVisibility||[],"date");
-  function src(label,d,approx,nom){
-    var stale=!d||(Date.now()-etStamp(d,nom)>36*36e5);
-    var tip=label+": "+(d?dshort(d)+(approx?" ~"+approx+" ET":""):"no data yet")+
-      (stale?" — STALE, over 36h old":"");
-    return '<span class="fsrc" title="'+esc(tip)+'"><i class="fdot'+(stale?" stale":"")+'"></i>'+
-      '<span class="fl">'+esc(label)+'</span> <b>'+(d?esc(dshort(d)):"—")+'</b>'+
-      (d&&approx?'<span class="fap">~'+esc(approx)+'</span>':"")+
-      (stale?'<span class="fstale">stale</span>':"")+'</span>';
-  }
-  var g=(D.meta||{}).generated_at, built="—";
-  if(g){ try{ built=new Date(g).toLocaleString("en-US",{timeZone:"America/New_York",
-    month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+" ET"; }catch(e){} }
-  var bh=((el.dataset&&el.dataset.build)||"").replace(/^build /,"").split(" ")[0];
-  el.innerHTML='<div class="frow">'+src("IG",igD,"6:40 AM","06:40")+
-    src("Web",webD,"morning","08:00")+src("AI",aiD,"morning","08:00")+"</div>"+
-    '<div class="fmeta">Data built '+esc(built)+' · next sync ~7:54 AM ET'+
-    (bh?' · <span class="fbuild" title="Deployed build">build '+esc(bh)+"</span>":"")+"</div>";
+function freshnessReport() {
+  return 'Business Pulse freshness, as of ' + ASOF_S + '\n' + SS.map(s => (s.st === 'ok' ? 'OK     ' : s.st === 'late' ? 'LATE   ' : s.st === 'stalled' ? 'STALLED' : 'NO DATA') + ' ' + s.label + ': ' + (s.date || 'none') + (s.age != null ? ' (' + s.age + ' days)' : '') + (s.st === 'ok' ? '' : '\n         Do this: ' + s.fix)).join('\n');
 }
 
-/* ---------- scrubber ---------- */
-var timeEl=$("#time");
-function renderScrub(){
-  timeEl.min=0; timeEl.max=DATES.length-1; timeEl.value=S.di;
-  timeEl.style.setProperty("--fill",(DATES.length>1?S.di/(DATES.length-1)*100:100)+"%");
-  $("#timelabel").innerHTML=dstr(DATES[S.di])+"<small>"+DATES.length+" daily updates</small>";
-  $("#freshnote").textContent="History from "+dstr(DATES[0]);
+/* ---------- shell ---------- */
+const VIEWS = ['brief', 'market', 'map', 'ai', 'data'];
+const RENDER = { brief: viewBrief, market: viewMarket, map: viewMap, ai: viewAI, data: viewData };
+function thumb(seg) {
+  if (!seg) return; const t = $('.thumb', seg), b = $('[aria-selected="true"]', seg); if (!t || !b) return;
+  t.style.width = b.offsetWidth + 'px'; t.style.transform = 'translateX(' + b.offsetLeft + 'px)';
 }
-var playTimer=null;
-function setPlaying(on){
-  S.playing=on;
-  $("#playbtn").textContent=on?"⏸":"▶";
-  $("#playbtn").setAttribute("aria-label",on?"Pause replay":"Replay daily updates");
-  clearInterval(playTimer); playTimer=null;
-  if(on){
-    if(REDUCED){ toast("Replay is off with reduced motion — drag the slider instead."); setPlaying(false); return; }
-    playTimer=setInterval(function(){
-      if(S.di>=DATES.length-1){ setPlaying(false); return; }
-      S.di++; timeEl.value=S.di; onScrub();
-    },900);
-  }
+function health() {
+  const bad = SS.filter(s => s.st === 'stalled').length, late = SS.filter(s => s.st === 'late').length, none = SS.filter(s => s.st === 'none').length;
+  const chip = $('#health'), dot = $('.dot', chip), t = $('#health-t');
+  if (bad) { dot.className = 'dot stalled'; t.textContent = bad + ' ' + plural(bad, 'source') + ' stalled'; }
+  else if (late) { dot.className = 'dot late'; t.textContent = late + ' ' + plural(late, 'source') + ' late'; }
+  else if (none) { dot.className = 'dot'; t.textContent = 'Some data missing'; }
+  else { dot.className = 'dot ok'; t.textContent = 'All sources current'; }
 }
-function onScrub(){
-  renderScrub(); renderPins();
-  if(S.view==="rankings") renderRankings();
-  renderLeft();
-  renderRight();
+function render() {
+  const v = state.view;
+  $$('#nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === v)));
+  thumb($('#nav'));
+  closeDrawer();
+  stage.innerHTML = RENDER[v]();
+  stage.scrollTop = 0;
+  if (v === 'market') fillMarket();
+  if (v === 'brief') countUp(stage);
+  $$('.seg.sm').forEach(thumb);
+  if (v === 'map') { const s = $('#mapsvg'); if (s) applyBox(curBox); }
 }
-
-/* ---------- view toggle ---------- */
-function setView(v){
-  S.view=v;
-  $$(".viewtoggle button").forEach(function(b){
-    var on=b.getAttribute("data-view")===v;
-    b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
-  var rk=v==="rankings";
-  $("#rankings").hidden=!rk;
-  $("#map").style.visibility=rk?"hidden":"visible";
-  if(rk) renderRankings();
-  pushHist();
-}
-
-/* ---------- businesses / venues hard switch ----------
-   Re-points the active collection, clears business-only filters, rebuilds every
-   view. Venue stats never touch business medians, rankings, or heat weights. */
-function setMode(m){
-  if(S.mode===m) return;
-  S.mode=m; S.qx={}; S.qall={};
-  C=(m==="venues"?V:B); BY_ID=(m==="venues"?V_BY_ID:B_BY_ID);
-  S.sel=null; S.lane=""; S.mom=""; S.qx={}; S.qall={}; S.sortBy=(m==="venues"?"capacity":"audience"); syncSort();
-  $("#flane").value=""; $("#fmom").value="";
-  computeModeStats();
-  $$(".modetoggle button").forEach(function(b){ var on=b.getAttribute("data-mode")===m;
-    b.classList.toggle("on",on); b.setAttribute("aria-selected",on?"true":"false"); });
-  var biz=m!=="venues";
-  $("#flane").style.display=biz?"":"none";
-  $("#fmom").style.display=biz?"":"none";
-  $("#fq").setAttribute("placeholder",biz?"Search businesses…":"Search venues…");
-  var bt=$(".brand-text small"); if(bt) bt.textContent=biz?"North Country photo, video & drone market":"North Country venue watch";
-  document.title=biz?"Business Pulse · North Country photo, video & drone market":"Business Pulse · North Country venues";
-  renderPins();
-  var pts=C.filter(function(b){return b._geo&&b.lat!=null;}).map(function(b){return [b.lat,b.lng];});
-  if(pts.length&&map){
-    HIST.noPush=true; /* programmatic reframe: not a user move */
-    /* account for the fixed side panels so edge pins (e.g. Altona) don't sit underneath them */
-    if(window.innerWidth>900) map.fitBounds(L.latLngBounds(pts), {paddingTopLeft:L.point(450,90), paddingBottomRight:L.point(380,90)});
-    else map.fitBounds(L.latLngBounds(pts).pad(0.15));
-  }
-  if(S.view==="rankings") renderRankings();
-  renderLeft(); renderRight();
-  pushHist();
-}
+function show(v) { if (VIEWS.indexOf(v) < 0) v = 'brief'; state.view = v; try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) { } render(); }
+function route() { const h = (location.hash || '').replace('#', ''); const v = VIEWS.indexOf(h) >= 0 ? h : 'brief'; if (v !== state.view || !stage.firstChild) { state.view = v; render(); } }
 
 /* ---------- events ---------- */
-document.addEventListener("click",function(e){
-  var pxb=e.target.closest("[data-px]");
-  if(pxb){ var k=pxb.getAttribute("data-px");
-    if(k==="glance") S.glanceX=!S.glanceX; else S.expanded=!S.expanded;
-    renderRight(); pushHist(); return; }
-  var apx=e.target.closest("[data-aipx]");
-  if(apx){ aiNav(function(){ S.aiPrompt=null; renderLeft(); }); return; }
-  var apr=e.target.closest("[data-aiprompt]");
-  if(apr){ var pmt=apr.getAttribute("data-aiprompt")||null;
-    aiNav(function(){ S.aiPrompt=(S.aiPrompt===pmt)?null:pmt; renderLeft(); }); return; }
-  var ar=e.target.closest("[data-ai]");
-  if(ar){ var nm=ar.getAttribute("data-ai");
-    aiNav(function(){ S.aiSel=(S.aiSel===nm)?null:nm; renderLeft(); }); return; }
-  var ax=e.target.closest("[data-aix]");
-  if(ax){ aiNav(function(){ S.aiSel=null; renderLeft(); }); return; }
-  var aall=e.target.closest("[data-aiall]");
-  if(aall){ aiNav(function(){ S.aiAll=!S.aiAll; renderLeft(); }); return; }
-  var mc=e.target.closest("[data-mclose]");
-  if(mc){ $("#right").classList.remove("open"); clearSel(); return; }
-  var gx=e.target.closest("[data-gexpand]");
-  if(gx){ setTab("market"); return; }
-  var cf=e.target.closest("[data-cf]");
-  if(cf){ var id=cf.getAttribute("data-cf");
-    if(id!==S.sel) select(id,{fly:false});
-    S.expanded=true; renderRight(); pushHist(); return; }
-  var hlt=e.target.closest("[data-hl]");
-  if(hlt){
-    var card=hlt.closest(".act-hl-card");
-    if(card){ var isOpen=card.classList.toggle("open");
-      var chev=hlt.querySelector(".act-hl-chev"); if(chev) chev.textContent=isOpen?"\u25b4":"\u25be"; }
-    return; }
-  var t=e.target.closest("[data-open]");
-  if(t){ var oid=t.getAttribute("data-open");
-    if(S.tab!=="explore"){ S.tab="explore"; syncChrome(); renderLeft(); }
-    select(oid); return; }
-  var qx=e.target.closest("[data-qx]");
-  if(qx){ var k=qx.getAttribute("data-qx"); S.qx[k]=!S.qx[k]; refreshCards(); return; }
-  var qall=e.target.closest("[data-qall]");
-  if(qall){ var ka=qall.getAttribute("data-qall"); S.qall[ka]=!S.qall[ka]; refreshCards(); return; }
-  var vt=e.target.closest(".viewtoggle button");
-  if(vt){ setView(vt.getAttribute("data-view")); return; }
-  var mt=e.target.closest(".modetoggle button");
-  if(mt){ setMode(mt.getAttribute("data-mode")); return; }
-  var rb=e.target.closest("[data-rank]");
-  if(rb){ S.rankMode=rb.getAttribute("data-rank"); renderRankings(); pushHist(); return; }
-  var rd=e.target.closest("[data-rankdir]");
-  if(rd){ S.rankDir=S.rankDir==="asc"?"desc":"asc"; renderRankings(); pushHist(); return; }
-  var th=e.target.closest("th[data-dk]");
-  if(th){ var k=th.getAttribute("data-dk"), s2=S.dsort||{key:"followers",dir:-1};
-    if(s2.key===k) s2.dir=-s2.dir;
-    else s2={key:k,dir:/^(followers|ch7|ch30|posts|conf)$/.test(k)?-1:1};
-    S.dsort=s2; renderLeft(); pushHist(); return; }
-  var cfb=e.target.closest("#clearf");
-  if(cfb){ S.q=""; S.lane=""; S.mom=""; S.reg=""; syncChrome(); refreshFiltered(); pushHist(); return; }
-  var ff=e.target.closest("[data-feedf]");
-  if(ff){ S.feedf=ff.getAttribute("data-feedf");
-    var fl=document.getElementById("feedlist");
-    if(fl){ fl.innerHTML=feedRowsHTML();
-      var ph=ff.closest(".feed-filters");
-      if(ph) ph.querySelectorAll(".feed-pill").forEach(function(p){ p.classList.toggle("on",p.getAttribute("data-feedf")===S.feedf); });
-    } else renderLeft();
-    return; }
-  var tb=e.target.closest(".pagenav button");
-  if(tb){ setTab(tb.getAttribute("data-tab")); return; }
-});
-document.addEventListener("change",function(e){
-  if(e.target&&e.target.id==="aiPromptSel"){
-    S.aiPrompt=e.target.value||null; renderLeft();
+document.addEventListener('click', e => {
+  const t = e.target, q = s => t.closest(s);
+  let el;
+  if ((el = q('#nav button'))) return show(el.dataset.v);
+  if (q('.brand')) { e.preventDefault(); return show('brief'); }
+  if (q('#health')) return show('data');
+  if (q('[data-close]')) return closeDrawer();
+  if ((el = q('[data-go]'))) return show(el.dataset.go);
+  if ((el = q('[data-open]'))) { e.stopPropagation(); return openAny(el.dataset.open); }
+  if ((el = q('[data-sort]'))) {
+    const k = el.dataset.sort; state.sort = state.sort.k === k ? { k, dir: -state.sort.dir } : { k, dir: k === 'name' || k === 'region' ? 1 : -1 }; return fillMarket();
+  }
+  if ((el = q('[data-kind]'))) { state.kind = el.dataset.kind; state.sel = null; render(); return; }
+  if ((el = q('[data-lane]'))) { state.lane = el.dataset.lane; $$('[data-lane]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); return fillMarket(); }
+  if ((el = q('[data-reg]'))) { state.region = el.dataset.reg; $$('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); return fillMarket(); }
+  if (q('#csv')) return copyText(state.kind === 'biz' ? csvBiz() : '', 'Copied ' + filtered().length + ' rows');
+  if ((el = q('[data-ailane]'))) { state.aiLane = el.dataset.ailane; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
+  if ((el = q('[data-mx]'))) { const id = el.dataset.mx; state.aiOpen[id] = !state.aiOpen[id]; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
+  if (q('[data-zero]')) { state.aiZero = !state.aiZero; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
+  if ((el = q('[data-town]'))) { state.mapTown = state.mapTown === el.dataset.town ? null : el.dataset.town; const keep = curBox.slice(); render(); applyBox(keep); return; }
+  if ((el = q('[data-box]'))) { $$('[data-box]').forEach(b => b.setAttribute('aria-selected', String(b === el))); thumb($('#boxseg')); return animBox(boxFor(el.dataset.box)); }
+  if (q('#venToggle')) { state.mapVen = !state.mapVen; const keep = curBox.slice(); render(); applyBox(keep); return; }
+  if ((el = q('[data-copy]'))) {
+    const k = el.dataset.copy;
+    if (k === 'csv') return copyText(csvBiz(), 'Copied businesses CSV');
+    if (k === 'report') return copyText(freshnessReport(), 'Copied freshness report');
+    if (k === 'ledger') return copyText(JSON.stringify(AIROWS, null, 1), 'Copied audit data');
   }
 });
-var fqT=null;
-$("#fq").addEventListener("input",function(e){
-  clearTimeout(fqT); fqT=setTimeout(function(){ S.q=e.target.value.trim(); refreshFiltered(); pushHist(); },160);
-});
-var dqT=null;
-document.addEventListener("input",function(e){
-  if(e.target&&e.target.id==="dq"){
-    clearTimeout(dqT); dqT=setTimeout(function(){ S.dq=e.target.value.trim(); renderLeft(); pushHist();
-      var n=$("#dq"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },160);
+document.addEventListener('input', e => { if (e.target.id === 'q') { state.q = e.target.value; fillMarket(); } });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (drawer.classList.contains('open')) closeDrawer(); else if (document.activeElement && document.activeElement.id === 'q') document.activeElement.blur(); }
+  if (e.key === '/' && !/input|textarea/i.test((document.activeElement || {}).tagName || '')) {
+    if (state.view !== 'market') show('market');
+    const i = $('#q'); if (i) { e.preventDefault(); i.focus(); i.select(); }
   }
 });
-$("#fsort").addEventListener("change",function(e){ S.sortBy=e.target.value; renderLeft(); });
-[["#flane","lane"],["#fmom","mom"],["#freg","reg"]].forEach(function(p){
-  $(p[0]).addEventListener("change",function(e){ S[p[1]]=e.target.value; refreshFiltered(); pushHist(); });
+const tip = $('#tip');
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest && e.target.closest('[data-tip]'); if (!el) return;
+  tip.textContent = el.dataset.tip; tip.classList.add('on');
 });
-/* persistent nav buttons were removed from the top bar in the redesign;
-   history is still tracked via pushHist for state restore. */
-function refreshFiltered(){ renderPins(); if(S.view==="rankings") renderRankings(); renderLeft(); }
-timeEl.addEventListener("input",function(){ setPlaying(false); S.di=+timeEl.value; onScrub(); });
-$("#playbtn").addEventListener("click",function(){ setPlaying(!S.playing); });
+document.addEventListener('mousemove', e => {
+  if (!tip.classList.contains('on')) return;
+  const w = tip.offsetWidth; tip.style.left = Math.min(innerWidth - w - 12, e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 16) + 'px';
+});
+document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (el) tip.classList.remove('on'); });
+window.addEventListener('hashchange', route);
+window.addEventListener('resize', () => { thumb($('#nav')); $$('.seg.sm').forEach(thumb); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { thumb($('#nav')); $$('.seg.sm').forEach(thumb); });
 
-$("#sheetgrab").addEventListener("click",function(){ $("#left").classList.toggle("open"); });
-$("#navback").addEventListener("click",goBack);
-$("#navfwd").addEventListener("click",goFwd);
-$("#navhome").addEventListener("click",goHome);
-document.addEventListener("keydown",function(e){
-  if(e.key==="Escape"){
-    if(S.expanded){ S.expanded=false; renderRight(); pushHist(); return; }
-    setPlaying(false);
-    if(window.innerWidth<=900){ $("#right").classList.remove("open"); }
-    else clearSel(); }
-  var kae=document.activeElement;
-  if((e.key==="Enter"||e.key===" ")&&kae&&kae.hasAttribute&&(kae.hasAttribute("data-ai")||kae.hasAttribute("data-aiprompt"))){
-    e.preventDefault();
-    if(kae.hasAttribute("data-ai")){ var knm=kae.getAttribute("data-ai");
-      aiNav(function(){ S.aiSel=(S.aiSel===knm)?null:knm; renderLeft(); }); }
-    else { var kp=kae.getAttribute("data-aiprompt")||null;
-      aiNav(function(){ S.aiPrompt=(S.aiPrompt===kp)?null:kp; renderLeft(); }); }
-    return; }
-  var tg=(document.activeElement&&document.activeElement.tagName)||"";
-  if(e.key==="/"&&document.activeElement!==$("#fq")&&tg!=="INPUT"&&tg!=="SELECT"){ e.preventDefault(); if(S.tab!=="explore") setTab("explore"); $("#fq").focus(); }
-});
-window.addEventListener("resize",function(){ /* rankings view flows with layout */ });
-
-/* ---------- init ---------- */
-try{ if(typeof L==="undefined") throw new Error("leaflet");
-  initMap();
-}catch(err){
-  $("#map").innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6b7484;font-size:13px">Map tiles unavailable — switch to Bubbles view.</div>';
-}
-/* Airbnb-style hover sync between directory rows and map pins */
-$("#leftbody").addEventListener("mouseover",function(e){
-  var row=e.target.closest?e.target.closest(".row"):null; if(!row||!row.dataset.open) return;
-  var m=pinById[row.dataset.open], el=m&&m.getElement();
-  if(el&&el.firstChild) el.firstChild.classList.add("hot");
-});
-$("#leftbody").addEventListener("mouseout",function(e){
-  var row=e.target.closest?e.target.closest(".row"):null; if(!row||!row.dataset.open) return;
-  var m=pinById[row.dataset.open], el=m&&m.getElement();
-  if(el&&el.firstChild) el.firstChild.classList.remove("hot");
-});
-syncSort(); syncChrome(); renderScrub(); renderLeft(); renderRight(); buildFresh();
-pushHist(); /* seed undo history with the initial view */
+health();
+route();
+window.__pulse = { B, V, AI, aiCompute, SS, ASOF_S };
 })();
