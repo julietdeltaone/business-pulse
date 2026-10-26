@@ -358,6 +358,13 @@ function spotPriceTrack(b, kind) {
     '<div class="sp-scale"><span>' + money(mn) + '</span><span>median ' + money(md) + '</span><span>' + money(mx) + '</span></div>' +
     '<div class="sp-cap">' + vals.length + ' verified ' + (kind === 'wed' ? 'wedding' : 'session') + ' rates · this business in amber</div></div>';
 }
+
+function spotReviewsViz(b) {
+  const top = B.filter(x => x.rev.live && x.rev.count != null).sort((a, c) => c.rev.count - a.rev.count).slice(0, 5);
+  const mx = top.length ? top[0].rev.count : 1;
+  const rows = top.map(x => '<div class="sp-ai"><span class="sp-rvname">' + esc(x.name) + '</span><span class="sp-aibar"><i class="' + (x.id === b.id ? 'me' : '') + '" style="width:' + Math.max(3, Math.round(x.rev.count / mx * 100)) + '%"></i></span><b>' + fmt(x.rev.count) + (x.rev.rating != null ? ' · ' + Number(x.rev.rating).toFixed(1) : '') + '</b></div>').join('');
+  return '<div class="spot-aibars">' + rows + '</div>';
+}
 function spotlight() {
   const used = new Set(), slides = [];
   const take = (b, make) => { if (b && !used.has(b.id) && slides.length < 6) { const s = make(b); if (s) { used.add(b.id); slides.push(s); } } };
@@ -374,11 +381,8 @@ function spotlight() {
     });
   }
   take(by(B.filter(b => b.wedLive != null), b => b.wedLive), b => spotShell('Spotlight · Highest verified wedding rate', b, money(b.wedLive), 'wedding, from · verified ' + esc(dshort(DATES.pricing)), spotPriceTrack(b, 'wed'), 'The top of the verified price ladder.'));
-  take(by(B.filter(b => b.rev.live && b.rev.count != null), b => b.rev.count), b => {
-    const dg = spotChart(b) || (b.wedLive != null ? spotPriceTrack(b, 'wed') : '');
-    if (!dg) return null;
-    return spotShell('Spotlight · Most reviews', b, fmt(b.rev.count), 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : ''), dg, 'The deepest review book in the market.');
-  });
+  const revRanked = B.filter(b => b.rev.live && b.rev.count != null).sort((a, c) => c.rev.count - a.rev.count);
+  take(revRanked.find(b => !used.has(b.id)), b => spotShell('Spotlight · Most reviews', b, fmt(b.rev.count), 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : ''), spotReviewsViz(b), 'The deepest review book in the market · the top five, this business in amber.'));
   take(by(B.filter(b => b.wedLive != null), b => -b.wedLive), b => spotShell('Spotlight · Lowest verified wedding rate', b, money(b.wedLive), 'wedding, from · verified ' + esc(dshort(DATES.pricing)), spotPriceTrack(b, 'wed'), 'The floor of the verified price ladder.'));
   take(by(LIVEIG.filter(b => b.d7 <= -2), b => -b.d7), b => spotShell('Spotlight · Biggest drop', b, signed(b.d7), 'followers in the last 7 days', spotChart(b), 'The sharpest slide among live accounts this week.'));
   if (slides.length < 2) return '';
