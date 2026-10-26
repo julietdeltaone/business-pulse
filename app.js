@@ -613,7 +613,8 @@ function initMap() {
   if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
   bpMap = L.map(el, { zoomControl: false, scrollWheelZoom: true });
   L.control.zoom({ position: 'bottomright' }).addTo(bpMap);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }).addTo(bpMap);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Esri, USGS, NOAA &copy; OpenStreetMap contributors' }).addTo(bpMap);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(bpMap);
   const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {}, cnt = {};
   const all = [], slcPts = [];
   const placeLL = (id, name, town, region, kind, ll, ig) => {
