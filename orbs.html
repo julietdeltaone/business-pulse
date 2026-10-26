@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotlight — six orbs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a0a; color:#e8ecf3; font-family:'Archivo',system-ui,sans-serif; padding:28px 26px 60px; }
+  h1 { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; }
+  .sub { color:#8b93a3; font-size:13.5px; margin-top:6px; max-width:780px; line-height:1.5; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:26px; }
+  @media (max-width: 980px) { .grid { grid-template-columns:1fr; } }
+  .concept { border:1px solid #23242c; background:#101013; border-radius:8px; overflow:hidden; }
+  .chead { padding:13px 16px 11px; border-bottom:1px solid #1d1e24; display:flex; gap:12px; align-items:baseline; }
+  .cnum { font-family:'Space Grotesk',sans-serif; font-weight:700; color:#f2b552; font-size:15px; }
+  .cname { font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16.5px; }
+  .cdesc { color:#8b93a3; font-size:12.5px; margin-left:auto; text-align:right; max-width:48%; line-height:1.45; }
+  .stage { position:relative; aspect-ratio:16/10.2; overflow:hidden; background:#0c0c0f; }
+  .stage canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .eyebrow { font-size:10.5px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:#f2b552; }
+  .biz { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px; line-height:1.12; }
+  .bignum { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px; line-height:1; }
+  .cap { color:#aeb6c4; font-size:12.5px; }
+  .label { position:absolute; left:18px; bottom:16px; display:grid; gap:3px; max-width:46%; z-index:5;
+    background:rgba(10,10,13,.55); padding:8px 10px; border-radius:6px; }
+
+  /* 3 · aperture */
+  .ap-wrap { position:absolute; inset:0; display:grid; place-items:center; }
+  .ap-svg { width:78%; height:88%; }
+  .ap-rotor { transform-origin:200px 160px; transition:transform 1.4s cubic-bezier(.55,.06,.25,1); }
+  .ap-core { transition:opacity .8s ease; }
+  .ap-initial { font-family:'Space Grotesk',sans-serif; font-weight:700; fill:#0d0d10; }
+
+  /* 6 · glass orbit */
+  .glass { position:absolute; border-radius:50%;
+    background:
+      radial-gradient(circle at 34% 28%, rgba(255,255,255,.34) 0%, rgba(255,255,255,.06) 26%, rgba(255,255,255,0) 46%),
+      radial-gradient(circle at 50% 55%, rgba(116,158,214,.20) 0%, rgba(64,92,138,.14) 52%, rgba(16,20,30,.25) 82%, rgba(6,8,12,.5) 100%);
+    box-shadow: inset -18px -22px 44px rgba(0,0,0,.55), inset 10px 12px 30px rgba(180,205,240,.14), 0 24px 60px rgba(0,0,0,.5); }
+  .glass-shine { position:absolute; border-radius:50%; background:radial-gradient(closest-side, rgba(255,255,255,.5), transparent);
+    transform:rotate(-24deg); filter:blur(1px); }
+  .orbitring { position:absolute; border:1.5px solid rgba(150,175,215,.30); border-radius:50%; transform:translate(-50%,-50%); }
+  .orbit-scene { position:absolute; inset:0; perspective:900px; }
+  .orbit-mid { position:absolute; left:50%; top:50%; transform-style:preserve-3d; }
+  .planet { position:absolute; border-radius:50%; transform:translate(-50%,-50%); }
+</style>
+</head>
+<body>
+<h1>The orb — six versions</h1>
+<p class="sub">Same spotlight data, six different orbs. Each one is built from something real — a globe, a lens, terrain, orbits — and each reacts when the featured business changes (~4.5s). None of them react to the mouse.</p>
+
+<div class="grid">
+
+  <section class="concept">
+    <div class="chead"><span class="cnum">1</span><span class="cname">The Globe</span>
+      <span class="cdesc">A true wireframe globe — meridians, parallels, a lit point for the featured business, and a great-circle arc drawn from the last stop to the next.</span></div>
+    <div class="stage"><canvas id="orb1"></canvas><div class="label" data-label></div></div>
+  </section>
+
+  <section class="concept">
+    <div class="chead"><span class="cnum">2</span><span class="cname">Sonar</span>
+      <span class="cdesc">A living core that broadcasts rings. Ring speed and reach follow the business's momentum — a +35 week literally pulses harder than a flat one.</span></div>
+    <div class="stage"><canvas id="orb2"></canvas><div class="label" data-label></div></div>
+  </section>
+
+  <section class="concept">
+    <div class="chead"><span class="cnum">3</span><span class="cname">The Lens</span>
+      <span class="cdesc">A camera aperture — right for a photography market. Blades rotate and the iris opens on each new business, revealing it inside the lens.</span></div>
+    <div class="stage"><div class="ap-wrap">
+      <svg class="ap-svg" viewBox="0 0 400 320">
+        <circle cx="200" cy="160" r="128" fill="#101116" stroke="#2c2d36" stroke-width="2"/>
+        <circle cx="200" cy="160" r="112" fill="none" stroke="#22232b" stroke-width="10"/>
+        <g id="apticks"></g>
+        <clipPath id="apclip"><circle cx="200" cy="160" r="96"/></clipPath>
+        <g clip-path="url(#apclip)">
+          <circle class="ap-core" id="apcore" cx="200" cy="160" r="96" fill="#8a5a34"/>
+          <text class="ap-initial" id="apinitial" x="200" y="182" font-size="56" text-anchor="middle">JK</text>
+        </g>
+        <g class="ap-rotor" id="aprotor"></g>
+        <circle cx="200" cy="160" r="96" fill="none" stroke="#3a3b46" stroke-width="2"/>
+      </svg>
+    </div><div class="label" data-label></div></div>
+  </section>
+
+  <section class="concept">
+    <div class="chead"><span class="cnum">4</span><span class="cname">Terrain</span>
+      <span class="cdesc">North Country topography: layered contour rings turning slowly inside the orb, the featured business planted as a summit marker.</span></div>
+    <div class="stage"><canvas id="orb4"></canvas><div class="label" data-label></div></div>
+  </section>
+
+  <section class="concept">
+    <div class="chead"><span class="cnum">5</span><span class="cname">The Current</span>
+      <span class="cdesc">Hundreds of particles stream around the core like wind over the county. The stream bends and gathers into a bright cluster on the featured business.</span></div>
+    <div class="stage"><canvas id="orb5"></canvas><div class="label" data-label></div></div>
+  </section>
+
+  <section class="concept">
+    <div class="chead"><span class="cnum">6</span><span class="cname">Orbit</span>
+      <span class="cdesc">A glass sphere with businesses in orbit on tilted rings — rings are follower tiers. The featured business swings around to the front and swells.</span></div>
+    <div class="stage" id="orb6stage">
+      <div class="orbit-scene"><div class="orbit-mid" id="orb6mid"></div></div>
+      <div class="label" data-label></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const SLIDES = [
+  { k:'Most followers', name:'Julia Kia Photography', num:'3,277', label:'Instagram followers · Potsdam', energy:.45, initial:'JK', hue:'#d9a05b' },
+  { k:'Biggest mover', name:'Samarah Martin Photography', num:'+35', label:'followers in the last 7 days · Potsdam', energy:1, initial:'SM', hue:'#8fcaff' },
+  { k:'Most named by AI', name:'JD Meyers Productions', num:'18 of 24', label:'assistant answers named this business', energy:.7, initial:'JM', hue:'#8d99ae' },
+  { k:'Most reviews', name:'Heath Photography', num:'244', label:'Google reviews · 4.7 average · Canton', energy:.55, initial:'H', hue:'#cdb894' },
+];
+let slideIdx = 0;
+setInterval(() => { slideIdx = (slideIdx + 1) % SLIDES.length; }, 4500);
+function setLabels() {
+  const s = SLIDES[slideIdx];
+  document.querySelectorAll('[data-label]').forEach(el => {
+    el.innerHTML = `<span class="eyebrow">Spotlight · ${s.k}</span>
+      <span class="biz">${s.name}</span>
+      <span><span class="bignum">${s.num}</span></span><span class="cap">${s.label}</span>`;
+  });
+}
+setLabels();
+setInterval(setLabels, 4500);
+function fit(cv) {
+  const r = cv.parentElement.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1);
+  cv.width = r.width * d; cv.height = r.height * d;
+  const ctx = cv.getContext('2d'); ctx.setTransform(d, 0, 0, d, 0, 0);
+  return { ctx, w: r.width, h: r.height };
+}
+const lerp = (a, b, p) => a + (b - a) * p;
+
+/* ============ 1 · The Globe ============ */
+(function globe() {
+  const cv = document.getElementById('orb1'); if (!cv) return;
+  let { ctx, w, h } = fit(cv);
+  addEventListener('resize', () => ({ ctx, w, h } = fit(cv)));
+  const PTS = SLIDES.map((s, i) => ({ lat: .55 - i * .34, lon: i * 1.85 + .4 }));
+  let rot = 0, arc = null, lastIdx = 0;
+  setInterval(() => { arc = { from: PTS[lastIdx], to: PTS[slideIdx], t0: performance.now() }; lastIdx = slideIdx; }, 4500);
+  arc = { from: PTS[3], to: PTS[0], t0: performance.now() };
+  function proj(lat, lon, R) {
+    const lo = lon + rot;
+    return { x: R * Math.cos(lat) * Math.sin(lo), y: -R * Math.sin(lat), z: R * Math.cos(lat) * Math.cos(lo) };
+  }
+  function frame(t) {
+    requestAnimationFrame(frame);
+    rot = t * .00011;
+    ctx.clearRect(0, 0, w, h);
+    const cx = w * .68, cy = h * .46, R = Math.min(w, h) * .335;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.strokeStyle = 'rgba(150,180,220,.28)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fillStyle = 'rgba(70,100,150,.06)'; ctx.fill();
+    // parallels
+    for (let la = -60; la <= 60; la += 30) {
+      const lat = la * Math.PI / 180; ctx.beginPath();
+      for (let k = 0; k <= 60; k++) { const p = proj(lat, k / 60 * Math.PI * 2 - rot, R); const X = cx + p.x, Y = cy + p.y; k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+      ctx.strokeStyle = 'rgba(140,170,215,.13)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    // meridians
+    for (let m = 0; m < 8; m++) {
+      const lon0 = m * Math.PI / 4; ctx.beginPath();
+      for (let k = 0; k <= 50; k++) { const p = proj(-Math.PI / 2 + k / 50 * Math.PI, lon0 - rot, R); const X = cx + p.x, Y = cy + p.y; k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+      ctx.strokeStyle = 'rgba(140,170,215,.16)'; ctx.stroke();
+    }
+    // great-circle arc from -> to
+    const A = arc.from, Bp = arc.to, p = Math.min(1, (t - arc.t0) / 1300), e = 1 - Math.pow(1 - p, 3);
+    ctx.beginPath();
+    for (let k = 0; k <= 40 * e; k++) {
+      const f = k / 40, lat = lerp(A.lat, Bp.lat, f) + Math.sin(f * Math.PI) * .22, lon = lerp(A.lon, Bp.lon, f);
+      const q = proj(lat, lon, R); const X = cx + q.x, Y = cy + q.y; k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    }
+    ctx.strokeStyle = 'rgba(242,181,82,.75)'; ctx.lineWidth = 1.6; ctx.stroke();
+    // points
+    PTS.forEach((pt, i) => {
+      const q = proj(pt.lat, pt.lon, R), X = cx + q.x, Y = cy + q.y, front = q.z > -R * .15;
+      ctx.globalAlpha = front ? 1 : .28;
+      if (i === slideIdx) {
+        const g = ctx.createRadialGradient(X, Y, 0, X, Y, 20);
+        g.addColorStop(0, 'rgba(242,181,82,.4)'); g.addColorStop(1, 'rgba(242,181,82,0)');
+        ctx.beginPath(); ctx.arc(X, Y, 20, 0, 7); ctx.fillStyle = g; ctx.fill();
+        ctx.beginPath(); ctx.arc(X, Y, 5.5, 0, 7); ctx.fillStyle = '#f2b552'; ctx.fill();
+        ctx.beginPath(); ctx.arc(X, Y, 10 + Math.sin(t * .004) * 2.4, 0, 7); ctx.strokeStyle = 'rgba(242,181,82,.6)'; ctx.lineWidth = 1.2; ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.arc(X, Y, 3, 0, 7); ctx.fillStyle = '#8fcaff'; ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ============ 2 · Sonar ============ */
+(function sonar() {
+  const cv = document.getElementById('orb2'); if (!cv) return;
+  let { ctx, w, h } = fit(cv);
+  addEventListener('resize', () => ({ ctx, w, h } = fit(cv)));
+  let rings = [], lastEmit = 0;
+  function frame(t) {
+    requestAnimationFrame(frame);
+    const s = SLIDES[slideIdx], en = s.energy;
+    ctx.clearRect(0, 0, w, h);
+    const cx = w * .68, cy = h * .46, R = Math.min(w, h) * .30;
+    const interval = 1500 - en * 800;
+    if (t - lastEmit > interval) { rings.push({ t0: t }); lastEmit = t; }
+    rings = rings.filter(r => t - r.t0 < 2600);
+    rings.forEach(r => {
+      const p = (t - r.t0) / 2600, rad = R * .3 + p * R * (1.15 + en * .5);
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 7);
+      ctx.strokeStyle = `rgba(143,202,255,${(.34 * (1 - p)).toFixed(3)})`; ctx.lineWidth = 1.6; ctx.stroke();
+    });
+    const pulse = 1 + Math.sin(t * (.002 + en * .003)) * .03;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * pulse);
+    g.addColorStop(0, 'rgba(214,233,255,.9)'); g.addColorStop(.35, 'rgba(143,202,255,.34)');
+    g.addColorStop(.75, 'rgba(80,120,180,.12)'); g.addColorStop(1, 'rgba(80,120,180,0)');
+    ctx.beginPath(); ctx.arc(cx, cy, R * pulse, 0, 7); ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.strokeStyle = 'rgba(160,195,235,.35)'; ctx.lineWidth = 1.2; ctx.stroke();
+    // featured marker riding the rim at the energy angle
+    const ang = -Math.PI / 2 + Math.sin(t * .0006) * .5;
+    const mx = cx + Math.cos(ang) * R, my = cy + Math.sin(ang) * R;
+    ctx.beginPath(); ctx.arc(mx, my, 5.5, 0, 7); ctx.fillStyle = '#f2b552'; ctx.fill();
+    ctx.beginPath(); ctx.arc(mx, my, 10 + Math.sin(t * .005) * 2.4, 0, 7); ctx.strokeStyle = 'rgba(242,181,82,.6)'; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ============ 3 · The Lens (aperture) ============ */
+(function lens() {
+  const rotor = document.getElementById('aprotor'), ticks = document.getElementById('apticks');
+  const core = document.getElementById('apcore'), initial = document.getElementById('apinitial');
+  if (!rotor) return;
+  let blades = '';
+  for (let i = 0; i < 6; i++) {
+    blades += `<path d="M200 160 L200 66 A94 94 0 0 1 262 92 Z" fill="#17181f" stroke="#33343f" stroke-width="1.4"
+      transform="rotate(${i * 60} 200 160) translate(14 -6)"/>`;
+  }
+  rotor.innerHTML = blades;
+  let tickHtml = '';
+  for (let i = 0; i < 48; i++) {
+    const a = i / 48 * Math.PI * 2, big = i % 4 === 0;
+    const r1 = big ? 116 : 121, r2 = 126;
+    tickHtml += `<line x1="${200 + Math.cos(a) * r1}" y1="${160 + Math.sin(a) * r1}" x2="${200 + Math.cos(a) * r2}" y2="${160 + Math.sin(a) * r2}" stroke="#4a4c58" stroke-width="${big ? 2 : 1}"/>`;
+  }
+  ticks.innerHTML = tickHtml;
+  let turns = 0;
+  function apply() {
+    const s = SLIDES[slideIdx];
+    turns += 1;
+    rotor.style.transform = `rotate(${turns * 60}deg)`;
+    core.setAttribute('fill', s.hue);
+    initial.textContent = s.initial;
+  }
+  apply();
+  setInterval(apply, 4500);
+})();
+
+/* ============ 4 · Terrain ============ */
+(function terrain() {
+  const cv = document.getElementById('orb4'); if (!cv) return;
+  let { ctx, w, h } = fit(cv);
+  addEventListener('resize', () => ({ ctx, w, h } = fit(cv)));
+  function frame(t) {
+    requestAnimationFrame(frame);
+    ctx.clearRect(0, 0, w, h);
+    const cx = w * .68, cy = h * .46, R = Math.min(w, h) * .335;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip();
+    ctx.fillStyle = '#10131a'; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    for (let ring = 9; ring >= 1; ring--) {
+      const base = R * ring / 9.6;
+      ctx.beginPath();
+      for (let k = 0; k <= 90; k++) {
+        const a = k / 90 * Math.PI * 2;
+        const wob = Math.sin(a * 3 + t * .00021 + ring * 1.7) * R * .028 + Math.sin(a * 5 - t * .00013 + ring * .8) * R * .017;
+        const X = cx + Math.cos(a) * (base + wob), Y = cy + Math.sin(a) * (base + wob) * .96;
+        k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = `rgba(150,180,220,${.10 + (9 - ring) * .022})`; ctx.lineWidth = 1.1; ctx.stroke();
+    }
+    // summit marker for the featured business, slowly circling the high ground
+    const sa = t * .00016 + slideIdx * 1.9, sr = R * .52;
+    const sx = cx + Math.cos(sa) * sr, sy = cy + Math.sin(sa) * sr * .96;
+    ctx.beginPath(); ctx.moveTo(sx, sy - 13); ctx.lineTo(sx + 8, sy + 5); ctx.lineTo(sx - 8, sy + 5); ctx.closePath();
+    ctx.fillStyle = '#f2b552'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx, sy - 13); ctx.lineTo(sx, sy + 8); ctx.strokeStyle = 'rgba(242,181,82,.5)'; ctx.stroke();
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.strokeStyle = 'rgba(150,180,220,.3)'; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ============ 5 · The Current ============ */
+(function current() {
+  const cv = document.getElementById('orb5'); if (!cv) return;
+  let { ctx, w, h } = fit(cv);
+  addEventListener('resize', () => ({ ctx, w, h } = fit(cv)));
+  const N = 380, ps = [];
+  for (let i = 0; i < N; i++) ps.push({ a: Math.random() * 7, r: .25 + Math.random() * .72, sp: .5 + Math.random() * .9, sz: .8 + Math.random() * 1.5 });
+  function frame(t) {
+    const cx = w * .68, cy = h * .46, R = Math.min(w, h) * .335;
+    ctx.fillStyle = 'rgba(12,12,15,.16)'; ctx.fillRect(0, 0, w, h);
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.strokeStyle = 'rgba(150,180,220,.20)'; ctx.lineWidth = 1.1; ctx.stroke();
+    const fx = cx + Math.cos(t * .00023 + slideIdx) * R * .42, fy = cy + Math.sin(t * .00031 + slideIdx * 2.0) * R * .30;
+    ps.forEach(p => {
+      p.a += .0035 * p.sp + Math.sin(t * .0004 + p.r * 6) * .0006;
+      const swirl = Math.sin(p.a * 2 + t * .0005) * .05;
+      const px = cx + Math.cos(p.a) * R * (p.r + swirl), py = cy + Math.sin(p.a) * R * (p.r + swirl) * .94;
+      const d = Math.hypot(px - fx, py - fy), near = Math.max(0, 1 - d / (R * .8));
+      ctx.beginPath(); ctx.arc(px, py, p.sz + near * 1.6, 0, 7);
+      ctx.fillStyle = near > .45 ? `rgba(242,181,82,${.35 + near * .6})` : `rgba(143,202,255,${.14 + near * .3})`;
+      ctx.fill();
+    });
+    const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 26);
+    g.addColorStop(0, 'rgba(242,181,82,.35)'); g.addColorStop(1, 'rgba(242,181,82,0)');
+    ctx.beginPath(); ctx.arc(fx, fy, 26, 0, 7); ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); ctx.arc(fx, fy, 4.6, 0, 7); ctx.fillStyle = '#f2b552'; ctx.fill();
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ============ 6 · Orbit ============ */
+(function orbit() {
+  const mid = document.getElementById('orb6mid'), stage = document.getElementById('orb6stage');
+  if (!mid) return;
+  const TIERS = [
+    { r: 118, tilt: 66, speed: .00021, planets: [{ s: 13, c: '#8fcaff', a: .5 }, { s: 9, c: '#5f7ea6', a: 2.6 }, { s: 8, c: '#43597a', a: 4.4 }] },
+    { r: 158, tilt: 62, speed: -.00015, planets: [{ s: 10, c: '#c9d4e6', a: 1.4 }, { s: 8, c: '#54687f', a: 3.6 }, { s: 7, c: '#3c4f6e', a: 5.5 }] },
+    { r: 196, tilt: 70, speed: .00011, planets: [{ s: 8, c: '#a8b6cc', a: .2 }, { s: 7, c: '#4c5f7d', a: 2.2 }, { s: 6, c: '#374863', a: 4.9 }] },
+  ];
+  const FLAT = .42; // vertical squash of the orbit ellipses
+  function build() {
+    const rect = stage.getBoundingClientRect(), S = Math.min(rect.width, rect.height) * .52;
+    mid.innerHTML = `<div class="glass" style="width:${S}px;height:${S}px;left:${-S / 2}px;top:${-S / 2}px;position:absolute"></div>
+      <div class="glass-shine" style="width:${S * .42}px;height:${S * .2}px;left:${-S * .3}px;top:${-S * .38}px;position:absolute"></div>` +
+      TIERS.map(tier => `<div class="orbitring" style="width:${tier.r * 2}px;height:${tier.r * 2 * FLAT}px;left:0;top:0"></div>`).join('') +
+      TIERS.map((tier, ti) => tier.planets.map((p, pi) =>
+        `<span class="planet" data-planet="${ti}-${pi}" style="width:${p.s}px;height:${p.s}px;background:${p.c}"></span>`).join('')).join('') +
+      `<span class="planet" id="orbhero" style="width:17px;height:17px;background:#f2b552;box-shadow:0 0 18px rgba(242,181,82,.8);z-index:6"></span>`;
+  }
+  build();
+  addEventListener('resize', build);
+  function frame(t) {
+    requestAnimationFrame(frame);
+    TIERS.forEach((tier, ti) => {
+      tier.planets.forEach((p, pi) => {
+        const el = mid.querySelector(`[data-planet="${ti}-${pi}"]`); if (!el) return;
+        const a = p.a + t * tier.speed;
+        el.style.left = (Math.cos(a) * tier.r) + 'px';
+        el.style.top = (Math.sin(a) * tier.r * FLAT) + 'px';
+        el.style.zIndex = Math.sin(a) > 0 ? 4 : 1;
+        el.style.opacity = Math.sin(a) > 0 ? 1 : .55;
+      });
+    });
+    const hero = document.getElementById('orbhero');
+    if (hero) {
+      const a = Math.PI / 2 + Math.sin(t * .0004 + slideIdx * 1.7) * .12, tier = TIERS[0];
+      hero.style.left = (Math.cos(a) * tier.r) + 'px';
+      hero.style.top = (Math.sin(a) * tier.r * FLAT) + 'px';
+    }
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
