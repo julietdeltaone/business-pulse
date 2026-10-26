@@ -77,10 +77,11 @@
         <clipPath id="apclip"><circle cx="200" cy="160" r="96"/></clipPath>
         <g clip-path="url(#apclip)">
           <circle class="ap-core" id="apcore" cx="200" cy="160" r="96" fill="#8a5a34"/>
-          <text class="ap-initial" id="apinitial" x="200" y="182" font-size="56" text-anchor="middle">JK</text>
         </g>
         <g class="ap-rotor" id="aprotor"></g>
         <circle cx="200" cy="160" r="96" fill="none" stroke="#3a3b46" stroke-width="2"/>
+        <circle class="ap-core" id="apbadge" cx="200" cy="160" r="37" fill="#8a5a34" stroke="rgba(0,0,0,.35)" stroke-width="1.5"/>
+        <text class="ap-initial" id="apinitial" x="200" y="176" font-size="40" text-anchor="middle">JK</text>
       </svg>
     </div><div class="label" data-label></div></div>
   </section>
@@ -231,7 +232,7 @@ const lerp = (a, b, p) => a + (b - a) * p;
 /* ============ 3 · The Lens (aperture) ============ */
 (function lens() {
   const rotor = document.getElementById('aprotor'), ticks = document.getElementById('apticks');
-  const core = document.getElementById('apcore'), initial = document.getElementById('apinitial');
+  const core = document.getElementById('apcore'), badge = document.getElementById('apbadge'), initial = document.getElementById('apinitial');
   if (!rotor) return;
   let blades = '';
   for (let i = 0; i < 6; i++) {
@@ -252,6 +253,7 @@ const lerp = (a, b, p) => a + (b - a) * p;
     turns += 1;
     rotor.style.transform = `rotate(${turns * 60}deg)`;
     core.setAttribute('fill', s.hue);
+    if (badge) badge.setAttribute('fill', s.hue);
     initial.textContent = s.initial;
   }
   apply();
