@@ -3,101 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Business Pulse · North Country photo, video & drone market</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#05070b">
+<meta name="build" content="build 69063cd5 &middot; Oct 26 12:48 UTC">
+<title>Business Pulse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=33ad6ec7">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=aaabd7a8">
 </head>
 <body>
-<div id="map" aria-hidden="true"></div>
-<section id="rankings" hidden aria-label="Rankings"></section>
-<main id="page" hidden aria-label="Section"></main>
-
-<header id="topbar" class="glass">
-  <div class="topnav" role="navigation" aria-label="History">
-    <button id="navback" title="Back" aria-label="Back">‹</button>
-    <button id="navfwd" title="Forward" aria-label="Forward">›</button>
-    <button id="navhome" title="Home — Explore with filters cleared" aria-label="Home">⌂</button>
-  </div>
-  <div class="brand">
-    <span class="brand-mark" aria-hidden="true">◈</span>
-    <div class="brand-text"><h1>Business Pulse</h1><small>North Country photo, video & drone market</small></div>
-  </div>
-  <nav class="pagenav" role="tablist" aria-label="Sections">
-    <button data-tab="explore" class="on" role="tab" aria-selected="true">Explore</button>
-    <button data-tab="market" role="tab" aria-selected="false">Landscape</button>
-    <button data-tab="today" role="tab" aria-selected="false">Activity</button>
-    
-    <button data-tab="ai" role="tab" aria-selected="false">AI Visibility</button>
-    <button data-tab="data" role="tab" aria-selected="false">Data</button>
-  </nav>
-  <div class="top-actions">
-    <div class="modetoggle" role="tablist" aria-label="Dataset">
-      <button data-mode="businesses" class="on" role="tab" aria-selected="true">Businesses</button>
-      <button data-mode="venues" role="tab" aria-selected="false">Venues</button>
-    </div>
-  </div>
-</header>
-
-<aside id="left" class="glass panel" aria-label="Directory">
-  <button id="sheetgrab" aria-label="Expand or collapse panel"><span></span></button>
-  <div id="lhead" role="search">
-    <input id="fq" type="search" placeholder="Search businesses…" autocomplete="off" aria-label="Search businesses">
-    <div class="lh-filters">
-      <select id="flane" aria-label="Filter by lane">
-        <option value="">Lane</option>
-        <option value="photo">Photo</option>
-        <option value="video">Video</option>
-        <option value="both">Photo + Video</option>
-        <option value="drone">Drone</option>
-      </select>
-      <select id="fmom" aria-label="Filter by momentum">
-        <option value="">Momentum</option>
-        <option value="gaining">Gaining</option>
-        <option value="active">Active</option>
-      </select>
-      <select id="freg" aria-label="Filter by region">
-        <option value="">Region</option>
-        <option value="slc">St. Lawrence Co</option>
-        <option value="adjacent">Nearby counties</option>
-        <option value="unconfirmed">Unconfirmed</option>
-      </select>
-    </div>
-    <div class="lh-row">
-      <span id="lcount"></span>
-      <select id="fsort" aria-label="Sort"></select>
-      <div class="viewtoggle" role="tablist" aria-label="Background view">
-        <button data-view="map" class="on" role="tab" aria-selected="true">Map</button>
-        <button data-view="rankings" role="tab" aria-selected="false">Rankings</button>
-      </div>
-    </div>
-  </div>
-  <div id="leftbody"></div>
-</aside>
-
-<aside id="right" class="glass panel" aria-label="Detail panel">
-  <div id="rightbody"></div>
-  <div id="glancefoot" data-build="build 32c46fe2 &middot; Sep 30 22:57 UTC" aria-label="Data freshness"></div>
-</aside>
-
-<footer id="scrub" class="glass" aria-label="Time scrubber">
-  <button id="playbtn" aria-label="Replay daily updates">▶</button>
-  <input id="time" type="range" min="0" max="0" step="1" value="0" aria-label="Scrub through daily data">
-  <span id="timelabel"></span>
-  <span id="freshnote"></span>
-</footer>
-
+<div id="app">
+  <header class="bar" id="bar">
+    <a class="brand" href="#brief" aria-label="Business Pulse, home">
+      <svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="8" class="mark-bg"/><path d="M4.5 15h4.4l2.3-6 3.6 11 2.6-8.2 1.5 3.2h4.6" class="mark-line"/></svg>
+      <span class="brand-t"><b>Business Pulse</b><small>North Country photo, video &amp; drone</small></span>
+    </a>
+    <nav class="seg" id="nav" role="tablist" aria-label="Sections">
+      <i class="thumb" aria-hidden="true"></i>
+      <button role="tab" data-v="brief">Brief</button>
+      <button role="tab" data-v="market">Market</button>
+      <button role="tab" data-v="map">Map</button>
+      <button role="tab" data-v="ai">AI Visibility</button>
+      <button role="tab" data-v="data">Data</button>
+    </nav>
+    <button class="chip" id="health" type="button" aria-label="Data freshness"><span class="dot"></span><span id="health-t">Checking</span></button>
+  </header>
+  <main id="stage" aria-live="polite"></main>
+  <aside id="drawer" aria-label="Details" aria-hidden="true"></aside>
+</div>
+<div id="tip" role="tooltip"></div>
 <div id="toast" role="status"></div>
-<div class="tip" id="tip" role="tooltip"></div>
-
-<script src="data/data.js?v=a8107338"></script>
-<script src="data/website-intel.js?v=9db529d6"></script>
-<script src="data/venues.js?v=86605cc0"></script>
-<script src="data/details-enrichment.js?v=c0c8dd30"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="app.js?v=7a2f9a84"></script>
+<noscript><p style="padding:24px;color:#a6b1c3">Business Pulse needs JavaScript to draw its pages.</p></noscript>
+<script src="data/data.js?v=218e1f9e"></script>
+<script src="data/website-intel.js?v=e8925ef3"></script>
+<script src="data/venues.js?v=417c4fe2"></script>
+<script src="data/details-enrichment.js?v=2fafd29e"></script>
+<script src="app.js?v=69063cd5"></script>
 </body>
 </html>
