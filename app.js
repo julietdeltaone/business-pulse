@@ -398,143 +398,122 @@ function spotlight() {
   const html = slides.map((s, i) => i === 0 ? s.html.replace('class="spot-slide"', 'class="spot-slide on"') : s.html).join('');
   return '<section class="panel spot" id="spot"><div class="spot-stage"><canvas id="spotcv" aria-hidden="true"></canvas>' + html + '</div><div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
 }
-/* --- 3D flyover: every business a node on a Fibonacci sphere. On each slide the camera
-   flies to that node: lifts off (dolly out), sweeps the arc with a slight bank, dives back in
-   and settles with the node front-and-center. A far starfield shell drifts constantly behind. --- */
+/* --- The Current x Sonar (JD pick, Oct 26: merge orbs 5 + 2, data live from the contacts).
+   The orb IS the market: every business is a particle in the stream — size from its follower
+   count, orbit radius from audience gravity (biggest accounts hug the core), stream speed from
+   its 7-day momentum, color from live / priced / quiet. The core broadcasts sonar rings whose
+   reach and rate follow the featured business's energy. On each slide the featured particle
+   leaves the stream and gathers gold at the front of the core; a burst fires on the change. --- */
 let S3 = null;
-function spot3DNodes() {
-  const GA = Math.PI * (3 - Math.sqrt(5)), n = B.length;
-  const raw = B.map((b, i) => {
-    const y = 1 - (i / Math.max(1, n - 1)) * 2, rr = Math.sqrt(Math.max(0, 1 - y * y)), th = GA * i;
-    const shell = b.ig.state === 'live' ? .74 : (b.wedLive != null || (b.rev.live && b.rev.count != null)) ? .88 : 1;
-    return { id: b.id, x: Math.cos(th) * rr * shell, y: y * shell, z: Math.sin(th) * rr * shell, live: b.ig.state === 'live', priced: b.wedLive != null, size: b.ig.state === 'live' ? 1.15 + Math.sqrt(b.ig.count || 0) / 20 : 1.05 };
-  });
-  /* Field rotation: the raw Fibonacci layout can park a spotlighted business near a pole,
-     where no camera tilt can center it. Pick the fixed whole-field rotation (X then Z) that
-     brings every deck node's latitude closest to the equator, so each flight can settle
-     its node dead-center. Recomputed per deck at engine start. */
-  const deck = SPOTDECK.map(id => raw.find(r => r.id === id)).filter(Boolean);
-  if (deck.length) {
-    let bestW = Infinity, rot = null;
-    for (let a = 0; a < Math.PI * 2; a += .02) for (let b = 0; b < Math.PI * 2; b += .02) {
-      const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b);
-      let worst = 0;
-      for (const v of deck) {
-        const y1 = v.y * ca - v.z * sa, z1 = v.y * sa + v.z * ca;
-        const x2 = v.x * cb - y1 * sb, y2 = v.x * sb + y1 * cb;
-        const l = Math.abs(Math.atan2(y2, Math.hypot(x2, z1)));
-        if (l > worst) worst = l;
-        if (worst >= bestW) break;
-      }
-      if (worst < bestW) { bestW = worst; rot = { a, b }; }
-    }
-    if (rot) {
-      const ca = Math.cos(rot.a), sa = Math.sin(rot.a), cb = Math.cos(rot.b), sb = Math.sin(rot.b);
-      raw.forEach(v => {
-        const y1 = v.y * ca - v.z * sa, z1 = v.y * sa + v.z * ca, x0 = v.x;
-        v.x = x0 * cb - y1 * sb; v.y = x0 * sb + y1 * cb; v.z = z1;
-      });
-    }
-  }
-  return raw;
+function spotEnergy(b) {
+  if (!b) return .4;
+  if (b.d7 != null && b.d7 !== 0) return .35 + .65 * Math.min(1, Math.abs(b.d7) / 35);
+  if (b.ig.state === 'live' && b.ig.count) return .3 + .5 * Math.min(1, b.ig.count / 3300);
+  if (b.rev.live && b.rev.count) return .3 + .5 * Math.min(1, b.rev.count / 244);
+  if (b.wedLive != null) return .45;
+  return .35;
 }
-function spot3DStars() {
-  const GA = Math.PI * (3 - Math.sqrt(5)), out = [];
-  for (let i = 0; i < 110; i++) {
-    const y = 1 - (i / 109) * 2, rr = Math.sqrt(Math.max(0, 1 - y * y)), th = GA * (i + 40);
-    out.push({ x: Math.cos(th) * rr * 1.6, y: y * 1.6, z: Math.sin(th) * rr * 1.6, ph: (i * 1.37) % 6.28 });
-  }
-  return out;
+function spot3DNodes() {
+  const GA = Math.PI * (3 - Math.sqrt(5));
+  const counts = B.filter(b => b.ig.state === 'live' && b.ig.count > 0).map(b => b.ig.count);
+  const lmax = Math.log10(Math.max.apply(null, counts.concat([10]))), lmin = Math.log10(Math.min.apply(null, counts.concat([10])));
+  return B.map((b, i) => {
+    let band;
+    if (b.ig.state === 'live' && b.ig.count > 0) band = .30 + .56 * (1 - (Math.log10(b.ig.count) - lmin) / Math.max(.001, lmax - lmin));
+    else if (b.wedLive != null || (b.rev.live && b.rev.count != null)) band = .70;
+    else band = .88;
+    const jit = (((i * 2654435761) % 1000) / 1000 - .5) * .07;
+    return {
+      id: b.id, a: GA * i, r: Math.max(.16, Math.min(.97, band + jit)),
+      sp: .05 + .16 * Math.min(1, Math.abs(b.d7 || 0) / 35) + (b.ig.state === 'live' ? .02 : 0),
+      size: b.ig.state === 'live' ? Math.min(4.6, 1.1 + Math.sqrt(b.ig.count || 0) / 16) : 1.15,
+      live: b.ig.state === 'live', priced: b.wedLive != null,
+      x: 0, y: 0, mode: 'stream', gT0: 0, rT0: 0, fx: 0, fy: 0
+    };
+  });
 }
 function spot3DFlyTo(id, instant) {
   if (!S3) return;
-  const n = S3.nodes.find(x => x.id === id);
-  S3.hi = id;
-  if (!n) { S3.fly = null; return; }
-  const rho = Math.hypot(n.x, n.z);
-  let toA = -Math.atan2(n.x, n.z);
-  toA += Math.PI * 2 * Math.round((S3.az - toA) / (Math.PI * 2));
-  const toT = Math.max(-1.05, Math.min(1.05, Math.atan2(n.y, rho)));
-  if (instant) { S3.az = toA; S3.tilt = toT; S3.zoom = 1.07; S3.fly = null; return; }
-  S3.fly = { t0: performance.now(), dur: 1650, fromA: S3.az, toA, fromT: S3.tilt, toT, fromZ: S3.zoom, toZ: 1.07, dir: Math.sign(toA - S3.az) || 1 };
+  const prev = S3.nodes.find(n => n.id === S3.featId);
+  if (prev && prev.id !== id && prev.mode !== 'stream') { prev.mode = 'rejoin'; prev.rT0 = performance.now(); prev.fx = prev.x; prev.fy = prev.y; }
+  S3.featId = id;
+  const n = S3.nodes.find(x => x.id === id); if (!n) return;
+  S3.energy = spotEnergy(B.find(x => x.id === id));
+  n.mode = instant ? 'staged' : 'gather';
+  n.gT0 = performance.now(); n.fx = n.x; n.fy = n.y;
+  const now = performance.now();
+  S3.rings.push({ t0: now, burst: true }, { t0: now + 200, burst: true });
 }
 function spot3DStart() {
   const cv = document.getElementById('spotcv'); if (!cv || !B.length) return;
   if (S3 && S3.cv === cv) return;
   spot3DStop();
   const ctx = cv.getContext('2d'); if (!ctx) return;
-  S3 = { cv, ctx, nodes: spot3DNodes(), stars: spot3DStars(), az: 0, tilt: .34, zoom: 1.07, starRot: 0, last: 0, raf: 0, hi: null, fly: null, beamA: 1 };
-  spot3DFlyTo(SPOTDECK[state.spotIdx] || null, true);
-  const size = () => { const r = cv.parentElement.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.max(50, r.width * d); cv.height = Math.max(50, r.height * d); S3.d = d; S3.w = r.width; S3.h = r.height; };
+  S3 = { cv, ctx, nodes: spot3DNodes(), featId: null, energy: .4, rings: [], lastEmit: 0, raf: 0, last: 0, d: 1, w: 0, h: 0 };
+  const size = () => { const r = cv.parentElement.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.max(50, r.width * d); cv.height = Math.max(50, r.height * d); S3.d = d; S3.w = r.width; S3.h = r.height; ctx.setTransform(d, 0, 0, d, 0, 0); ctx.fillStyle = '#0d0d11'; ctx.fillRect(0, 0, S3.w, S3.h); };
   size();
   S3.resize = size;
   window.addEventListener('resize', size);
-  const F = 3.4;
+  spot3DFlyTo(SPOTDECK[state.spotIdx] || null, true);
   const frame = t => {
     if (!S3) return;
     const dt = S3.last ? Math.min(60, t - S3.last) : 16; S3.last = t;
-    S3.starRot += dt * .00002;
-    let az, tilt, zoom, roll = 0;
-    if (S3.fly) {
-      const f = S3.fly, p = Math.min(1, (t - f.t0) / f.dur), e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-      az = f.fromA + (f.toA - f.fromA) * e;
-      tilt = f.fromT + (f.toT - f.fromT) * e;
-      zoom = (f.fromZ + (f.toZ - f.fromZ) * e) * (1 - .30 * Math.sin(Math.PI * p));
-      roll = Math.sin(Math.PI * p) * .055 * f.dir;
-      S3.beamA = Math.max(0, (p - .25) / .75);
-      S3.az = az; S3.tilt = tilt; S3.zoom = zoom;
-      if (p >= 1) S3.fly = null;
-    } else {
-      az = S3.az + Math.sin(t * .0004) * .02;
-      tilt = S3.tilt + Math.cos(t * .00033) * .012;
-      zoom = S3.zoom + Math.sin(t * .0009) * .015;
-      S3.beamA = Math.min(1, S3.beamA + .02);
-    }
-    const { ctx, w, h, d } = S3;
-    ctx.setTransform(d, 0, 0, d, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const cx = w * .74, cy = h * .52, R = Math.min(h * .37, w * .30) * zoom;
-    const cosT = Math.cos(tilt), sinT = Math.sin(tilt), cosR = Math.cos(roll), sinR = Math.sin(roll);
-    const project = (x, y, z, rot) => {
-      const cr = Math.cos(rot), sr = Math.sin(rot);
-      const xr = x * cr + z * sr, zr = -x * sr + z * cr;
-      const yr = y * cosT - zr * sinT, z2 = y * sinT + zr * cosT;
-      const s = F / (F - z2);
-      let sx = cx + xr * R * s, sy = cy - yr * R * s;
-      if (roll) { const dx = sx - cx, dy = sy - cy; sx = cx + dx * cosR - dy * sinR; sy = cy + dx * sinR + dy * cosR; }
-      return { sx, sy, z: z2, s };
-    };
-    S3.stars.forEach(st => {
-      const p = project(st.x, st.y, st.z, S3.starRot);
-      const tw = .05 + .10 * (0.5 + 0.5 * Math.sin(t * .0011 + st.ph));
-      ctx.beginPath(); ctx.arc(p.sx, p.sy, .8, 0, Math.PI * 2); ctx.fillStyle = 'rgba(170,195,230,' + tw.toFixed(3) + ')'; ctx.fill();
+    const { ctx, w, h } = S3;
+    ctx.fillStyle = 'rgba(13,13,17,.20)';
+    ctx.fillRect(0, 0, w, h);
+    const cx = w * .70, cy = h * .50, R = Math.min(w * .335, h * .40);
+    if (t - S3.lastEmit > 2500 - S3.energy * 700) { S3.rings.push({ t0: t, burst: false }); S3.lastEmit = t; }
+    S3.rings = S3.rings.filter(r => t - r.t0 < 3200);
+    S3.rings.forEach(r => {
+      if (t < r.t0) return;
+      const p = (t - r.t0) / (r.burst ? 2100 : 2800), rad = R * (.12 + p * (.95 + S3.energy * .5));
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(143,202,255,' + ((r.burst ? .30 : .19) * (1 - p)).toFixed(3) + ')';
+      ctx.lineWidth = r.burst ? 1.8 : 1.3; ctx.stroke();
     });
-    ctx.beginPath(); ctx.arc(cx, cy, R * 1.02, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.07)'; ctx.lineWidth = 1; ctx.stroke();
-    const proj = S3.nodes.map(n => Object.assign({ n }, project(n.x, n.y, n.z, az)));
-    const hi = proj.find(p => p.n.id === S3.hi);
-    if (hi && S3.beamA > 0) {
-      const pulse = (.55 + .3 * Math.sin(t * .004)) * S3.beamA;
-      const g = ctx.createLinearGradient(cx, cy, hi.sx, hi.sy);
-      g.addColorStop(0, 'rgba(242,181,82,.05)'); g.addColorStop(1, 'rgba(242,181,82,' + (pulse * .8).toFixed(3) + ')');
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(hi.sx, hi.sy); ctx.strokeStyle = g; ctx.lineWidth = 1.4; ctx.stroke();
-    }
-    proj.slice().sort((a, b) => a.z - b.z).forEach(p => {
-      if (p.n.id === S3.hi) return;
-      const a = .16 + .6 * ((p.z + 1) / 2);
-      ctx.beginPath(); ctx.arc(p.sx, p.sy, Math.max(.6, p.n.size * p.s * 1.35), 0, Math.PI * 2);
-      ctx.fillStyle = p.n.live ? 'rgba(143,202,255,' + a.toFixed(3) + ')' : p.n.priced ? 'rgba(201,212,230,' + (a * .8).toFixed(3) + ')' : 'rgba(120,132,152,' + (a * .65).toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.10)'; ctx.lineWidth = 1; ctx.stroke();
+    const sa = Math.PI * .94 + Math.sin(t * .00021) * .22;
+    const sx = cx + Math.cos(sa) * R * .36, sy = cy + Math.sin(sa) * R * .36;
+    const easeIO = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    S3.nodes.forEach(n => {
+      if (n.mode === 'stream' || n.mode === 'rejoin') n.a += n.sp * dt / 1000;
+      const wob = Math.sin(t * .0006 + n.a * 3) * .018;
+      const ox = cx + Math.cos(n.a) * R * (n.r + wob), oy = cy + Math.sin(n.a) * R * (n.r + wob) * .96;
+      if (n.mode === 'stream') { n.x = ox; n.y = oy; }
+      else if (n.mode === 'gather') {
+        const p = Math.min(1, (t - n.gT0) / 1150), e = easeIO(p);
+        n.x = n.fx + (sx - n.fx) * e; n.y = n.fy + (sy - n.fy) * e - Math.sin(p * Math.PI) * 12;
+        if (p >= 1) n.mode = 'staged';
+      } else if (n.mode === 'staged') { n.x = sx; n.y = sy; }
+      else if (n.mode === 'rejoin') {
+        const p = Math.min(1, (t - n.rT0) / 900), e = 1 - Math.pow(1 - p, 3);
+        n.x = n.fx + (ox - n.fx) * e; n.y = n.fy + (oy - n.fy) * e;
+        if (p >= 1) n.mode = 'stream';
+      }
+    });
+    const feat = S3.nodes.find(n => n.id === S3.featId);
+    S3.nodes.forEach(n => {
+      if (feat && n.id === feat.id) return;
+      const near = feat ? Math.max(0, 1 - Math.hypot(n.x - feat.x, n.y - feat.y) / 54) : 0;
+      const base = n.live ? .8 : n.priced ? .5 : .34;
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
+      ctx.fillStyle = near > .25 ? 'rgba(242,181,82,' + (base * .75).toFixed(3) + ')' : n.live ? 'rgba(143,202,255,' + base + ')' : n.priced ? 'rgba(201,212,230,' + base + ')' : 'rgba(120,132,152,' + base + ')';
       ctx.fill();
     });
-    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(230,238,250,.85)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(cx, cy, 8 + Math.sin(t * .0016) * 1.6, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.28)'; ctx.lineWidth = 1; ctx.stroke();
-    if (hi) {
-      const hr = Math.max(3.4, hi.n.size * hi.s * 1.9), pr = hr + 5 + Math.sin(t * .004) * 2.2;
-      const glow = ctx.createRadialGradient(hi.sx, hi.sy, 0, hi.sx, hi.sy, hr * 3.4);
-      glow.addColorStop(0, 'rgba(242,181,82,.30)'); glow.addColorStop(1, 'rgba(242,181,82,0)');
-      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, hr * 3.4, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
-      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, pr, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(242,181,82,.65)'; ctx.lineWidth = 1.2; ctx.stroke();
-      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, hr, 0, Math.PI * 2); ctx.fillStyle = '#f2b552'; ctx.fill();
-      ctx.beginPath(); ctx.arc(hi.sx, hi.sy, hr * .42, 0, Math.PI * 2); ctx.fillStyle = '#fff6e3'; ctx.fill();
+    const gp = .5 + S3.energy * .5;
+    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * .30);
+    cg.addColorStop(0, 'rgba(190,220,255,' + (0.28 * gp).toFixed(3) + ')'); cg.addColorStop(1, 'rgba(190,220,255,0)');
+    ctx.beginPath(); ctx.arc(cx, cy, R * .30, 0, Math.PI * 2); ctx.fillStyle = cg; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 3.2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(235,242,252,.9)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 8 + Math.sin(t * .0016) * 1.6, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(150,180,220,.30)'; ctx.lineWidth = 1; ctx.stroke();
+    if (feat) {
+      const pr = feat.size + 6 + Math.sin(t * .004) * 2.2;
+      const glow = ctx.createRadialGradient(feat.x, feat.y, 0, feat.x, feat.y, 30);
+      glow.addColorStop(0, 'rgba(242,181,82,.32)'); glow.addColorStop(1, 'rgba(242,181,82,0)');
+      ctx.beginPath(); ctx.arc(feat.x, feat.y, 30, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
+      ctx.beginPath(); ctx.arc(feat.x, feat.y, pr, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(242,181,82,.65)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(feat.x, feat.y, Math.max(3.6, feat.size + 1), 0, Math.PI * 2); ctx.fillStyle = '#f2b552'; ctx.fill();
+      ctx.beginPath(); ctx.arc(feat.x, feat.y, Math.max(1.6, feat.size * .42), 0, Math.PI * 2); ctx.fillStyle = '#fff6e3'; ctx.fill();
     }
     if (!REDUCED) S3.raf = requestAnimationFrame(frame);
   };
