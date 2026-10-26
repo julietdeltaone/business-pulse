@@ -95,16 +95,16 @@ const AMT = /\$\s?(\d[\d,]*(?:\.\d+)?)/;
 function parsePrice(txt) {
   const out = { wed: null, sess: null };
   if (!txt) return out;
-  const w = [], s = [];
+  const w = [], wv = [], s = [];
   String(txt).split(/;|\||,(?!\d{3})/).forEach(cl => {
     const c = cl.toLowerCase(); if (P_SKIP.test(c)) return;
     const m = AMT.exec(cl); if (!m) return;
     const a = parseFloat(m[1].replace(/,/g, '')); if (a < 50) return;
     if (/\/\s?(hr|hour)|per hour|hourly/.test(c)) return;
-    if (/wedding|elopement|bridal/.test(c) && !/video|film|cinema/.test(c)) { if (a >= 500) w.push(a); }
+    if (/wedding|elopement|bridal/.test(c)) { if (a >= 500) { if (/video|film|cinema/.test(c)) wv.push(a); else w.push(a); } }
     else if (/portrait|session|senior|family|families|headshot|maternity|newborn|couple/.test(c) && !/wedding|video|film|drone|real estate/.test(c)) s.push(a);
   });
-  out.wed = w.length ? Math.min.apply(null, w) : null;
+  out.wed = w.length ? Math.min.apply(null, w) : wv.length ? Math.min.apply(null, wv) : null;
   out.sess = s.length ? Math.min.apply(null, s) : null;
   return out;
 }
@@ -143,7 +143,7 @@ const B = D.competitors.map(c => {
     c, id: c.id, name: clean(c.name), town: c.town || '', region: c.region || 'unconfirmed', county: c.county || '',
     lanes: lanesOf(c), ig, d7, spark: hs ? hs.slice(-28).map(e => e.count) : null,
     last: { date: c.last_post_date, live: !!lastLive },
-    pst, pdate: pv, price: pp, wedLive: pst === 'ok' ? pp.wed : null, sessLive: pst === 'ok' ? pp.sess : null,
+    pst, pdate: pv, price: pp, gap: (D.pricingGaps || {})[c.id] || null, wedLive: pst === 'ok' ? pp.wed : null, sessLive: pst === 'ok' ? pp.sess : null,
     rev: { count: c.review_count, rating: c.review_rating, st: rst, date: rv, live: rst === 'ok' }
   };
 });
@@ -263,7 +263,7 @@ function cFollowers(b) {
 }
 function cD7(b) {
   if (b.ig.state !== 'live' || b.d7 == null) return '<span class="muted">—</span>';
-  return '<span class="val ' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span>';
+  return '<span class="dchip ' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span>';
 }
 function cLast(b) {
   if (!b.last.date) return '<span class="muted">—</span>';
@@ -271,14 +271,31 @@ function cLast(b) {
   if (b.last.live) return '<span class="val">' + esc(dshort(b.last.date)) + '<small>' + ageText(a) + '</small></span>';
   return '<span class="dated">' + esc(dshort(b.last.date)) + '<small>unverified</small></span>';
 }
+function priceWhy(b, k) {
+  const c = b.c;
+  if (c.pricing) {
+    const t = c.pricing.toLowerCase();
+    if (/booth/.test(t) && !/wedding|portrait|session|family/.test(t)) return 'Booth rental';
+    if (b.price.wed == null && b.price.sess == null && (/\/\s?(hr|hour)|per hour|hourly/.test(t))) return 'Hourly rates';
+    if (b.price.wed == null && b.price.sess == null && c.specialty === 'drone') return 'Drone services';
+    if (k === 'wed' && b.price.wed == null) {
+      const wc = t.split(/[;|]/).filter(x => /wedding|elopement|bridal/.test(x));
+      if (wc.length && wc.every(x => !/\$/.test(x) || /\/\s?(hr|hour)|per hour|hourly/.test(x))) return 'Hourly wedding rate';
+    }
+    return k === 'wed' ? 'No wedding rate' : 'No session rate';
+  }
+  if (b.gap) return b.gap.reason;
+  if (!c.website) return 'No website';
+  return 'Not captured';
+}
 function cPrice(b, k) {
-  const v = b.price[k]; if (v == null) return '<span class="muted">—</span>';
+  const v = b.price[k]; if (v == null) return '<span class="why">' + esc(priceWhy(b, k)) + '</span>';
   if (b.pst === 'ok') return '<span class="val">' + money(v) + '</span>';
   return '<span class="dated">' + money(v) + '<small>as of ' + esc(dshort(b.pdate)) + '</small></span>';
 }
 function cRev(b) {
   if (b.rev.count == null) return '<span class="muted">—</span>';
-  const t = fmt(b.rev.count) + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) : '');
+  const t = fmt(b.rev.count) + (b.rev.rating != null ? ' · <span class="' + (b.rev.rating >= 4.8 ? 'rt-g' : b.rev.rating >= 4.5 ? 'rt-m' : 'rt-l') + '">' + Number(b.rev.rating).toFixed(1) + '</span>' : '');
   return b.rev.live ? '<span class="val">' + t + '</span>' : '<span class="dated">' + t + '<small>as of ' + esc(dshort(b.rev.date)) + '</small></span>';
 }
 
@@ -301,44 +318,46 @@ function viewBrief() {
   const reg = { slc: 0, adjacent: 0, unconfirmed: 0 }; B.forEach(b => reg[b.region] = (reg[b.region] || 0) + 1);
   const wed = B.map(b => b.wedLive).filter(x => x != null), ses = B.map(b => b.sessLive).filter(x => x != null);
   const withHandle = B.filter(b => b.c.ig_handle).length;
-  const tiles = '<div class="tiles">' +
-    '<div class="tile"><div class="n">' + num(n) + '</div><div class="t">Businesses tracked</div></div>' +
-    '<div class="tile"><div class="n">' + num(LIVEIG.length) + '<small>of ' + withHandle + '</small></div><div class="t">Instagram live today</div></div>' +
-    '<div class="tile"><div class="n">' + (wed.length ? money(median(wed)) : '—') + '</div><div class="t">Median wedding, from · ' + wed.length + ' priced</div></div>' +
-    '<div class="tile"><div class="n">' + (ses.length ? money(median(ses)) : '—') + '</div><div class="t">Median session, from · ' + ses.length + ' priced</div></div></div>' +
-    '<div class="stack">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<i style="flex-grow:' + (reg[r] || 0) + ';background:' + RCOL[r] + '"></i>').join('') + '</div>' +
-    '<div class="legend">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<span><i style="background:' + RCOL[r] + '"></i>' + REGION[r] + ' ' + (reg[r] || 0) + '</span>').join('') + '</div>';
+  const net7 = LIVEIG.reduce((a, b) => a + (b.d7 || 0), 0);
+  const ac = aiCompute('all');
+  const topAi = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).sort((a, b) => b.o.total - a.o.total || a.b.name.localeCompare(b.b.name))[0];
+  const engTop = e => { const t = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).filter(x => x.o[e] > 0).sort((a, b) => b.o[e] - a.o[e] || a.b.name.localeCompare(b.b.name))[0]; return t ? esc(t.b.name) + ' · ' + t.o[e] + ' of ' + ac.den[e] : 'none named'; };
+  const heroes = '<div class="heroes">' +
+    '<div class="hero"><div class="n">' + num(n) + '</div><div class="t">Businesses tracked</div><div class="s">' + (reg.slc || 0) + ' St. Lawrence · ' + (reg.adjacent || 0) + ' adjacent · ' + (reg.unconfirmed || 0) + ' unconfirmed</div><div class="stack" style="height:5px;margin-top:8px">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<i style="flex-grow:' + (reg[r] || 0) + ';background:' + RCOL[r] + '"></i>').join('') + '</div></div>' +
+    '<div class="hero"><div class="n">' + num(LIVEIG.length) + '<small>of ' + withHandle + '</small></div><div class="t">Instagram live today</div><div class="s">Net 7 days <span class="' + (net7 > 0 ? 'up' : net7 < 0 ? 'down' : 'flat') + '">' + signed(net7) + '</span> across live accounts</div></div>' +
+    '<div class="hero"><div class="n">' + (wed.length ? money(median(wed)) : '—') + '</div><div class="t">Median wedding, from</div><div class="s">' + wed.length + ' of ' + n + ' publish a wedding rate</div></div>' +
+    '<div class="hero"><div class="n">' + (ses.length ? money(median(ses)) : '—') + '</div><div class="t">Median session, from</div><div class="s">' + ses.length + ' of ' + n + ' publish a session rate</div></div>' +
+    '<div class="hero">' + (topAi && ac.answered ? '<div class="nm-hero">' + esc(topAi.b.name) + '</div><div class="t">Most named by AI</div><div class="s"><span class="ai-hi">' + topAi.o.total + ' of ' + ac.answered + '</span> answers · audit ' + esc(dshort(DATES.ai)) + '</div>' : '<div class="n">—</div><div class="t">Most named by AI</div><div class="s">No audit recorded</div>') + '</div></div>';
 
-  const mv = LIVEIG.filter(b => b.d7 != null).sort((a, b) => Math.abs(b.d7) - Math.abs(a.d7) || a.name.localeCompare(b.name)).slice(0, 5);
   const ig = SSBY.ig;
   let movers;
   if (ig.st === 'stalled') movers = '<div class="banner red">Instagram has not refreshed since ' + esc(dshort(ig.date)) + '. Movement is hidden until it does.</div>';
-  else movers = mv.length ? '<div class="list">' + mv.map(b => liRow(b, '<span class="' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span><small>' + fmt(b.ig.count) + '</small>')).join('') + '</div>' : empty('No movement yet', 'Needs 7 days of live history.');
+  else {
+    const gain = LIVEIG.filter(b => b.d7 > 0).sort((a, b) => b.d7 - a.d7 || a.name.localeCompare(b.name)).slice(0, 3);
+    const lose = LIVEIG.filter(b => b.d7 < 0).sort((a, b) => a.d7 - b.d7 || a.name.localeCompare(b.name)).slice(0, 3);
+    const col = (list, emptyMsg) => list.length ? '<div class="list">' + list.map(b => liRow(b, '<span class="dchip ' + (b.d7 > 0 ? 'up' : 'down') + '">' + signed(b.d7) + '</span><small>' + fmt(b.ig.count) + '</small>')).join('') + '</div>' : '<div class="empty"><span>' + emptyMsg + '</span></div>';
+    movers = '<div class="mv2"><div><h4 class="g">Gaining</h4>' + col(gain, 'No gainers this week') + '</div><div><h4 class="l">Losing</h4>' + col(lose, 'No losers this week') + '</div></div>';
+  }
 
-  const ac = aiCompute('all');
-  const top = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).sort((a, b) => b.o.total - a.o.total || a.b.name.localeCompare(b.b.name)).slice(0, 5);
-  const aiBody = !ac.answered ? empty('No audit recorded') : SSBY.ai.st === 'stalled' ? '<div class="banner red">The latest audit is from ' + esc(dshort(DATES.ai)) + ' (' + ageText(SSBY.ai.age) + '). Nothing is ranked from it until a new audit is recorded.</div>' :
-    '<div class="list">' + top.map(t => liRow(t.b, '<span class="num">' + t.o.total + '</span><small>of ' + ac.answered + ' answers</small>', 'ChatGPT ' + t.o.ChatGPT + ' of ' + ac.den.ChatGPT + ' · Gemini ' + t.o.Gemini + ' of ' + ac.den.Gemini)).join('') + '</div>';
-
-  const bands = [['Past week', 0, 7, '#8fcaff'], ['8 to 30 days', 8, 30, '#5ea6e6'], ['31 to 90 days', 31, 90, '#d2bf9f'], ['Over 90 days', 91, 1e9, '#6f7b8f']];
-  const tr = LIVEIG.filter(b => b.last.date);
-  const bc = bands.map(x => tr.filter(b => { const a = age(b.last.date); return a >= x[1] && a <= x[2]; }).length);
-  const recBody = tr.length ? '<div class="stack" style="height:12px;margin-top:6px">' + bands.map((x, i) => '<i style="flex-grow:' + bc[i] + ';background:' + x[3] + '"></i>').join('') + '</div>' +
-    '<dl class="kv" style="margin-top:14px">' + bands.map((x, i) => '<dt><span class="legend" style="margin:0"><span><i style="background:' + x[3] + '"></i>' + x[0] + '</span></span></dt><dd>' + bc[i] + ' of ' + tr.length + '</dd>').join('') + '</dl>' : empty('No live posting data');
+  let aiBody;
+  if (!ac.answered) aiBody = empty('No audit recorded');
+  else if (SSBY.ai.st === 'stalled') aiBody = '<div class="banner red">The latest audit is from ' + esc(dshort(DATES.ai)) + ' (' + ageText(SSBY.ai.age) + '). Nothing is ranked from it until a new audit is recorded.</div>';
+  else aiBody = '<dl class="kv"><dt>ChatGPT</dt><dd>' + engTop('ChatGPT') + '</dd><dt>Gemini</dt><dd>' + engTop('Gemini') + '</dd><dt>Answers</dt><dd>' + ac.answered + ' recorded · ' + esc(dshort(DATES.ai)) + '</dd></dl>';
 
   const sw = sweepInfo(SW[SW.length - 1]), ws = SSBY.web;
-  let webBody = '';
-  if (ws.st === 'stalled' || ws.st === 'late') webBody += '<div class="banner ' + (ws.st === 'stalled' ? 'red' : 'amber') + '" style="margin-bottom:12px">Last sweep was ' + esc(dshort(ws.date)) + ' (' + ageText(ws.age) + '). Prices and offerings below may have changed since.</div>';
-  webBody += sw ? '<dl class="kv"><dt>Last sweep</dt><dd>' + esc(dshort(sw.date)) + '</dd><dt>Pages checked</dt><dd>' + sw.fetched + ' of ' + sw.of + '</dd><dt>Changed</dt><dd>' + sw.ch + '</dd><dt>Unreachable</dt><dd>' + sw.un + '</dd></dl>' : empty('No sweep recorded');
-
-  const recent = B.filter(b => b.c.discovered_date && age(b.c.discovered_date) <= 30).sort((a, b) => a.c.discovered_date < b.c.discovered_date ? 1 : -1).slice(0, 5);
-  const addBody = recent.length ? '<div class="list">' + recent.map(b => liRow(b, '<span class="flat">' + esc(dshort(b.c.discovered_date)) + '</span>')).join('') + '</div>' : empty('No additions in 30 days');
+  let watchBody;
+  if (!sw) watchBody = empty('No sweep recorded');
+  else {
+    const chip = ws.st === 'ok' ? pill('Current', 'ice') : ws.st === 'late' ? pill('Late · ' + ageText(ws.age), 'amber') : ws.st === 'stalled' ? pill('Stalled · ' + ageText(ws.age), 'red') : pill('Not recorded', 'gray');
+    watchBody = '<div class="watchline">' + chip + '<span>Last sweep <b>' + esc(dshort(sw.date)) + '</b></span><span><b>' + sw.ch + '</b> changed</span><span><b>' + sw.un + '</b> unreachable</span><span>' + sw.fetched + ' of ' + sw.of + ' pages checked</span></div>' +
+      (ws.st === 'stalled' || ws.st === 'late' ? '<div class="banner ' + (ws.st === 'stalled' ? 'red' : 'amber') + '" style="margin-top:10px">Last sweep was ' + esc(dshort(ws.date)) + ' (' + ageText(ws.age) + '). Prices and offerings may have changed since.</div>' : '');
+  }
 
   return '<div class="view brief">' +
-    '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + pill(LIVEIG.length + ' of ' + B.filter(b => b.c.ig_handle).length + ' Instagram accounts live', LIVEIG.length ? 'ice' : 'amber') + '</div>' +
-    fchips() +
-    '<div class="row3">' + panel('Market', 'Counts from the roster', tiles) + panel('Instagram movement', 'Last 7 days, live accounts', movers, ['All businesses', 'market']) + panel('AI assistants', 'Latest audit ' + dshort(DATES.ai) + ' · directional', aiBody, ['Open', 'ai']) + '</div>' +
-    '<div class="row3b">' + panel('Posting recency', 'Live Instagram accounts', recBody) + panel('Website watch', 'Weekly sweep', webBody, ['Details', 'data']) + panel('Added to roster', 'Discovery, not market growth', addBody) + '</div></div>';
+    '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + pill(LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live', LIVEIG.length ? 'ice' : 'amber') + '</div>' +
+    fchips() + heroes +
+    '<div class="row2">' + panel('Movement', 'Last 7 days, live accounts', movers, ['All businesses', 'market']) + panel('AI assistants', 'Latest audit · directional', aiBody, ['Open', 'ai']) + '</div>' +
+    panel('Website watch', 'Weekly sweep', watchBody, ['Details', 'data']) + '</div>';
 }
 
 /* ---------- MARKET ---------- */
@@ -379,7 +398,7 @@ function spreadStrip(list) {
 }
 function tableBiz(list) {
   const head = COLS.map(c => '<th class="' + (c.cls || '') + (c.r ? ' r' : '') + (c.ns ? '' : ' s') + (state.sort.k === c.k ? ' on' : '') + '"' + (c.ns ? '' : ' data-sort="' + c.k + '"') + '>' + esc(c.l) + (state.sort.k === c.k ? '<span class="ar">' + (state.sort.dir < 0 ? '↓' : '↑') + '</span>' : '<span class="ar"></span>') + '</th>').join('');
-  const body = list.map(b => '<tr data-open="' + esc(b.id) + '" aria-selected="' + (state.sel === b.id) + '"><td class="nm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></td><td class="c-reg">' + regPill(b.region) + '</td><td class="c-lanes"><div class="lanes">' + b.lanes.slice(0, 3).map(l => '<span class="lane">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="lane">+' + (b.lanes.length - 3) + '</span>' : '') + '</div></td><td class="r">' + cFollowers(b) + '</td><td class="r c-d7">' + cD7(b) + '</td><td class="c-trend">' + (b.ig.state === 'live' ? spark(b.spark) : '<span class="muted">—</span>') + '</td><td class="c-last">' + cLast(b) + '</td><td class="r">' + cPrice(b, 'wed') + '</td><td class="r">' + cPrice(b, 'sess') + '</td><td class="r">' + cRev(b) + '</td></tr>').join('');
+  const body = list.map(b => '<tr data-open="' + esc(b.id) + '" aria-selected="' + (state.sel === b.id) + '"><td class="nm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></td><td class="c-reg">' + regPill(b.region) + '</td><td class="c-lanes"><div class="lanes">' + b.lanes.slice(0, 3).map(l => '<span class="lane l-' + l + '">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="lane">+' + (b.lanes.length - 3) + '</span>' : '') + '</div></td><td class="r">' + cFollowers(b) + '</td><td class="r c-d7">' + cD7(b) + '</td><td class="c-trend">' + (b.ig.state === 'live' ? spark(b.spark) : '<span class="muted">—</span>') + '</td><td class="c-last">' + cLast(b) + '</td><td class="r">' + cPrice(b, 'wed') + '</td><td class="r">' + cPrice(b, 'sess') + '</td><td class="r">' + cRev(b) + '</td></tr>').join('');
   return '<table class="tbl"><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>';
 }
 function tableVen() {
@@ -405,7 +424,7 @@ function fillMarket() {
   if (state.kind === 'ven') {
     const t = tableVen(); tw.innerHTML = t.html; $('#cnt').textContent = t.n + ' of ' + V.length + ' venues'; $('#spreadwrap').innerHTML = '';
   } else {
-    const list = filtered(); tw.innerHTML = tableBiz(sorted(list)); $('#cnt').textContent = list.length + ' of ' + B.length + ' businesses'; $('#spreadwrap').innerHTML = spreadStrip(list);
+    const list = filtered(); tw.innerHTML = tableBiz(sorted(list)); $('#cnt').textContent = list.length + ' of ' + B.length + ' businesses'; $('#spreadwrap').innerHTML = spreadStrip(list) + recencyStrip();
   }
   tw.scrollTop = keep;
 }
@@ -447,7 +466,7 @@ function openBiz(id) {
   const aiSec = ai.ac.answered ? '<div class="dr-sec"><h3>In AI assistant answers · ' + esc(dshort(DATES.ai)) + ', directional</h3><div class="ailine"><span>ChatGPT</span><span>' + ai.o.ChatGPT + ' of ' + ai.ac.den.ChatGPT + '</span><span>Gemini</span><span>' + ai.o.Gemini + ' of ' + ai.ac.den.Gemini + '</span></div></div>' : '';
   const conn = D.connections.filter(x => flat(x.a) === flat(b.name) || flat(x.b) === flat(b.name));
   const connSec = conn.length ? '<div class="dr-sec"><h3>Worked with</h3><div class="tags">' + conn.map(x => pill((flat(x.a) === flat(b.name) ? x.b : x.a) + (x.type ? ' · ' + x.type : ''), 'gray')).join('') + '</div></div>' : '';
-  const gaps = []; if (!c.website) gaps.push('No website'); if (!c.pricing) gaps.push('No published pricing'); if (!c.ig_handle) gaps.push('No Instagram handle'); else if (b.ig.state === 'none') gaps.push('Instagram not pulled daily'); if (c.review_count == null) gaps.push('No reviews found');
+  const gaps = []; if (!c.website) gaps.push('No website'); if (!c.pricing) gaps.push(b.gap ? 'Pricing: ' + b.gap.reason.toLowerCase() + ' (checked ' + dshort(b.gap.checked) + ')' : 'No published pricing'); if (!c.ig_handle) gaps.push('No Instagram handle'); else if (b.ig.state === 'none') gaps.push('Instagram not pulled daily'); if (c.review_count == null) gaps.push('No reviews found');
   const gapSec = gaps.length ? '<div class="dr-sec"><h3>Not available</h3><div class="gaps">' + gaps.map(g => pill(g, 'gray')).join('') + '</div></div>' : '';
   drawer.innerHTML = '<div class="dr-head"><button class="dr-x" data-close aria-label="Close">×</button><h2>' + esc(b.name) + '</h2><div class="where">' + esc(b.town) + (b.county && b.region !== 'slc' ? ' · ' + esc(b.county) + ' County' : '') + '</div><div class="dr-links">' + regPill(b.region) + links.join('') + '</div></div>' +
     '<div class="dr-body">' + figs + chart + (about ? '<div class="dr-sec"><h3>About</h3><p class="dr-text">' + esc(about) + '</p></div>' : '') +
@@ -571,7 +590,7 @@ function viewAI() {
   const max = named.length ? named[0].o.total : 1;
   const offList = Object.keys(ac.off).map(k => ac.off[k]).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   const row = (e, i) => '<button class="lb-r" data-open="' + esc(e.b.id) + '"><span class="rk">' + (i + 1) + '</span><span class="nm"><b>' + esc(e.b.name) + '</b><span class="bar2"><i style="width:' + (e.o.total / max * 100).toFixed(1) + '%"></i></span></span>' +
-    '<span class="c ' + (e.o.ChatGPT ? '' : 'zero') + '">' + e.o.ChatGPT + ' of ' + ac.den.ChatGPT + '</span><span class="c ' + (e.o.Gemini ? '' : 'zero') + '">' + e.o.Gemini + ' of ' + ac.den.Gemini + '</span><span class="t">' + e.o.total + ' of ' + ac.answered + ' answers</span></button>';
+    '<span class="c ' + (e.o.ChatGPT ? '' : 'zero') + '">' + e.o.ChatGPT + ' of ' + ac.den.ChatGPT + '</span><span class="c ' + (e.o.Gemini ? '' : 'zero') + '">' + e.o.Gemini + ' of ' + ac.den.Gemini + '</span><span class="t ' + (e.o.total === 0 ? 'zero' : e.o.total / ac.answered >= 0.75 ? 'ai-hi' : e.o.total / ac.answered >= 0.4 ? 'ai-mid' : 'ai-lo') + '">' + e.o.total + ' of ' + ac.answered + ' answers</span></button>';
   const lb = '<div class="lb"><div class="lb-h"><span></span><span>Business</span><span>ChatGPT</span><span>Gemini</span><span>Both</span></div>' +
     (named.length ? named.map(row).join('') : empty('Nobody was named for these prompts')) +
     (zero.length ? (state.aiZero ? zero.map((e, i) => row(e, named.length + i)).join('') : '') + '<button class="link" data-zero style="padding:12px 14px;text-align:left">' + (state.aiZero ? 'Hide' : 'Show') + ' ' + zero.length + ' not named in these answers</button>' : '') + '</div>';
@@ -611,13 +630,16 @@ function viewData() {
   const n = B.length, wh = B.filter(b => b.c.ig_handle).length;
   const cov = [['Website listed', B.filter(b => b.c.website).length], ['Instagram handle', wh], ['Instagram live today', LIVEIG.length], ['Published pricing', B.filter(b => b.c.pricing).length], ['Reviews found', B.filter(b => b.c.review_count != null).length], ['Mapped to a town', MAPPTS.length ? B.filter(b => (D.townCoords.coords || {})[(D.townCoords.aliases || {})[b.town] || b.town]).length : B.length]].map(r => [r[0] + ' (of ' + n + ')', r[1]]);
   const regRows = ['slc', 'adjacent', 'unconfirmed'].map(r => [REGION[r], B.filter(b => b.region === r).length]);
-  const rules = ['A figure is live, dated or absent. Dated figures are shown muted with their date and never enter a ranking, median or count.', 'Instagram counts are live only when pulled within ' + (SRC.ig ? SRC.ig.late_after_days : 2) + ' days. A carried count is dated.', 'Prices and review counts carry the date they were verified. The full verified text is always in the business panel.', '“From” prices are read from that text. Hourly rates, deposits, add-ons and minis are not used.', 'AI figures are counts of answers out of answers recorded. Directional only. No percentages, no average positions.', 'A business added to the roster is discovery, not market growth.', 'Region is St. Lawrence County, Adjacent or Unconfirmed. Nothing is guessed.'];
+  const noText = B.filter(b => !b.c.pricing);
+  const gapN = r => noText.filter(b => b.gap && b.gap.reason === r).length;
+  const missRows = [['Published pricing', B.filter(b => b.c.pricing).length], ['Not published, verified', gapN('Not published')], ['Website unreachable at last check', gapN('Site unreachable')], ['No website', noText.filter(b => !b.c.website && !b.gap).length], ['Pricing text, no standard rate', B.filter(b => b.c.pricing && b.price.wed == null && b.price.sess == null).length], ['Not captured yet', noText.filter(b => b.c.website && !b.gap).length]];
+  const rules = ['A missing price always says why: not published, unreachable, no website, or no standard rate in the published text.', 'A figure is live, dated or absent. Dated figures are shown muted with their date and never enter a ranking, median or count.', 'Instagram counts are live only when pulled within ' + (SRC.ig ? SRC.ig.late_after_days : 2) + ' days. A carried count is dated.', 'Prices and review counts carry the date they were verified. The full verified text is always in the business panel.', '“From” prices are read from that text. Hourly rates, deposits, add-ons and minis are not used.', 'AI figures are counts of answers out of answers recorded. Directional only. No percentages, no average positions.', 'A business added to the roster is discovery, not market growth.', 'Region is St. Lawrence County, Adjacent or Unconfirmed. Nothing is guessed.'];
   const exc = D.excluded.map(x => '<tr><td style="white-space:nowrap;font-weight:500">' + esc(clean(x.name)) + '</td><td class="muted">' + esc(clean(x.reason)) + '</td></tr>').join('');
   const nodaily = B.filter(b => b.c.ig_handle && b.ig.state === 'none').length, carried = B.filter(b => b.ig.state === 'carried' || b.ig.state === 'late').length;
   return '<div class="view scroll"><div class="data"><div class="page-h"><div><h1>Data</h1><p>How current every source is, what the roster covers and how figures are counted. Built ' + esc(dshort(DATES.roster)) + ' · viewing as of ' + esc(ASOF_S) + '.</p></div><div class="chips"><button class="btn" data-copy="csv">Copy businesses CSV</button><button class="btn" data-copy="report">Copy freshness report</button></div></div>' +
     '<section class="panel"><div class="panel-h"><h2>Source freshness</h2><span class="sub">Windows come from config/freshness.json</span></div>' + srcs + '</section>' +
     (nodaily || carried ? '<div class="banner gray">' + (carried ? carried + ' Instagram ' + plural(carried, 'account') + ' showing a carried or late count. ' : '') + (nodaily ? nodaily + ' ' + plural(nodaily, 'business has', 'businesses have') + ' a handle but no daily pull.' : '') + '</div>' : '') +
-    '<div class="cols2"><section class="panel"><div class="panel-h"><h2>Roster coverage</h2><span class="sub">' + n + ' businesses</span></div>' + tbl(cov, 'Field') + '</section><section class="panel"><div class="panel-h"><h2>By region</h2></div>' + tbl(regRows, 'Region') + '<div class="panel-h"><h2>By lane</h2></div>' + tbl(laneRows, 'Lane') + '</section></div>' +
+    '<div class="cols2"><section class="panel"><div class="panel-h"><h2>Roster coverage</h2><span class="sub">' + n + ' businesses</span></div>' + tbl(cov, 'Field') + '<div class="panel-h"><h2>Why a price is missing</h2></div>' + tbl(missRows, 'Reason') + '</section><section class="panel"><div class="panel-h"><h2>By region</h2></div>' + tbl(regRows, 'Region') + '<div class="panel-h"><h2>By lane</h2></div>' + tbl(laneRows, 'Lane') + '</section></div>' +
     '<div class="cols2"><section class="panel"><div class="panel-h"><h2>By county</h2></div><div class="scrollbox">' + tbl(cnt('county').slice(0, 20), 'County') + '</div></section><section class="panel"><div class="panel-h"><h2>Counting rules</h2></div><ol class="rules">' + rules.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol></section></div>' +
     '<section class="panel"><div class="panel-h"><h2>Reviewed and excluded</h2><span class="sub">' + D.excluded.length + ' names kept off the roster</span></div><div class="scrollbox"><table class="mini"><tbody>' + exc + '</tbody></table></div></section></div></div>';
 }
