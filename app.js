@@ -592,6 +592,20 @@ function priceWidget() {
     '<div class="chips"><button class="fc" data-bp="wed" aria-pressed="' + (k === 'wed') + '">Wedding</button><button class="fc" data-bp="sess" aria-pressed="' + (k === 'sess') + '">Session</button></div></div>';
   return panel('Pricing', 'Verified · every rate on the ladder', head + '<div class="ladder">' + rowsHtml + '</div>', ['All businesses', 'market']);
 }
+function reviewsWidget() {
+  const current = B.filter(b => b.rev.live && b.rev.count != null)
+    .sort((a, b) => b.rev.count - a.rev.count || (b.rev.rating || 0) - (a.rev.rating || 0) || a.name.localeCompare(b.name));
+  const list = current.slice(0, 10);
+  if (list.length < 3) return '';
+  const mx = Math.max.apply(null, list.map(b => b.rev.count).concat([1]));
+  const rows = list.map(b => {
+    const w = Math.max(4, b.rev.count / mx * 100);
+    return '<button class="mrow" data-open="' + esc(b.id) + '"><span class="mnm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></span>' +
+      '<span class="mbar"><i class="price" style="width:' + w.toFixed(1) + '%"></i></span>' +
+      '<span class="mval"><b class="pnum">' + fmt(b.rev.count) + '</b><small>' + (b.rev.rating != null ? Number(b.rev.rating).toFixed(1) + ' average' : 'reviews') + '</small></span></button>';
+  }).join('');
+  return panel('Reviews', 'Top 10 · ' + current.length + ' current books', '<div class="revlist">' + rows + '</div>', ['All businesses', 'market']);
+}
 function viewBrief() {
   const introCls = briefIntro ? '' : ' intro'; briefIntro = true;
   const n = B.length;
@@ -610,9 +624,9 @@ function viewBrief() {
     const topAi = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).sort((a, b) => b.o.total - a.o.total || a.b.name.localeCompare(b.b.name))[0];
     if (topAi && ac.answered) {
       tiles.push('<div class="hero"><div class="nm-hero">' + esc(topAi.b.name) + '</div><div class="t">Most named by AI</div><div class="s"><span class="ai-hi">' + topAi.o.total + ' of ' + ac.answered + '</span> answers · audit ' + esc(dshort(DATES.ai)) + '</div></div>');
-      const engTop = e => { const t = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).filter(x => x.o[e] > 0).sort((a, b) => b.o[e] - a.o[e] || a.b.name.localeCompare(b.b.name))[0]; return t ? esc(t.b.name) + ' · ' + t.o[e] + ' of ' + ac.den[e] : null; };
-      const lines = ENGS.map(e => { const t = engTop(e); return t ? '<dt>' + esc(e) + '</dt><dd>' + t + '</dd>' : ''; }).join('');
-      if (lines) aiPanel = panel('AI assistants', 'Latest audit · directional', '<dl class="kv">' + lines + '<dt>Answers</dt><dd>' + ac.answered + ' recorded · ' + esc(dshort(DATES.ai)) + '</dd></dl>', ['Open', 'ai']);
+      const engTop = e => { const t = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).filter(x => x.o[e] > 0).sort((a, b) => b.o[e] - a.o[e] || a.b.name.localeCompare(b.b.name))[0]; return t ? { name: t.b.name, count: t.o[e], den: ac.den[e] } : null; };
+      const items = ENGS.map(e => { const t = engTop(e); return t ? '<button class="ai-strip-item" data-go="ai"><span>' + esc(e) + '</span><b>' + esc(t.name) + ' · ' + t.count + ' of ' + t.den + '</b></button>' : ''; }).join('');
+      if (items) aiPanel = '<section class="panel ai-strip" aria-label="AI assistants"><div class="ai-strip-main"><div class="ai-strip-title"><h2>AI assistants</h2><span>Latest audit · directional</span></div><div class="ai-strip-items">' + items + '</div><div class="ai-strip-meta">' + ac.answered + ' answers recorded · ' + esc(dshort(DATES.ai)) + '</div><button class="link" data-go="ai">Open</button></div></section>';
     }
   }
   const heroes = '<div class="heroes" style="--hn:' + tiles.length + '">' + tiles.join('') + '</div>';
@@ -626,11 +640,11 @@ function viewBrief() {
 
   const spot = spotlight();
   const head = '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + (LIVEIG.length ? ' · ' + LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live' : '') + '</p></div></div>';
-  const cards = [moveWidget(), priceWidget(), aiPanel].filter(Boolean);
+  const cards = [moveWidget(), priceWidget(), reviewsWidget()].filter(Boolean);
   const cardsRow = cards.length ? '<div class="brow3" style="--cn:' + cards.length + '">' + cards.join('') + '</div>' : '';
   return '<div class="view brief' + introCls + '">' + head + spot + cardsRow +
     fchips() + heroes +
-    (watchPanel ? '<div>' + watchPanel + '</div>' : '') + '</div>';
+    (watchPanel ? '<div>' + watchPanel + '</div>' : '') + aiPanel + '</div>';
 }
 
 /* ---------- MARKET ---------- */
