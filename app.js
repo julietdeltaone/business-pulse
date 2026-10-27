@@ -460,16 +460,17 @@ function spotFigs(b) {
   return f.map(x => '<span class="sfig"><small>' + x[0] + '</small><b>' + x[1] + '</b></span>').join('');
 }
 function spotShell(eyebrow, b, num, diagram, note) {
-  return '<article class="spot-slide"><div class="spot-txt"><div class="spot-eye">' + eyebrow + '</div>' +
+  return '<article class="spot-slide' + (diagram ? '' : ' noviz') + '">' +
+    '<div class="spot-id"><div class="spot-eye">' + eyebrow + '</div>' +
     '<h3 class="spot-name">' + esc(b.name) + '</h3><div class="spot-town">' + esc(b.town) + '</div>' +
-    '<div class="spot-num" data-count="' + num.v + '" data-cfmt="' + num.f + '" data-csuffix="' + esc(num.suffix || '') + '">' + num.text + '</div><div class="spot-lab">' + num.label + '</div>' +
-    '<div class="spot-figs">' + spotFigs(b) + '</div>' +
-    (diagram ? '<div class="spot-mini">' + diagram + '</div>' : '') +
-    (note ? '<div class="spot-note">' + note + '</div>' : '') + '</div></article>';
+    (note ? '<div class="spot-note">' + note + '</div>' : '') + '</div>' +
+    '<div class="spot-big"><div class="spot-num" data-count="' + num.v + '" data-cfmt="' + num.f + '" data-csuffix="' + esc(num.suffix || '') + '">' + num.text + '</div><div class="spot-lab">' + num.label + '</div>' +
+    '<div class="spot-figs">' + spotFigs(b) + '</div></div>' +
+    (diagram ? '<div class="spot-viz">' + diagram + '</div>' : '') + '</article>';
 }
 function spotSpark(b) {
   const hs = spotHist(b); if (!hs) return '';
-  const a = hs.map(e => e.count), w = 320, h = 62, mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const a = hs.map(e => e.count), w = 560, h = 72, mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
   const pts = a.map((v, i) => [(i / (a.length - 1)) * w, 6 + (h - 14) - ((v - mn) / r) * (h - 14)]);
   const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
   const P = pal();
@@ -624,12 +625,11 @@ function viewBrief() {
   }
 
   const spot = spotlight();
-  const head = '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + '</p></div>' + (LIVEIG.length ? pill(LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live', 'ice') : '') + '</div>';
-  if (!spot) return '<div class="view brief' + introCls + '">' + head + fchips() + heroes + moveWidget() + priceWidget() +
-    ((aiPanel || watchPanel) ? '<div class="row2" style="' + (aiPanel && watchPanel ? '' : 'grid-template-columns:1fr') + '">' + aiPanel + watchPanel + '</div>' : '') + '</div>';
-  return '<div class="view brief' + introCls + '">' + head +
-    '<div class="toprow">' + spot + '<div class="topside">' + moveWidget() + aiPanel + '</div></div>' +
-    fchips() + heroes + priceWidget() +
+  const head = '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + (LIVEIG.length ? ' · ' + LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live' : '') + '</p></div></div>';
+  const cards = [moveWidget(), priceWidget(), aiPanel].filter(Boolean);
+  const cardsRow = cards.length ? '<div class="brow3" style="--cn:' + cards.length + '">' + cards.join('') + '</div>' : '';
+  return '<div class="view brief' + introCls + '">' + head + spot + cardsRow +
+    fchips() + heroes +
     (watchPanel ? '<div>' + watchPanel + '</div>' : '') + '</div>';
 }
 
