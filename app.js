@@ -40,6 +40,121 @@ const median = a => { if (!a.length) return null; const s = a.slice().sort((x, y
 const plural = (n, a, b) => n === 1 ? a : (b || a + 's');
 const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/* ---------- Clear glass theme: mode x gradient scheme ----------
+   The boot script in index.html sets data-mode / data-scheme on
+   <html> before first paint; this module renders the Theme pop-up
+   and keeps the attributes, localStorage and JS-drawn colors in
+   sync. Keys are bp_theme_mode / bp_theme_scheme (never the
+   dossier's ncc_ keys — the two apps share the github.io origin). */
+const BP_SCHEMES = ['bluegreen', 'blueviolet', 'tealsky', 'violetpink', 'amberrose', 'slate'];
+const BP_THEME_NAMES = { bluegreen: 'Blue / Green', blueviolet: 'Blue / Violet', tealsky: 'Teal / Sky', violetpink: 'Violet / Pink', amberrose: 'Amber / Rose', slate: 'Slate' };
+const BP_CHART = { /* [ga, gb, chart line on dark, chart line on light] */
+  bluegreen: ['#3a9bff', '#2fbf71', '#8fcaff', '#2470c9'],
+  blueviolet: ['#3a9bff', '#8b5cf6', '#c4a6ff', '#6d4bd8'],
+  tealsky: ['#14b8a6', '#38bdf8', '#6ee7d8', '#0f766e'],
+  violetpink: ['#8b5cf6', '#ec4899', '#d3a6ff', '#7c3aed'],
+  amberrose: ['#f59e0b', '#f43f5e', '#ffcf7d', '#b45309'],
+  slate: ['#64748b', '#94a3b8', '#c3cedd', '#475569']
+};
+function themeState() {
+  let m = 'light', s = 'bluegreen';
+  try {
+    m = localStorage.getItem('bp_theme_mode') === 'dark' ? 'dark' : 'light';
+    s = localStorage.getItem('bp_theme_scheme');
+    if (BP_SCHEMES.indexOf(s) < 0) s = 'bluegreen';
+  } catch (e) { }
+  return { mode: m, scheme: s };
+}
+/* The palette for everything JS paints (SVG charts, map markers):
+   follows the active mode x scheme. CSS-painted surfaces use the
+   --ga / --gb / text variables in styles.css instead. */
+function pal() {
+  const t = themeState(), c = BP_CHART[t.scheme] || BP_CHART.bluegreen, dark = t.mode === 'dark';
+  return {
+    mode: t.mode, scheme: t.scheme, ga: c[0], gb: c[1], line: dark ? c[2] : c[3],
+    t3: dark ? '#6f7c90' : '#68727f', t2: dark ? '#a6b1c3' : '#3d4754',
+    slc: dark ? c[2] : c[3], adjacent: dark ? '#d2bf9f' : '#8a6d3b',
+    unconfirmed: dark ? '#6f7b8f' : '#64748b', venue: dark ? '#f2b552' : '#b96e00',
+    grid: dark ? 'rgba(150,180,220,.06)' : 'rgba(24,36,52,.08)',
+    land: dark ? 'rgba(143,202,255,.05)' : 'rgba(36,112,201,.07)',
+    land2: dark ? 'rgba(143,202,255,.035)' : 'rgba(36,112,201,.05)',
+    river: dark ? 'rgba(143,202,255,.32)' : 'rgba(36,112,201,.35)',
+    champ: dark ? 'rgba(143,202,255,.22)' : 'rgba(36,112,201,.25)',
+    lblMute: dark ? '#465165' : '#68727f', townName: dark ? '#a6b1c3' : '#28323f'
+  };
+}
+function applyTheme(mode, scheme, save) {
+  const r = document.documentElement;
+  r.classList.add('bp-tfreeze');
+  r.setAttribute('data-mode', mode);
+  r.setAttribute('data-scheme', scheme);
+  if (save !== false) {
+    try { localStorage.setItem('bp_theme_mode', mode); localStorage.setItem('bp_theme_scheme', scheme); } catch (e) { }
+  }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', mode === 'dark' ? '#0a0e13' : '#e9eff4');
+  paintTheme();
+  /* Repaint JS-drawn colors (charts, sparklines, map tiles + markers)
+     by re-rendering the current view; scroll and drawer are restored. */
+  const sc = stage.querySelector('.view'), y = sc ? sc.scrollTop : 0, sel = state.sel;
+  render();
+  const sc2 = stage.querySelector('.view'); if (sc2) sc2.scrollTop = y;
+  if (sel) openAny(sel);
+  requestAnimationFrame(() => requestAnimationFrame(() => r.classList.remove('bp-tfreeze')));
+}
+function themePopHTML() {
+  const t = themeState();
+  const sws = BP_SCHEMES.map(s =>
+    '<button type="button" class="tpsw" data-tpscheme="' + s + '" data-s="' + s + '" aria-pressed="' + (t.scheme === s) + '"><span class="tpdot"></span><span class="tpn">' + BP_THEME_NAMES[s] + '</span><span class="tpck" aria-hidden="true">✓</span></button>').join('');
+  return '<div class="tpop-scrim" data-tpclose></div>' +
+    '<div class="tpop-card" role="dialog" aria-modal="true" aria-label="Theme">' +
+    '<div class="tpop-h"><span class="tpop-t">Theme</span><button type="button" class="tpop-x" data-tpclose aria-label="Close theme">×</button></div>' +
+    '<div class="tpop-sub">Mode and gradient apply instantly and are remembered on this device.</div>' +
+    '<div class="tpop-lab">Mode</div><div class="tpop-modes">' +
+    '<button type="button" class="tpm" data-tpmode="light" aria-pressed="' + (t.mode === 'light') + '">Light</button>' +
+    '<button type="button" class="tpm" data-tpmode="dark" aria-pressed="' + (t.mode === 'dark') + '">Dark</button></div>' +
+    '<div class="tpop-lab">Gradient</div><div class="tpop-sws">' + sws + '</div></div>';
+}
+let BP_TPOP_LAST = null;
+function openThemePop(opener) {
+  let pop = document.getElementById('tpop');
+  if (!pop) { pop = document.createElement('div'); pop.className = 'tpop'; pop.id = 'tpop'; document.body.appendChild(pop); }
+  pop.innerHTML = themePopHTML();
+  pop.hidden = false;
+  BP_TPOP_LAST = opener || document.querySelector('[data-topen]');
+  const btn = document.querySelector('[data-topen]'); if (btn) btn.setAttribute('aria-expanded', 'true');
+  const x = pop.querySelector('.tpop-x'); if (x) x.focus();
+}
+function closeThemePop() {
+  const pop = document.getElementById('tpop');
+  if (!pop || pop.hidden) return;
+  pop.hidden = true;
+  const btn = document.querySelector('[data-topen]'); if (btn) btn.setAttribute('aria-expanded', 'false');
+  if (BP_TPOP_LAST && BP_TPOP_LAST.focus) BP_TPOP_LAST.focus();
+  BP_TPOP_LAST = null;
+}
+function paintTheme() {
+  const t = themeState();
+  const dot = document.querySelector('[data-topen] .tpdot');
+  if (dot) dot.setAttribute('data-s', t.scheme);
+  $$('[data-tpmode]').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-tpmode') === t.mode)));
+  $$('[data-tpscheme]').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-tpscheme') === t.scheme)));
+}
+document.addEventListener('click', e => {
+  const el = e.target && e.target.closest ? e.target.closest('[data-topen],[data-tpmode],[data-tpscheme],[data-tpclose]') : null;
+  if (!el) return;
+  const t = themeState();
+  if (el.hasAttribute('data-topen')) { openThemePop(el); return; }
+  if (el.hasAttribute('data-tpclose')) { closeThemePop(); return; }
+  if (el.hasAttribute('data-tpmode')) applyTheme(el.getAttribute('data-tpmode'), t.scheme);
+  else if (el.hasAttribute('data-tpscheme')) applyTheme(t.mode, el.getAttribute('data-tpscheme'));
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const pop = document.getElementById('tpop');
+  if (pop && !pop.hidden) { e.stopPropagation(); closeThemePop(); }
+});
+
 /* ---------- freshness ---------- */
 const SRC = {}; (D.freshness.sources || []).forEach(s => SRC[s.id] = s);
 function stat(id, a) {
@@ -133,7 +248,7 @@ function lanesOf(c) {
    - instagram figures exist only in the live state;
    - reviews exist only while the reviews seed is inside its window. */
 const REGION = { slc: 'St. Lawrence County', adjacent: 'Adjacent', unconfirmed: 'Unconfirmed' };
-const RCOL = { slc: '#5ea6e6', adjacent: '#d2bf9f', unconfirmed: '#6f7b8f' };
+function RCOL(r) { const p = pal(); return r === 'slc' ? p.slc : r === 'adjacent' ? p.adjacent : p.unconfirmed; }
 const B = D.competitors.map(c => {
   const ig = igState(c.ig_handle);
   const d7 = ig.state === 'live' ? delta7(c.ig_handle) : null;
@@ -239,7 +354,8 @@ function spark(a, w, h) {
   const pts = a.map((v, i) => [(i / (a.length - 1)) * (w - 4) + 2, h - 3 - ((v - mn) / r) * (h - 6)]);
   const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
   const l = pts[pts.length - 1];
-  return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '"><path d="' + d + '" fill="none" stroke="#5ea6e6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + l[0].toFixed(1) + '" cy="' + l[1].toFixed(1) + '" r="2.2" fill="#8fcaff"/></svg>';
+  const P = pal();
+  return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '"><path d="' + d + '" fill="none" stroke="' + P.ga + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + l[0].toFixed(1) + '" cy="' + l[1].toFixed(1) + '" r="2.2" fill="' + P.line + '"/></svg>';
 }
 function bigChart(a, dates) {
   const w = 396, h = 92, pl = 4, pr = 4, pt = 8, pb = 18;
@@ -247,10 +363,11 @@ function bigChart(a, dates) {
   const pts = a.map((v, i) => [pl + (i / (a.length - 1)) * (w - pl - pr), pt + (h - pt - pb) - ((v - mn) / r) * (h - pt - pb)]);
   const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
   const area = line + 'L' + pts[pts.length - 1][0] + ' ' + (h - pb) + 'L' + pts[0][0] + ' ' + (h - pb) + 'Z';
-  return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Follower history"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ea6e6" stop-opacity=".28"/><stop offset="1" stop-color="#5ea6e6" stop-opacity="0"/></linearGradient></defs>' +
-    '<path d="' + area + '" fill="url(#gf)"/><path d="' + line + '" fill="none" stroke="#8fcaff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
-    '<text x="' + pl + '" y="' + (h - 3) + '" fill="#6f7c90" font-size="10.5">' + esc(dshort(dates[0])) + ' · ' + fmt(a[0]) + '</text>' +
-    '<text x="' + (w - pr) + '" y="' + (h - 3) + '" text-anchor="end" fill="#a6b1c3" font-size="10.5">' + esc(dshort(dates[dates.length - 1])) + ' · ' + fmt(a[a.length - 1]) + '</text></svg>';
+  const P = pal();
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Follower history"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + P.ga + '" stop-opacity=".28"/><stop offset="1" stop-color="' + P.ga + '" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#gf)"/><path d="' + line + '" fill="none" stroke="' + P.line + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<text x="' + pl + '" y="' + (h - 3) + '" fill="' + P.t3 + '" font-size="10.5">' + esc(dshort(dates[0])) + ' · ' + fmt(a[0]) + '</text>' +
+    '<text x="' + (w - pr) + '" y="' + (h - 3) + '" text-anchor="end" fill="' + P.t2 + '" font-size="10.5">' + esc(dshort(dates[dates.length - 1])) + ' · ' + fmt(a[a.length - 1]) + '</text></svg>';
 }
 function wideChart(a, dates, label) {
   const w = 720, h = 150, pl = 6, pr = 6, pt = 10, pb = 20;
@@ -258,10 +375,11 @@ function wideChart(a, dates, label) {
   const pts = a.map((v, i) => [pl + (i / (a.length - 1)) * (w - pl - pr), pt + (h - pt - pb) - ((v - mn) / r) * (h - pt - pb)]);
   const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
   const area = line + 'L' + pts[pts.length - 1][0] + ' ' + (h - pb) + 'L' + pts[0][0] + ' ' + (h - pb) + 'Z';
-  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;display:block" role="img" aria-label="' + esc(label || 'Trend') + '"><defs><linearGradient id="gw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ea6e6" stop-opacity=".25"/><stop offset="1" stop-color="#5ea6e6" stop-opacity="0"/></linearGradient></defs>' +
-    '<path d="' + area + '" fill="url(#gw)"/><path d="' + line + '" fill="none" stroke="#8fcaff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-    '<text x="' + pl + '" y="' + (h - 4) + '" fill="#6f7c90" font-size="11">' + esc(dshort(dates[0])) + ' · ' + fmt(a[0]) + '</text>' +
-    '<text x="' + (w - pr) + '" y="' + (h - 4) + '" text-anchor="end" fill="#a6b1c3" font-size="11">' + esc(dshort(dates[dates.length - 1])) + ' · ' + fmt(a[a.length - 1]) + '</text></svg>';
+  const P = pal();
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;display:block" role="img" aria-label="' + esc(label || 'Trend') + '"><defs><linearGradient id="gw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + P.ga + '" stop-opacity=".25"/><stop offset="1" stop-color="' + P.ga + '" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#gw)"/><path d="' + line + '" fill="none" stroke="' + P.line + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<text x="' + pl + '" y="' + (h - 4) + '" fill="' + P.t3 + '" font-size="11">' + esc(dshort(dates[0])) + ' · ' + fmt(a[0]) + '</text>' +
+    '<text x="' + (w - pr) + '" y="' + (h - 4) + '" text-anchor="end" fill="' + P.t2 + '" font-size="11">' + esc(dshort(dates[dates.length - 1])) + ' · ' + fmt(a[a.length - 1]) + '</text></svg>';
 }
 const pill = (t, c) => '<span class="pill ' + (c || '') + '">' + esc(t) + '</span>';
 const RSHORT = { slc: 'St. Lawrence', adjacent: 'Adjacent', unconfirmed: 'Unconfirmed' };
@@ -354,7 +472,8 @@ function spotSpark(b) {
   const a = hs.map(e => e.count), w = 320, h = 62, mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
   const pts = a.map((v, i) => [(i / (a.length - 1)) * w, 6 + (h - 14) - ((v - mn) / r) * (h - 14)]);
   const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
-  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;display:block" aria-hidden="true"><path d="' + line + 'L' + w + ' ' + h + 'L0 ' + h + 'Z" fill="rgba(94,166,230,.14)"/><path class="spot-line" d="' + line + '" fill="none" stroke="#8fcaff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+  const P = pal();
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;display:block" aria-hidden="true"><path d="' + line + 'L' + w + ' ' + h + 'L0 ' + h + 'Z" fill="' + P.ga + '" fill-opacity=".14"/><path class="spot-line" d="' + line + '" fill="none" stroke="' + P.line + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
     '<div class="sp-cap">' + esc(dshort(hs[0].date)) + ' · ' + fmt(a[0]) + ' → ' + esc(dshort(hs[hs.length - 1].date)) + ' · ' + fmt(a[a.length - 1]) + '</div>';
 }
 function spotPriceTrack(b, kind) {
@@ -480,7 +599,7 @@ function viewBrief() {
   const withHandle = B.filter(b => b.c.ig_handle).length;
   const net7 = LIVEIG.reduce((a, b) => a + (b.d7 || 0), 0);
   const tiles = [];
-  tiles.push('<div class="hero"><div class="n">' + num(n) + '</div><div class="t">Businesses tracked</div><div class="s">' + (reg.slc || 0) + ' St. Lawrence · ' + (reg.adjacent || 0) + ' adjacent · ' + (reg.unconfirmed || 0) + ' unconfirmed</div><div class="stack" style="height:5px;margin-top:8px">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<i style="flex-grow:' + (reg[r] || 0) + ';background:' + RCOL[r] + '"></i>').join('') + '</div></div>');
+  tiles.push('<div class="hero"><div class="n">' + num(n) + '</div><div class="t">Businesses tracked</div><div class="s">' + (reg.slc || 0) + ' St. Lawrence · ' + (reg.adjacent || 0) + ' adjacent · ' + (reg.unconfirmed || 0) + ' unconfirmed</div><div class="stack" style="height:5px;margin-top:8px">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<i style="flex-grow:' + (reg[r] || 0) + ';background:' + RCOL(r) + '"></i>').join('') + '</div></div>');
   if (LIVEIG.length) tiles.push('<div class="hero"><div class="n">' + num(LIVEIG.length) + '<small>of ' + withHandle + '</small></div><div class="t">Instagram live today</div><div class="s">Net 7 days <span class="' + (net7 > 0 ? 'up' : net7 < 0 ? 'down' : 'flat') + '">' + signed(net7) + '</span> across live accounts</div></div>');
   if (wed.length) tiles.push('<div class="hero"><div class="n">' + money(median(wed)) + '</div><div class="t">Median wedding, from</div><div class="s">' + wed.length + ' of ' + n + ' publish a verified wedding rate</div></div>');
   if (ses.length) tiles.push('<div class="hero"><div class="n">' + money(median(ses)) + '</div><div class="t">Median session, from</div><div class="s">' + ses.length + ' of ' + n + ' publish a verified session rate</div></div>');
@@ -686,31 +805,32 @@ function animBox(to) {
   requestAnimationFrame(step);
 }
 function mapSvg() {
+  const P = pal();
   let g = '';
-  for (let la = 43.5; la <= 45.01; la += 0.5) { const y = proj(la, MX0)[1]; g += '<line x1="0" x2="1000" y1="' + y + '" y2="' + y + '" stroke="rgba(150,180,220,.06)" vector-effect="non-scaling-stroke"/>'; }
-  for (let ln = -76; ln <= -73.5; ln += 1) { const x = proj(45, ln)[0]; g += '<line y1="0" y2="677" x1="' + x + '" x2="' + x + '" stroke="rgba(150,180,220,.06)" vector-effect="non-scaling-stroke"/>'; }
+  for (let la = 43.5; la <= 45.01; la += 0.5) { const y = proj(la, MX0)[1]; g += '<line x1="0" x2="1000" y1="' + y + '" y2="' + y + '" stroke="' + P.grid + '" vector-effect="non-scaling-stroke"/>'; }
+  for (let ln = -76; ln <= -73.5; ln += 1) { const x = proj(45, ln)[0]; g += '<line y1="0" y2="677" x1="' + x + '" x2="' + x + '" stroke="' + P.grid + '" vector-effect="non-scaling-stroke"/>'; }
   const canada = poly([[-76.5, 44.05]].concat(RIVER, [[-73.34, 45.0], [-73.3, 45.1], [-76.5, 45.1]])) + 'Z';
   const lake = poly([[-76.5, 44.05], [-76.33, 44.13], [-76.28, 43.85], [-76.35, 43.5], [-76.5, 43.5]]) + 'Z';
   const champ = poly([[-73.35, 45.0], [-73.4, 44.5], [-73.42, 44.0], [-73.4, 43.6]]);
-  g += '<path d="' + canada + '" fill="rgba(143,202,255,.035)"/><path d="' + lake + '" fill="rgba(143,202,255,.05)"/>' +
-    '<path d="' + poly([[-76.5, 44.05]].concat(RIVER, [[-73.34, 45.0]])) + '" fill="none" stroke="rgba(143,202,255,.32)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>' +
-    '<path d="' + champ + '" fill="none" stroke="rgba(143,202,255,.22)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
-  const lbl = (t, lat, lng) => { const p = proj(lat, lng); return '<text x="' + p[0] + '" y="' + p[1] + '" fill="#465165" font-style="italic" style="font-size:calc(13px*var(--k))">' + t + '</text>'; };
+  g += '<path d="' + canada + '" fill="' + P.land2 + '"/><path d="' + lake + '" fill="' + P.land + '"/>' +
+    '<path d="' + poly([[-76.5, 44.05]].concat(RIVER, [[-73.34, 45.0]])) + '" fill="none" stroke="' + P.river + '" stroke-width="1.2" vector-effect="non-scaling-stroke"/>' +
+    '<path d="' + champ + '" fill="none" stroke="' + P.champ + '" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
+  const lbl = (t, lat, lng) => { const p = proj(lat, lng); return '<text x="' + p[0] + '" y="' + p[1] + '" fill="' + P.lblMute + '" font-style="italic" style="font-size:calc(13px*var(--k))">' + t + '</text>'; };
   g += lbl('Canada', 45.06, -75.6) + lbl('St. Lawrence River', 44.83, -75.95) + lbl('Lake Ontario', 43.8, -76.45) + lbl('Lake Champlain', 44.2, -73.7);
   const byTown = {}; MAPPTS.forEach(p => { if (p.kind === 'b') byTown[p.tn] = (byTown[p.tn] || 0) + 1; });
   const rawOf = {}; MAPPTS.forEach(p => { if (!rawOf[p.tn]) rawOf[p.tn] = p.town; });
   const dim = t => state.mapTown && state.mapTown !== t;
   const pts = MAPPTS.slice().sort((a, b) => (b.ig && b.ig.state === 'live' ? b.ig.count : 0) - (a.ig && a.ig.state === 'live' ? a.ig.count : 0)).map(p => {
-    const col = RCOL[p.region] || RCOL.unconfirmed, live = p.ig && p.ig.state === 'live';
+    const col = RCOL(p.region), live = p.ig && p.ig.state === 'live';
     const r = live ? Math.max(5, Math.min(16, 3.2 + Math.sqrt(p.ig.count) / 5)) : 4.5;
-    const shape = p.kind === 'v' ? '<rect class="core" x="' + (-r * .8) + '" y="' + (-r * .8) + '" width="' + (r * 1.6) + '" height="' + (r * 1.6) + '" transform="rotate(45)" fill="none" stroke="#f2b552" stroke-width="1.6"/>' :
+    const shape = p.kind === 'v' ? '<rect class="core" x="' + (-r * .8) + '" y="' + (-r * .8) + '" width="' + (r * 1.6) + '" height="' + (r * 1.6) + '" transform="rotate(45)" fill="none" stroke="' + pal().venue + '" stroke-width="1.6"/>' :
       '<circle class="core" r="' + r.toFixed(1) + '" fill="' + col + '" fill-opacity="' + (live ? .62 : .28) + '" stroke="' + col + '" stroke-width="1.3"' + (live ? '' : ' stroke-dasharray="2 2"') + '/>';
     return '<g class="bub ' + (dim(p.tn) ? 'dim' : '') + (state.sel === p.id ? ' sel' : '') + '" data-open="' + esc(p.id) + '" data-tip="' + esc(p.name) + (p.kind === 'v' ? ' · venue' : live ? ' · ' + fmt(p.ig.count) + ' followers' : '') + '" style="transform:translate(' + p.x.toFixed(1) + 'px,' + p.y.toFixed(1) + 'px) scale(var(--k))">' + shape + '</g>';
   }).join('');
   const coords = D.townCoords.coords || {};
   const names = Object.keys(byTown).filter(t => !/county|upstate|adirondacks/i.test(t)).sort((a, b) => byTown[b] - byTown[a]).slice(0, 7).map(t => {
     const c = coords[(D.townCoords.aliases || {})[rawOf[t]] || rawOf[t]]; if (!c) return ''; const p = proj(c.lat, c.lng);
-    return '<text style="transform:translate(' + p[0].toFixed(1) + 'px,' + (p[1] + 24).toFixed(1) + 'px) scale(var(--k))" text-anchor="middle" fill="#a6b1c3" font-size="12" font-weight="500" pointer-events="none">' + esc(t) + '</text>';
+    return '<text style="transform:translate(' + p[0].toFixed(1) + 'px,' + (p[1] + 24).toFixed(1) + 'px) scale(var(--k))" text-anchor="middle" fill="' + pal().townName + '" font-size="12" font-weight="500" pointer-events="none">' + esc(t) + '</text>';
   }).join('');
   return '<svg id="mapsvg" viewBox="' + curBox.join(' ') + '" style="--k:' + (curBox[2] / 1000) + '" preserveAspectRatio="xMidYMid meet">' + g + names + pts + '</svg>';
 }
@@ -718,7 +838,7 @@ function viewMap() {
   mapPoints();
   const towns = {}; MAPPTS.filter(p => p.kind === 'b').forEach(p => towns[p.tn] = (towns[p.tn] || 0) + 1);
   const list = Object.keys(towns).sort((a, b) => towns[b] - towns[a] || a.localeCompare(b)).map(t => '<button class="li" data-town="' + esc(t) + '" style="' + (state.mapTown === t ? 'background:var(--ice-bg)' : '') + '"><span class="nm">' + esc(t) + '</span><span class="rt">' + towns[t] + '</span></button>').join('');
-  return '<div class="view mapv"><div class="mapcard"><div class="mapctl"><div class="seg sm" id="boxseg"><i class="thumb"></i><button data-box="all" aria-selected="true">North Country</button><button data-box="slc" aria-selected="false">St. Lawrence County</button></div><button class="fc" id="venToggle" aria-pressed="' + state.mapVen + '" style="height:32px;background:rgba(5,7,11,.6)">Venues</button></div><div id="mapid"></div>' +
+  return '<div class="view mapv"><div class="mapcard"><div class="mapctl"><div class="seg sm" id="boxseg"><i class="thumb"></i><button data-box="all" aria-selected="true">North Country</button><button data-box="slc" aria-selected="false">St. Lawrence County</button></div><button class="fc" id="venToggle" aria-pressed="' + state.mapVen + '">Venues</button></div><div id="mapid"></div>' +
     '<div class="mapnote">Drag to pan, scroll to zoom. Solid circles are live Instagram accounts sized by followers; hollow circles are not refreshed. ' + (MAPMISS ? MAPMISS + ' without a mapped town.' : '') + '</div></div>' +
     '<section class="panel maplist"><div class="panel-h"><h2>Towns</h2><span class="sub">' + MAPPTS.filter(p => p.kind === 'b').length + ' businesses</span></div><div class="panel-b list">' + list + '</div></section></div>';
 }
@@ -729,8 +849,13 @@ function initMap() {
   if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
   bpMap = L.map(el, { zoomControl: false, scrollWheelZoom: true });
   L.control.zoom({ position: 'bottomright' }).addTo(bpMap);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Esri, USGS, NOAA &copy; OpenStreetMap contributors' }).addTo(bpMap);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(bpMap);
+  /* Basemap follows the theme mode: Esri World Light Gray in light
+     mode, World Dark Gray in dark mode (never CARTO — watermarked). */
+  const darkTiles = themeState().mode === 'dark';
+  const tileBase = darkTiles ? 'Canvas/World_Dark_Gray_Base' : 'Canvas/World_Light_Gray_Base';
+  const tileRef = darkTiles ? 'Canvas/World_Dark_Gray_Reference' : 'Canvas/World_Light_Gray_Reference';
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + tileBase + '/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Esri, USGS, NOAA &copy; OpenStreetMap contributors' }).addTo(bpMap);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + tileRef + '/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(bpMap);
   const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {}, cnt = {};
   const all = [], slcPts = [];
   const placeLL = (id, name, town, region, kind, ll, ig) => {
@@ -740,14 +865,15 @@ function initMap() {
     const lat = ll[0] + Math.sin(ang) * rr, lng = ll[1] + Math.cos(ang) * rr * 1.4;
     all.push([lat, lng]); if (region === 'slc') slcPts.push([lat, lng]);
     const live = ig && ig.state === 'live';
-    const col = kind === 'v' ? '#f2b552' : (RCOL[region] || RCOL.unconfirmed);
+    const col = kind === 'v' ? pal().venue : RCOL(region);
     const m = L.circleMarker([lat, lng], { radius: live ? Math.max(6, Math.min(17, 3.2 + Math.sqrt(ig.count) / 5)) : 5, color: col, weight: 1.4, dashArray: live ? null : '2 3', fillColor: col, fillOpacity: live ? .6 : .22 }).addTo(bpMap);
     m.bindTooltip(name + (kind === 'v' ? ' · venue' : live ? ' · ' + fmt(ig.count) + ' followers' : ''), { direction: 'top', offset: [0, -6] });
     m.on('click', () => openAny(id));
   };
   B.forEach(b => { const c = coords[al[b.town] || b.town]; placeLL(b.id, b.name, b.town, b.region, 'b', c ? [c.lat, c.lng] : null, b.ig); });
   bpVenLayer = L.layerGroup();
-  V.forEach(x => { if (x.v.lat == null) return; const m = L.circleMarker([x.v.lat, x.v.lng], { radius: 6, color: '#f2b552', weight: 1.4, fillColor: '#f2b552', fillOpacity: .5 }); m.bindTooltip(x.name + ' · venue', { direction: 'top', offset: [0, -6] }); m.on('click', () => openAny(x.id)); bpVenLayer.addLayer(m); });
+  const venCol = pal().venue;
+  V.forEach(x => { if (x.v.lat == null) return; const m = L.circleMarker([x.v.lat, x.v.lng], { radius: 6, color: venCol, weight: 1.4, fillColor: venCol, fillOpacity: .5 }); m.bindTooltip(x.name + ' · venue', { direction: 'top', offset: [0, -6] }); m.on('click', () => openAny(x.id)); bpVenLayer.addLayer(m); });
   if (state.mapVen) bpVenLayer.addTo(bpMap);
   bpBounds = { all: all.length ? all : null, slc: slcPts.length ? slcPts : null };
   if (state.mapTown) flyTown(state.mapTown);
@@ -1022,6 +1148,39 @@ window.addEventListener('hashchange', route);
 window.addEventListener('resize', () => { thumb($('#nav')); $$('.seg.sm').forEach(thumb); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { thumb($('#nav')); $$('.seg.sm').forEach(thumb); });
 
+/* ---------- Depth: parallax planes ----------
+   Builds the mid plane (#plxmid: two glow blobs + two rings) and
+   drifts scene + mid against the active view's scroll — damped,
+   transform-only, rAF-throttled, passive; distances asymptote at
+   -58px (scene) / -108px (mid). Under prefers-reduced-motion
+   nothing is set and the CSS flattens both layers. */
+(function () {
+  const mid = document.createElement('div');
+  mid.id = 'plxmid'; mid.setAttribute('aria-hidden', 'true');
+  mid.innerHTML = '<div class="plx-blob plx-b1"></div><div class="plx-blob plx-b2"></div>' +
+    '<div class="plx-ring plx-r1"></div><div class="plx-ring plx-r2"></div>';
+  document.body.appendChild(mid);
+  if (REDUCED) return;
+  let ticking = false, lastY = 0;
+  function upd() {
+    ticking = false;
+    const S = Math.max(lastY, window.scrollY || 0);
+    const k = 1 - Math.exp(-S / 850);
+    const r = document.documentElement.style;
+    r.setProperty('--plx-bg', (-58 * k).toFixed(1) + 'px');
+    r.setProperty('--plx-mid', (-108 * k).toFixed(1) + 'px');
+  }
+  function onScroll(e) {
+    const t = e && e.target;
+    if (t && t !== document && t.classList && t.classList.contains('view')) lastY = t.scrollTop;
+    if (!ticking) { ticking = true; requestAnimationFrame(upd); }
+  }
+  document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+  window.addEventListener('scroll', onScroll, { passive: true });
+  upd();
+})();
+
+paintTheme();
 health();
 route();
 window.__pulse = { B, V, AI, ENGS, aiCompute, SS, ASOF_S };
