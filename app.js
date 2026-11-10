@@ -1,5 +1,7 @@
 /* Business Pulse front end. One file, no dependencies, works from file://.
-   Reads window.PULSE_DATA (data/data.js) plus three research bundles. Never fetches anything.
+   Reads window.PULSE_DATA (data/data.js) plus three research bundles. The public
+   views never fetch anything; the Admin view is the one exception — on unlock it
+   fetches its encrypted bundle (data/admin.enc.json) and decrypts it in memory.
    Rule that shapes everything below (JD, 2026-10-26): a figure is shown only while it is
    current and verified. Otherwise it is absent. Absence is not reported; a source, view or
    panel exists only when there is something current to put in it. */
@@ -1073,9 +1075,161 @@ function freshnessReport() {
   return 'Business Pulse freshness, as of ' + ASOF_S + '\n' + SS.map(s => (s.st === 'ok' ? 'OK     ' : s.st === 'late' ? 'LATE   ' : s.st === 'stalled' ? 'STALLED' : 'NO DATA') + ' ' + s.label + ': ' + (s.date || 'none') + (s.age != null ? ' (' + s.age + ' days)' : '') + (s.st === 'ok' ? '' : '\n         Do this: ' + s.fix)).join('\n');
 }
 
+/* ---------- ADMIN ----------
+   The JD-specific layer, behind a password wall. The published site only
+   ever holds ciphertext (data/admin.enc.json: AES-256-GCM; key derived
+   from the password with PBKDF2-HMAC-SHA256, 200,000 rounds — see
+   scripts/build_admin.py). Unlocking fetches the ciphertext, derives the
+   key in this browser and decrypts in memory. The plaintext is never
+   written anywhere; sessionStorage keeps the password for this tab
+   session only, so moving between views does not re-prompt. Lock clears
+   both. A wrong password fails the GCM check and renders nothing. */
+let ADM = null;
+const admState = { err: '', busy: false };
+function admStoredPw() { try { return sessionStorage.getItem('bp_admin_pw') || ''; } catch (e) { return ''; } }
+function admStorePw(pw) {
+  try {
+    if (pw) { sessionStorage.setItem('bp_admin_pw', pw); sessionStorage.setItem('bp_admin_ok', '1'); }
+    else { sessionStorage.removeItem('bp_admin_pw'); sessionStorage.removeItem('bp_admin_ok'); }
+  } catch (e) { }
+}
+async function admDecrypt(pw) {
+  let res;
+  try { res = await fetch('data/admin.enc.json', { cache: 'no-store' }); } catch (e) { throw new Error('Could not load the admin bundle.'); }
+  if (!res.ok) throw new Error('This build has no admin bundle. It is produced only when the build runs with the admin password set.');
+  const pkg = await res.json();
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(pkg.salt), iterations: pkg.iterations || 200000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  let pt;
+  try { pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(pkg.iv) }, key, b64(pkg.ct)); }
+  catch (e) { throw new Error('That password did not unlock the admin data.'); }
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function admUnlock(pw) {
+  if (admState.busy || !pw) return;
+  admState.busy = true; admState.err = '';
+  if (state.view === 'admin') render();
+  try { ADM = await admDecrypt(pw); admStorePw(pw); }
+  catch (e) { ADM = null; admStorePw(''); admState.err = e.message || 'Could not unlock.'; }
+  admState.busy = false;
+  if (state.view === 'admin') render();
+}
+function admLock() { ADM = null; admStorePw(''); admState.err = ''; if (state.view === 'admin') render(); }
+function adminMount() {
+  if (ADM || admState.busy) return;
+  const pw = admStoredPw();
+  if (pw) { admUnlock(pw); return; }
+  const i = $('#admin-pw'); if (i) i.focus();
+}
+const PROMPT_TXT = {}; (D.aiPrompts.prompts || []).forEach(p => PROMPT_TXT[p.id] = p.text);
+const admMini = (head, rows, sub) => '<section class="panel"><div class="panel-h"><h2>' + head + '</h2>' + (sub ? '<span class="sub">' + esc(sub) + '</span>' : '') + '</div><div class="scrollbox"><table class="mini"><thead><tr>' + rows[0] + '</tr></thead><tbody>' + rows[1] + '</tbody></table></div></section>';
+function admPanelAI() {
+  const rows = ADM.aiVisibility || []; if (!rows.length) return '';
+  const runs = {};
+  rows.forEach(r => { const k = r.date + '|' + r.engine + '|' + (r.run || ''); (runs[k] = runs[k] || []).push(r); });
+  const keys = Object.keys(runs).sort().reverse();
+  const latestDate = rows.reduce((mx, r) => r.date > mx ? r.date : mx, '');
+  const latest = rows.filter(r => r.date === latestDate).slice().sort((a, b) => (a.engine + a.prompt).localeCompare(b.engine + b.prompt));
+  const namedCt = rs => rs.filter(r => r.jd_named === 'yes' || r.jd_named === 'partial').length;
+  const jdPill = v => v === 'yes' ? pill('Named', 'ice') : v === 'partial' ? pill('Partial', 'amber') : v === 'unreachable' ? pill('Unreachable', 'red') : pill('Not named', 'gray');
+  const det = latest.map(r => '<tr><td>' + esc(r.prompt) + '</td><td>' + esc(r.engine) + '</td><td>' + jdPill(r.jd_named) + '</td><td class="r">' + (r.jd_rank != null ? '#' + r.jd_rank + ' of ' + (r.of_total || '—') : '—') + '</td><td class="adm-note">' + (r.rivals || []).map(x => esc(x)).join(', ') + '</td></tr>').join('');
+  const hist = keys.slice(0, 30).map(k => { const rs = runs[k], f = rs[0]; return '<tr><td>' + esc(dshort(f.date)) + '</td><td>' + esc(f.engine) + '</td><td>' + esc(f.run || '') + '</td><td class="r">' + namedCt(rs) + ' of ' + rs.length + '</td></tr>'; }).join('');
+  return '<section class="panel"><div class="panel-h"><h2>AI visibility — JD detail, latest day</h2><span class="sub">' + esc(dshort(latestDate)) + ' · per-prompt results from the JD log</span></div><div class="scrollbox"><table class="mini"><thead><tr><th>Prompt</th><th>Engine</th><th>JD Meyers Productions</th><th class="r">Position</th><th>Others named</th></tr></thead><tbody>' + det + '</tbody></table></div>' +
+    '<div class="panel-h"><h2>Run history</h2><span class="sub">' + keys.length + ' runs · ' + rows.length + ' checks</span></div><div class="scrollbox"><table class="mini"><thead><tr><th>Date</th><th>Engine</th><th>Run</th><th class="r">JD named</th></tr></thead><tbody>' + hist + '</tbody></table></div></section>';
+}
+function admPanelChecks() {
+  const rows = (ADM.aiChecks || []).slice().sort((a, b) => (b.date + b.engine + (PROMPT_TXT[b.prompt_id] || b.prompt_id)).localeCompare(a.date + a.engine + (PROMPT_TXT[a.prompt_id] || a.prompt_id)));
+  if (!rows.length) return '';
+  const body = rows.map(r => '<tr><td>' + esc(dshort(r.date)) + '</td><td>' + esc(r.engine) + '</td><td>' + esc(PROMPT_TXT[r.prompt_id] || r.prompt_id) + '</td><td>' + ((r.named || []).indexOf('JD Meyers Productions') >= 0 ? pill('Named', 'ice') : r.completed ? pill('Not named', 'gray') : pill('No answer', 'red')) + '</td><td class="adm-note">' + (r.named || []).map(x => esc(x)).join(', ') + '</td></tr>').join('');
+  return admMini('AI checks ledger — full detail', ['<th>Date</th><th>Engine</th><th>Prompt</th><th>JD</th><th>Named</th>', body], rows.length + ' checks');
+}
+function admPanelIntel() {
+  const rows = ADM.competitors || []; if (!rows.length) return '';
+  const body = rows.map(c => '<tr><td style="white-space:nowrap"><b>' + esc(c.name) + '</b><br><span class="muted">' + esc(c.town || '') + '</span></td><td>' + (c.ig_handle ? '@' + esc(c.ig_handle) : '—') + '</td><td>' + (c.flags || []).map(f => pill(f, 'amber')).join(' ') + '</td><td class="adm-note">' + esc(c.notes || '') + '</td></tr>').join('');
+  return admMini('Competitor intel — full roster', ['<th>Business</th><th>Instagram</th><th>Flags</th><th>Notes (private)</th>', body], rows.filter(c => c.notes).length + ' of ' + rows.length + ' with notes');
+}
+function admPanelConnections() {
+  const rows = ADM.connections || []; if (!rows.length) return '';
+  const body = rows.map(c => '<tr><td>' + esc(c.a) + '</td><td>' + esc(c.b) + '</td><td>' + pill(c.type || '', 'gray') + '</td><td>' + esc(dshort(c.date) || '—') + '</td><td class="adm-note">' + esc(c.evidence || '') + '</td></tr>').join('');
+  return admMini('Connections', ['<th>Business A</th><th>Business B</th><th>Type</th><th>Date</th><th>Evidence</th>', body], rows.length + ' links');
+}
+function admPanelFollow() {
+  const g = ADM.followGraph || {}, edges = g.edges || [];
+  if (!edges.length && !(ADM.followGraphHistory || []).length) return '';
+  const byFrom = {}; edges.forEach(e => { (byFrom[e.from] = byFrom[e.from] || []).push(e.to); });
+  const targets = {}; edges.forEach(e => { targets[e.to] = (targets[e.to] || 0) + 1; });
+  const multi = Object.keys(targets).filter(t => targets[t] > 1).sort((a, b) => targets[b] - targets[a] || a.localeCompare(b));
+  const acct = Object.keys(byFrom).sort().map(f => '<tr><td>@' + esc(f) + '</td><td class="r">' + byFrom[f].length + '</td><td class="adm-note">' + byFrom[f].slice().sort().map(t => '@' + esc(t)).join(', ') + '</td></tr>').join('');
+  const hist = (ADM.followGraphHistory || []).slice().reverse().slice(0, 25).map(h => '<tr><td>' + esc(dshort(h.date)) + '</td><td>' + esc(h.run || '') + '</td><td class="r">+' + (h.new_count || 0) + '</td><td class="adm-note">' + esc(h.note || '') + ((h.new_edges && h.new_edges.length) ? '<br>' + h.new_edges.map(e => '@' + esc(e.from) + ' → @' + esc(e.to)).join(', ') : '') + '</td></tr>').join('');
+  return '<section class="panel"><div class="panel-h"><h2>Follow graph</h2><span class="sub">Generated ' + esc(dshort(g.generated) || '—') + ' · ' + edges.length + ' edges</span></div>' +
+    (g.note ? '<div class="panel-b"><p class="adm-note" style="margin:4px 0 0">' + esc(g.note) + '</p></div>' : '') +
+    '<div class="scrollbox"><table class="mini"><thead><tr><th>Account</th><th class="r">Follows in graph</th><th>Targets</th></tr></thead><tbody>' + acct + '</tbody></table></div>' +
+    (multi.length ? '<div class="panel-h"><h2>Followed by more than one own account</h2></div><div class="panel-b"><div class="tags">' + multi.map(t => pill('@' + t + ' · ' + targets[t], 'ice')).join('') + '</div></div>' : '') +
+    '<div class="panel-h"><h2>History</h2></div><div class="scrollbox"><table class="mini"><thead><tr><th>Date</th><th>Run</th><th class="r">New</th><th>Note</th></tr></thead><tbody>' + hist + '</tbody></table></div></section>';
+}
+function admPanelFollowers() {
+  const h = ADM.igFollowersHistory || {};
+  const rows = Object.keys(h).map(k => { const s = h[k] || []; if (!s.length) return null; const f = s[0], l = s[s.length - 1]; return { k, f, l, d: l.count - f.count }; }).filter(Boolean).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+  if (!rows.length) return '';
+  const body = rows.map(r => '<tr><td>@' + esc(r.k) + '</td><td class="r">' + fmt(r.f.count) + '</td><td class="r">' + fmt(r.l.count) + '</td><td class="r">' + signed(r.d) + '</td><td>' + esc(dshort(r.f.date)) + ' → ' + esc(dshort(r.l.date)) + '</td><td class="r">' + r.l.length + '</td></tr>').join('');
+  return admMini('Follower history — biggest movers', ['<th>Handle</th><th class="r">First</th><th class="r">Latest</th><th class="r">Change</th><th>Window</th><th class="r">Pulls</th>', body], rows.length + ' handles tracked');
+}
+function admPanelActivity() {
+  const all = ADM.igActivity || []; if (!all.length) return '';
+  const byH = {}; all.forEach(r => { if (!byH[r.handle] || r.date > byH[r.handle].date) byH[r.handle] = r; });
+  const rows = Object.keys(byH).map(k => byH[k]).sort((a, b) => (b.followers || 0) - (a.followers || 0));
+  const body = rows.map(r => '<tr><td>@' + esc(r.handle) + '</td><td>' + esc(dshort(r.date)) + '</td><td class="r">' + fmt(r.followers) + '</td><td class="r">' + signed(r.delta) + '</td><td>' + esc(dshort(r.last_media_date) || '—') + '</td><td class="adm-note">' + esc(clean(r.activity || '')) + '</td></tr>').join('');
+  return admMini('Instagram activity — latest pull per handle', ['<th>Handle</th><th>Date</th><th class="r">Followers</th><th class="r">Δ</th><th>Last post</th><th>Activity</th>', body], all.length + ' pulls on file');
+}
+function admPanelOwn() {
+  const all = ADM.ownAccounts || []; if (!all.length) return '';
+  const byA = {}; all.forEach(r => { (byA[r.account] = byA[r.account] || []).push(r); });
+  const body = Object.keys(byA).sort().map(a => { const s = byA[a], f = s[0], l = s[s.length - 1]; return '<tr><td>@' + esc(a) + '</td><td class="r">' + fmt(f.follower_count) + '</td><td class="r">' + fmt(l.follower_count) + '</td><td class="r">' + signed(l.follower_count - f.follower_count) + '</td><td>' + esc(dshort(f.date)) + ' → ' + esc(dshort(l.date)) + '</td><td class="r">' + s.length + '</td></tr>'; }).join('');
+  return admMini('Own accounts', ['<th>Account</th><th class="r">First</th><th class="r">Latest</th><th class="r">Change</th><th>Window</th><th class="r">Days</th>', body], Object.keys(byA).length + ' accounts');
+}
+function admPanelDeepDive() {
+  const dd = ADM.deepDiveBatches || {}, bs = dd.batches || []; if (!bs.length) return '';
+  const nm = id => (BY[id] ? BY[id].name : id);
+  const body = bs.map(b => '<tr><td><b>' + esc(b.day) + '</b></td><td class="adm-note">' + (b.businesses || []).map(nm).map(x => esc(x)).join(', ') + '</td><td class="adm-note">' + (b.venues || []).map(x => esc(x)).join(', ') + '</td></tr>').join('');
+  return admMini('Deep-dive batches', ['<th>Day</th><th>Businesses</th><th>Venues</th>', body], 'Generated ' + esc(dshort(dd.generated) || '—'));
+}
+function admPanelSweeps() {
+  const all = (ADM.webSweepHistory || []).slice().reverse(); if (!all.length) return '';
+  const body = all.map(w => {
+    const pages = w.pages || {};
+    const notable = Object.keys(pages).filter(k => pages[k].status !== 'unchanged').map(k => (BY[k] ? BY[k].name : k) + ' — ' + pages[k].status + (pages[k].note ? ': ' + pages[k].note : '')).join('<br>');
+    const extra = [w.summary, (w.new_entrants && w.new_entrants.length) ? 'New: ' + w.new_entrants.join(', ') : '', (w.roster_corrections && w.roster_corrections.length) ? 'Corrections: ' + (Array.isArray(w.roster_corrections) ? w.roster_corrections.join('; ') : w.roster_corrections) : ''].filter(Boolean).join('<br>');
+    return '<tr><td>' + esc(dshort(w.date)) + '</td><td>' + esc(w.run_label || '') + '</td><td class="r">' + (w.fetched != null ? w.fetched + ' of ' + w.of_total : '—') + '</td><td class="adm-note">' + notable + (notable && extra ? '<br>' : '') + esc(extra).replace(/\n/g, '<br>') + '</td></tr>';
+  }).join('');
+  return admMini('Website sweep history', ['<th>Date</th><th>Sweep</th><th class="r">Fetched</th><th>Changes and notes</th>', body], all.length + ' sweeps');
+}
+function viewAdmin() {
+  if (!ADM) {
+    return '<div class="view scroll"><div class="admin"><div class="page-h"><div><h1>Admin</h1><p>The JD-specific layer: full AI-visibility results, competitor intel and notes, the follow graph, own accounts and routine history. It ships only as ciphertext and decrypts in this browser.</p></div></div>' +
+      '<section class="panel adm-gate"><div class="panel-b">' +
+      (admState.busy ? '<p class="adm-msg" style="margin-top:12px">Unlocking…</p>' :
+        '<form id="admin-form" class="adm-form"><label for="admin-pw">Password</label><div class="adm-row"><input type="password" id="admin-pw" autocomplete="current-password" placeholder="Admin password"><button class="btn" type="submit">Unlock</button></div>' +
+        (admState.err ? '<p class="adm-err">' + esc(admState.err) + '</p>' : '<p class="adm-msg">Nothing is fetched or rendered until a password decrypts the bundle here. The password is kept only for this tab session.</p>') + '</form>') +
+      '</div></section></div></div>';
+  }
+  const A = ADM;
+  const tile = (n, t) => '<div class="tile"><div class="n">' + n + '</div><div class="t">' + t + '</div></div>';
+  const stats = '<div class="stats" style="grid-template-columns:repeat(5,minmax(0,1fr))">' +
+    tile(fmt((A.aiVisibility || []).length), 'AI visibility checks (JD log)') +
+    tile(fmt((A.competitors || []).filter(c => c.notes).length) + '<small>of ' + (A.competitors || []).length + '</small>', 'Roster entries with intel notes') +
+    tile(fmt(((A.followGraph || {}).edges || []).length), 'Follow edges') +
+    tile(fmt((A.igActivity || []).length), 'IG activity pulls') +
+    tile(fmt((A.webSweepHistory || []).length), 'Website sweeps') + '</div>';
+  return '<div class="view scroll"><div class="admin"><div class="page-h"><div><h1>Admin</h1><p>JD-specific detail, decrypted in this browser only. Bundle built ' + esc(dshort((A.meta || {}).built) || '—') + '. Nothing on this page is in the public data bundles.</p></div><button class="btn" data-admin-lock type="button">Lock</button></div>' +
+    stats +
+    admPanelAI() + admPanelChecks() + admPanelIntel() + admPanelConnections() + admPanelFollow() + admPanelFollowers() + admPanelActivity() + admPanelOwn() + admPanelDeepDive() + admPanelSweeps() +
+    '</div></div>';
+}
+
 /* ---------- shell ---------- */
-const VIEWS = ['brief', 'market', 'map', 'trends', 'ai', 'data'];
-const RENDER = { brief: viewBrief, market: viewMarket, map: viewMap, trends: viewTrends, ai: viewAI, data: viewData };
+const VIEWS = ['brief', 'market', 'map', 'trends', 'ai', 'data', 'admin'];
+const RENDER = { brief: viewBrief, market: viewMarket, map: viewMap, trends: viewTrends, ai: viewAI, data: viewData, admin: viewAdmin };
 function thumb(seg) {
   if (!seg) return; const t = $('.thumb', seg), b = $('[aria-selected="true"]', seg); if (!t || !b) return;
   t.style.width = b.offsetWidth + 'px'; t.style.transform = 'translateX(' + b.offsetLeft + 'px)';
@@ -1100,6 +1254,7 @@ function render() {
   if (v === 'market') fillMarket();
   $$('.seg.sm').forEach(thumb);
   if (v === 'brief') startSpot();
+  if (v === 'admin') adminMount();
   if (v === 'map') initMap();
   else if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
 }
@@ -1113,6 +1268,7 @@ document.addEventListener('click', e => {
   if ((el = q('#nav button'))) return show(el.dataset.v);
   if (q('.brand')) { e.preventDefault(); return show('brief'); }
   if (q('#health')) return show('data');
+  if (q('[data-admin-lock]')) return admLock();
   if (q('[data-close]')) return closeDrawer();
   if ((el = q('[data-go]'))) return show(el.dataset.go);
   if ((el = q('[data-open]'))) { e.stopPropagation(); return openAny(el.dataset.open); }
@@ -1141,6 +1297,9 @@ document.addEventListener('click', e => {
   }
 });
 document.addEventListener('input', e => { if (e.target.id === 'q') { state.q = e.target.value; fillMarket(); } });
+document.addEventListener('submit', e => {
+  if (e.target.id === 'admin-form') { e.preventDefault(); const i = $('#admin-pw'); if (i && i.value) admUnlock(i.value); }
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (drawer.classList.contains('open')) closeDrawer(); else if (document.activeElement && document.activeElement.id === 'q') document.activeElement.blur(); }
   if (e.key === '/' && !/input|textarea/i.test((document.activeElement || {}).tagName || '')) {
