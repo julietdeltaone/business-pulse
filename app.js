@@ -257,9 +257,9 @@ const B = D.competitors.map(c => {
   const d30 = ig.state === 'live' ? deltaN(c.ig_handle, 30) : null;
   const hs = D.igFollowersHistory[c.ig_handle];
   const pv = (SD.pricing && SD.pricing.per && SD.pricing.per[c.id]) || null;
-  const rv = (SD.reviews && SD.reviews.per && SD.reviews.per[c.id]) || DATES.reviews;
+  const rv = (SD.reviews && SD.reviews.per && SD.reviews.per[c.id]) || null;
   const pst = c.pricing && pv ? stat('pricing', age(pv)) : 'none';
-  const rst = c.review_count != null ? stat('reviews', age(rv)) : 'none';
+  const rst = c.review_count != null && rv ? stat('reviews', age(rv)) : 'none';
   const pp = parsePrice(c.pricing);
   const shown = pst === 'ok';
   return {
