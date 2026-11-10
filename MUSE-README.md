@@ -14,6 +14,16 @@ This is a private competitor tool built around JD Meyers Productions. The page c
 3. Copy the three page files (`index.html`, `styles.css`, `app.js`) from this repo into the workspace `site/` folder. If the workspace keeps its older copies, the next sync will put the old design back.
 4. Every verdict on the Home, Council and Auditor pages is computed in the browser from the data files. Nothing needs to be written by hand. If a figure looks wrong, fix the data file or the script that writes it.
 
+## The link rule (JD, Nov 10, 2026)
+
+A figure or claim shows only if it comes with a link to where it can be checked. No link, no figure. Keep these fields filled:
+
+- `pricing_url` on each business: the page that shows the price. The page builds a link that highlights the figure on that page.
+- `review_url` on each business: the listing the review count was read from.
+- `ig_handle`: the Instagram profile link is built from it.
+- `url` on every row in `aiChecks`: the share link for that signed-out chat. Rows without it are ignored, so the AI Visibility page stays empty until they are saved.
+- To show price or follower changes over time later, save a dated archive link (for example a web.archive.org snapshot) with each earlier figure. Without a link the change cannot be shown.
+
 ## Data rules the page relies on
 
 - A review count needs its own check date in `seedDates.reviews.per[id]`. Do not stamp the batch date on a business that was not re-checked.
