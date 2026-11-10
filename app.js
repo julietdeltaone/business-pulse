@@ -220,11 +220,11 @@ function rankText(mk, st) {
 }
 function strip(st, mk) {
   const M = METRICS[mk];
-  if (st.n < 3 || st.me == null) return '<div class="strip"></div>';
+  if (st.n < 3 || st.me == null) return '<div class="plot"></div>';
   const f = v => M.log ? Math.log10(Math.max(v, 1)) : v;
   const mn = f(st.min), mx = f(st.max), pos = v => mx === mn ? 50 : ((f(v) - mn) / (mx - mn)) * 100;
-  return '<div class="strip">' + st.peers.map(v => '<i style="left:0" data-to="' + pos(v).toFixed(1) + '"></i>').join('') + '<b style="left:0" data-to="' + pos(st.me).toFixed(1) + '"></b></div>' +
-    '<div class="strip-l"><span>' + esc(M.f(st.min)) + '</span><span>' + esc(M.f(st.max)) + '</span></div>';
+  return '<div class="plot"><div class="strip">' + st.peers.map(v => '<i style="left:0" data-to="' + pos(v).toFixed(1) + '"></i>').join('') + '<b style="left:0" data-to="' + pos(st.me).toFixed(1) + '"></b></div>' +
+    '<div class="strip-l"><span>' + esc(M.f(st.min)) + '</span><span>' + esc(M.f(st.max)) + '</span></div></div>';
 }
 
 /* ---------- web sweep ---------- */
@@ -352,15 +352,15 @@ function tile(mk, key) {
   return '<div class="card tile hov"><div class="k">' + esc(M.label) + '</div>' +
     '<div class="n">' + (st.me != null ? linked(mk, JD, M.f(st.me)) : '—') + '</div>' +
     '<div class="d">' + esc(rankText(mk, st)) + (st.med != null ? '<br>Peer median ' + esc(M.f(st.med)) : st.n > 1 && st.n < 8 ? '<br>Too few peers for a median (' + (st.n - 1) + ')' : '') + '</div>' +
-    strip(st, mk) + '<div class="srcline">' + (s.url ? A(esc(host(s.url)), s.url) + '<span>' + esc(when(s.date)) + '</span>' : 'No linked figure') + '</div>' +
-    (st.n ? proofBtn(mk, key, st.n) : '') + '</div>';
+    strip(st, mk) + '<div class="foot"><div class="srcline">' + (s.url ? A(esc(host(s.url)), s.url) + '<span>' + esc(when(s.date)) + '</span>' : 'No linked figure') + '</div>' +
+    (st.n ? proofBtn(mk, key, st.n) : '') + '</div></div>';
 }
 function viewHome() {
   const key = state.set;
   const fresh = B.filter(b => b.pfresh && b.price.wed != null && age(b.pdate) <= 7).sort((a, b) => a.pdate < b.pdate ? 1 : -1).slice(0, 8);
   const si = lastSweep ? sweepInfo(lastSweep) : null;
   const late = SOURCES.filter(s => s.st !== 'ok');
-  return '<div class="view"><div class="page-h"><div><h1>Where you stand</h1><p class="sub">JD Meyers Productions against <select class="sel" id="setsel" style="margin:0 2px">' + Object.keys(SETS).map(k => '<option value="' + k + '"' + (k === key ? ' selected' : '') + '>' + esc(SETS[k].label) + '</option>').join('') + '</select> as of ' + dshort(ASOF_S) + '. Every figure opens the page it came from.</p></div></div>' +
+  return '<div class="view"><div class="page-h"><div><h1>Where you stand</h1><p class="sub">JD Meyers Productions as of ' + dshort(ASOF_S) + '. Every figure opens the page it came from.</p></div><label class="fld"><span>Compared with</span><select class="sel" id="setsel">' + Object.keys(SETS).map(k => '<option value="' + k + '"' + (k === key ? ' selected' : '') + '>' + esc(SETS[k].label) + '</option>').join('') + '</select></label></div>' +
     '<div class="tiles">' + tile('wed', key) + tile('wedv', key) + tile('sess', key) + tile('rev', key) + tile('fol', 'all') + '</div>' +
     '<p class="note">Prices are the lowest listed price on each business\'s own site, counted only when checked in the last ' + PRICE_DAYS + ' days. Click a figure to open its source. "Verify" lists every figure behind a ranking, each with its own link. Medians show only with 8 or more peers.</p>' +
     '<div class="cols"><div><h2>What changed</h2><div class="card"><div class="list">' +
@@ -419,7 +419,7 @@ function viewCompare() {
       cmpRow('Based in (roster)', esc(JD.town), esc(them.town), '') +
       '</tbody></table></div>' +
       '<h2>Sources for ' + esc(them.name) + '</h2><div class="card"><div class="srcs">' + (links.length ? links.map(l => '<a href="' + esc(l[1]) + '" target="_blank" rel="noopener">' + l[0] + '</a>').join('') : '<span class="muted">No links on record. Nothing about this business can be shown.</span>') + '</div><p class="note">Only figures with a working link are shown above. Anything missing here has no link on record.</p></div>';
-  } else body = '<div class="empty">Pick a business to put next to yours.</div>';
+  } else body = '<h2>Closest to you</h2><div class="tiles c3">' + opts.filter(b => b.region === JD.region && b.ig && b.ig.count != null).sort((x, y) => Math.abs(x.ig.count - JD.ig.count) - Math.abs(y.ig.count - JD.ig.count)).slice(0, 6).map(b => '<a class="card hov pick" href="#compare/' + encodeURIComponent(b.id) + '"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></a>').join('') + '</div>';
   return '<div class="view"><div class="page-h"><div><h1>Compare</h1><p class="sub">JD Meyers Productions next to any competitor. Every figure is a link to where it can be checked.</p></div>' +
     '<select class="sel" id="vssel"><option value="">Choose a business</option>' + opts.map(b => '<option value="' + esc(b.id) + '"' + (them && b.id === them.id ? ' selected' : '') + '>' + esc(b.name) + ' · ' + esc(b.town.replace(/, NY.*/, '')) + '</option>').join('') + '</select></div>' + body + '</div>';
 }
@@ -444,7 +444,7 @@ function viewMarket() {
   return '<div class="view"><div class="page-h"><div><h1>Market</h1><p class="sub">' + B.length + ' businesses. Click a row to compare it with yours, or click a figure to open its source. A dash means no linked, current figure.</p></div></div>' +
     '<div class="ctl"><input class="in" id="q" placeholder="Search name or town" value="' + esc(state.q) + '"><select class="sel" id="reg"><option value="all">All regions</option>' + Object.keys(REGION).map(r => '<option value="' + r + '"' + (state.region === r ? ' selected' : '') + '>' + REGION[r] + '</option>').join('') + '</select>' +
     '<select class="sel" id="lane"><option value="all">All services</option>' + LANES.map(l => '<option value="' + l[0] + '"' + (state.lane === l[0] ? ' selected' : '') + '>' + l[1] + '</option>').join('') + '</select></div>' +
-    '<div class="wrap"><table class="tbl"><thead><tr>' + th('name', 'Business') + '<th>Services</th>' + th('fol', 'Followers', 1) + th('wed', 'Wedding from', 1) + th('sess', 'Session from', 1) + th('rev', 'Reviews', 1) + '</tr></thead><tbody>' + (body || '<tr><td colspan="6"><div class="empty">No matches.</div></td></tr>') + '</tbody></table></div></div>';
+    '<div class="wrap"><table class="tbl mkt"><thead><tr>' + th('name', 'Business') + '<th>Services</th>' + th('fol', 'Followers', 1) + th('wed', 'Wedding from', 1) + th('sess', 'Session from', 1) + th('rev', 'Reviews', 1) + '</tr></thead><tbody>' + (body || '<tr><td colspan="6"><div class="empty">No matches.</div></td></tr>') + '</tbody></table></div></div>';
 }
 
 function viewAI() {
@@ -487,7 +487,7 @@ function viewCouncil() {
     ['JD Funnel', 'Inquiries, replies, bookings, conversion.', ['Not connected. This is the only department that can show whether a recommendation worked. It needs inquiry and booking counts from your own email and Square.'], null, null]
   ];
   return '<div class="view"><div class="page-h"><div><h1>Council</h1><p class="sub">Each department reads the linked data and gives short, dated verdicts, as of ' + dshort(ASOF_S) + '.</p></div></div>' +
-    '<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">' + depts.map(d => '<div class="card hov"><h3>' + esc(d[0]) + '</h3><p class="note" style="margin:2px 0 8px">' + esc(d[1]) + '</p><div class="list">' + lines(d[2]) + '</div>' + (d[3] && d[3][2] ? proofBtn(d[3][0], d[3][1], d[3][2]) : '') + (d[4] ? '<p class="note"><a href="#' + d[4] + '">' + d[5] + '</a></p>' : '') + '</div>').join('') + '</div>' +
+    '<div class="tiles c3">' + depts.map((d, i) => '<div class="card hov dept' + (i === depts.length - 1 ? ' wide' : '') + '"><h3>' + esc(d[0]) + '</h3><p class="note dsub">' + esc(d[1]) + '</p><div class="list">' + lines(d[2]) + '</div>' + (d[3] && d[3][2] ? proofBtn(d[3][0], d[3][1], d[3][2]) : '') + (d[4] ? '<p class="more"><a href="#' + d[4] + '">' + d[5] + ' \u2192</a></p>' : '') + '</div>').join('') + '</div>' +
     '<h2>Recommendations</h2><div class="card">' + (RECS.length ? RECS.map(recHtml).join('') : '<div class="empty">Nothing in the linked data calls for action today.</div>') + '</div>' +
     '<p class="note">Rules for every recommendation: it uses only linked figures, names the number of businesses behind it, is not built from a one-week change, and says what result would show it was wrong.</p></div>';
 }
@@ -527,10 +527,20 @@ function render(v) {
   fx();
 }
 function fx() {
+  countUp();
   requestAnimationFrame(() => requestAnimationFrame(() => {
     $$('.strip [data-to]').forEach((el, i) => { el.style.transitionDelay = (el.tagName === 'B' ? 80 : Math.min(i, 24) * 8) + 'ms'; el.style.left = el.dataset.to + '%'; if (el.tagName === 'I') el.classList.add('on'); });
     $$('.bar-r2 .tr i').forEach((el, i) => { el.style.transitionDelay = (60 + i * 30) + 'ms'; el.style.width = el.dataset.w + '%'; });
   }));
+}
+function countUp() {
+  if (REDUCED) return;
+  $$('.tile .n').forEach(el => {
+    const holder = el.querySelector('a') || el, tn = holder.firstChild; if (!tn || tn.nodeType !== 3) return;
+    const m = /^(\$?)([\d,]+)$/.exec(tn.nodeValue.trim()); if (!m) return;
+    const target = +m[2].replace(/,/g, ''), pre = m[1], t0 = performance.now(), dur = 700;
+    (function step(t) { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3); tn.nodeValue = pre + Math.round(target * e).toLocaleString('en-US'); if (p < 1) requestAnimationFrame(step); })(t0);
+  });
 }
 function moveThumb() {
   const on = $('#nav button[aria-selected=true]'), t = $('#nav .thumb');
