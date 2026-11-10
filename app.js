@@ -420,6 +420,14 @@ function openProof(mk, key) {
   document.body.appendChild(el);
 }
 
+function pairChart(them) {
+  const out = ['fol', 'wed', 'wedv', 'sess', 'rev'].map(k => {
+    const M = METRICS[k], j = M.val(JD), t = M.val(them); if (j == null || t == null) return '';
+    const mx = Math.max(j, t) || 1;
+    return '<div class="pair"><div class="pt">' + esc(M.label) + '</div>' + barRow('You', linked(k, JD, M.f(j)), j / mx * 100, 'me') + barRow(esc(them.name), linked(k, them, M.f(t)), t / mx * 100) + '</div>';
+  }).join('');
+  return out ? '<div class="panel chart"><h3>Side by side</h3><p class="note" style="margin:2px 0 16px">Bars in each pair share one scale. Each number opens its source.</p><div class="pairs">' + out + '</div></div>' : '';
+}
 function cmpRow(label, me, them, gap) { return '<tr><td>' + esc(label) + '</td><td>' + me + '</td><td>' + them + '</td><td class="gap">' + (gap || '') + '</td></tr>'; }
 function figCell(mk, b, text, sub, flag) { return A(esc(text), figSrc(mk, b).url) + (sub ? '<span class="s2' + (flag ? ' flag' : '') + '">' + sub + '</span>' : ''); }
 function viewCompare() {
@@ -441,7 +449,8 @@ function viewCompare() {
     if (JD.ig.state === 'live' && them.ig.state === 'live') ex.push('They have <b>' + fmt(them.ig.count) + ' followers</b> to your ' + fmt(JD.ig.count) + '. Check: ' + A('their profile', figSrc('fol', them).url) + ' · ' + A('your profile', figSrc('fol', JD).url) + '.');
     const links = [['Website', them.c.website && (/^https?:/.test(them.c.website) ? them.c.website : 'https://' + them.c.website)], ['Pricing page', them.c.pricing_url], ['Reviews', them.c.review_url], ['Instagram', igUrl(them.c.ig_handle)]].filter(x => x[1]);
     body = (ex.length ? '<div class="says">' + ex.map(x => '<div>' + x + '</div>').join('') + '</div>' : '') +
-      '<div class="wrap"><table class="tbl cmp"><thead><tr><th></th><th>JD Meyers Productions</th><th>' + esc(them.name) + '</th><th class="r">Gap</th></tr></thead><tbody>' +
+      pairChart(them) +
+      '<div class="wrap" style="margin-top:24px"><table class="tbl cmp"><thead><tr><th></th><th>JD Meyers Productions</th><th>' + esc(them.name) + '</th><th class="r">Gap</th></tr></thead><tbody>' +
       priceCells('wed') + priceCells('wedv') + priceCells('sess') +
       cmpRow('Reviews', JD.rev != null ? figCell('rev', JD, fmt(JD.rev) + (JD.rating != null ? ' · ' + JD.rating.toFixed(1) : ''), esc(platName(JD.revSrc)) + ', ' + esc(when(JD.rdate)), !JD.rdate) : '—',
         them.rev != null ? figCell('rev', them, fmt(them.rev) + (them.rating != null ? ' · ' + them.rating.toFixed(1) : ''), esc(platName(them.revSrc) || '') + ', ' + esc(when(them.rdate)), !them.rdate) : '<span class="muted">—</span>' + (them.revHidden ? '<span class="s2">no listing link</span>' : ''), dif(JD.rev, them.rev, fmt)) +
@@ -463,6 +472,13 @@ function marketRows() {
   const val = { name: b => b.name.toLowerCase(), fol: METRICS.fol.val, wed: METRICS.wed.val, sess: METRICS.sess.val, rev: METRICS.rev.val }[k];
   return list.sort((a, b) => { const x = val(a), y = val(b); if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (x < y ? -1 : x > y ? 1 : 0) * dir; });
 }
+function barRow(label, val, pct, cls) { return '<div class="bar-r2' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><span class="tr"><i data-w="' + Math.max(1, Math.min(100, pct)).toFixed(1) + '"></i></span><b>' + val + '</b></div>'; }
+function followChart() {
+  const live = B.filter(b => b.ig.state === 'live').sort((x, y) => y.ig.count - x.ig.count), top = live.slice(0, 12), mx = live.length ? live[0].ig.count : 1;
+  const rows = top.map(b => barRow(esc(b.name), linked('fol', b, fmt(b.ig.count)), b.ig.count / mx * 100, b === JD ? 'me' : '')).join('');
+  const jr = live.indexOf(JD), extra = jr >= 12 ? '<div class="gapnote">' + (jr - 11) + ' more accounts between</div>' + barRow(esc(JD.name), linked('fol', JD, fmt(JD.ig.count)), JD.ig.count / mx * 100, 'me') : '';
+  return '<div class="panel chart"><h3>Instagram followers, largest accounts</h3><p class="note" style="margin:2px 0 16px">' + live.length + ' accounts pulled live. Each number opens the profile.</p><div class="bars">' + rows + extra + '</div></div>';
+}
 function viewMarket() {
   const list = marketRows();
   const th = (k, l, r) => '<th class="s' + (r ? ' r' : '') + '" data-sort="' + k + '">' + l + (state.sort.k === k ? (state.sort.dir > 0 ? ' ↑' : ' ↓') : '') + '</th>';
@@ -474,7 +490,7 @@ function viewMarket() {
       '<td class="r">' + (b.rev != null ? linked('rev', b, fmt(b.rev)) + (b.rdate ? '' : '<span class="s2 flag">no check date</span>') : '<span class="muted">—</span>') + '</td></tr>';
   }).join('');
   return '<div class="view"><div class="page-h"><div><h1>Market</h1><p class="sub">' + B.length + ' businesses. Click a row to compare it with yours, or click a figure to open its source. A dash means no linked, current figure.</p></div></div>' +
-    '<div class="ctl"><input class="in" id="q" placeholder="Search name or town" value="' + esc(state.q) + '"><select class="sel" id="reg"><option value="all">All regions</option>' + Object.keys(REGION).map(r => '<option value="' + r + '"' + (state.region === r ? ' selected' : '') + '>' + REGION[r] + '</option>').join('') + '</select>' +
+    followChart() + '<div class="ctl" style="margin-top:24px"><input class="in" id="q" placeholder="Search name or town" value="' + esc(state.q) + '"><select class="sel" id="reg"><option value="all">All regions</option>' + Object.keys(REGION).map(r => '<option value="' + r + '"' + (state.region === r ? ' selected' : '') + '>' + REGION[r] + '</option>').join('') + '</select>' +
     '<select class="sel" id="lane"><option value="all">All services</option>' + LANES.map(l => '<option value="' + l[0] + '"' + (state.lane === l[0] ? ' selected' : '') + '>' + l[1] + '</option>').join('') + '</select></div>' +
     '<div class="wrap"><table class="tbl mkt"><thead><tr>' + th('name', 'Business') + '<th>Services</th>' + th('fol', 'Followers', 1) + th('wed', 'Wedding from', 1) + th('sess', 'Session from', 1) + th('rev', 'Reviews', 1) + '</tr></thead><tbody>' + (body || '<tr><td colspan="6"><div class="empty">No matches.</div></td></tr>') + '</tbody></table></div></div>';
 }
@@ -524,10 +540,16 @@ function viewCouncil() {
     '<p class="note">Rules for every recommendation: it uses only linked figures, names the number of businesses behind it, is not built from a one-week change, and says what result would show it was wrong.</p></div>';
 }
 
+function sevChart() {
+  const n = FINDINGS.length; if (!n) return '';
+  const c = { high: 0, med: 0, low: 0 }; FINDINGS.forEach(f => { c[f.sev] = (c[f.sev] || 0) + 1; });
+  const seg = [['high', 'High', 'b'], ['med', 'Medium', 'w'], ['low', 'Low', '']].filter(s => c[s[0]]);
+  return '<div class="panel chart"><h3>' + n + ' open ' + plural(n, 'finding') + '</h3><div class="sev" role="img" aria-label="' + seg.map(s => c[s[0]] + ' ' + s[1].toLowerCase()).join(', ') + '">' + seg.map(s => '<i class="s-' + s[0] + '" data-w="' + (c[s[0]] / n * 100).toFixed(1) + '" title="' + c[s[0]] + ' ' + s[1].toLowerCase() + '"></i>').join('') + '</div><div class="sevkey">' + seg.map(s => '<span class="pill ' + s[2] + '">' + s[1] + ' ' + c[s[0]] + '</span>').join('') + '</div></div>';
+}
 function viewAudit() {
   const sevPill = s => '<span class="pill ' + (s === 'high' ? 'b' : s === 'med' ? 'w' : '') + '">' + (s === 'high' ? 'High' : s === 'med' ? 'Medium' : 'Low') + '</span>';
   return '<div class="view"><div class="page-h"><div><h1>Auditor</h1><p class="sub">Looks for figures that are wrong because this tool treated its own records as proof, and for figures with no link to check. Each finding shows the chain back to the file it came from. Checked live on every build.</p></div></div>' +
-    '<div class="card">' + (FINDINGS.length ? FINDINGS.map(f => '<div class="fnd"><div class="t">' + sevPill(f.sev) + ' ' + esc(f.title) + '</div><p>' + esc(f.text) + '</p><div class="chain">' + esc(f.chain) + '</div></div>').join('') : '<div class="empty">No findings.</div>') + '</div>' +
+    sevChart() + '<div class="card" style="margin-top:16px">' + (FINDINGS.length ? FINDINGS.map(f => '<div class="fnd"><div class="t">' + sevPill(f.sev) + ' ' + esc(f.title) + '</div><p>' + esc(f.text) + '</p><div class="chain">' + esc(f.chain) + '</div></div>').join('') : '<div class="empty">No findings.</div>') + '</div>' +
     '<p class="note">Traced to files only. The Auditor cannot open a competitor\'s website for you. Use the links on each figure to check it against the business\'s own page.</p></div>';
 }
 
@@ -536,8 +558,8 @@ function viewSources() {
   const fix = SOURCES.filter(s => s.st !== 'ok' && s.win).map(s => '<div class="row"><div><div class="t">' + esc(s.label) + '</div><div class="m">' + esc(s.win.fix) + '</div></div></div>').join('');
   const cov = COVERAGE.map(c => '<tr><td><b>' + esc(c[0]) + '</b></td><td class="r">' + c[1] + ' of ' + c[2] + '</td><td class="muted">' + esc(c[3]) + '</td></tr>').join('');
   return '<div class="view"><div class="page-h"><div><h1>Sources</h1><p class="sub">Where every number comes from, how recently it was checked, and which figures are hidden because they have no link.</p></div></div>' +
-    '<h2>Link coverage</h2><div class="wrap"><table class="tbl"><thead><tr><th>Kind of figure</th><th class="r">Shown</th><th>How it is checked</th></tr></thead><tbody>' + cov + '</tbody></table></div>' +
-    '<h2>Freshness</h2><div class="wrap"><table class="tbl"><thead><tr><th>Source</th><th>Status</th><th>Last checked</th><th>Coverage</th><th>Schedule</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<h2>Link coverage</h2><div class="panel chart"><div class="bars">' + COVERAGE.map(c => barRow(esc(c[0]), c[1] + ' of ' + c[2], c[2] ? c[1] / c[2] * 100 : 0, c[1] === c[2] ? 'full' : '')).join('') + '</div><p class="note">Each bar is the share of figures that have a working link and a recent check. The rest are hidden.</p></div><div class="wrap" style="margin-top:16px"><table class="tbl"><thead><tr><th>Kind of figure</th><th class="r">Shown</th><th>How it is checked</th></tr></thead><tbody>' + cov + '</tbody></table></div>' +
+    '<h2>Freshness</h2><div class="panel chart"><div class="bars">' + SOURCES.filter(s => s.win && s.date).map(s => { const d = age(s.date), L = s.win.late_after_days; return barRow(esc(s.label), esc(ago(s.date)), d / (2 * L) * 100, 'st-' + s.st); }).join('') + '</div><p class="note">The tick on each bar marks the day the source counts as late.</p></div><div class="wrap" style="margin-top:16px"><table class="tbl"><thead><tr><th>Source</th><th>Status</th><th>Last checked</th><th>Coverage</th><th>Schedule</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
     (fix ? '<h2>What to run</h2><div class="card"><div class="list">' + fix + '</div></div>' : '') +
     '<h2>Left off the roster</h2><div class="card"><div class="list">' + D.excluded.map(x => '<div class="row"><div><div class="t">' + esc(clean(x.name)) + '</div><div class="m">' + esc(clean(x.reason)) + '</div></div></div>').join('') + '</div></div></div>';
 }
@@ -563,7 +585,7 @@ function fx() {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     $$('.strip [data-to]').forEach((el, i) => { el.style.transitionDelay = (el.tagName === 'B' ? 80 : Math.min(i, 24) * 8) + 'ms'; el.style.left = el.dataset.to + '%'; if (el.tagName === 'I') el.classList.add('on'); });
     $$('.swarm .dot').forEach(el => { el.style.left = el.dataset.to + '%'; el.classList.add('on'); });
-    $$('.bar-r2 .tr i').forEach((el, i) => { el.style.transitionDelay = (60 + i * 30) + 'ms'; el.style.width = el.dataset.w + '%'; });
+    $$('[data-w]').forEach((el, i) => { el.style.transitionDelay = (60 + Math.min(i, 30) * 30) + 'ms'; el.style.width = el.dataset.w + '%'; });
   }));
 }
 function countUp() {
