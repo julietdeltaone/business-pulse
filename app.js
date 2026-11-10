@@ -342,32 +342,64 @@ const RECS = recommendations();
 
 /* ---------- views ---------- */
 const stage = $('#stage');
-const state = { q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, set: 'slcwed', vs: null };
+const state = { lm: 'wed', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, set: 'slcwed', vs: null };
 const lanePills = b => b.lanes.length ? b.lanes.slice(0, 3).map(l => '<span class="pill">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="pill">+' + (b.lanes.length - 3) + '</span>' : '') : '<span class="muted">—</span>';
 const ago = d => d ? dshort(d) + (age(d) > 0 ? ' (' + age(d) + 'd ago)' : ' (today)') : 'no date';
 const proofBtn = (mk, key, n) => '<button class="proofbtn" data-proof="' + mk + '|' + key + '">Verify the ' + n + ' ' + plural(n, 'figure') + '</button>';
 
 function tile(mk, key) {
   const st = stand(mk, key), M = METRICS[mk], s = figSrc(mk, JD);
-  return '<div class="card tile hov"><div class="k">' + esc(M.label) + '</div>' +
+  return '<div class="tile" data-m="' + mk + '"><div class="k">' + esc(M.label) + '</div>' +
     '<div class="n">' + (st.me != null ? linked(mk, JD, M.f(st.me)) : '—') + '</div>' +
     '<div class="d">' + esc(rankText(mk, st)) + (st.med != null ? '<br>Peer median ' + esc(M.f(st.med)) : st.n > 1 && st.n < 8 ? '<br>Too few peers for a median (' + (st.n - 1) + ')' : '') + '</div>' +
     strip(st, mk) + '<div class="foot"><div class="srcline">' + (s.url ? A(esc(host(s.url)), s.url) + '<span>' + esc(when(s.date)) + '</span>' : 'No linked figure') + '</div>' +
     (st.n ? proofBtn(mk, key, st.n) : '') + '</div></div>';
 }
+function niceTicks(lo, hi, log) {
+  const out = [];
+  if (log) { for (let p = Math.floor(Math.log10(Math.max(lo, 1))); p <= Math.ceil(Math.log10(hi)); p++) [1, 2, 5].forEach(m => { const v = m * Math.pow(10, p); if (v >= lo && v <= hi) out.push(v); }); return out; }
+  const r = (hi - lo) / 7 || 1, pw = Math.pow(10, Math.floor(Math.log10(r))), st = [1, 2, 5, 10].map(m => m * pw).find(s => s >= r);
+  for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(v);
+  return out;
+}
+const LTAB = { wed: 'Wedding photo', wedv: 'Wedding video', sess: 'Sessions', rev: 'Reviews', fol: 'Followers' };
+function ladder(mk) {
+  const key = mk === 'fol' ? 'all' : state.set, st = stand(mk, key), M = METRICS[mk];
+  const tabs = Object.keys(LTAB).map(k => '<button class="tab" data-m="' + k + '" aria-selected="' + (k === mk) + '">' + LTAB[k] + '</button>').join('');
+  const sel = mk === 'fol' ? '' : '<label class="fld"><span>Compared with</span><select class="sel" id="setsel">' + Object.keys(SETS).map(k => '<option value="' + k + '"' + (k === state.set ? ' selected' : '') + '>' + esc(SETS[k].label) + '</option>').join('') + '</select></label>';
+  let body;
+  if (st.n < 2) body = '<div class="empty">No linked, current figures for this set yet.</div>';
+  else {
+    const f = v => M.log ? Math.log10(Math.max(v, 1)) : v, lo = f(st.min), hi = f(st.max), fr = v => hi === lo ? .5 : (f(v) - lo) / (hi - lo), pc = v => 3 + 94 * fr(v);
+    const items = st.list.slice().sort((x, y) => x.v - y.v), rows = [];
+    const dots = items.map((x, n) => {
+      const p = pc(x.v); let r = 0; while (rows[r] != null && p - rows[r] < 1.9) r++; rows[r] = p;
+      const s = figSrc(mk, x.b), me = x.b === JD, tip = esc(x.b.name) + ' · ' + esc(M.f(x.v)) + (s.url ? ' · ' + esc(host(s.url)) : '');
+      return '<a class="dot' + (me ? ' me' : '') + '" href="' + esc(s.url || '#') + '" target="_blank" rel="noopener" data-tip="' + tip + '" data-to="' + p.toFixed(2) + '" style="left:50%;bottom:' + (46 + r * 24) + 'px;transition-delay:' + Math.min(n, 60) * 14 + 'ms" aria-label="' + tip + '"></a>';
+    }).join('');
+    const ticks = niceTicks(st.min, st.max, M.log).map(v => '<span class="tick" style="left:' + pc(v).toFixed(2) + '%">' + esc(M.f(v)) + '</span>').join('');
+    const you = st.me != null ? '<i class="vline you" style="left:' + pc(st.me).toFixed(2) + '%"><b>You ' + esc(M.f(st.me)) + '</b></i>' : '';
+    const med = st.med != null ? '<i class="vline med" style="left:' + pc(st.med).toFixed(2) + '%"><b>Peer median ' + esc(M.f(st.med)) + '</b></i>' : '';
+    body = '<div class="swarm">' + med + you + '<div class="axis"></div>' + ticks + dots + '</div>';
+  }
+  const note = st.n >= 2 ? esc(rankText(mk, st)) + (st.med == null && st.n > 1 ? '. Too few peers for a median (' + (st.n - 1) + ').' : '') : '';
+  return '<section class="ladder"><div class="lh"><div><h2 class="lt">' + esc(M.label) + '</h2><p class="ls">' + note + '</p></div>' + sel + '</div>' +
+    '<div class="tabs" role="tablist">' + tabs + '</div>' + body +
+    '<div class="lf"><span>Each dot is one business. Click a dot to open the page its figure came from.</span>' + (st.n ? proofBtn(mk, key, st.n) : '') + '</div></section>';
+}
 function viewHome() {
-  const key = state.set;
   const fresh = B.filter(b => b.pfresh && b.price.wed != null && age(b.pdate) <= 7).sort((a, b) => a.pdate < b.pdate ? 1 : -1).slice(0, 8);
   const si = lastSweep ? sweepInfo(lastSweep) : null;
-  const late = SOURCES.filter(s => s.st !== 'ok');
-  return '<div class="view"><div class="page-h"><div><h1>Where you stand</h1><p class="sub">JD Meyers Productions as of ' + dshort(ASOF_S) + '. Every figure opens the page it came from.</p></div><label class="fld"><span>Compared with</span><select class="sel" id="setsel">' + Object.keys(SETS).map(k => '<option value="' + k + '"' + (k === key ? ' selected' : '') + '>' + esc(SETS[k].label) + '</option>').join('') + '</select></label></div>' +
-    '<div class="tiles">' + tile('wed', key) + tile('wedv', key) + tile('sess', key) + tile('rev', key) + tile('fol', 'all') + '</div>' +
-    '<p class="note">Prices are the lowest listed price on each business\'s own site, counted only when checked in the last ' + PRICE_DAYS + ' days. Click a figure to open its source. "Verify" lists every figure behind a ranking, each with its own link. Medians show only with 8 or more peers.</p>' +
-    '<div class="cols"><div><h2>What changed</h2><div class="card"><div class="list">' +
+  const late = SOURCES.filter(s => s.st !== 'ok'), key = state.set;
+  return '<div class="view home"><div class="page-h"><div><h1>Where you stand</h1><p class="sub">JD Meyers Productions as of ' + dshort(ASOF_S) + '. Every figure opens the page it came from.</p></div></div>' +
+    ladder(state.lm) +
+    '<div class="tiles ledger">' + tile('wed', key) + tile('wedv', key) + tile('sess', key) + tile('rev', key) + tile('fol', 'all') + '</div>' +
+    '<p class="note">Prices are the lowest listed price on each business\'s own site, counted only when checked in the last ' + PRICE_DAYS + ' days. Medians show only with 8 or more peers.</p>' +
+    '<div class="cols"><div><h2>What changed</h2><div class="panel"><div class="list">' +
       (fresh.length ? fresh.map(b => '<div class="row"><div><div class="t">' + esc(b.name) + '</div><div class="m">Wedding photography from ' + linked('wed', b, money(b.price.wed)) + ', price ' + esc(when(b.pdate)) + '</div></div><div class="r">' + A('Source', figSrc('wed', b).url) + '</div></div>').join('') : '<div class="empty">No price was re-checked in the last 7 days.</div>') +
     '</div></div><p class="note">Shows prices re-checked in the last 7 days. The data keeps only the latest checked figure for each business, with no linked earlier version, so a rise or fall cannot be shown with a link.' + (si ? ' Last website watch: ' + si.fetched + ' of ' + B.length + ' sites, ' + dshort(si.date) + '.' : '') + '</p>' +
       (late.length ? '<p class="note">' + late.map(s => s.label + ' is ' + s.st + ' (' + ago(s.date) + ')').join('. ') + '.</p>' : '') + '</div>' +
-    '<div><h2>What to do</h2><div class="card">' + (RECS.length ? RECS.slice(0, 4).map(recHtml).join('') : '<div class="empty">Nothing in the linked data calls for action today.</div>') + '</div></div></div></div>';
+    '<div><h2>What to do</h2><div class="panel">' + (RECS.length ? RECS.slice(0, 4).map(recHtml).join('') : '<div class="empty">Nothing in the linked data calls for action today.</div>') + '</div></div></div></div>';
 }
 function recHtml(r) {
   return '<div class="rec"><div class="t">' + esc(r.t) + '</div><p>' + esc(r.p) + '</p><div class="w">' + esc(r.w) + '</div>' +
@@ -530,6 +562,7 @@ function fx() {
   countUp();
   requestAnimationFrame(() => requestAnimationFrame(() => {
     $$('.strip [data-to]').forEach((el, i) => { el.style.transitionDelay = (el.tagName === 'B' ? 80 : Math.min(i, 24) * 8) + 'ms'; el.style.left = el.dataset.to + '%'; if (el.tagName === 'I') el.classList.add('on'); });
+    $$('.swarm .dot').forEach(el => { el.style.left = el.dataset.to + '%'; el.classList.add('on'); });
     $$('.bar-r2 .tr i').forEach((el, i) => { el.style.transitionDelay = (60 + i * 30) + 'ms'; el.style.width = el.dataset.w + '%'; });
   }));
 }
@@ -544,7 +577,7 @@ function countUp() {
 }
 function moveThumb() {
   const on = $('#nav button[aria-selected=true]'), t = $('#nav .thumb');
-  if (on && t) { t.style.left = on.offsetLeft + 'px'; t.style.width = on.offsetWidth + 'px'; }
+  if (on && t) { t.style.top = on.offsetTop + 'px'; t.style.height = on.offsetHeight + 'px'; }
 }
 function bind(v) {
   if (v === 'home') { const s = $('#setsel'); if (s) s.onchange = () => { state.set = s.value; render('home'); }; }
@@ -557,7 +590,8 @@ function bind(v) {
     $$('tr[data-vs]').forEach(tr => tr.onclick = e => { if (e.target.closest('a') || tr.dataset.vs === JD_ID) return; location.hash = '#compare/' + encodeURIComponent(tr.dataset.vs); });
   }
 }
-stage.addEventListener('click', e => { const b = e.target.closest('[data-proof]'); if (b) { const p = b.dataset.proof.split('|'); openProof(p[0], p[1]); } });
+stage.addEventListener('click', e => {
+  const mt = e.target.closest('[data-m]'); if (mt && !e.target.closest('a,.proofbtn,select')) { const y = stage.scrollTop; state.lm = mt.dataset.m; render('home'); stage.scrollTop = y; return; } const b = e.target.closest('[data-proof]'); if (b) { const p = b.dataset.proof.split('|'); openProof(p[0], p[1]); } });
 $$('#nav button').forEach(b => b.onclick = () => { if (location.hash === '#' + b.dataset.v) render(b.dataset.v); else location.hash = '#' + b.dataset.v; });
 window.addEventListener('hashchange', route);
 window.addEventListener('resize', moveThumb);

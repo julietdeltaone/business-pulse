@@ -12,12 +12,12 @@
 </head>
 <body>
 <div id="app">
-  <header class="bar" id="bar">
+  <aside class="rail" id="bar">
     <a class="brand" href="#home" aria-label="Business Pulse, home">
-      <svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="8" class="mark-bg"/><path d="M4.5 15h4.4l2.3-6 3.6 11 2.6-8.2 1.5 3.2h4.6" class="mark-line"/></svg>
+      <svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="7" class="mark-bg"/><path d="M4.5 15h4.4l2.3-6 3.6 11 2.6-8.2 1.5 3.2h4.6" class="mark-line"/></svg>
       <span class="brand-t"><b>Business Pulse</b><small>JD Meyers Productions</small></span>
     </a>
-    <nav class="seg" id="nav" role="tablist" aria-label="Sections">
+    <nav class="seg" id="nav" role="tablist" aria-label="Sections" aria-orientation="vertical">
       <i class="thumb" aria-hidden="true"></i>
       <button role="tab" data-v="home">Home</button>
       <button role="tab" data-v="compare">Compare</button>
@@ -30,7 +30,7 @@
     <div class="bar-r">
       <button class="chip" id="health" type="button" aria-label="Data freshness"><span class="dot"></span><span id="health-t">Checking</span></button>
     </div>
-  </header>
+  </aside>
   <main id="stage" aria-live="polite"></main>
 </div>
 <div id="toast" role="status"></div>
