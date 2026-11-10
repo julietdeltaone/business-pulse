@@ -527,20 +527,10 @@ function render(v) {
   fx();
 }
 function fx() {
-  $$('.view>*').forEach((el, i) => el.style.setProperty('--i', i));
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    $$('.strip [data-to]').forEach((el, i) => { el.style.transitionDelay = (el.tagName === 'B' ? 350 : Math.min(i, 24) * 30) + 'ms'; el.style.left = el.dataset.to + '%'; if (el.tagName === 'I') el.classList.add('on'); });
-    $$('.bar-r2 .tr i').forEach((el, i) => { el.style.transitionDelay = (200 + i * 70) + 'ms'; el.style.width = el.dataset.w + '%'; });
+    $$('.strip [data-to]').forEach((el, i) => { el.style.transitionDelay = (el.tagName === 'B' ? 80 : Math.min(i, 24) * 8) + 'ms'; el.style.left = el.dataset.to + '%'; if (el.tagName === 'I') el.classList.add('on'); });
+    $$('.bar-r2 .tr i').forEach((el, i) => { el.style.transitionDelay = (60 + i * 30) + 'ms'; el.style.width = el.dataset.w + '%'; });
   }));
-  if (REDUCED) return;
-  $$('.tile .n').forEach((el, idx) => {
-    const holder = el.querySelector('a') || el, tn = holder.firstChild; if (!tn || tn.nodeType !== 3) return;
-    const m = /^(\$?)([\d,]+)$/.exec(tn.nodeValue.trim()); if (!m) return;
-    const target = +m[2].replace(/,/g, ''), pre = m[1], delay = 200 + idx * 70, dur = 1200;
-    tn.nodeValue = pre + '0';
-    const t0 = performance.now() + delay;
-    (function step(t) { const p = Math.max(0, Math.min(1, (t - t0) / dur)), e = 1 - Math.pow(1 - p, 4); tn.nodeValue = pre + Math.round(target * e).toLocaleString('en-US'); if (p < 1) requestAnimationFrame(step); })(performance.now());
-  });
 }
 function moveThumb() {
   const on = $('#nav button[aria-selected=true]'), t = $('#nav .thumb');
@@ -558,10 +548,6 @@ function bind(v) {
   }
 }
 stage.addEventListener('click', e => { const b = e.target.closest('[data-proof]'); if (b) { const p = b.dataset.proof.split('|'); openProof(p[0], p[1]); } });
-stage.addEventListener('pointermove', e => {
-  const c = e.target.closest && e.target.closest('.card'); if (!c) return;
-  const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px');
-});
 $$('#nav button').forEach(b => b.onclick = () => { if (location.hash === '#' + b.dataset.v) render(b.dataset.v); else location.hash = '#' + b.dataset.v; });
 window.addEventListener('hashchange', route);
 window.addEventListener('resize', moveThumb);
