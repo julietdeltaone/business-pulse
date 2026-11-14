@@ -10,7 +10,7 @@
 
 /* ---------- data ---------- */
 const D = Object.assign({ competitors: [], excluded: [], connections: [], igFollowersHistory: {}, igActivity: [], webSweepHistory: [],
-  aiChecks: [], aiPrompts: { prompts: [] }, townCoords: { coords: {}, aliases: {} }, seedDates: {}, seedMeta: {}, freshness: { sources: [] }, pricingGaps: {}, trendPoints: [] }, window.PULSE_DATA || {});
+  aiChecks: [], aiPrompts: { prompts: [] }, townCoords: { coords: {}, aliases: {} }, seedDates: {}, seedMeta: {}, freshness: { sources: [] }, pricingGaps: {}, trendPoints: [], ownAccounts: [], confidence: {} }, window.PULSE_DATA || {});
 const DET = window.PULSE_DETAILS || {};
 const VEN = window.PULSE_VENUES || [];
 const WI = (window.PULSE_WEBSITE_INTEL || {}).intel || {};
@@ -142,6 +142,12 @@ function paintTheme() {
   $$('[data-tpmode]').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-tpmode') === t.mode)));
   $$('[data-tpscheme]').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-tpscheme') === t.scheme)));
 }
+document.addEventListener('change', e => {
+  const c = e.target.closest && e.target.closest('[data-cmp]');
+  if (c) { if (c.dataset.cmp === 'a') state.cmpA = c.value; else state.cmpB = c.value; render(); return; }
+  const s = e.target.closest && e.target.closest('[data-socsel]');
+  if (s) { state.socSort = s.value; render(); }
+});
 document.addEventListener('click', e => {
   const el = e.target && e.target.closest ? e.target.closest('[data-topen],[data-tpmode],[data-tpscheme],[data-tpclose]') : null;
   if (!el) return;
@@ -278,6 +284,68 @@ const V = VEN.map(v => {
 });
 const VBY = {}; V.forEach(x => VBY[x.id] = x);
 
+/* ---------- JD position + posting pulse ----------
+   JD Meyers Productions is a roster row like every other (same gates, same
+   counting). The JD-centered views below only change the framing: his row is
+   pinned, his rank and his gaps are computed first. Nothing about his numbers
+   is measured differently. */
+const JDID = 'jd-meyers-productions';
+const JD = BY[JDID] || null;
+function rankAmong(list, val, f) {
+  if (val == null) return null;
+  const vals = list.map(f).filter(x => x != null);
+  if (!vals.length) return null;
+  return { r: vals.filter(x => x > val).length + 1, n: vals.length };
+}
+/* Posting model per handle, from the daily Graph API pulls in igActivity:
+   cadence is read from media_count deltas between pulls (a hard count, never
+   estimated); post events come from the puller's own activity log; engagement
+   is the API's per-post summary over the account's recent posts. */
+const POSTEVT = /^(\d+)\s+posts?\b/i;
+function postModel(h) {
+  const rows = ROWS[h] || [];
+  const mc = rows.filter(r => r.media_count != null);
+  const latest = rows[rows.length - 1] || null;
+  const lastMedia = maxDate(rows.map(r => r.last_media_date));
+  let evLast = null; const evts = [];
+  rows.forEach(r => { const m = POSTEVT.exec(String(r.activity || '').trim()); if (m) { evts.push({ date: r.date, n: +m[1], text: clean(r.activity) }); if (!evLast || r.date > evLast) evLast = r.date; } });
+  const mediaAt = d => { let v = null; mc.forEach(r => { if (dn(r.date) <= d) v = r.media_count; }); return v; };
+  const latestD = mc.length ? dn(mc[mc.length - 1].date) : null;
+  const postsIn = days => { if (!mc.length || latestD == null) return null; const base = mediaAt(latestD - days); return base == null ? null : mc[mc.length - 1].media_count - base; };
+  let engRow = null;
+  for (let i = rows.length - 1; i >= 0; i--) { if (rows[i].engagement) { engRow = rows[i]; break; } }
+  return { rows, latest, mediaAt, media: mc.length ? mc[mc.length - 1].media_count : null, lastMedia, evLast, evts, p7: postsIn(7), p30: postsIn(30), eng: engRow ? engRow.engagement : null, engDate: engRow ? engRow.date : null };
+}
+const POST = {};
+B.forEach(b => { if (b.c.ig_handle) POST[b.id] = postModel(b.c.ig_handle); });
+function lastPostOf(b) {
+  const p = POST[b.id];
+  const cands = [p && p.lastMedia, b.c.last_post_date, p && p.evLast].filter(Boolean);
+  return cands.length ? cands.sort()[cands.length - 1] : null;
+}
+/* API-only last post: the newest dated post the pulls themselves carry. The
+   Social view uses this, never the seed's recency date — an account the API
+   cannot read has no API last post, whatever the seed says. */
+function lastPostApi(b) {
+  const p = POST[b.id]; if (!p) return null;
+  const cands = [p.lastMedia, p.evLast].filter(Boolean);
+  return cands.length ? cands.sort()[cands.length - 1] : null;
+}
+function postStatus(b) {
+  const h = b.c.ig_handle; if (!h) return ['nohandle', 'No handle'];
+  /* The model's own pull state decides readability: 'carried' means the pulls
+     are failing or not happening and only a last-known count survives. */
+  if (b.ig.state === 'carried') return ['unread', 'Not readable'];
+  if (b.ig.state === 'none') return ['nodata', 'Not tracked'];
+  const a = age(lastPostApi(b));
+  if (a == null) return ['nodata', 'No dated post'];
+  if (a <= 7) return ['active', 'Active'];
+  if (a <= 30) return ['steady', 'Steady'];
+  return ['quiet', 'Gone quiet'];
+}
+const TRACKED = B.filter(b => POST[b.id] && (POST[b.id].p30 != null || POST[b.id].eng));
+const cadMedian = xs => { const v = xs.filter(x => x != null); return v.length ? median(v) : null; };
+
 /* ---------- ai ----------
    An engine exists on this site only while its latest audit is complete (every active
    prompt answered) and inside the AI freshness window. */
@@ -341,7 +409,7 @@ function sweepInfo(w) {
 }
 
 /* ---------- ui bits ---------- */
-const state = { view: 'brief', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false, briefPrice: 'wed', trendSel: 'all', spotIdx: 0 };
+const state = { view: 'standing', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false, briefPrice: 'wed', trendSel: 'all', spotIdx: 0, cmpA: 'jd-meyers-productions', cmpB: 'median', socSort: 'cad30' };
 const stage = $('#stage'), drawer = $('#drawer');
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800); }
 function copyText(text, msg) {
@@ -691,8 +759,11 @@ function spreadStrip(list) {
 
 function tableBiz(list) {
   const head = COLS.map(c => '<th class="' + (c.cls || '') + (c.r ? ' r' : '') + (c.ns ? '' : ' s') + (state.sort.k === c.k ? ' on' : '') + '"' + (c.ns ? '' : ' data-sort="' + c.k + '"') + '>' + esc(c.l) + (state.sort.k === c.k ? '<span class="ar">' + (state.sort.dir < 0 ? '↓' : '↑') + '</span>' : '<span class="ar"></span>') + '</th>').join('');
-  const body = list.map(b => '<tr data-open="' + esc(b.id) + '" aria-selected="' + (state.sel === b.id) + '"><td class="nm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></td><td class="c-reg">' + regPill(b.region) + '</td><td class="c-lanes"><div class="lanes">' + b.lanes.slice(0, 3).map(l => '<span class="lane l-' + l + '">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="lane">+' + (b.lanes.length - 3) + '</span>' : '') + '</div></td><td class="r">' + cFollowers(b) + '</td><td class="r c-d7">' + cD7(b) + '</td><td class="c-trend">' + (b.ig.state === 'live' ? spark(b.spark) : '<span class="muted">—</span>') + '</td><td class="r">' + cPrice(b, 'wed') + '</td><td class="r">' + cPrice(b, 'sess') + '</td><td class="r">' + cRev(b) + '</td></tr>').join('');
-  return '<table class="tbl"><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>';
+  const rowOf = b => '<tr data-open="' + esc(b.id) + '" class="' + (b.id === JDID ? 'jdrow' : '') + '" aria-selected="' + (state.sel === b.id) + '"><td class="nm"><b>' + esc(b.name) + '</b>' + (b.id === JDID ? ' <span class="youpill">You</span>' : '') + '<span>' + esc(b.town) + '</span></td><td class="c-reg">' + regPill(b.region) + '</td><td class="c-lanes"><div class="lanes">' + b.lanes.slice(0, 3).map(l => '<span class="lane l-' + l + '">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="lane">+' + (b.lanes.length - 3) + '</span>' : '') + '</div></td><td class="r">' + cFollowers(b) + '</td><td class="r c-d7">' + cD7(b) + '</td><td class="c-trend">' + (b.ig.state === 'live' ? spark(b.spark) : '<span class="muted">—</span>') + '</td><td class="r">' + cPrice(b, 'wed') + '</td><td class="r">' + cPrice(b, 'sess') + '</td><td class="r">' + cRev(b) + '</td></tr>';
+  const jdRow = list.find(b => b.id === JDID);
+  const rest = jdRow ? list.filter(b => b.id !== JDID) : list;
+  const pin = jdRow ? '<tr class="pinlab"><td colspan="' + COLS.length + '">Your business — pinned</td></tr>' + rowOf(jdRow) : '';
+  return '<table class="tbl"><thead><tr>' + head + '</tr></thead><tbody>' + pin + rest.map(rowOf).join('') + '</tbody></table>';
 }
 function tableVen() {
   const q = state.q.trim().toLowerCase();
@@ -754,6 +825,26 @@ function openBiz(id) {
     const ac = aiCompute('all'), o = ac.ids[id] || { total: 0 };
     if (ac.answered) aiSec = '<div class="dr-sec"><h3>In AI assistant answers · ' + esc(dshort(DATES.ai)) + ', directional</h3><div class="ailine">' + ENGS.map(e => '<span>' + esc(e) + '</span><span>' + (o[e] || 0) + ' of ' + ac.den[e] + '</span>').join('') + '</div></div>';
   }
+  const pm = POST[id];
+  let postSec = '';
+  if (pm && (pm.media != null || pm.eng || lastPostApi(b))) {
+    const lp = lastPostApi(b), la = age(lp);
+    const pfigs = '<div class="figs">' +
+      fig(pm.media != null ? fmt(pm.media) : '—', 'Posts, all time') +
+      fig(pm.p30 != null ? pm.p30 : '—', 'Posts, last 30 days') +
+      fig(pm.p7 != null ? pm.p7 : '—', 'Posts, last 7 days') +
+      fig(lp ? dshort(lp) : '—', 'Last post (API)' + (la != null ? ' · ' + ageText(la) : '')) + '</div>';
+    let engHtml = '';
+    if (pm.eng) {
+      const bars = (pm.eng.bars || []).map(v => '<i style="height:' + Math.max(8, Math.min(100, v * 3)) + '%"></i>').join('');
+      engHtml = '<div class="engrow"><div class="engnums"><span><b>' + (pm.eng.avg_likes != null ? pm.eng.avg_likes : '—') + '</b> avg likes</span><span><b>' + (pm.eng.avg_comments != null ? pm.eng.avg_comments : '—') + '</b> avg comments</span><span><b>' + (pm.eng.rate_pct != null ? pm.eng.rate_pct + '%' : '—') + '</b> engagement rate</span></div>' +
+        (bars ? '<div class="engbars" title="Engagement rate of the last ' + (pm.eng.posts || (pm.eng.bars || []).length) + ' posts">' + bars + '</div>' : '') +
+        '<div class="engcap">Across the last ' + (pm.eng.posts || '—') + ' posts · Instagram API, pulled ' + esc(dshort(pm.engDate)) + '</div></div>';
+    }
+    postSec = '<div class="dr-sec"><h3>Posting pulse</h3>' + pfigs + engHtml + '</div>';
+  }
+  const cf = (D.confidence || {})[id];
+  const confSec = cf && cf.score != null ? '<div class="dr-sec"><h3>Data coverage · assessed Oct 2026</h3><div class="confl"><span class="confscore">' + cf.score + '</span><span class="confparts">' + Object.keys(cf.parts || {}).map(k => esc(k) + ' ' + cf.parts[k]).join(' · ') + (cf.conflict ? '<br>Conflict on file: ' + esc(cf.conflict) : '') + '</span></div></div>' : '';
   const conn = D.connections.filter(x => flat(x.a) === flat(b.name) || flat(x.b) === flat(b.name));
   const connSec = conn.length ? '<div class="dr-sec"><h3>Worked with</h3><div class="tags">' + conn.map(x => pill((flat(x.a) === flat(b.name) ? x.b : x.a) + (x.type ? ' · ' + x.type : ''), 'gray')).join('') + '</div></div>' : '';
   const gaps = []; if (!c.website) gaps.push('No website'); if (!c.pricing) gaps.push(b.gap ? 'Pricing: ' + b.gap.reason.toLowerCase() + ' (checked ' + dshort(b.gap.checked) + ')' : 'No published pricing'); if (!c.ig_handle) gaps.push('No Instagram handle');
@@ -761,7 +852,7 @@ function openBiz(id) {
   drawer.innerHTML = '<div class="dr-head"><button class="dr-x" data-close aria-label="Close">×</button><h2>' + esc(b.name) + '</h2><div class="where">' + esc(b.town) + (b.county && b.region !== 'slc' ? ' · ' + esc(b.county) + ' County' : '') + '</div><div class="dr-links">' + regPill(b.region) + links.join('') + '</div></div>' +
     '<div class="dr-body">' + figs + chart + (about ? '<div class="dr-sec"><h3>About</h3><p class="dr-text">' + esc(about) + '</p></div>' : '') +
     (svc.length ? '<div class="dr-sec"><h3>Services</h3><div class="tags">' + svc.map(s => pill(s, '')).join('') + '</div></div>' : '') +
-    (cov.length ? '<div class="dr-sec"><h3>Coverage area</h3><div class="tags">' + cov.map(s => pill(s, 'tan')).join('') + '</div></div>' : '') + pr + aiSec + connSec + gapSec + '</div>';
+    (cov.length ? '<div class="dr-sec"><h3>Coverage area</h3><div class="tags">' + cov.map(s => pill(s, 'tan')).join('') + '</div></div>' : '') + pr + postSec + aiSec + connSec + confSec + gapSec + '</div>';
   showDrawer(id);
 }
 function openVen(id) {
@@ -1010,7 +1101,7 @@ function viewAI() {
   const max = named.length ? named[0].o.total : 1;
   const offList = Object.keys(ac.off).map(k => ac.off[k]).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   const cols = '28px minmax(0,1fr)' + ENGS.map(() => ' 92px').join('') + ' 118px';
-  const row = (e, i) => '<button class="lb-r" data-open="' + esc(e.b.id) + '" style="grid-template-columns:' + cols + '"><span class="rk">' + (i + 1) + '</span><span class="nm"><b>' + esc(e.b.name) + '</b><span class="bar2"><i style="width:' + (e.o.total / max * 100).toFixed(1) + '%"></i></span></span>' +
+  const row = (e, i) => '<button class="lb-r' + (e.b.id === JDID ? ' me' : '') + '" data-open="' + esc(e.b.id) + '" style="grid-template-columns:' + cols + '"><span class="rk">' + (i + 1) + '</span><span class="nm"><b>' + esc(e.b.name) + (e.b.id === JDID ? ' <span class="youpill">You</span>' : '') + '</b><span class="bar2"><i style="width:' + (e.o.total / max * 100).toFixed(1) + '%"></i></span></span>' +
     ENGS.map(en => '<span class="c">' + (e.o[en] || 0) + ' of ' + ac.den[en] + '</span>').join('') +
     '<span class="t ' + (e.o.total / ac.answered >= 0.75 ? 'ai-hi' : e.o.total / ac.answered >= 0.4 ? 'ai-mid' : 'ai-lo') + '">' + e.o.total + ' of ' + ac.answered + ' answers</span></button>';
   const lb = '<div class="lb"><div class="lb-h" style="grid-template-columns:' + cols + '"><span></span><span>Business</span>' + ENGS.map(en => '<span>' + esc(en) + '</span>').join('') + '<span>All shown</span></div>' +
@@ -1073,6 +1164,229 @@ function viewData() {
 }
 function freshnessReport() {
   return 'Business Pulse freshness, as of ' + ASOF_S + '\n' + SS.map(s => (s.st === 'ok' ? 'OK     ' : s.st === 'late' ? 'LATE   ' : s.st === 'stalled' ? 'STALLED' : 'NO DATA') + ' ' + s.label + ': ' + (s.date || 'none') + (s.age != null ? ' (' + s.age + ' days)' : '') + (s.st === 'ok' ? '' : '\n         Do this: ' + s.fix)).join('\n');
+}
+
+/* ---------- shared bits for the JD-centered views ---------- */
+const vhead = (t, s) => '<div class="brief-head"><div><h1>' + esc(t) + '</h1><p>' + esc(s) + '</p></div></div>';
+const stile = (n, t) => '<div class="tile"><div class="n">' + n + '</div><div class="t">' + esc(t) + '</div></div>';
+const DASHM = '<span class="muted">—</span>';
+const isoOf = n => new Date(n * DAY).toISOString().slice(0, 10);
+let _AIC = null;
+const aiAll = () => _AIC || (_AIC = aiCompute('all'));
+const aiAnswers = () => ENGS.reduce((a, e) => a + (aiAll().den[e] || 0), 0);
+const aiOf = b => { const o = aiAll().ids[b.id]; return o ? { total: o.total, answered: aiAnswers() } : null; };
+const revNote = b => b.rev.live ? '' : b.rev.count == null ? 'No Google book on file' : b.rev.st === 'none' ? 'No verified reading on file' : 'Outside the 35-day window · last verified ' + dshort(b.rev.date);
+const igNote = b => b.ig.state === 'live' ? '' : b.ig.state === 'carried' ? 'Not readable — last known ' + fmt(b.ig.count) : b.ig.state === 'late' ? 'Last live count ' + dshort(b.ig.date) : 'No Instagram data';
+
+/* ---------- STANDING: the JD home view ----------
+   Where JD Meyers Productions stands, answered first: rank per category, the
+   gap to whoever leads it, who is closing in, and his posting pulse. Every
+   figure goes through the same gates as everyone else's. */
+function gapRow(label, main, sub) { return '<div class="gaprow"><span class="gap-l">' + esc(label) + '</span><span class="gap-m">' + main + '</span><span class="gap-s">' + esc(sub) + '</span></div>'; }
+function viewStanding() {
+  if (!JD) return '<section class="view standing"><div class="empty"><b>JD Meyers Productions is not on the roster.</b></div></section>';
+  const live = LIVEIG;
+  const weds = B.map(b => b.wedLive).filter(x => x != null);
+  const jdWed = JD.wedLive, wedMed = weds.length ? median(weds) : null;
+  const folR = JD.ig.state === 'live' ? rankAmong(live, JD.ig.count, b => b.ig.count) : null;
+  const wedR = jdWed != null ? rankAmong(B, jdWed, b => b.wedLive) : null;
+  const revB = B.filter(b => b.rev.live);
+  const revR = JD.rev.live ? rankAmong(revB, JD.rev.count, b => b.rev.count) : null;
+  const oJD = aiOf(JD);
+  const aiR = oJD ? rankAmong(B.filter(b => aiOf(b)), oJD.total, b => aiOf(b).total) : null;
+  const jp = POST[JDID] || {};
+  const cadR = jp.p30 != null ? rankAmong(TRACKED, jp.p30, b => (POST[b.id] || {}).p30) : null;
+  const rk = r => r ? ' <span class="rksub">#' + r.r + ' of ' + r.n + '</span>' : '';
+  const tiles = '<div class="stats">' +
+    stile(JD.ig.state === 'live' ? fmt(JD.ig.count) + rk(folR) : '—', 'Instagram followers' + (JD.c.ig_handle ? ' · @' + JD.c.ig_handle : '') + (JD.ig.state === 'live' ? ' · live count' : ' · ' + igNote(JD))) +
+    stile(jdWed != null ? money(jdWed) + rk(wedR) : '—', 'Wedding from-rate' + (jdWed != null ? ' · verified ' + dshort(JD.pdate) + (wedMed != null ? ' · median ' + money(wedMed) : '') : ' · no verified reading inside 45 days')) +
+    stile(JD.rev.live ? fmt(JD.rev.count) + rk(revR) : '—', 'Google reviews' + (JD.rev.live ? ' · ' + Number(JD.rev.rating).toFixed(1) + ' average · current book' : ' · ' + revNote(JD))) +
+    stile(oJD ? String(oJD.total) + rk(aiR) : '—', 'AI answers naming you' + (oJD ? ' · of ' + oJD.answered + ' given · audited ' + dshort(DATES.ai) : ' · not named in the latest audit')) +
+    stile(jp.p30 != null ? String(jp.p30) + rk(cadR) : '—', 'Posts, last 30 days' + (lastPostApi(JD) ? ' · last post ' + dshort(lastPostApi(JD)) : '')) +
+    '</div>';
+  const lead = (list, f) => list.reduce((m, b) => (f(b) != null && (m == null || f(b) > f(m)) ? b : m), null);
+  const folLead = lead(live, b => b.ig.count);
+  const revLead = lead(revB, b => b.rev.count);
+  const aiLead = lead(B.filter(b => aiOf(b)), b => aiOf(b).total);
+  const cadLead = lead(TRACKED, b => (POST[b.id] || {}).p30);
+  let gaps = '';
+  if (folLead) gaps += gapRow('Followers', folLead.id === JDID ? 'You hold the largest live count in the market.' : '<b>' + esc(folLead.name) + '</b> leads at ' + fmt(folLead.ig.count) + ' — you trail by ' + fmt(folLead.ig.count - JD.ig.count) + '.', 'Live Instagram counts, pulled ' + dshort(DATES.ig));
+  if (jdWed != null && wedMed != null) gaps += gapRow('Wedding price', 'Your from-rate is ' + money(jdWed) + ' against a ' + money(wedMed) + ' median across ' + weds.length + ' verified rates' + (jdWed >= wedMed ? ' — ' + money(jdWed - wedMed) + ' above the middle.' : ' — ' + money(wedMed - jdWed) + ' under the middle.'), 'Own-site rates verified within 45 days');
+  if (revLead) gaps += gapRow('Reviews', revLead.id === JDID ? 'Your book is the largest current one in the market.' : '<b>' + esc(revLead.name) + '</b> holds ' + fmt(revLead.rev.count) + ' reviews — you trail by ' + fmt(revLead.rev.count - JD.rev.count) + '.', 'Google counts verified within 35 days');
+  if (aiLead && oJD) gaps += gapRow('AI visibility', aiLead.id === JDID ? 'AI names you more than anyone in the market.' : '<b>' + esc(aiLead.name) + '</b> is named ' + aiOf(aiLead).total + ' times across the engines — you are named ' + oJD.total + '.', 'Latest audit ' + dshort(DATES.ai) + ' · directional, counts only');
+  if (cadLead && jp.p30 != null) gaps += gapRow('Posting', cadLead.id === JDID ? 'You out-post the whole tracked field this month.' : '<b>' + esc(cadLead.name) + '</b> posted ' + (POST[cadLead.id] || {}).p30 + ' times in 30 days — you posted ' + jp.p30 + '.', 'Cadence counted from the daily API pulls, through ' + dshort(DATES.ig));
+  let rel = '';
+  if (JD.ig.state === 'live') {
+    const behind = live.filter(b => b.id !== JDID && b.ig.count < JD.ig.count && b.d7 > 0).sort((a, c) => c.d7 - a.d7).slice(0, 5);
+    const ahead = live.filter(b => b.id !== JDID && b.ig.count > JD.ig.count).sort((a, c) => (a.ig.count - JD.ig.count) - (c.ig.count - JD.ig.count)).slice(0, 5);
+    const relRow = (b, gapTxt) => liRow(b, '<span class="muted">' + gapTxt + '</span>' + cD7(b), b.town + ' · ' + fmt(b.ig.count) + ' followers');
+    rel = '<div class="cols2">' + panel('Closing in on you', 'Behind you and gaining this week', behind.length ? behind.map(b => relRow(b, fmt(JD.ig.count - b.ig.count) + ' behind')).join('') : '<p class="p-note">Nobody behind you gained followers this week.</p>') +
+      panel('In front of you', 'Nearest accounts above you', ahead.length ? ahead.map(b => relRow(b, fmt(b.ig.count - JD.ig.count) + ' ahead')).join('') : '<p class="p-note">No live account sits above you.</p>') + '</div>';
+  }
+  const med30 = cadMedian(TRACKED.map(b => (POST[b.id] || {}).p30));
+  const lpJD = lastPostApi(JD), laJD = age(lpJD);
+  const pulse = panel('Your posting pulse', '', '<div class="figs">' + fig(jp.p7 != null ? jp.p7 : '—', 'Posts, 7 days') + fig(jp.p30 != null ? jp.p30 : '—', 'Posts, 30 days') + fig(med30 != null ? med30 : '—', 'Field median, 30 days') + fig(lpJD ? dshort(lpJD) : '—', 'Last post' + (laJD != null ? ' · ' + ageText(laJD) : '')) + (jp.eng ? fig(jp.eng.rate_pct != null ? jp.eng.rate_pct + '%' : '—', 'Engagement, last ' + (jp.eng.posts || 10) + ' posts') : '') + '</div>' +
+    '<p class="p-note">Counted from the daily Instagram API pulls — total post count read at each pull, through ' + esc(dshort(DATES.ig)) + '. The full pulse — who out-posts you, who has gone quiet, cadence by week — is in Social.</p>', ['Full Social view', 'social']);
+  const swi = SW.length ? sweepInfo(SW[SW.length - 1]) : null;
+  const watch = swi && swi.changed.length ? panel('Latest sweep — what changed', dshort(swi.date), swi.changed.slice(0, 6).map(c => '<div class="mrow"><span class="mn">' + esc((BY[c.id] || {}).name || c.id) + '</span><span class="md2">Page changed<span>' + esc(c.note || '') + '</span></span></div>').join('')) : '';
+  return '<section class="view standing">' + vhead('Your standing', 'JD Meyers Productions · ' + JD.town + ' · ' + JD.lanes.map(l => LANE_NAME[l]).join(', ') + '. Every figure below passes the same gates as everyone else\u2019s — the framing is yours, the numbers are not.') +
+    tiles + panel('Gap to the leader', 'Per category, with the date each figure was verified', gaps || '<p class="p-note">Not enough gated data yet to call a gap.</p>') +
+    rel + pulse + watch + moveWidget() + fchips() + '</section>';
+}
+
+/* ---------- COMPARE: head-to-head + category standings ---------- */
+function cmpSide(id) {
+  if (id === 'median') {
+    return { name: 'Market median', sub: 'Median across the gated, current figures — not a business', fol: median(LIVEIG.map(b => b.ig.count)), d7: cadMedian(LIVEIG.map(b => b.d7)), d30: cadMedian(LIVEIG.map(b => b.d30)), wed: cadMedian(B.map(b => b.wedLive)), sess: cadMedian(B.map(b => b.sessLive)), rev: cadMedian(B.filter(b => b.rev.live).map(b => b.rev.count)), rating: null, ai: null, aiNa: true, p30: cadMedian(TRACKED.map(b => POST[b.id].p30)), p7: cadMedian(TRACKED.map(b => POST[b.id].p7)), lp: null, eng: null, lanes: [], est: null, folNote: '', revNote: '' };
+  }
+  const b = BY[id]; if (!b) return null;
+  const p = POST[id] || {};
+  const o = aiOf(b);
+  return { name: b.name, sub: b.town + ' · ' + (REGION[b.region] || b.region), fol: b.ig.state === 'live' ? b.ig.count : null, folNote: igNote(b), folRank: b.ig.state === 'live' ? rankAmong(LIVEIG, b.ig.count, x => x.ig.count) : null,
+    d7: b.d7, d30: b.d30,
+    wed: b.wedLive, wedD: b.pdate, sess: b.sessLive, sessD: b.pdate,
+    rev: b.rev.live ? b.rev.count : null, revNote: revNote(b), rating: b.rev.live ? b.rev.rating : null,
+    ai: o, aiD: DATES.ai, p30: p.p30, p7: p.p7, lp: lastPostApi(b), eng: p.eng, lanes: b.lanes, est: b.c.est_year, handle: b.c.ig_handle, id: b.id };
+}
+function cmpOpts(sel) {
+  const sorted = B.slice().sort((a, c) => (a.id === JDID ? -1 : c.id === JDID ? 1 : a.name.localeCompare(c.name)));
+  return '<option value="median"' + (sel === 'median' ? ' selected' : '') + '>Market median</option>' + sorted.map(b => '<option value="' + esc(b.id) + '"' + (sel === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('');
+}
+function viewCompare() {
+  const A = cmpSide(state.cmpA), C = cmpSide(state.cmpB);
+  const controls = '<div class="cmpctl"><label>Compare <select data-cmp="a">' + cmpOpts(state.cmpA) + '</select></label><span class="vs">vs</span><label><select data-cmp="b">' + cmpOpts(state.cmpB) + '</select></label></div>';
+  const head3 = '<div class="cmph"><div class="cmpside' + (state.cmpA === JDID ? ' me' : '') + '"><b>' + esc(A.name) + '</b><span>' + esc(A.sub) + '</span></div><span class="vs2">VS</span><div class="cmpside r' + (state.cmpB === JDID ? ' me' : '') + '"><b>' + esc(C.name) + '</b><span>' + esc(C.sub) + '</span></div></div>';
+  const num = (x, f) => x == null ? '<span class="faint">—</span>' : f(x);
+  const rows = [
+    ['Instagram followers', s => num(s.fol, v => fmt(v) + (s.folRank ? ' <span class="rksub">#' + s.folRank.r + ' of ' + s.folRank.n + '</span>' : '') + (s.folNote ? ' <span class="stale">' + esc(s.folNote) + '</span>' : '')), s => s.fol, 'high'],
+    ['Followers, 7 days', s => num(s.d7, v => signed(v)), s => s.d7, 'high'],
+    ['Followers, 30 days', s => num(s.d30, v => signed(v)), s => s.d30, 'high'],
+    ['Wedding from-rate', s => s.wed == null ? '<span class="faint">no verified rate</span>' : money(s.wed) + ' <span class="muted">' + (s.wedD ? 'verified ' + esc(dshort(s.wedD)) : 'market median') + '</span>', s => s.wed, null],
+    ['Session from-rate', s => s.sess == null ? '<span class="faint">no verified rate</span>' : money(s.sess) + ' <span class="muted">' + (s.sessD ? 'verified ' + esc(dshort(s.sessD)) : 'market median') + '</span>', s => s.sess, null],
+    ['Google reviews', s => s.rev == null ? '<span class="faint">' + esc(s.revNote || 'unverified') + '</span>' : fmt(s.rev) + (s.rating != null ? ' · ' + Number(s.rating).toFixed(1) + ' average' : ''), s => s.rev, 'high'],
+    ['Named by AI', s => s.ai == null ? (s.aiNa ? '<span class="faint">—</span>' : '<span class="faint">not named in the latest audit</span>') : String(s.ai.total) + ' <span class="muted">of ' + s.ai.answered + ' answers · ' + esc(dshort(s.aiD)) + '</span>', s => s.ai ? s.ai.total : null, 'high'],
+    ['Posts, 30 days', s => num(s.p30, v => String(v)), s => s.p30, 'high'],
+    ['Last post', s => s.lp ? esc(dshort(s.lp)) + ' <span class="muted">' + esc(ageText(age(s.lp))) + '</span>' : '<span class="faint">—</span>', s => s.lp ? -age(s.lp) : null, 'high'],
+    ['Engagement rate', s => s.eng && s.eng.rate_pct != null ? s.eng.rate_pct + '% <span class="muted">last ' + (s.eng.posts || 10) + ' posts</span>' : '<span class="faint">—</span>', s => s.eng ? s.eng.rate_pct : null, 'high'],
+    ['Avg likes per post', s => s.eng && s.eng.avg_likes != null ? String(s.eng.avg_likes) : '<span class="faint">—</span>', s => s.eng ? s.eng.avg_likes : null, 'high'],
+    ['Established', s => s.est ? String(s.est) : '<span class="faint">—</span>', s => s.est, null],
+    ['Services', s => s.lanes.length ? s.lanes.map(l => LANE_NAME[l]).join(', ') : '<span class="faint">—</span>', null, null]
+  ];
+  const tbl = '<table class="cmp-tbl"><tbody>' + rows.map(r => {
+    const va = r[2] ? r[2](A) : null, vb = r[2] ? r[2](C) : null;
+    let ca = '', cb = '';
+    if (r[3] && va != null && vb != null && va !== vb) { if (va > vb) ca = ' class="win"'; else cb = ' class="win"'; }
+    return '<tr><td' + ca + '>' + r[1](A) + '</td><th>' + esc(r[0]) + '</th><td' + cb + '>' + r[1](C) + '</td></tr>';
+  }).join('') + '</tbody></table>';
+  const catPanel = (title, entries, fmtv, note) => {
+    const sorted = entries.filter(e => e.v != null).sort((a, c) => c.v - a.v);
+    const top = sorted.slice(0, 6);
+    const jdIdx = sorted.findIndex(e => e.b.id === JDID);
+    let body = top.map((e, i) => '<div class="mrow' + (e.b.id === JDID ? ' me' : '') + '"><span class="mn">' + esc(e.b.name) + (e.b.id === JDID ? ' (you)' : '') + '</span><span class="md2">' + fmtv(e.v) + '<span>#' + (i + 1) + ' of ' + sorted.length + '</span></span></div>').join('');
+    if (JD && jdIdx >= 6) body += '<div class="mrow me"><span class="mn">' + esc(JD.name) + ' (you)</span><span class="md2">' + fmtv(sorted[jdIdx].v) + '<span>#' + (jdIdx + 1) + ' of ' + sorted.length + '</span></span></div>';
+    if (JD && jdIdx === -1) body += '<div class="mrow me"><span class="mn">' + esc(JD.name) + ' (you)</span><span class="md2"><span class="faint">not counted</span><span>no gated figure</span></span></div>';
+    return panel(title, note, body || '<p class="p-note">No gated figures in this category.</p>');
+  };
+  const cats = '<div class="cols2">' +
+    catPanel('Followers', LIVEIG.map(b => ({ b, v: b.ig.count })), v => fmt(v) + ' followers', 'Live Instagram counts') +
+    catPanel('Wedding from-rate', B.map(b => ({ b, v: b.wedLive })), v => money(v), 'Verified within 45 days, highest first') +
+    catPanel('Reviews', B.filter(b => b.rev.live).map(b => ({ b, v: b.rev.count })), v => fmt(v) + ' reviews', 'Current Google books') +
+    catPanel('Named by AI', B.map(b => ({ b, v: aiOf(b) ? aiOf(b).total : null })), v => v + ' answers', 'Latest audit, ' + dshort(DATES.ai)) +
+    catPanel('Posts, last 30 days', TRACKED.map(b => ({ b, v: POST[b.id].p30 })), v => v + ' posts', 'From the daily API pulls') +
+    catPanel('Engagement rate', B.map(b => ({ b, v: (POST[b.id] || {}).eng ? POST[b.id].eng.rate_pct : null })), v => v + '%', 'Recent posts, Instagram API') +
+    '</div>';
+  return '<section class="view compare">' + vhead('Compare', 'Head-to-head on the gated figures, then the category tables with your position marked. A dash means the figure is not verified or not tracked — not zero.') + controls + panel('', '', head3 + tbl) + cats + '</section>';
+}
+
+/* ---------- SOCIAL: the Instagram posting pulse ----------
+   Cadence is counted from media_count deltas between the daily Graph API
+   pulls (igActivity), never estimated. Accounts the API cannot read show as
+   Not readable — never as zero posts. */
+function viewSocial() {
+  const med30 = cadMedian(TRACKED.map(b => POST[b.id].p30));
+  const jp = POST[JDID] || {};
+  const statusOf = {}; let nActive = 0, nQuiet = 0, nUnread = 0;
+  B.forEach(b => { if (!b.c.ig_handle) return; const s = postStatus(b); statusOf[b.id] = s; if (s[0] === 'active') nActive++; if (s[0] === 'quiet') nQuiet++; if (s[0] === 'unread') nUnread++; });
+  const tiles = '<div class="stats">' +
+    stile(String(TRACKED.length), 'With a readable posting history · of ' + B.filter(b => b.c.ig_handle).length + ' roster handles') +
+    stile(String(nActive), 'Posted within the last 7 days') +
+    stile(String(nQuiet), 'Gone quiet — no post in 30+ days') +
+    stile(String(nUnread), 'API cannot read — shown as unreadable, never as zero') +
+    stile(jp.p30 != null ? String(jp.p30) : '—', 'Your posts, last 30 days · field median ' + (med30 != null ? med30 : '—')) +
+    '</div>';
+  let jdPanel = '';
+  if (JD) {
+    const eng = jp.eng ? '<div class="engrow"><div class="engnums"><span><b>' + (jp.eng.avg_likes != null ? jp.eng.avg_likes : '—') + '</b> avg likes</span><span><b>' + (jp.eng.avg_comments != null ? jp.eng.avg_comments : '—') + '</b> avg comments</span><span><b>' + (jp.eng.rate_pct != null ? jp.eng.rate_pct + '%' : '—') + '</b> engagement rate</span></div>' + ((jp.eng.bars || []).length ? '<div class="engbars">' + jp.eng.bars.map(v => '<i style="height:' + Math.max(8, Math.min(100, v * 3)) + '%"></i>').join('') + '</div><div class="engcap">Engagement rate of your last ' + (jp.eng.posts || jp.eng.bars.length) + ' posts</div>' : '') + '</div>' : '';
+    const out = TRACKED.filter(b => b.id !== JDID && jp.p30 != null && POST[b.id].p30 > jp.p30).sort((a, c) => POST[c.id].p30 - POST[a.id].p30).slice(0, 5);
+    jdPanel = panel('Your pulse — @' + (JD.c.ig_handle || ''), 'Same counting as everyone below',
+      '<div class="figs">' + fig(JD.ig.state === 'live' ? fmt(JD.ig.count) : '—', 'Followers') + fig(jp.p7 != null ? jp.p7 : '—', 'Posts, 7 days') + fig(jp.p30 != null ? jp.p30 : '—', 'Posts, 30 days') + fig(jp.p30 != null ? (jp.p30 / 4.345).toFixed(1) : '—', 'Posts per week') + fig(lastPostApi(JD) ? dshort(lastPostApi(JD)) : '—', 'Last post' + (age(lastPostApi(JD)) != null ? ' · ' + ageText(age(lastPostApi(JD))) : '')) + fig(jp.media != null ? fmt(jp.media) : '—', 'Posts, all time') + '</div>' + eng +
+      (out.length ? '<div class="panel-h sub"><h2>Out-posting you, last 30 days</h2></div>' + out.map(b => liRow(b, '<span class="muted">' + POST[b.id].p30 + ' posts</span>', '@' + b.c.ig_handle + ' · last post ' + dshort(lastPostApi(b)))).join('') : '<p class="p-note">Nobody tracked out-posted you in the last 30 days.</p>'));
+  }
+  const wk = [];
+  for (let w = 7; w >= 0; w--) {
+    const end = ASOF - w * 7; let sum = 0, n = 0;
+    TRACKED.forEach(b => { const p = POST[b.id]; const a = p.mediaAt(end), c = p.mediaAt(end - 7); if (a != null && c != null && a >= c) { sum += a - c; n++; } });
+    wk.push({ end: isoOf(end), sum, n });
+  }
+  const wmax = Math.max(1, Math.max.apply(null, wk.map(x => x.sum)));
+  const wkPanel = panel('Market posting rhythm', 'Posts per week across the tracked field', '<div class="wkchart">' +
+    wk.map(x => '<div class="wk"><span class="wkn">' + x.sum + '</span><i style="height:' + Math.max(3, x.sum / wmax * 100) + '%"></i><span class="wkd">' + esc(dshort(x.end)) + '</span></div>').join('') + '</div>' +
+    '<p class="p-note">Counted account by account from total-post readings at each pull; a week covers the accounts readable at both ends of it.</p>');
+  const withH = B.filter(b => b.c.ig_handle);
+  const keyF = { cad30: b => (POST[b.id] || {}).p30, p7: b => (POST[b.id] || {}).p7, fol: b => b.ig.state === 'live' ? b.ig.count : null, recent: b => { const a = age(lastPostApi(b)); return a == null ? null : -a; } };
+  let list = withH.slice();
+  if (state.socSort === 'name') list.sort((a, c) => a.name.localeCompare(c.name));
+  else list.sort((a, c) => { const f = keyF[state.socSort]; const va = f(a), vb = f(c); if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1; return vb - va; });
+  const socRow = b => {
+    const p = POST[b.id] || {}; const st = statusOf[b.id] || ['nodata', 'No data'];
+    const lp = lastPostApi(b), la = age(lp);
+    return '<tr data-open="' + esc(b.id) + '" class="' + (b.id === JDID ? 'jdrow' : '') + '"><td class="nm"><b>' + esc(b.name) + '</b>' + (b.id === JDID ? ' <span class="youpill">You</span>' : '') + '<span>@' + esc(b.c.ig_handle) + '</span></td>' +
+      '<td class="r">' + cFollowers(b) + '</td><td class="r">' + (p.p7 != null ? p.p7 : DASHM) + '</td><td class="r">' + (p.p30 != null ? p.p30 : DASHM) + '</td><td class="r">' + (p.p30 != null ? (p.p30 / 4.345).toFixed(1) : DASHM) + '</td>' +
+      '<td>' + (lp ? esc(dshort(lp)) + ' <span class="muted">' + esc(ageText(la)) + '</span>' : DASHM) + '</td>' +
+      '<td>' + (p.eng ? (p.eng.avg_likes != null ? p.eng.avg_likes : '—') + ' likes · ' + (p.eng.rate_pct != null ? p.eng.rate_pct + '%' : '—') : DASHM) + '</td>' +
+      '<td><span class="stchip st-' + st[0] + '">' + st[1] + '</span></td></tr>';
+  };
+  const jdB = list.find(b => b.id === JDID);
+  const rest = jdB ? list.filter(b => b.id !== JDID) : list;
+  const socTbl = '<div class="tblwrap"><table class="tbl soc"><thead><tr><th>Business</th><th class="r">Followers</th><th class="r">Posts 7d</th><th class="r">Posts 30d</th><th class="r">Per week</th><th>Last post</th><th>Engagement</th><th>Status</th></tr></thead><tbody>' +
+    (jdB ? '<tr class="pinlab"><td colspan="8">Your business — pinned</td></tr>' + socRow(jdB) : '') + rest.map(socRow).join('') + '</tbody></table></div>';
+  const sortCtl = '<div class="row wrap socctl"><span class="muted">Sort</span><select data-socsel aria-label="Sort the posting table"><option value="cad30"' + (state.socSort === 'cad30' ? ' selected' : '') + '>Posts, 30 days</option><option value="p7"' + (state.socSort === 'p7' ? ' selected' : '') + '>Posts, 7 days</option><option value="fol"' + (state.socSort === 'fol' ? ' selected' : '') + '>Followers</option><option value="recent"' + (state.socSort === 'recent' ? ' selected' : '') + '>Most recent post</option><option value="name"' + (state.socSort === 'name' ? ' selected' : '') + '>Name</option></select><span class="muted">Instagram data through ' + esc(dshort(DATES.ig)) + '</span></div>';
+  const fieldPanel = panel('The field', withH.length + ' handles', sortCtl + socTbl);
+  const actives = withH.filter(b => statusOf[b.id][0] === 'active').sort((a, c) => (age(lastPostApi(a)) || 0) - (age(lastPostApi(c)) || 0)).slice(0, 8);
+  const quiets = withH.filter(b => statusOf[b.id][0] === 'quiet').sort((a, c) => (age(lastPostApi(c)) || 0) - (age(lastPostApi(a)) || 0)).slice(0, 8);
+  const stRow = b => liRow(b, '<span class="muted">' + (lastPostApi(b) ? esc(ageText(age(lastPostApi(b)))) + ' since last post' : 'no dated post') + '</span>', '@' + b.c.ig_handle + (b.id === JDID ? ' · you' : ''));
+  const aq = '<div class="cols2">' + panel('Active now', 'Posted in the last 7 days', actives.length ? actives.map(stRow).join('') : '<p class="p-note">No tracked account posted this week.</p>') +
+    panel('Gone quiet', 'Longest silence first', quiets.length ? quiets.map(stRow).join('') : '<p class="p-note">No tracked account has been silent for 30+ days.</p>') + '</div>';
+  const feed = [];
+  B.forEach(b => { const p = POST[b.id]; if (p) p.evts.forEach(e => feed.push({ b, date: e.date, text: e.text })); });
+  feed.sort((a, c) => c.date.localeCompare(a.date));
+  const feedPanel = feed.length ? panel('Recent posts', 'From the daily pulls\u2019 own log', feed.slice(0, 12).map(f => '<div class="mrow"><span class="mn">' + esc(dshort(f.date)) + ' · ' + esc(f.b.name) + '</span><span class="md2">' + esc(f.text.length > 150 ? f.text.slice(0, 150) + '…' : f.text) + '</span></div>').join('')) : '';
+  const ownBy = {};
+  (D.ownAccounts || []).forEach(r => { (ownBy[r.account] = ownBy[r.account] || []).push(r); });
+  const ownRows = Object.keys(ownBy).sort().map(a => {
+    const rs = ownBy[a].slice().sort((x, y) => x.date.localeCompare(y.date));
+    const first = rs[0], last = rs[rs.length - 1];
+    return '<div class="mrow"><span class="mn">@' + esc(a) + '</span><span class="md2"><b>' + fmt(last.follower_count) + '</b> followers<span>' + (rs.length > 1 ? signed(last.follower_count - first.follower_count) + ' since ' + esc(dshort(first.date)) : 'first snapshot ' + esc(dshort(first.date))) + '</span></span></div>';
+  }).join('');
+  const ownPanel = ownRows ? panel('Your accounts', 'Follower snapshots from the daily check', ownRows + '<p class="p-note">The daily check keeps only a short window of its own snapshots, so these counts cover the last few days, not the full history. Your business account\u2019s posting pulse above is counted from the same API pulls as the field.</p>') : '';
+  return '<section class="view social">' + vhead('Social — the posting pulse', 'Who is posting, how often, and who has gone quiet — counted from the daily Instagram API pulls, through ' + dshort(DATES.ig) + '. Cadence comes from each account\u2019s total post count read at every pull; engagement is the API\u2019s summary of recent posts. Handles the API cannot read are marked unreadable, never zero.') +
+    tiles + jdPanel + wkPanel + fieldPanel + aq + feedPanel + ownPanel + '</section>';
+}
+
+/* ---------- NETWORK: follow graph (history) + connections ----------
+   The follow-graph sweep is off by standing order; the last capture
+   (Sep 27 – Oct 6, 2026) is shown as history, labeled, never as current. */
+function viewNetwork() {
+  const banner = '<div class="netbanner">The follow graph was captured <b>September 27 – October 6, 2026</b> and covers the following lists of JD\u2019s own accounts — the only lists the Instagram API exposes. The follow-graph sweep is off, so nothing here is newer than October 6, 2026. Direct connections are dated individually and stay current.</div>';
+  let body;
+  if (ADM) {
+    body = admPanelFollow() + admPanelConnections();
+  } else {
+    const rows = D.connections.map(c => '<div class="mrow"><span class="mn">' + esc(c.a) + ' — ' + esc(c.b) + '</span><span class="md2">' + pill(c.type, 'tan') + '<span>' + esc(c.date || '') + '</span></span></div>').join('');
+    body = panel('Direct connections', D.connections.length + ' on file', rows || '<p class="p-note">No connections on file.</p>') +
+      panel('Follow graph — in Admin', '', '<p class="p-note">The captured follow graph (282 follows from your accounts, Oct 6, 2026) and the evidence behind each connection sit in the encrypted bundle.</p><p><button class="mini" data-go="admin">Open Admin to unlock</button></p>');
+  }
+  return '<section class="view network">' + vhead('Network', 'Who follows whom, and which businesses are directly connected — restored from the pre-redesign app, with its dates on it.') + banner + body + '</section>';
 }
 
 /* ---------- ADMIN ----------
@@ -1228,8 +1542,8 @@ function viewAdmin() {
 }
 
 /* ---------- shell ---------- */
-const VIEWS = ['brief', 'market', 'map', 'trends', 'ai', 'data', 'admin'];
-const RENDER = { brief: viewBrief, market: viewMarket, map: viewMap, trends: viewTrends, ai: viewAI, data: viewData, admin: viewAdmin };
+const VIEWS = ['standing', 'brief', 'market', 'compare', 'social', 'map', 'trends', 'ai', 'network', 'data', 'admin'];
+const RENDER = { standing: viewStanding, brief: viewBrief, market: viewMarket, compare: viewCompare, social: viewSocial, map: viewMap, trends: viewTrends, ai: viewAI, network: viewNetwork, data: viewData, admin: viewAdmin };
 function thumb(seg) {
   if (!seg) return; const t = $('.thumb', seg), b = $('[aria-selected="true"]', seg); if (!t || !b) return;
   t.style.width = b.offsetWidth + 'px'; t.style.transform = 'translateX(' + b.offsetLeft + 'px)';
@@ -1258,15 +1572,15 @@ function render() {
   if (v === 'map') initMap();
   else if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
 }
-function show(v) { if (VIEWS.indexOf(v) < 0 || (v === 'ai' && !ENGS.length)) v = 'brief'; state.view = v; try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) { } render(); }
-function route() { let h = (location.hash || '').replace('#', ''); if (VIEWS.indexOf(h) < 0 || (h === 'ai' && !ENGS.length)) h = 'brief'; if (h !== state.view || !stage.firstChild) { state.view = h; render(); } }
+function show(v) { if (VIEWS.indexOf(v) < 0 || (v === 'ai' && !ENGS.length)) v = 'standing'; state.view = v; try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) { } render(); }
+function route() { let h = (location.hash || '').replace('#', ''); if (VIEWS.indexOf(h) < 0 || (h === 'ai' && !ENGS.length)) h = 'standing'; if (h !== state.view || !stage.firstChild) { state.view = h; render(); } }
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
   const t = e.target, q = s => t.closest(s);
   let el;
   if ((el = q('#nav button'))) return show(el.dataset.v);
-  if (q('.brand')) { e.preventDefault(); return show('brief'); }
+  if (q('.brand')) { e.preventDefault(); return show('standing'); }
   if (q('#health')) return show('data');
   if (q('[data-admin-lock]')) return admLock();
   if (q('[data-close]')) return closeDrawer();
