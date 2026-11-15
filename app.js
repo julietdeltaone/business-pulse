@@ -229,47 +229,75 @@ function priceFacts(svc) {
   const sorted = all.slice().sort((a, b) => a.prices[svc].low - b.prices[svc].low);
   return { all: sorted, peers, med: lows.length >= 5 ? median(lows) : null, mine, pos: mine != null ? lows.filter(l => l < mine).length + 1 : null, lo: sorted[0], hi: sorted[sorted.length - 1] };
 }
+/* ---------- widgets ---------- */
+const cnt = (v, pre, suf, dec) => '<span data-count="' + v + '" data-pre="' + (pre || '') + '" data-suf="' + (suf || '') + '" data-dec="' + (dec || 0) + '">' + (pre || '') + (dec ? (+v).toFixed(dec) : fmt(v)) + (suf || '') + '</span>';
+const bl = items => '<ul class="bl">' + items.filter(Boolean).map(x => '<li' + (x[2] ? ' class="' + x[2] + '"' : '') + '><span>' + x[0] + '</span><b>' + x[1] + '</b></li>').join('') + '</ul>';
+function dial(pct) {
+  const c = Math.PI * 80;
+  return '<svg class="dial" viewBox="0 0 200 112" aria-hidden="true"><defs><linearGradient id="dg" x1="0" x2="1"><stop offset="0" stop-color="#6d5cff"/><stop offset="1" stop-color="#c9c0ff"/></linearGradient></defs><path class="dt" d="M20 102 A80 80 0 0 1 180 102"/><path class="dv" d="M20 102 A80 80 0 0 1 180 102" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + c.toFixed(1) + '" data-off="' + (c * (1 - pct / 100)).toFixed(1) + '"/></svg>';
+}
+function dotStrip(svc) {
+  const pf = priceFacts(svc); if (!pf.all.length) return '';
+  const max = Math.max.apply(null, pf.all.map(b => b.prices[svc].low)) * 1.04, x = v => (v / max * 100).toFixed(2);
+  return '<div class="dstrip">' + (pf.med != null ? '<i class="dm" style="left:' + x(pf.med) + '%"><b>Median</b></i>' : '') +
+    pf.all.map((b, n) => { const p = b.prices[svc]; return '<a class="dd' + (b.me ? ' me' : '') + '" href="' + esc(priceUrl(p.url, p.low)) + '" target="_blank" rel="noopener" style="left:' + x(p.low) + '%;--d:' + n * 22 + 'ms" data-tip="' + esc(b.name) + ' ' + money(p.low) + '"></a>'; }).join('') +
+    '<span class="dl">' + money(0) + '</span><span class="dr">' + money(Math.round(max / 100) * 100) + '</span></div>';
+}
+function radar(bs) {
+  const ax = bs.filter(b => b.id !== 'rate'), n = ax.length; if (n < 3) return empty('Not enough ranked categories yet.');
+  const cx = 190, cy = 150, R = 100, pt = (k, f) => { const t = -Math.PI / 2 + k / n * 2 * Math.PI; return [cx + Math.cos(t) * R * f, cy + Math.sin(t) * R * f]; };
+  const sc = ax.map(bd => { const m = bd.list.find(x => x.b.me), N = bd.list.length; return m ? { f: N > 1 ? (N - m.place) / (N - 1) : 1, t: ord(m.place) + ' of ' + N } : { f: 0, t: 'no figure' }; });
+  const ring = f => '<polygon class="rg" points="' + ax.map((_, k) => pt(k, f).map(v => v.toFixed(1)).join(',')).join(' ') + '"/>';
+  const poly = ax.map((_, k) => pt(k, Math.max(.04, sc[k].f)).map(v => v.toFixed(1)).join(',')).join(' ');
+  const short = { fol: 'Followers', grow: 'Growth', post: 'Posting', eng: 'Engagement', rev: 'Reviews', prem: 'Price' };
+  return '<svg class="radar" viewBox="0 0 380 300" role="img" aria-label="Your rank in each category">' + [.25, .5, .75, 1].map(ring).join('') +
+    ax.map((_, k) => { const p = pt(k, 1); return '<line class="rs" x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '"/>'; }).join('') +
+    '<g class="rp" style="transform-origin:' + cx + 'px ' + cy + 'px"><polygon points="' + poly + '"/>' + ax.map((_, k) => { const p = pt(k, Math.max(.04, sc[k].f)); return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4"/>'; }).join('') + '</g>' +
+    ax.map((bd, k) => { const p = pt(k, 1.2), an = Math.abs(p[0] - cx) < 12 ? 'middle' : p[0] < cx ? 'end' : 'start'; return '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] - 2).toFixed(1) + '" text-anchor="' + an + '" class="rl">' + (short[bd.id] || bd.title) + '</text><text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 14).toFixed(1) + '" text-anchor="' + an + '" class="rv">' + sc[k].t + '</text>'; }).join('') + '</svg>';
+}
+function podium(md) {
+  if (md.length < 3) return empty('Not enough medals yet.');
+  const col = (m, pl, h) => '<div class="pod p' + pl + (m.b.me ? ' me' : '') + '">' + whoFull(m.b) + '<span class="mset"><i class="g">' + m.g + '</i><i class="s">' + m.s + '</i><i class="z">' + m.z + '</i></span><div class="blk" data-h="' + h + '"><b>' + pl + '</b></div></div>';
+  return '<div class="podium">' + col(md[1], 2, 68) + col(md[0], 1, 100) + col(md[2], 3, 46) + '</div>';
+}
+function vbars(items, cls) { /* items: [label, value, highlight] */
+  const mx = Math.max.apply(null, items.map(x => x[1])) || 1;
+  return '<div class="vb ' + (cls || '') + '">' + items.map(x => '<div class="vc' + (x[2] ? ' me' : '') + '"><b>' + (x[1] || '') + '</b><i data-h="' + Math.max(2, x[1] / mx * 100).toFixed(1) + '"></i><span>' + x[0] + '</span></div>').join('') + '</div>';
+}
+
+/* ---------- Brief ---------- */
 function viewBrief() {
   const pf = priceFacts('wed'), P = pool(), ig = P.filter(b => b.ig && b.ig.posts30 != null);
   const peersIg = ig.filter(b => !b.me), medPost = peersIg.length >= 5 ? median(peersIg.map(b => b.ig.posts30)) : null;
-  const top = ig.slice().sort((a, b) => b.ig.posts30 - a.ig.posts30)[0];
-  const bs = boards(), md = medals(bs), lead = md[0], mine = md.find(m => m.b.me);
-  const pJ = JD.prices.wed, link = (v, t) => '<a class="go" href="#' + v + '">' + t + '</a>';
-  const q1 = pf.med != null && pJ
-    ? 'Wedding photography starts at a median of <em>' + money(pf.med) + '</em> across ' + pf.peers.length + ' competitors. You start at ' + A('<em class="me">' + money(pJ.low) + '</em>', priceUrl(pJ.url, pJ.low)) + ', ' + (pf.pos === 1 ? 'the lowest' : ord(pf.pos) + ' lowest') + ' of ' + pf.all.length + '.'
-    : 'Not enough linked wedding prices in this set to place you yet.';
-  const q2 = medPost != null && JD.ig && JD.ig.posts30 != null && top
-    ? 'A typical competitor posted <em>' + fmt(medPost) + plural(medPost, ' time') + '</em> in the last 30 days. You posted ' + A('<em class="me">' + (JD.ig.posts30 === 0 ? 'nothing' : JD.ig.posts30 === 1 ? 'once' : JD.ig.posts30 + ' times') + '</em>', JD.ig.url) + '. ' + esc(top.name) + ' posted ' + A('<em>' + top.ig.posts30 + '</em>', top.ig.url) + '.'
-    : 'Not enough tracked Instagram accounts in this set to compare posting yet.';
-  const q3 = lead
-    ? esc(lead.b.me ? 'You lead' : lead.b.name + ' leads') + ' <em>' + lead.g + '</em> of ' + bs.length + ' categories' + (lead.g ? ': ' + lead.in.filter(x => x.p === 1).map(x => x.t.toLowerCase()).join(', ') : '') + '. ' + (lead.b.me ? '' : mine ? 'You place in the top three for ' + mine.in.map(x => x.t.toLowerCase()).join(' and ') + '.' : 'You are outside the top three in every category.')
-    : 'Not enough linked figures to rank anyone yet.';
-  /* this week */
-  const posted = P.filter(b => b.ig && b.ig.posts7).sort((a, b) => b.ig.posts7 - a.ig.posts7).slice(0, 7);
-  const movers = P.filter(b => b.ig && b.ig.g7).sort((a, b) => Math.abs(b.ig.g7) - Math.abs(a.ig.g7)).slice(0, 7);
-  const moves = (D.priceHistory || []).filter(h => BY[h.id] && age(h.date) != null && age(h.date) <= 30 && h.url).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 7);
-  const reread = P.filter(b => b.pdate && age(b.pdate) <= 7 && Object.keys(b.prices).length).sort((a, b) => a.pdate < b.pdate ? 1 : -1).slice(0, 7);
+  const bs = boards(), md = medals(bs), mine = md.find(m => m.b.me), pJ = JD.prices.wed, g = JD.ig;
+  const place = id => { const bd = bs.find(x => x.id === id), m = bd && bd.list.find(x => x.b.me); return m ? ord(m.place) + ' of ' + bd.list.length : null; };
+  const higher = pJ ? pf.peers.filter(b => b.prices.wed.low > pJ.low).length : 0, pct = pf.peers.length ? Math.round(higher / pf.peers.length * 100) : 0;
+  const kpi = (k, big, list, extra) => '<div class="kpi pane"><span class="kk">' + k + '</span><div class="kn">' + big + '</div>' + bl(list) + (extra || '') + '</div>';
+  const kpis = '<section class="kpis">' +
+    kpi('Your wedding start', pJ ? A(cnt(pJ.low, '$'), priceUrl(pJ.url, pJ.low)) : 'None', [pf.med != null ? ['Market median', money(pf.med)] : null, pf.pos ? ['Your place', (pf.pos === 1 ? 'Lowest' : ord(pf.pos) + ' lowest') + ' of ' + pf.all.length] : null]) +
+    kpi('Your posts, 30 days', g && g.posts30 != null ? A(cnt(g.posts30), g.url) : 'Not tracked', [medPost != null ? ['Typical competitor', fmt(medPost)] : null, g && g.lastPost ? ['Latest post', ago(g.lastPost)] : null]) +
+    kpi('Your followers', g ? A(cnt(g.followers), g.url) : 'Not tracked', [g && g.g30 != null ? ['30-day change', '<span class="' + (g.g30 > 0 ? 'up' : g.g30 < 0 ? 'dn' : '') + '">' + signed(g.g30) + '</span>'] : null, place('fol') ? ['Your place', place('fol')] : null], g ? spark(g.series) : '') +
+    kpi('Your medals', '<span class="mset big"><i class="g">' + (mine ? mine.g : 0) + '</i><i class="s">' + (mine ? mine.s : 0) + '</i><i class="z">' + (mine ? mine.z : 0) + '</i></span>', [['Medal table', mine ? ord(md.indexOf(mine) + 1) + ' of ' + md.length : 'Not placed'], mine && mine.in[0] ? ['Best finish', ord(mine.in.slice().sort((a, b) => a.p - b.p)[0].p) + ', ' + mine.in.slice().sort((a, b) => a.p - b.p)[0].t.toLowerCase()] : null]) +
+    '</section>';
+  const price = '<div class="pane w-price"><header class="wh"><h3>Wedding pricing</h3><a class="go" href="#pricing">Open pricing</a></header>' +
+    (pf.all.length && pJ ? '<div class="pw"><div class="dialw">' + dial(pct) + '<div class="dialt"><b>' + cnt(pct, '', '%') + '</b><span>of competitors start higher than you</span></div></div>' +
+      '<div class="pwr">' + dotStrip('wed') + bl([['Lowest', A(money(pf.lo.prices.wed.low), priceUrl(pf.lo.prices.wed.url, pf.lo.prices.wed.low)) + ' <small>' + esc(pf.lo.name) + '</small>'], pf.med != null ? ['Median of ' + pf.peers.length, money(pf.med)] : null, ['Highest start', A(money(pf.hi.prices.wed.low), priceUrl(pf.hi.prices.wed.url, pf.hi.prices.wed.low)) + ' <small>' + esc(pf.hi.name) + '</small>'], pf.med != null ? ['You against median', '<span class="' + (pJ.low < pf.med ? 'dn' : 'up') + '">' + money(Math.abs(pJ.low - pf.med)) + (pJ.low < pf.med ? ' under' : ' over') + '</span>'] : null]) + '</div></div>' : empty('No linked wedding prices in this set.')) + '</div>';
+  const rad = '<div class="pane w-radar"><header class="wh"><h3>You against the field</h3><a class="go" href="#leaders">Open leaders</a></header>' + radar(bs) + '<p class="cap">The outer edge is first place. The center is last.</p></div>';
+  const post = '<div class="pane w-post"><header class="wh"><h3>Posting, last two weeks</h3><a class="go" href="#posting">Open posting</a></header><div class="mini-grid">' +
+    (ig.length ? ig.slice().sort((a, b) => b.ig.posts30 - a.ig.posts30).filter((b, i) => i < 7 || b.me).map(b => '<div class="mg' + (b.me ? ' me' : '') + '">' + whoFull(b) + strip(b.ig, 14, b.me) + '<b>' + A(fmt(b.ig.posts30), b.ig.url) + '</b></div>').join('') : empty('No tracked accounts yet.')) + '</div><p class="cap">One square per day. The number is posts in 30 days.</p></div>';
+  const pod = '<div class="pane w-pod"><header class="wh"><h3>Medal podium</h3></header>' + podium(md) + (mine && md.indexOf(mine) > 2 ? '<p class="cap you">You are ' + ord(md.indexOf(mine) + 1) + ' of ' + md.length + '</p>' : '') + '</div>';
+  const posted = P.filter(b => b.ig && b.ig.posts7).sort((a, b) => b.ig.posts7 - a.ig.posts7).slice(0, 6);
+  const movers = P.filter(b => b.ig && b.ig.g7).sort((a, b) => Math.abs(b.ig.g7) - Math.abs(a.ig.g7)).slice(0, 6);
+  const moves = (D.priceHistory || []).filter(h => BY[h.id] && age(h.date) != null && age(h.date) <= 30 && h.url).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 6);
+  const reread = P.filter(b => b.pdate && age(b.pdate) <= 7 && Object.keys(b.prices).length).sort((a, b) => a.pdate < b.pdate ? 1 : -1).slice(0, 6);
   const li = (l, r) => '<li><span>' + l + '</span><b>' + r + '</b></li>';
-  const near = pf.all.length ? (() => { const i = Math.max(0, pf.pos - 1), s = Math.max(0, Math.min(pf.all.length - 7, i - 3)); return pf.all.slice(s, s + 7); })() : [];
-  const mx = near.length ? Math.max.apply(null, near.map(b => b.prices.wed.low)) : 1;
-  return '<div class="view brief">' +
-    '<section class="hero">' +
-      '<article><h2>How much is everyone charging?</h2><p>' + q1 + '</p>' + link('pricing', 'Open pricing') + '</article>' +
-      '<article><h2>How often are people posting?</h2><p>' + q2 + '</p>' + link('posting', 'Open posting') + '</article>' +
-      '<article><h2>Who is the most successful?</h2><p>' + q3 + '</p>' + link('leaders', 'Open leaders') + '</article>' +
-    '</section>' +
-    '<section class="trio">' +
-      '<div class="pane"><h3>Your price neighbors</h3><p class="cap">Wedding photography starting prices closest to yours</p><div class="bars">' + (near.length ? near.map(b => barRow(b, b.prices.wed.low / mx * 100, A(money(b.prices.wed.low), priceUrl(b.prices.wed.url, b.prices.wed.low)))).join('') : empty('No linked prices yet.')) + '</div></div>' +
-      '<div class="pane"><h3>Posting, last two weeks</h3><p class="cap">One square per day. Lit squares had new posts.</p><div class="mini-grid">' + (ig.length ? ig.slice().sort((a, b) => b.ig.posts30 - a.ig.posts30).filter((b, i) => i < 6 || b.me).map(b => '<div class="mg' + (b.me ? ' me' : '') + '">' + whoFull(b) + strip(b.ig, 14, b.me) + '</div>').join('') : empty('No tracked accounts yet.')) + '</div></div>' +
-      '<div class="pane"><h3>Medal table</h3><p class="cap">First, second and third places across ' + bs.length + ' categories</p><ol class="medals">' + (md.length ? md.slice(0, 6).concat(mine && md.indexOf(mine) >= 6 ? [mine] : []).map(m => '<li' + (m.b.me ? ' class="me"' : '') + '>' + whoFull(m.b) + '<span class="mset"><i class="g">' + m.g + '</i><i class="s">' + m.s + '</i><i class="z">' + m.z + '</i></span></li>').join('') : empty('No rankings yet.')) + '</ol></div>' +
-    '</section>' +
-    '<section class="week"><h3>This week</h3><div class="wk">' +
-      '<div><h4>Posted in the last 7 days</h4><ul class="kv">' + (posted.length ? posted.map(b => li(whoFull(b), A(b.ig.posts7 + plural(b.ig.posts7, ' post'), b.ig.url))).join('') : '<li class="none">No new posts seen.</li>') + '</ul></div>' +
-      '<div><h4>Follower moves, 7 days</h4><ul class="kv">' + (movers.length ? movers.map(b => li(whoFull(b), A('<span class="' + (b.ig.g7 > 0 ? 'up' : 'dn') + '">' + signed(b.ig.g7) + '</span>', b.ig.url))).join('') : '<li class="none">No movement.</li>') + '</ul></div>' +
-      (moves.length
-        ? '<div><h4>Price moves, 30 days</h4><ul class="kv">' + moves.map(h => li(whoFull(BY[h.id]) + ' <small>' + esc(SVC[h.service] || '') + '</small>', A(money(h.old) + ' to ' + money(h.new), priceUrl(h.url, h.new)))).join('') + '</ul></div>'
-        : '<div><h4>Prices re-read this week</h4><ul class="kv">' + (reread.length ? reread.map(b => { const k = Object.keys(b.prices)[0], p = b.prices[k]; return li(whoFull(b) + ' <small>' + esc(SVC[k]) + '</small>', A('from ' + money(p.low), priceUrl(p.url, p.low))); }).join('') : '<li class="none">No price pages were re-read.</li>') + '</ul></div>') +
-    '</div></section></div>';
+  const feed = (t, body) => '<div class="pane w-feed"><header class="wh"><h3>' + t + '</h3></header><ul class="kv">' + body + '</ul></div>';
+  return '<div class="view brief">' + kpis + '<section class="deck">' + price + rad + post + pod +
+    feed('Posted this week', posted.length ? posted.map(b => li(whoFull(b), A(b.ig.posts7 + plural(b.ig.posts7, ' post'), b.ig.url))).join('') : '<li class="none">No new posts seen.</li>') +
+    feed('Follower moves, 7 days', movers.length ? movers.map(b => li(whoFull(b), A('<span class="' + (b.ig.g7 > 0 ? 'up' : 'dn') + '">' + signed(b.ig.g7) + '</span>', b.ig.url))).join('') : '<li class="none">No movement.</li>') +
+    (moves.length ? feed('Price moves, 30 days', moves.map(h => li(whoFull(BY[h.id]) + ' <small>' + esc(SVC[h.service] || '') + '</small>', A(money(h.old) + ' to ' + money(h.new), priceUrl(h.url, h.new)))).join(''))
+      : feed('Prices re-read this week', reread.length ? reread.map(b => { const k = Object.keys(b.prices)[0], p = b.prices[k]; return li(whoFull(b) + ' <small>' + esc(SVC[k]) + '</small>', A('from ' + money(p.low), priceUrl(p.url, p.low))); }).join('') : '<li class="none">No price pages were re-read.</li>')) +
+    '</section></div>';
 }
 
 /* ---------- Pricing ---------- */
@@ -298,16 +326,23 @@ function viewPricing() {
     '<div class="stat"><span>Lowest</span><b>' + A(money(pf.lo.prices[svc].low), priceUrl(pf.lo.prices[svc].url, pf.lo.prices[svc].low)) + '</b><small>' + esc(pf.lo.name) + '</small></div>' +
     '<div class="stat"><span>Median of ' + pf.peers.length + ' competitors</span><b>' + (pf.med != null ? money(pf.med) : 'Too few') + '</b><small>' + (pf.med != null ? 'Starting prices, yours left out' : 'Needs 5 or more linked prices') + '</small></div>' +
     '<div class="stat"><span>Highest start</span><b>' + A(money(pf.hi.prices[svc].low), priceUrl(pf.hi.prices[svc].url, pf.hi.prices[svc].low)) + '</b><small>' + esc(pf.hi.name) + '</small></div>' +
+    histo(pf, svc) +
     (mineLow != null
       ? '<div class="whatif"><h3>Try a price</h3><p class="cap">Slide to see where a different starting price would put you.</p>' +
         '<output id="wi-n">' + money(cur) + '</output><input type="range" id="wi" min="' + Math.max(25, Math.floor(lowsOthers[0] * 0.6 / 25) * 25) + '" max="' + max + '" step="' + (svc === 'wed' || svc === 'wedv' ? 50 : 5) + '" value="' + cur + '" aria-label="Starting price to try">' +
         '<p id="wi-t">' + whatIfText(cur, placeAt(cur), n, pf.med, mineLow) + '</p><button class="lnk" id="wi-r"' + (wi == null || wi === mineLow ? ' hidden' : '') + '>Back to my real price</button></div>'
       : '<div class="whatif"><p class="cap">You have no linked ' + esc(SVC[svc].toLowerCase()) + ' price on record.</p></div>') +
     '</aside>';
-  return '<div class="view">' + head('Pricing', 'Starting price and top listed price for each business, read from their own pricing page. Click any amount to open that page.') +
+  return '<div class="view">' + head('Pricing', 'Start and top price per business. Click an amount to open its page.') +
     '<div class="segs">' + tabs + '</div>' +
     '<div class="split"><div class="pane chart"><div class="plot" data-max="' + max + '"><div class="axis">' + ticks + '</div><div class="over">' + lines + '</div>' + rows + '</div>' +
     '<p class="foot">' + pf.all.length + ' businesses with a linked price. ' + (stale ? stale + ' shown dimmed: not re-read in the last ' + PRICE_DAYS + ' days. ' : '') + 'Elopement, hourly and add-on prices are left out.</p></div>' + side + '</div></div>';
+}
+function histo(pf, svc) {
+  const lows = pf.all.map(b => b.prices[svc].low), lo = Math.min.apply(null, lows), hi = Math.max.apply(null, lows), n = 8, w = (hi - lo) / n || 1, bins = [];
+  for (let k = 0; k < n; k++) bins.push([k === 0 ? money(lo) : k === n - 1 ? money(hi) : '', 0, false]);
+  pf.all.forEach(b => { const k = Math.min(n - 1, Math.floor((b.prices[svc].low - lo) / w)); bins[k][1]++; if (b.me) bins[k][2] = true; });
+  return '<div class="pane mini"><h3>Spread of starting prices</h3>' + vbars(bins, 'hist') + '<p class="cap">Count of businesses per price band. Yours is lit.</p></div>';
 }
 function whatIfText(v, place, n, med, real) {
   const d = med != null ? v - med : null;
@@ -316,6 +351,13 @@ function whatIfText(v, place, n, med, real) {
 }
 
 /* ---------- Posting ---------- */
+function postCharts(tracked) {
+  const dow = [0, 0, 0, 0, 0, 0, 0], wk = [0, 0, 0, 0, 0, 0], names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  tracked.forEach(b => Object.keys(b.ig.days).forEach(d => { const a = age(d); if (a < 0 || a >= STRIP) return; dow[(new Date(dn(d) * DAY).getUTCDay() + 6) % 7] += b.ig.days[d]; wk[5 - Math.floor(a / 7)] += b.ig.days[d]; }));
+  const top = Math.max.apply(null, dow), wl = wk.map((v, k) => [dshort(iso(ASOF - (5 - k) * 7 - 6)), v, k === 5]);
+  return '<div class="charts2"><div class="pane mini"><h3>Posts by weekday</h3>' + vbars(dow.map((v, k) => [names[k], v, v === top && top > 0])) + '<p class="cap">All tracked accounts, last ' + STRIP + ' days. Busiest day is lit.</p></div>' +
+    '<div class="pane mini"><h3>Posts per week</h3>' + vbars(wl) + '<p class="cap">All tracked accounts. Each bar is the week starting on that date.</p></div></div>';
+}
 function viewPosting() {
   const P = pool(), ig = P.filter(b => b.ig), tracked = ig.filter(b => b.ig.posts30 != null), handles = P.filter(b => b.handle).length;
   if (!ig.length) return '<div class="view">' + head('Posting', 'How often each competitor posts on Instagram.') + empty('No Instagram accounts are being tracked in this set.') + '</div>';
@@ -331,13 +373,14 @@ function viewPosting() {
     '<span class="num">' + (g.eng != null ? A(g.eng.toFixed(1) + '%', g.url) : '') + '</span>' +
     '<span class="num">' + A(fmt(g.followers), g.url) + '</span>' +
     '<span class="num ' + (g.g30 > 0 ? 'up' : g.g30 < 0 ? 'dn' : '') + '">' + (g.g30 != null ? A(signed(g.g30), g.url) : '') + '</span></div>'; }).join('');
-  return '<div class="view">' + head('Posting', 'New Instagram posts per account over the last ' + STRIP + ' days. Click an account\'s numbers to open its profile.') +
+  return '<div class="view">' + head('Posting', 'New Instagram posts per account, last ' + STRIP + ' days.') +
     '<div class="stats">' +
       '<div class="stat"><span>Most active</span><b>' + (top ? A(top.ig.posts30 + ' posts', top.ig.url) : '') + '</b><small>' + (top ? esc(top.name) + ', last 30 days' : '') + '</small></div>' +
       '<div class="stat"><span>Typical competitor</span><b>' + (med != null ? fmt(med) + plural(med, ' post') : 'Too few') + '</b><small>Median over 30 days, ' + peers.length + ' accounts</small></div>' +
       '<div class="stat me"><span>You</span><b>' + (JD.ig && JD.ig.posts30 != null ? A(JD.ig.posts30 + plural(JD.ig.posts30, ' post'), JD.ig.url) : 'Not tracked') + '</b><small>' + (JD.ig && JD.ig.lastPost ? 'Latest post ' + ago(JD.ig.lastPost) : '') + '</small></div>' +
       '<div class="stat"><span>Silent for 30 days</span><b>' + quiet + ' of ' + tracked.length + '</b><small>Accounts with no new post</small></div>' +
     '</div>' +
+    postCharts(tracked) +
     '<div class="pane chart scroll"><div class="pgrid"><div class="po hd"><span></span><span class="cells wkd" style="--n:' + STRIP + '">' + wk + '</span>' + th('posts30', 'Posts, 30 days') + th('last', 'Latest post') + th('eng', 'Engagement') + th('fol', 'Followers') + th('g30', '30-day change') + '</div>' + rows + '</div>' +
     '<p class="foot"><span class="key"><i class="c0"></i>none<i class="c1"></i>1<i class="c2"></i>2<i class="c3"></i>3 or more</span>' + ig.length + ' of ' + handles + ' known Instagram accounts in this set are pulled daily. Posts are counted from the change in each profile\'s post total between daily pulls, so a deleted post can hide a new one. Stories are not counted.</p></div></div>';
 }
@@ -354,7 +397,7 @@ function viewLeaders() {
     const row = x => '<div class="lr' + (x.b.me ? ' me' : '') + '"><span class="pos p' + (x.place <= 3 ? x.place : 0) + '">' + x.place + '</span>' + whoFull(x.b) + '<span class="trk"><i data-w="' + Math.max(1.5, Math.abs(x.v) / mx * 100).toFixed(1) + '"></i></span><b>' + x.html + '</b></div>';
     return '<div class="pane board"><h3>' + esc(bd.title) + '</h3><p class="cap">' + esc(bd.sub) + '</p>' + top.map(row).join('') + (mine && top.indexOf(mine) < 0 ? '<div class="gap">' + (mine.place - top[top.length - 1].place - 1 > 0 ? (bd.list.indexOf(mine) - 5) + ' more between' : '') + '</div>' + row(mine) : mine ? '' : '<div class="gap">You have no linked figure here</div>') + '<p class="foot">' + bd.list.length + ' ranked</p></div>';
   }).join('');
-  return '<div class="view">' + head('Leaders', 'Who ranks first in each measure, and where you place. Every value opens the page it was read from.') + table + '<div class="boards">' + cards + '</div></div>';
+  return '<div class="view">' + head('Leaders', 'First place in each measure, and where you stand.') + '<div class="split lead"><div class="pane w-pod"><h3>Podium</h3>' + podium(md) + '</div>' + table + '</div><div class="boards">' + cards + '</div></div>';
 }
 
 /* ---------- Directory ---------- */
@@ -365,7 +408,7 @@ function viewDirectory() {
   const dth = (k, t) => '<th class="num"><button class="th" data-dsort="' + k + '" aria-pressed="' + (state.dsort === k) + '">' + t + '</button></th>';
   const cell = (b, k) => b.prices[k] ? A(money(b.prices[k].low), priceUrl(b.prices[k].url, b.prices[k].low)) : '';
   const rows = P.map(b => '<tr class="' + (b.me ? 'me' : '') + '"><td>' + whoFull(b) + '<small>' + esc(b.town) + '</small></td><td class="num">' + cell(b, 'wed') + '</td><td class="num">' + cell(b, 'portrait') + '</td><td class="num">' + cell(b, 'family') + '</td><td class="num">' + (b.ig ? A(fmt(b.ig.followers), b.ig.url) : '') + '</td><td class="num">' + (b.ig && b.ig.posts30 != null ? A(fmt(b.ig.posts30), b.ig.url) : '') + '</td><td class="num">' + (b.rev != null ? A(fmt(b.rev) + (b.rating != null ? ' <small>' + b.rating.toFixed(1) + '</small>' : ''), b.rurl) : '') + '</td></tr>').join('');
-  return '<div class="view">' + head('Directory', 'Everyone on the roster. Click a name for the full profile, or a column to sort by it. A blank cell means there is no linked figure.',
+  return '<div class="view">' + head('Directory', 'Click a name for its profile. Click a column to sort.',
     '<div class="tools"><input class="in" id="dq" type="search" placeholder="Search name or town" value="' + esc(state.q) + '" aria-label="Search"><select class="in" id="dl" aria-label="Service"><option value="">Any service</option>' + SERVICES.map(s => '<option value="' + s[0] + '"' + (state.lane === s[0] ? ' selected' : '') + '>Has ' + s[1].toLowerCase() + ' price</option>').join('') + '</select></div>') +
     '<div class="pane chart scroll"><table class="tb"><thead><tr><th>Business</th>' + dth('wed', 'Wedding from') + dth('portrait', 'Portrait from') + dth('family', 'Family from') + dth('fol', 'Followers') + dth('post', 'Posts, 30 days') + dth('rev', 'Reviews') + '</tr></thead><tbody>' + (rows || '<tr><td colspan="7">' + empty('Nothing matches.') + '</td></tr>') + '</tbody></table><p class="foot">' + P.length + ' businesses</p></div></div>';
 }
@@ -426,11 +469,23 @@ function render(keep) {
   const v = (location.hash || '#brief').slice(1).split('/')[0], name = VIEWS[v] ? v : 'brief', y = stage.scrollTop;
   stage.innerHTML = VIEWS[name]();
   $$('#nav a').forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === '#' + name ? 'page' : 'false'));
-  if (first && name === 'brief' && !REDUCED) stage.firstChild.classList.add('intro');
   first = false;
   stage.scrollTop = keep ? y : 0;
-  requestAnimationFrame(() => requestAnimationFrame(() => $$('[data-w]', stage).forEach((el, i) => { el.style.transitionDelay = Math.min(i, 24) * 18 + 'ms'; el.style.width = el.dataset.w + '%'; })));
+  const view = stage.firstChild;
+  if (!keep && !REDUCED) { view.classList.add('enter'); $$('.kpis>*,.deck>*,.view>.pane,.view>.split>*,.view>.stats>*,.charts2>*,.boards>*,.vh', view).forEach((el, i) => el.style.setProperty('--i', Math.min(i, 14))); }
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    $$('[data-w]', stage).forEach((el, i) => { el.style.transitionDelay = Math.min(i, 24) * 18 + 'ms'; el.style.width = el.dataset.w + '%'; });
+    $$('[data-h]', stage).forEach((el, i) => { el.style.transitionDelay = Math.min(i, 24) * 30 + 'ms'; el.style.height = el.dataset.h + '%'; });
+    $$('[data-off]', stage).forEach(el => { el.style.strokeDashoffset = el.dataset.off; });
+    stage.classList.add('live'); view.classList.add('on');
+  }));
+  if (!keep && !REDUCED) $$('[data-count]', stage).forEach(el => {
+    const to = +el.dataset.count, dec = +el.dataset.dec, t0 = performance.now(), dur = 900;
+    const put = v => { el.textContent = el.dataset.pre + (dec ? v.toFixed(dec) : Math.round(v).toLocaleString('en-US')) + el.dataset.suf; };
+    (function step(t) { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 4); put(to * e); if (p < 1) requestAnimationFrame(step); })(t0);
+  });
 }
+stage.addEventListener('pointermove', e => { const c = e.target.closest('.pane'); if (!c) return; const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
 window.addEventListener('hashchange', () => render());
 
 stage.addEventListener('click', e => {
