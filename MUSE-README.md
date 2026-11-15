@@ -1,38 +1,28 @@
 # Business Pulse: notes for Muse
 
-This is a private competitor tool built around JD Meyers Productions. The page code is `index.html`, `styles.css` and `app.js`. The data comes from the same four files the daily build already writes:
+Claude owns the design. Muse owns the data. Keep those separate.
 
-- `data/data.js`
-- `data/details-enrichment.js`
-- `data/website-intel.js`
-- `data/venues.js`
+## Before every sync
+1. Pull `index.html`, `styles.css`, `app.js` and the `fonts/` folder from the repo's `main` branch into your workspace `site/` folder. Do not sync older copies of these over the repo. That is what erased the last redesign.
+2. In `index.html`, change only the `<meta name="build">` line and the `?v=` tags.
+3. Write data to `data/data.js` (`window.PULSE_DATA`) as before.
 
-## What to keep doing
+## What the page needs from the data
+The full field-by-field rules are in the comment block at the top of `app.js`. Short version:
 
-1. Keep writing those four files exactly as today. The page reads their current field names. Do not rename fields.
-2. Keep the version tags in `index.html` (`?v=...` on each script and on `styles.css`, and the `build` line in the head). The sync script updates them.
-3. Copy the three page files (`index.html`, `styles.css`, `app.js`) from this repo into the workspace `site/` folder. If the workspace keeps its older copies, the next sync will put the old design back.
-4. Every verdict on the Home, Council and Auditor pages is computed in the browser from the data files. Nothing needs to be written by hand. If a figure looks wrong, fix the data file or the script that writes it.
+| Question on the page | Fields | Rule |
+|---|---|---|
+| How much is everyone charging? | `competitors[].pricing`, `pricing_url`, `seedDates.pricing.per[id]` | Read the business's own page in a real browser. Date it only on the day you saw the number. |
+| How often are people posting? | `igActivity[]` (`media_count`, `last_media_date`, `followers`, `engagement`) | Pull every roster handle daily. A failed pull is `media_count: null`, never yesterday's number. |
+| Who is the most successful? | followers, `review_count`, `review_rating`, `review_url`, `seedDates.reviews.per[id]` | A count needs the listing link and its own read date. |
 
-## The link rule (JD, Nov 10, 2026)
+## Optional fields the page already reads
+- `competitors[].prices`: `[{ service, low, high, url, checked }]` with `service` one of `wed`, `wedv`, `portrait`, `family`, `drone`, `realty`. Replaces text parsing for that business.
+- `PULSE_DATA.igPosts`: `{ handle: [{ date, permalink, type, likes, comments }] }`, last 90 days. Makes each square in the posting grid link to the post.
+- `PULSE_DATA.priceHistory`: `[{ id, service, old, new, date, url }]`. Shows as "Price moves" on the Brief.
+- `aiChecks[].url`: share link to the conversation. Without it the answer is not used.
 
-A figure or claim shows only if it comes with a link to where it can be checked. No link, no figure. Keep these fields filled:
-
-- `pricing_url` on each business: the page that shows the price. The page builds a link that highlights the figure on that page.
-- `review_url` on each business: the listing the review count was read from.
-- `ig_handle`: the Instagram profile link is built from it.
-- `url` on every row in `aiChecks`: the share link for that signed-out chat. Rows without it are ignored, so the AI Visibility page stays empty until they are saved.
-- To show price or follower changes over time later, save a dated archive link (for example a web.archive.org snapshot) with each earlier figure. Without a link the change cannot be shown.
-
-## Data rules the page relies on
-
-- A review count needs its own check date in `seedDates.reviews.per[id]`. Do not stamp the batch date on a business that was not re-checked.
-- A price list needs its own date in `seedDates.pricing.per[id]` to be used in comparisons.
-- `discovered_date` is the day the roster entry was made. It is never a start date. Put real founding years in `est_year` only when traced to a primary source.
-- Record a failed website fetch as a failure, not as "unreachable". Record a changed price page as `changed`.
-- Do not fill daily follower totals for days when fewer accounts were pulled than usual.
-
-## What the page does not have
-
-- No private competitor notes. They lived in the encrypted bundle, which this version no longer loads (`data/admin.enc.json` can be deleted).
-- No inquiry, booking or conversion numbers. The JD Funnel card on the Council page says so.
+## Standing rules
+- No link, no figure.
+- Never invent, round, estimate or carry a date forward. A blank is better than a guess.
+- The Data page lists the current gaps. Work that list down.
