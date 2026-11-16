@@ -2,10 +2,17 @@
    Design owner: Claude. Data owner: Muse (daily refresh).
 
    ======================= NOTES FOR MUSE (read before every refresh) =======================
-   Your job is the DATA. This page (index.html, styles.css, app.js, fonts/) is the design and is
-   maintained separately. Before each sync, copy these four from the repo's main branch into your
-   workspace site/ folder so your sync does not overwrite them with an older copy. Only touch:
-   the files in data/, the <meta name="build"> line, and the ?v= tags in index.html.
+   Your core job is still the DATA. Before each sync, copy index.html, styles.css, app.js and
+   fonts/ fresh from the repo's main branch into your workspace site/ folder — don't carry your
+   own older copies forward, that is what has overwritten the design repeatedly. For a plain data
+   sync, only touch: the files in data/, the <meta name="build"> line, and the ?v= tags in
+   index.html.
+
+   As of Nov 16 2026 you may ALSO add new pages/sections (not just data) — full rules, the design
+   tokens, and the component helpers to reuse are in MUSE-README.md at the repo root, under
+   "Adding a new section or page". Short version: never edit existing code, reuse the existing
+   colors/fonts/components exactly, and land new pages on a muse-pages branch for Claude to review
+   rather than pushing them straight to main.
 
    The page answers three questions for JD. Each one depends on specific fields. Fidelity rules:
 
