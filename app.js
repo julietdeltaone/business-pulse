@@ -1,54 +1,19 @@
-/* Business Pulse — front end. One file, no dependencies, works from file://.
-   Design owner: Claude. Data owner: Muse (daily refresh).
-
-   ======================= NOTES FOR MUSE (read before every refresh) =======================
-   Your job is the DATA. This page (index.html, styles.css, app.js, fonts/) is the design and is
-   maintained separately. Before each sync, copy these four from the repo's main branch into your
-   workspace site/ folder so your sync does not overwrite them with an older copy. Only touch:
-   the files in data/, the <meta name="build"> line, and the ?v= tags in index.html.
-
-   The page answers three questions for JD. Each one depends on specific fields. Fidelity rules:
-
-   1. "How much is everyone charging?"  ->  competitors[].pricing, pricing_url, seedDates.pricing.per[id]
-      - Read the business's OWN pricing page in a real browser (Pixieset, Wix and Squarespace pages
-        often render prices with JavaScript; a plain fetch returns nothing and must NOT count as a check).
-      - Only stamp seedDates.pricing.per[id] with today's date when you saw the number on the page today.
-        Never carry a date forward. If the page was unreachable, leave the old date alone.
-      - Keep the amount exactly as printed ("$1,400", not "1400"); the page builds a link that highlights it.
-      - Label every amount with its service and tier: "Wedding photography Essential $1,400 / Signature $2,000".
-        Keep elopement and hourly prices labeled as such; never fold them into a wedding package price.
-      - Third-party figures (WeddingWire, The Knot, Zola) are not the business's own price. Say so in the text.
-      - PREFERRED (the page already reads it when present): competitors[].prices =
-          [{ service: "wed"|"wedv"|"portrait"|"family"|"drone"|"realty", low: 1400, high: 3200,
-             url: "<page the number is on>", checked: "YYYY-MM-DD" }]
-      - When a price changes, append to PULSE_DATA.priceHistory:
-          { id, service, old, new, date: "YYYY-MM-DD", url }   (the Brief shows these as "price moves")
-
-   2. "How often are people posting?"  ->  igActivity[] rows (handle, date, followers, media_count, last_media_date, engagement)
-      - Pull EVERY roster handle every day. Today only about half are pulled; each missing handle is a blind spot.
-      - media_count must be the real number from the pull. If a pull fails, write the row with
-        media_count: null and "Not pulled today" in activity. Never repeat yesterday's number as if it were new.
-      - PREFERRED (the page already reads it when present): PULSE_DATA.igPosts =
-          { "<handle>": [{ date: "YYYY-MM-DD", permalink: "https://www.instagram.com/p/...", type: "IMAGE"|"VIDEO"|"CAROUSEL_ALBUM",
-                           likes: 0, comments: 0 }] }
-        Keep the last 90 days. With permalinks, every post in the posting grid links to the post itself.
-      - Stories are not in this data. Do not estimate them.
-
-   3. "Who's the most successful?"  ->  followers (igActivity), review_count / review_rating / review_url, engagement
-      - A review count needs review_url (the listing you read it from) and seedDates.reviews.per[id].
-      - Re-read Google listings monthly. Do not mix platforms into one count; set review_source.
-      - AI assistant answers are only used when the row has url (the share link to the conversation).
-
-   General: no link, no figure. A number without the page it came from is left off the site.
-   Never invent, round, or estimate. A blank is better than a guess.
-   ========================================================================================== */
+/* Business Pulse front end. One file, no dependencies, works from file://.
+   Reads window.PULSE_DATA (data/data.js) plus three research bundles. The public
+   views never fetch anything; the Admin view is the one exception — on unlock it
+   fetches its encrypted bundle (data/admin.enc.json) and decrypts it in memory.
+   Rule that shapes everything below (JD, 2026-10-26): a figure is shown only while it is
+   current and verified. Otherwise it is absent. Absence is not reported; a source, view or
+   panel exists only when there is something current to put in it. */
 (function () {
 'use strict';
 
 /* ---------- data ---------- */
-const D = Object.assign({ competitors: [], excluded: [], igActivity: [], igPosts: {}, webSweepHistory: [], aiChecks: [],
-  seedDates: {}, seedMeta: {}, freshness: { sources: [] }, pricingGaps: {}, priceHistory: [] }, window.PULSE_DATA || {});
-const JD_ID = 'jd-meyers-productions';
+const D = Object.assign({ competitors: [], excluded: [], connections: [], igFollowersHistory: {}, igActivity: [], webSweepHistory: [],
+  aiChecks: [], aiPrompts: { prompts: [] }, townCoords: { coords: {}, aliases: {} }, seedDates: {}, seedMeta: {}, freshness: { sources: [] }, pricingGaps: {}, trendPoints: [], ownAccounts: [], confidence: {} }, window.PULSE_DATA || {});
+const DET = window.PULSE_DETAILS || {};
+const VEN = window.PULSE_VENUES || [];
+const WI = (window.PULSE_WEBSITE_INTEL || {}).intel || {};
 
 /* ---------- helpers ---------- */
 const $ = (s, r) => (r || document).querySelector(s);
@@ -56,9 +21,9 @@ const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const EMO = /[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu;
 const clean = s => String(s == null ? '' : s).replace(EMO, '').replace(/\s+/g, ' ').trim();
-const DAY = 864e5, MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY = 864e5;
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const dn = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / DAY : null; };
-const iso = n => new Date(n * DAY).toISOString().slice(0, 10);
 function etToday() {
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
   catch (e) { return new Date().toISOString().slice(0, 10); }
@@ -67,453 +32,1643 @@ const QS = new URLSearchParams(location.search);
 const ASOF_S = /^\d{4}-\d{2}-\d{2}$/.test(QS.get('asof') || '') ? QS.get('asof') : etToday();
 const ASOF = dn(ASOF_S);
 const dshort = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? MON[+m[2] - 1] + ' ' + (+m[3]) : ''; };
+const dlong = new Date(ASOF * DAY).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 const age = s => { const n = dn(s); return n == null ? null : ASOF - n; };
-const ago = s => { const a = age(s); return a == null ? 'never' : a <= 0 ? 'today' : a === 1 ? 'yesterday' : a < 60 ? a + ' days ago' : Math.round(a / 30) + ' months ago'; };
-const fmt = n => n == null ? '' : Number(n).toLocaleString('en-US');
-const money = n => n == null ? '' : '$' + Math.round(n).toLocaleString('en-US');
-const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toLocaleString('en-US');
+const ageText = a => a == null ? 'no date' : a <= 0 ? 'today' : a === 1 ? 'yesterday' : a + ' days ago';
+const fmt = n => n == null ? '—' : Number(n).toLocaleString('en-US');
+const money = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('en-US');
+const signed = n => n == null ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toLocaleString('en-US');
 const median = a => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const plural = (n, a, b) => n === 1 ? a : (b || a + 's');
-const ord = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
-const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'source'; } };
 const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* Every figure is wrapped in a link to the page it can be checked on. */
-const A = (txt, url, title) => url ? '<a class="src" href="' + esc(url) + '" target="_blank" rel="noopener" title="' + esc(title || 'Opens ' + host(url)) + '">' + txt + '</a>' : txt;
-function priceUrl(u, amount) {
-  if (!u || amount == null) return u || null;
-  const a = '$' + Math.round(amount).toLocaleString('en-US'), b = '$' + Math.round(amount);
-  return u + (u.indexOf('#') >= 0 ? ':~:' : '#:~:') + 'text=' + encodeURIComponent(a) + (a !== b ? '&text=' + encodeURIComponent(b) : '');
+/* ---------- Clear glass theme: mode x gradient scheme ----------
+   The boot script in index.html sets data-mode / data-scheme on
+   <html> before first paint; this module renders the Theme pop-up
+   and keeps the attributes, localStorage and JS-drawn colors in
+   sync. Keys are bp_theme_mode / bp_theme_scheme (never the
+   dossier's ncc_ keys — the two apps share the github.io origin). */
+const BP_SCHEMES = ['bluegreen', 'blueviolet', 'tealsky', 'violetpink', 'amberrose', 'slate'];
+const BP_THEME_NAMES = { bluegreen: 'Blue / Green', blueviolet: 'Blue / Violet', tealsky: 'Teal / Sky', violetpink: 'Violet / Pink', amberrose: 'Amber / Rose', slate: 'Slate' };
+const BP_CHART = { /* [ga, gb, chart line on dark, chart line on light] */
+  bluegreen: ['#3a9bff', '#2fbf71', '#8fcaff', '#2470c9'],
+  blueviolet: ['#3a9bff', '#8b5cf6', '#c4a6ff', '#6d4bd8'],
+  tealsky: ['#14b8a6', '#38bdf8', '#6ee7d8', '#0f766e'],
+  violetpink: ['#8b5cf6', '#ec4899', '#d3a6ff', '#7c3aed'],
+  amberrose: ['#f59e0b', '#f43f5e', '#ffcf7d', '#b45309'],
+  slate: ['#64748b', '#94a3b8', '#c3cedd', '#475569']
+};
+function themeState() {
+  let m = 'light', s = 'bluegreen';
+  try {
+    m = localStorage.getItem('bp_theme_mode') === 'dark' ? 'dark' : 'light';
+    s = localStorage.getItem('bp_theme_scheme');
+    if (BP_SCHEMES.indexOf(s) < 0) s = 'bluegreen';
+  } catch (e) { }
+  return { mode: m, scheme: s };
 }
-const igUrl = h => h ? 'https://www.instagram.com/' + encodeURIComponent(h) + '/' : null;
-const SRC = {}; (D.freshness.sources || []).forEach(s => SRC[s.id] = s);
-const PRICE_DAYS = (SRC.pricing && SRC.pricing.late_after_days) || 45;
-
-/* ---------- pricing text -> low/high per service ----------
-   Used only when competitors[].prices is absent. Reads each dollar amount with the words in front of it. */
-const SERVICES = [['wed', 'Wedding photo'], ['portrait', 'Portraits'], ['family', 'Family'], ['wedv', 'Wedding video'], ['drone', 'Drone'], ['realty', 'Real estate']];
-const SVC = {}; SERVICES.forEach(s => SVC[s[0]] = s[1]);
-const HARD_SKIP = /deposit|retain|print|travel|second[- ]?(shooter|photographer)|2nd|add-?on|album|\bminis?\b|disk|extension|extra|credit|\breg\b|usually spend|average|cap\s*&\s*gown|\bgroups?\b|per person|\+\s*$/i;
-const POST_SKIP = /^\s*\)?\s*(2nd|second|retain|deposit|non-refundable|\/\s?(hr|hour|person|mi)\b|per (hour|person|mile)|total)/i;
-function catOf(l) {
-  if (/(wedding|ceremony)[^$]{0,24}(video|film|cinemat)|videograph/.test(l)) return /photo\s*\+\s*film|combined/.test(l) ? 'x' : 'wedv';
-  if (/photo\s*\+\s*film|combined/.test(l)) return 'x';
-  if (/wedding|nuptial/.test(l)) return 'wed';
-  if (/drone|aerial/.test(l)) return 'drone';
-  if (/real estate/.test(l)) return 'realty';
-  if (/boudoir|booth|passport|video edit|sports|tour|birth events?/.test(l)) return 'x';
-  if (/famil|maternity|newborn/.test(l)) return 'family';
-  if (/portrait|senior|headshot|session|couple|engagement|grad|studio/.test(l)) return 'portrait';
-  if (/event|brand|package/.test(l)) return 'x';
-  return null;
+/* The palette for everything JS paints (SVG charts, map markers):
+   follows the active mode x scheme. CSS-painted surfaces use the
+   --ga / --gb / text variables in styles.css instead. */
+function pal() {
+  const t = themeState(), c = BP_CHART[t.scheme] || BP_CHART.bluegreen, dark = t.mode === 'dark';
+  return {
+    mode: t.mode, scheme: t.scheme, ga: c[0], gb: c[1], line: dark ? c[2] : c[3],
+    t3: dark ? '#6f7c90' : '#68727f', t2: dark ? '#a6b1c3' : '#3d4754',
+    slc: dark ? c[2] : c[3], adjacent: dark ? '#d2bf9f' : '#8a6d3b',
+    unconfirmed: dark ? '#6f7b8f' : '#64748b', venue: dark ? '#f2b552' : '#b96e00',
+    grid: dark ? 'rgba(150,180,220,.06)' : 'rgba(24,36,52,.08)',
+    land: dark ? 'rgba(143,202,255,.05)' : 'rgba(36,112,201,.07)',
+    land2: dark ? 'rgba(143,202,255,.035)' : 'rgba(36,112,201,.05)',
+    river: dark ? 'rgba(143,202,255,.32)' : 'rgba(36,112,201,.35)',
+    champ: dark ? 'rgba(143,202,255,.22)' : 'rgba(36,112,201,.25)',
+    lblMute: dark ? '#465165' : '#68727f', townName: dark ? '#a6b1c3' : '#28323f'
+  };
 }
-function parsePrices(txt) {
-  const out = {}; if (!txt) return out;
-  const re = /\$\s?(\d[\d,]*(?:\.\d+)?)/g, s = String(txt); let m, prev = 0, cat = null;
-  while ((m = re.exec(s))) {
-    let label = s.slice(prev, m.index); const semi = label.lastIndexOf(';'); if (semi >= 0) label = label.slice(semi + 1);
-    const post = s.slice(re.lastIndex, re.lastIndex + 28); prev = re.lastIndex;
-    const l = label.toLowerCase(), a = parseFloat(m[1].replace(/,/g, '')), c = catOf(l);
-    if (c) cat = c;
-    if (/elope|micro/.test(l) && !/weddings?\s*\/\s*elope/.test(l)) continue;
-    if (HARD_SKIP.test(l)) { cat = null; continue; }
-    if (POST_SKIP.test(post)) continue;
-    if (!cat || cat === 'x' || a < 50 || ((cat === 'wed' || cat === 'wedv') && a < 500)) continue;
-    const o = out[cat] = out[cat] || { low: a, high: a };
-    o.low = Math.min(o.low, a); o.high = Math.max(o.high, a);
+function applyTheme(mode, scheme, save) {
+  const r = document.documentElement;
+  r.classList.add('bp-tfreeze');
+  r.setAttribute('data-mode', mode);
+  r.setAttribute('data-scheme', scheme);
+  if (save !== false) {
+    try { localStorage.setItem('bp_theme_mode', mode); localStorage.setItem('bp_theme_scheme', scheme); } catch (e) { }
   }
-  return out;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', mode === 'dark' ? '#0a0e13' : '#e9eff4');
+  paintTheme();
+  /* Repaint JS-drawn colors (charts, sparklines, map tiles + markers)
+     by re-rendering the current view; scroll and drawer are restored. */
+  const sc = stage.querySelector('.view'), y = sc ? sc.scrollTop : 0, sel = state.sel;
+  render();
+  const sc2 = stage.querySelector('.view'); if (sc2) sc2.scrollTop = y;
+  if (sel) openAny(sel);
+  requestAnimationFrame(() => requestAnimationFrame(() => r.classList.remove('bp-tfreeze')));
 }
+function themePopHTML() {
+  const t = themeState();
+  const sws = BP_SCHEMES.map(s =>
+    '<button type="button" class="tpsw" data-tpscheme="' + s + '" data-s="' + s + '" aria-pressed="' + (t.scheme === s) + '"><span class="tpdot"></span><span class="tpn">' + BP_THEME_NAMES[s] + '</span><span class="tpck" aria-hidden="true">✓</span></button>').join('');
+  return '<div class="tpop-scrim" data-tpclose></div>' +
+    '<div class="tpop-card" role="dialog" aria-modal="true" aria-label="Theme">' +
+    '<div class="tpop-h"><span class="tpop-t">Theme</span><button type="button" class="tpop-x" data-tpclose aria-label="Close theme">×</button></div>' +
+    '<div class="tpop-sub">Mode and gradient apply instantly and are remembered on this device.</div>' +
+    '<div class="tpop-lab">Mode</div><div class="tpop-modes">' +
+    '<button type="button" class="tpm" data-tpmode="light" aria-pressed="' + (t.mode === 'light') + '">Light</button>' +
+    '<button type="button" class="tpm" data-tpmode="dark" aria-pressed="' + (t.mode === 'dark') + '">Dark</button></div>' +
+    '<div class="tpop-lab">Gradient</div><div class="tpop-sws">' + sws + '</div></div>';
+}
+let BP_TPOP_LAST = null;
+function openThemePop(opener) {
+  let pop = document.getElementById('tpop');
+  if (!pop) { pop = document.createElement('div'); pop.className = 'tpop'; pop.id = 'tpop'; document.body.appendChild(pop); }
+  pop.innerHTML = themePopHTML();
+  pop.hidden = false;
+  BP_TPOP_LAST = opener || document.querySelector('[data-topen]');
+  const btn = document.querySelector('[data-topen]'); if (btn) btn.setAttribute('aria-expanded', 'true');
+  const x = pop.querySelector('.tpop-x'); if (x) x.focus();
+}
+function closeThemePop() {
+  const pop = document.getElementById('tpop');
+  if (!pop || pop.hidden) return;
+  pop.hidden = true;
+  const btn = document.querySelector('[data-topen]'); if (btn) btn.setAttribute('aria-expanded', 'false');
+  if (BP_TPOP_LAST && BP_TPOP_LAST.focus) BP_TPOP_LAST.focus();
+  BP_TPOP_LAST = null;
+}
+function paintTheme() {
+  const t = themeState();
+  const dot = document.querySelector('[data-topen] .tpdot');
+  if (dot) dot.setAttribute('data-s', t.scheme);
+  $$('[data-tpmode]').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-tpmode') === t.mode)));
+  $$('[data-tpscheme]').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-tpscheme') === t.scheme)));
+}
+document.addEventListener('change', e => {
+  const c = e.target.closest && e.target.closest('[data-cmp]');
+  if (c) { if (c.dataset.cmp === 'a') state.cmpA = c.value; else state.cmpB = c.value; render(); return; }
+  const s = e.target.closest && e.target.closest('[data-socsel]');
+  if (s) { state.socSort = s.value; render(); }
+});
+document.addEventListener('click', e => {
+  const el = e.target && e.target.closest ? e.target.closest('[data-topen],[data-tpmode],[data-tpscheme],[data-tpclose]') : null;
+  if (!el) return;
+  const t = themeState();
+  if (el.hasAttribute('data-topen')) { openThemePop(el); return; }
+  if (el.hasAttribute('data-tpclose')) { closeThemePop(); return; }
+  if (el.hasAttribute('data-tpmode')) applyTheme(el.getAttribute('data-tpmode'), t.scheme);
+  else if (el.hasAttribute('data-tpscheme')) applyTheme(t.mode, el.getAttribute('data-tpscheme'));
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const pop = document.getElementById('tpop');
+  if (pop && !pop.hidden) { e.stopPropagation(); closeThemePop(); }
+});
 
-/* ---------- instagram rows ---------- */
+/* ---------- freshness ---------- */
+const SRC = {}; (D.freshness.sources || []).forEach(s => SRC[s.id] = s);
+function stat(id, a) {
+  const s = SRC[id]; if (!s || a == null) return 'none';
+  if (a >= s.stalled_after_days) return 'stalled';
+  if (a > s.late_after_days) return 'late';
+  return 'ok';
+}
+const maxDate = arr => arr.reduce((m, x) => x && (!m || x > m) ? x : m, null);
+const ACTIVE = (D.aiPrompts.prompts || []).filter(p => !p.retired);
+const ACTIVE_IDS = new Set(ACTIVE.map(p => p.id));
+const AIROWS = (D.aiChecks || []).filter(r => ACTIVE_IDS.has(r.prompt_id));
+const SD = D.seedDates || {};
+const DATES = {
+  ig: maxDate(D.igActivity.map(r => r.date)),
+  ai: maxDate(AIROWS.map(r => r.date)),
+  web: maxDate(D.webSweepHistory.map(w => w.date)),
+  reviews: SD.reviews && SD.reviews.collected,
+  pricing: SD.pricing && SD.pricing.collected,
+  roster: (D.builtAt || '').slice(0, 10)
+};
+const SS = (D.freshness.sources || []).filter(s => s.id !== 'recency').map(s => {
+  const a = age(DATES[s.id]);
+  return Object.assign({}, s, { date: DATES[s.id], age: a, st: stat(s.id, a) });
+});
+const SSBY = {}; SS.forEach(s => SSBY[s.id] = s);
+const STTXT = { ok: 'Current', late: 'Late', stalled: 'Stalled', none: 'No data' };
+
+/* ---------- instagram state ---------- */
 const ROWS = {};
 D.igActivity.forEach(r => (ROWS[r.handle] = ROWS[r.handle] || []).push(r));
 Object.keys(ROWS).forEach(h => ROWS[h].sort((a, b) => a.date < b.date ? -1 : 1));
 const CARRIED = /pull failed|carried|not pulled/i;
-const STRIP = 42; /* days shown in the posting grid */
-function igModel(h) {
-  const rows = h && ROWS[h]; if (!rows) return null;
-  const live = rows.filter(r => !CARRIED.test(r.activity || '') && r.followers != null);
-  const last = live[live.length - 1]; if (!last) return null;
-  const a = age(last.date); if (a > 4) return null;
-  const at = d => { let r = null; live.forEach(x => { if (age(x.date) >= d) r = x; }); return r; };
-  const f30 = at(30), f7 = at(7);
-  const mc = rows.filter(r => r.media_count != null), days = {}, links = {};
-  const listed = D.igPosts && D.igPosts[h];
-  if (listed && listed.length) listed.forEach(p => { if (p.date) { days[p.date] = (days[p.date] || 0) + 1; if (p.permalink && !links[p.date]) links[p.date] = p.permalink; } });
-  else for (let i = 1; i < mc.length; i++) { const d = mc[i].media_count - mc[i - 1].media_count; if (d > 0) days[mc[i].date] = d; }
-  const span = mc.length > 1 ? dn(mc[mc.length - 1].date) - dn(mc[0].date) : (listed && listed.length ? 90 : 0);
-  const sum = n => Object.keys(days).reduce((t, d) => t + (age(d) < n && age(d) >= 0 ? days[d] : 0), 0);
-  const lastRich = mc[mc.length - 1];
-  return { handle: h, url: igUrl(h), followers: last.followers, date: last.date,
-    g30: f30 ? last.followers - f30.followers : null, g7: f7 ? last.followers - f7.followers : null,
-    tracked: span >= 28, span, days, links, posts30: span >= 28 ? sum(30) : null, posts7: span >= 7 ? sum(7) : null,
-    lastPost: lastRich && lastRich.last_media_date || null, eng: lastRich && lastRich.engagement ? lastRich.engagement.rate_pct : null,
-    series: live.map(r => r.followers) };
+function igState(h) {
+  const rows = h && ROWS[h]; if (!rows) return { state: 'none' };
+  const last = rows[rows.length - 1];
+  const liveRows = rows.filter(r => !CARRIED.test(r.activity || '') && r.followers != null);
+  const lastLive = liveRows[liveRows.length - 1];
+  if (!lastLive) return { state: 'carried', count: last.followers, date: null };
+  if (last === lastLive && age(last.date) <= SRC.ig.late_after_days) return { state: 'live', count: last.followers, date: last.date };
+  return { state: CARRIED.test(last.activity || '') ? 'carried' : 'late', count: lastLive.followers, date: lastLive.date };
+}
+function deltaN(h, days) {
+  const hs = D.igFollowersHistory[h]; if (!hs || hs.length < 2) return null;
+  const last = hs[hs.length - 1], t = dn(last.date) - days; let base = null;
+  hs.forEach(e => { if (dn(e.date) <= t) base = e; });
+  return base ? last.count - base.count : null;
+}
+const delta7 = h => deltaN(h, 7);
+
+/* ---------- pricing parse (derived from the verified text, which is always shown in full) ---------- */
+const P_SKIP = /deposit|retainer|booth|print|travel|second[- ]?shooter|disk|usb|add-?on|extra|album|mini/i;
+const AMT = /\$\s?(\d[\d,]*(?:\.\d+)?)/;
+function parsePrice(txt) {
+  const out = { wed: null, sess: null };
+  if (!txt) return out;
+  const w = [], wv = [], s = [];
+  String(txt).split(/;|\||,(?!\d{3})/).forEach(cl => {
+    const c = cl.toLowerCase(); if (P_SKIP.test(c)) return;
+    const m = AMT.exec(cl); if (!m) return;
+    const a = parseFloat(m[1].replace(/,/g, '')); if (a < 50) return;
+    if (/\/\s?(hr|hour)|per hour|hourly/.test(c)) return;
+    if (/wedding|elopement|bridal/.test(c)) { if (a >= 500) { if (/video|film|cinema/.test(c)) wv.push(a); else w.push(a); } }
+    else if (/portrait|session|senior|family|families|headshot|maternity|newborn|couple/.test(c) && !/wedding|video|film|drone|real estate/.test(c)) s.push(a);
+  });
+  out.wed = w.length ? Math.min.apply(null, w) : wv.length ? Math.min.apply(null, wv) : null;
+  out.sess = s.length ? Math.min.apply(null, s) : null;
+  return out;
 }
 
-/* ---------- business model ---------- */
-const PP = (D.seedDates.pricing && D.seedDates.pricing.per) || {}, RP = (D.seedDates.reviews && D.seedDates.reviews.per) || {};
+/* ---------- lanes ---------- */
+const LANES = [['wed', 'Wedding'], ['port', 'Portrait'], ['vid', 'Video'], ['re', 'Real estate'], ['dr', 'Drone'], ['com', 'Commercial']];
+const LANE_NAME = {}; LANES.forEach(l => LANE_NAME[l[0]] = l[1]);
+function lanesOf(c) {
+  const det = DET[c.id] || {}, wi = WI[c.id] || {};
+  const t = [(c.services || []).join(' '), (det.services || []).join(' '), (wi.services || []).join(' '), c.pricing || ''].join(' ').toLowerCase();
+  const L = [];
+  if (/wedding|elopement|bridal/.test(t)) L.push('wed');
+  if (/portrait|family|families|senior|headshot|maternity|newborn|couple|session/.test(t)) L.push('port');
+  if (c.specialty === 'video' || c.specialty === 'both' || /video|film|cinema/.test(t)) L.push('vid');
+  if (/real estate|realty|listing|property|mls/.test(t)) L.push('re');
+  if (c.specialty === 'drone' || /drone|aerial|fpv/.test(t)) L.push('dr');
+  if (/commercial|brand|corporate|product|marketing|promo/.test(t)) L.push('com');
+  return L;
+}
+
+/* ---------- business model ----------
+   Display gates live here so every view inherits them:
+   - pricing shows only with a per-business verified date inside the pricing window
+     (own-site verification; the seed's per-date is the record — no per-date, no display);
+   - instagram figures exist only in the live state;
+   - reviews exist only while the reviews seed is inside its window. */
+const REGION = { slc: 'St. Lawrence County', adjacent: 'Adjacent', unconfirmed: 'Unconfirmed' };
+function RCOL(r) { const p = pal(); return r === 'slc' ? p.slc : r === 'adjacent' ? p.adjacent : p.unconfirmed; }
 const B = D.competitors.map(c => {
-  const purl = c.pricing_url || null;
-  let prices = {};
-  if (Array.isArray(c.prices) && c.prices.length) c.prices.forEach(p => { if (p && SVC[p.service] && p.low != null && (p.url || purl)) prices[p.service] = { low: +p.low, high: +(p.high != null ? p.high : p.low), url: p.url || purl, checked: p.checked || PP[c.id] || null }; });
-  else if (purl) { const pr = parsePrices(c.pricing); Object.keys(pr).forEach(k => prices[k] = { low: pr[k].low, high: pr[k].high, url: purl, checked: PP[c.id] || null }); }
-  const hasRev = c.review_count != null && !!c.review_url;
-  return { id: c.id, c, me: c.id === JD_ID, name: clean(c.name), town: clean(c.town).replace(/\s*[\u2014-]\s*town TBD.*$/i, '').replace(/\s*\(.*\)$/, '').replace(/, NY$/, ''), slc: c.region === 'slc',
-    prices, ptext: purl ? c.pricing : null, purl, pdate: PP[c.id] || null,
-    ig: igModel(c.ig_handle), handle: c.ig_handle || null,
-    rev: hasRev ? c.review_count : null, rating: hasRev && c.review_rating != null ? +c.review_rating : null, rurl: c.review_url || null, rsrc: c.review_source || null, rdate: RP[c.id] || null,
-    site: c.website ? (/^https?:/.test(c.website) ? c.website : 'https://' + c.website) : null };
-}).sort((a, b) => a.name.localeCompare(b.name));
+  const ig = igState(c.ig_handle);
+  const d7 = ig.state === 'live' ? delta7(c.ig_handle) : null;
+  const d30 = ig.state === 'live' ? deltaN(c.ig_handle, 30) : null;
+  const hs = D.igFollowersHistory[c.ig_handle];
+  const pv = (SD.pricing && SD.pricing.per && SD.pricing.per[c.id]) || null;
+  const rv = (SD.reviews && SD.reviews.per && SD.reviews.per[c.id]) || DATES.reviews;
+  const pst = c.pricing && pv ? stat('pricing', age(pv)) : 'none';
+  const rst = c.review_count != null ? stat('reviews', age(rv)) : 'none';
+  const pp = parsePrice(c.pricing);
+  const shown = pst === 'ok';
+  return {
+    c, id: c.id, name: clean(c.name), town: c.town || '', region: c.region || 'unconfirmed', county: c.county || '',
+    lanes: lanesOf(c), ig, d7, d30, spark: hs ? hs.slice(-28).map(e => e.count) : null,
+    pst, pdate: pv, price: pp, shown, gap: (D.pricingGaps || {})[c.id] || null,
+    wedLive: shown ? pp.wed : null, sessLive: shown ? pp.sess : null,
+    rev: { count: c.review_count, rating: c.review_rating, st: rst, date: rv, live: rst === 'ok' }
+  };
+});
 const BY = {}; B.forEach(b => BY[b.id] = b);
-const JD = BY[JD_ID] || B[0];
-const state = { scope: 'all', svc: 'wed', whatIf: null, psort: 'posts30', q: '', lane: '', dsort: 'full' };
-try { const s = localStorage.getItem('bp_scope'); if (s === 'slc' || s === 'all') state.scope = s; } catch (e) {}
-const pool = () => B.filter(b => state.scope === 'all' || b.slc || b.me);
-const priceStale = p => !p.checked || age(p.checked) > PRICE_DAYS;
-const who = b => '<button class="who' + (b.me ? ' me' : '') + '" data-b="' + esc(b.id) + '">' + esc(b.me ? 'You' : b.name) + '</button>';
-const whoFull = b => '<button class="who' + (b.me ? ' me' : '') + '" data-b="' + esc(b.id) + '">' + esc(b.name) + '</button>';
+const LIVEIG = B.filter(b => b.ig.state === 'live');
+const V = VEN.map(v => {
+  const ig = igState(v.ig_handle);
+  return { v, id: 'v:' + v.id, name: clean(v.name), town: v.town || '', region: v.region || 'unconfirmed', ig };
+});
+const VBY = {}; V.forEach(x => VBY[x.id] = x);
 
-/* ---------- rankings ---------- */
-function rank(list) { /* list: [{b, v, html}] highest first; equal values share a place */
-  const s = list.slice().sort((x, y) => y.v - x.v || (y.t || 0) - (x.t || 0) || x.b.name.localeCompare(y.b.name));
-  s.forEach((x, i) => { x.place = i && s[i - 1].v === x.v && (s[i - 1].t || 0) === (x.t || 0) ? s[i - 1].place : i + 1; });
-  return s;
+/* ---------- JD position + posting pulse ----------
+   JD Meyers Productions is a roster row like every other (same gates, same
+   counting). The JD-centered views below only change the framing: his row is
+   pinned, his rank and his gaps are computed first. Nothing about his numbers
+   is measured differently. */
+const JDID = 'jd-meyers-productions';
+const JD = BY[JDID] || null;
+function rankAmong(list, val, f) {
+  if (val == null) return null;
+  const vals = list.map(f).filter(x => x != null);
+  if (!vals.length) return null;
+  return { r: vals.filter(x => x > val).length + 1, n: vals.length };
 }
-function boards() {
-  const P = pool(), ig = P.filter(b => b.ig);
-  const mk = (id, title, sub, list) => ({ id, title, sub, list: rank(list) });
-  return [
-    mk('fol', 'Largest following', 'Instagram followers', ig.map(b => ({ b, v: b.ig.followers, html: A(fmt(b.ig.followers), b.ig.url) }))),
-    mk('grow', 'Fastest growing', 'Followers gained in 30 days', ig.filter(b => b.ig.g30 != null).map(b => ({ b, v: b.ig.g30, html: A(signed(b.ig.g30), b.ig.url) }))),
-    mk('post', 'Most active', 'Posts in the last 30 days', ig.filter(b => b.ig.posts30 != null).map(b => ({ b, v: b.ig.posts30, html: A(fmt(b.ig.posts30), b.ig.url) }))),
-    mk('eng', 'Best engagement', 'Likes and comments per follower, last 10 posts', ig.filter(b => b.ig.eng != null).map(b => ({ b, v: b.ig.eng, html: A(b.ig.eng.toFixed(1) + '%', b.ig.url) }))),
-    mk('rev', 'Most reviewed', 'Reviews on their main listing', P.filter(b => b.rev != null && b.rev > 0).map(b => ({ b, v: b.rev, html: A(fmt(b.rev), b.rurl) }))),
-    mk('rate', 'Best rated', 'Average rating with 5 or more reviews. Ties go to the larger review count.', P.filter(b => b.rating != null && b.rev >= 5).map(b => ({ b, v: b.rating, t: b.rev, html: A(b.rating.toFixed(1) + ' <small>' + fmt(b.rev) + '</small>', b.rurl) }))),
-    mk('prem', 'Highest price', 'Wedding photography starting price', P.filter(b => b.prices.wed).map(b => ({ b, v: b.prices.wed.low, html: A(money(b.prices.wed.low), priceUrl(b.prices.wed.url, b.prices.wed.low)) })))
-  ].filter(x => x.list.length >= 3);
+/* Posting model per handle, from the daily Graph API pulls in igActivity:
+   cadence is read from media_count deltas between pulls (a hard count, never
+   estimated); post events come from the puller's own activity log; engagement
+   is the API's per-post summary over the account's recent posts. */
+const POSTEVT = /^(\d+)\s+posts?\b/i;
+function postModel(h) {
+  const rows = ROWS[h] || [];
+  const mc = rows.filter(r => r.media_count != null);
+  const latest = rows[rows.length - 1] || null;
+  const lastMedia = maxDate(rows.map(r => r.last_media_date));
+  let evLast = null; const evts = [];
+  rows.forEach(r => { const m = POSTEVT.exec(String(r.activity || '').trim()); if (m) { evts.push({ date: r.date, n: +m[1], text: clean(r.activity) }); if (!evLast || r.date > evLast) evLast = r.date; } });
+  const mediaAt = d => { let v = null; mc.forEach(r => { if (dn(r.date) <= d) v = r.media_count; }); return v; };
+  const latestD = mc.length ? dn(mc[mc.length - 1].date) : null;
+  const postsIn = days => { if (!mc.length || latestD == null) return null; const base = mediaAt(latestD - days); return base == null ? null : mc[mc.length - 1].media_count - base; };
+  let engRow = null;
+  for (let i = rows.length - 1; i >= 0; i--) { if (rows[i].engagement) { engRow = rows[i]; break; } }
+  return { rows, latest, mediaAt, media: mc.length ? mc[mc.length - 1].media_count : null, lastMedia, evLast, evts, p7: postsIn(7), p30: postsIn(30), eng: engRow ? engRow.engagement : null, engDate: engRow ? engRow.date : null };
 }
-function medals(bs) {
-  const t = {};
-  bs.forEach(bd => bd.list.forEach(x => { if (x.place <= 3) { const r = t[x.b.id] = t[x.b.id] || { b: x.b, g: 0, s: 0, z: 0, in: [] }; r[['g', 's', 'z'][x.place - 1]]++; r.in.push({ t: bd.title, p: x.place }); } }));
-  return Object.values(t).sort((a, b) => b.g - a.g || b.s - a.s || b.z - a.z || a.b.name.localeCompare(b.b.name));
+const POST = {};
+B.forEach(b => { if (b.c.ig_handle) POST[b.id] = postModel(b.c.ig_handle); });
+function lastPostOf(b) {
+  const p = POST[b.id];
+  const cands = [p && p.lastMedia, b.c.last_post_date, p && p.evLast].filter(Boolean);
+  return cands.length ? cands.sort()[cands.length - 1] : null;
 }
+/* API-only last post: the newest dated post the pulls themselves carry. The
+   Social view uses this, never the seed's recency date — an account the API
+   cannot read has no API last post, whatever the seed says. */
+function lastPostApi(b) {
+  const p = POST[b.id]; if (!p) return null;
+  const cands = [p.lastMedia, p.evLast].filter(Boolean);
+  return cands.length ? cands.sort()[cands.length - 1] : null;
+}
+function postStatus(b) {
+  const h = b.c.ig_handle; if (!h) return ['nohandle', 'No handle'];
+  /* The model's own pull state decides readability: 'carried' means the pulls
+     are failing or not happening and only a last-known count survives. */
+  if (b.ig.state === 'carried') return ['unread', 'Not readable'];
+  if (b.ig.state === 'none') return ['nodata', 'Not tracked'];
+  const a = age(lastPostApi(b));
+  if (a == null) return ['nodata', 'No dated post'];
+  if (a <= 7) return ['active', 'Active'];
+  if (a <= 30) return ['steady', 'Steady'];
+  return ['quiet', 'Gone quiet'];
+}
+const TRACKED = B.filter(b => POST[b.id] && (POST[b.id].p30 != null || POST[b.id].eng));
+const cadMedian = xs => { const v = xs.filter(x => x != null); return v.length ? median(v) : null; };
 
-/* ---------- small pieces ---------- */
-function barRow(b, pct, valHtml, extra) {
-  return '<div class="br' + (b.me ? ' me' : '') + '">' + whoFull(b) + '<span class="trk"><i data-w="' + Math.max(1.5, Math.min(100, pct)).toFixed(1) + '"></i></span><b>' + valHtml + '</b>' + (extra || '') + '</div>';
+/* ---------- ai ----------
+   An engine exists on this site only while its latest audit is complete (every active
+   prompt answered) and inside the AI freshness window. */
+const STOP = new Set(['photography', 'photographer', 'photographers', 'photo', 'photos', 'llc', 'inc', 'studio', 'studios', 'media', 'films', 'film', 'video', 'videography', 'productions', 'production', 'services', 'the', 'and', 'co', 'company', 'by']);
+const flat = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const stripped = s => flat(s).split(' ').filter(w => !STOP.has(w)).join(' ');
+const ALIAS = {};
+const NAMEMAP = {};
+(function () {
+  const cnt = {};
+  B.forEach(b => { const k = stripped(b.name); if (k) cnt[k] = (cnt[k] || 0) + 1; });
+  B.forEach(b => { NAMEMAP[flat(b.name)] = b.id; const k = stripped(b.name); if (k && cnt[k] === 1) NAMEMAP[k] = b.id; });
+})();
+function matchName(n) {
+  const f = flat(n); if (NAMEMAP[f]) return NAMEMAP[f];
+  const s = stripped(n); if (s && NAMEMAP[s]) return NAMEMAP[s];
+  if (ALIAS[f]) return ALIAS[f];
+  return null;
 }
-function strip(ig, n, me) {
-  let h = '';
-  for (let i = n - 1; i >= 0; i--) {
-    const d = iso(ASOF - i), k = ig.days[d] || 0, tip = dshort(d) + ': ' + (k ? k + plural(k, ' new post') : 'no new post');
-    const cls = 'c' + Math.min(k, 3) + (dn(d) < dn(ig.date) - ig.span ? ' na' : '');
-    h += k && ig.links[d] ? '<a class="' + cls + '" href="' + esc(ig.links[d]) + '" target="_blank" rel="noopener" data-tip="' + tip + '"></a>' : '<i class="' + cls + '" data-tip="' + tip + '"></i>';
-  }
-  return '<span class="cells' + (me ? ' me' : '') + '" style="--n:' + n + '">' + h + '</span>';
+function latestFor(engine) {
+  const rows = AIROWS.filter(r => r.engine === engine);
+  const d = maxDate(rows.map(r => r.date));
+  return { date: d, rows: rows.filter(r => r.date === d) };
 }
-function spark(vals) {
-  if (!vals || vals.length < 3) return '';
-  const lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), W = 240, H = 44, r = hi - lo || 1;
-  const pts = vals.map((v, i) => (i / (vals.length - 1) * W).toFixed(1) + ',' + (H - 4 - (v - lo) / r * (H - 8)).toFixed(1)).join(' ');
-  return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '"/></svg>';
-}
-const head = (t, s, right) => '<header class="vh"><div><h1>' + t + '</h1>' + (s ? '<p>' + s + '</p>' : '') + '</div>' + (right || '') + '</header>';
-const empty = t => '<p class="empty">' + t + '</p>';
-
-/* ---------- Brief ---------- */
-function priceFacts(svc) {
-  const all = pool().filter(b => b.prices[svc]), peers = all.filter(b => !b.me), lows = peers.map(b => b.prices[svc].low);
-  const mine = JD.prices[svc] ? JD.prices[svc].low : null;
-  const sorted = all.slice().sort((a, b) => a.prices[svc].low - b.prices[svc].low);
-  return { all: sorted, peers, med: lows.length >= 5 ? median(lows) : null, mine, pos: mine != null ? lows.filter(l => l < mine).length + 1 : null, lo: sorted[0], hi: sorted[sorted.length - 1] };
-}
-/* ---------- widgets ---------- */
-const cnt = (v, pre, suf, dec) => '<span data-count="' + v + '" data-pre="' + (pre || '') + '" data-suf="' + (suf || '') + '" data-dec="' + (dec || 0) + '">' + (pre || '') + (dec ? (+v).toFixed(dec) : fmt(v)) + (suf || '') + '</span>';
-const bl = items => '<ul class="bl">' + items.filter(Boolean).map(x => '<li' + (x[2] ? ' class="' + x[2] + '"' : '') + '><span>' + x[0] + '</span><b>' + x[1] + '</b></li>').join('') + '</ul>';
-function dial(pct) {
-  const c = Math.PI * 80;
-  return '<svg class="dial" viewBox="0 0 200 112" aria-hidden="true"><defs><linearGradient id="dg" x1="0" x2="1"><stop offset="0" stop-color="#6d5cff"/><stop offset="1" stop-color="#c9c0ff"/></linearGradient></defs><path class="dt" d="M20 102 A80 80 0 0 1 180 102"/><path class="dv" d="M20 102 A80 80 0 0 1 180 102" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + c.toFixed(1) + '" data-off="' + (c * (1 - pct / 100)).toFixed(1) + '"/></svg>';
-}
-function dotStrip(svc) {
-  const pf = priceFacts(svc); if (!pf.all.length) return '';
-  const max = Math.max.apply(null, pf.all.map(b => b.prices[svc].low)) * 1.04, x = v => (v / max * 100).toFixed(2);
-  return '<div class="dstrip">' + (pf.med != null ? '<i class="dm" style="left:' + x(pf.med) + '%"><b>Median</b></i>' : '') +
-    pf.all.map((b, n) => { const p = b.prices[svc]; return '<a class="dd' + (b.me ? ' me' : '') + '" href="' + esc(priceUrl(p.url, p.low)) + '" target="_blank" rel="noopener" style="left:' + x(p.low) + '%;--d:' + n * 22 + 'ms" data-tip="' + esc(b.name) + ' ' + money(p.low) + '"></a>'; }).join('') +
-    '<span class="dl">' + money(0) + '</span><span class="dr">' + money(Math.round(max / 100) * 100) + '</span></div>';
-}
-function radar(bs) {
-  const ax = bs.filter(b => b.id !== 'rate'), n = ax.length; if (n < 3) return empty('Not enough ranked categories yet.');
-  const cx = 190, cy = 150, R = 100, pt = (k, f) => { const t = -Math.PI / 2 + k / n * 2 * Math.PI; return [cx + Math.cos(t) * R * f, cy + Math.sin(t) * R * f]; };
-  const sc = ax.map(bd => { const m = bd.list.find(x => x.b.me), N = bd.list.length; return m ? { f: N > 1 ? (N - m.place) / (N - 1) : 1, t: ord(m.place) + ' of ' + N } : { f: 0, t: 'no figure' }; });
-  const ring = f => '<polygon class="rg" points="' + ax.map((_, k) => pt(k, f).map(v => v.toFixed(1)).join(',')).join(' ') + '"/>';
-  const poly = ax.map((_, k) => pt(k, Math.max(.04, sc[k].f)).map(v => v.toFixed(1)).join(',')).join(' ');
-  const short = { fol: 'Followers', grow: 'Growth', post: 'Posting', eng: 'Engagement', rev: 'Reviews', prem: 'Price' };
-  return '<svg class="radar" viewBox="0 0 380 300" role="img" aria-label="Your rank in each category">' + [.25, .5, .75, 1].map(ring).join('') +
-    ax.map((_, k) => { const p = pt(k, 1); return '<line class="rs" x1="' + cx + '" y1="' + cy + '" x2="' + p[0].toFixed(1) + '" y2="' + p[1].toFixed(1) + '"/>'; }).join('') +
-    '<g class="rp" style="transform-origin:' + cx + 'px ' + cy + 'px"><polygon points="' + poly + '"/>' + ax.map((_, k) => { const p = pt(k, Math.max(.04, sc[k].f)); return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4"/>'; }).join('') + '</g>' +
-    ax.map((bd, k) => { const p = pt(k, 1.2), an = Math.abs(p[0] - cx) < 12 ? 'middle' : p[0] < cx ? 'end' : 'start'; return '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] - 2).toFixed(1) + '" text-anchor="' + an + '" class="rl">' + (short[bd.id] || bd.title) + '</text><text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 14).toFixed(1) + '" text-anchor="' + an + '" class="rv">' + sc[k].t + '</text>'; }).join('') + '</svg>';
-}
-function podium(md) {
-  if (md.length < 3) return empty('Not enough medals yet.');
-  const col = (m, pl, h) => '<div class="pod p' + pl + (m.b.me ? ' me' : '') + '">' + whoFull(m.b) + '<span class="mset"><i class="g">' + m.g + '</i><i class="s">' + m.s + '</i><i class="z">' + m.z + '</i></span><div class="blk" data-h="' + h + '"><b>' + pl + '</b></div></div>';
-  return '<div class="podium">' + col(md[1], 2, 68) + col(md[0], 1, 100) + col(md[2], 3, 46) + '</div>';
-}
-function vbars(items, cls) { /* items: [label, value, highlight] */
-  const mx = Math.max.apply(null, items.map(x => x[1])) || 1;
-  return '<div class="vb ' + (cls || '') + '">' + items.map(x => '<div class="vc' + (x[2] ? ' me' : '') + '"><b>' + (x[1] || '') + '</b><i data-h="' + Math.max(2, x[1] / mx * 100).toFixed(1) + '"></i><span>' + x[0] + '</span></div>').join('') + '</div>';
-}
-
-/* ---------- Brief ---------- */
-function viewBrief() {
-  const pf = priceFacts('wed'), P = pool(), ig = P.filter(b => b.ig && b.ig.posts30 != null);
-  const peersIg = ig.filter(b => !b.me), medPost = peersIg.length >= 5 ? median(peersIg.map(b => b.ig.posts30)) : null;
-  const bs = boards(), md = medals(bs), mine = md.find(m => m.b.me), pJ = JD.prices.wed, g = JD.ig;
-  const place = id => { const bd = bs.find(x => x.id === id), m = bd && bd.list.find(x => x.b.me); return m ? ord(m.place) + ' of ' + bd.list.length : null; };
-  const higher = pJ ? pf.peers.filter(b => b.prices.wed.low > pJ.low).length : 0, pct = pf.peers.length ? Math.round(higher / pf.peers.length * 100) : 0;
-  const kpi = (k, big, list, extra) => '<div class="kpi pane"><span class="kk">' + k + '</span><div class="kn">' + big + '</div>' + bl(list) + (extra || '') + '</div>';
-  const kpis = '<section class="kpis">' +
-    kpi('Your wedding start', pJ ? A(cnt(pJ.low, '$'), priceUrl(pJ.url, pJ.low)) : 'None', [pf.med != null ? ['Market median', money(pf.med)] : null, pf.pos ? ['Your place', (pf.pos === 1 ? 'Lowest' : ord(pf.pos) + ' lowest') + ' of ' + pf.all.length] : null]) +
-    kpi('Your posts, 30 days', g && g.posts30 != null ? A(cnt(g.posts30), g.url) : 'Not tracked', [medPost != null ? ['Typical competitor', fmt(medPost)] : null, g && g.lastPost ? ['Latest post', ago(g.lastPost)] : null]) +
-    kpi('Your followers', g ? A(cnt(g.followers), g.url) : 'Not tracked', [g && g.g30 != null ? ['30-day change', '<span class="' + (g.g30 > 0 ? 'up' : g.g30 < 0 ? 'dn' : '') + '">' + signed(g.g30) + '</span>'] : null, place('fol') ? ['Your place', place('fol')] : null], g ? spark(g.series) : '') +
-    kpi('Your medals', '<span class="mset big"><i class="g">' + (mine ? mine.g : 0) + '</i><i class="s">' + (mine ? mine.s : 0) + '</i><i class="z">' + (mine ? mine.z : 0) + '</i></span>', [['Medal table', mine ? ord(md.indexOf(mine) + 1) + ' of ' + md.length : 'Not placed'], mine && mine.in[0] ? ['Best finish', ord(mine.in.slice().sort((a, b) => a.p - b.p)[0].p) + ', ' + mine.in.slice().sort((a, b) => a.p - b.p)[0].t.toLowerCase()] : null]) +
-    '</section>';
-  const price = '<div class="pane w-price"><header class="wh"><h3>Wedding pricing</h3><a class="go" href="#pricing">Open pricing</a></header>' +
-    (pf.all.length && pJ ? '<div class="pw"><div class="dialw">' + dial(pct) + '<div class="dialt"><b>' + cnt(pct, '', '%') + '</b><span>of competitors start higher than you</span></div></div>' +
-      '<div class="pwr">' + dotStrip('wed') + bl([['Lowest', A(money(pf.lo.prices.wed.low), priceUrl(pf.lo.prices.wed.url, pf.lo.prices.wed.low)) + ' <small>' + esc(pf.lo.name) + '</small>'], pf.med != null ? ['Median of ' + pf.peers.length, money(pf.med)] : null, ['Highest start', A(money(pf.hi.prices.wed.low), priceUrl(pf.hi.prices.wed.url, pf.hi.prices.wed.low)) + ' <small>' + esc(pf.hi.name) + '</small>'], pf.med != null ? ['You against median', '<span class="' + (pJ.low < pf.med ? 'dn' : 'up') + '">' + money(Math.abs(pJ.low - pf.med)) + (pJ.low < pf.med ? ' under' : ' over') + '</span>'] : null]) + '</div></div>' : empty('No linked wedding prices in this set.')) + '</div>';
-  const rad = '<div class="pane w-radar"><header class="wh"><h3>You against the field</h3><a class="go" href="#leaders">Open leaders</a></header>' + radar(bs) + '<p class="cap">The outer edge is first place. The center is last.</p></div>';
-  const post = '<div class="pane w-post"><header class="wh"><h3>Posting, last two weeks</h3><a class="go" href="#posting">Open posting</a></header><div class="mini-grid">' +
-    (ig.length ? ig.slice().sort((a, b) => b.ig.posts30 - a.ig.posts30).filter((b, i) => i < 7 || b.me).map(b => '<div class="mg' + (b.me ? ' me' : '') + '">' + whoFull(b) + strip(b.ig, 14, b.me) + '<b>' + A(fmt(b.ig.posts30), b.ig.url) + '</b></div>').join('') : empty('No tracked accounts yet.')) + '</div><p class="cap">One square per day. The number is posts in 30 days.</p></div>';
-  const pod = '<div class="pane w-pod"><header class="wh"><h3>Medal podium</h3></header>' + podium(md) + (mine && md.indexOf(mine) > 2 ? '<p class="cap you">You are ' + ord(md.indexOf(mine) + 1) + ' of ' + md.length + '</p>' : '') + '</div>';
-  const posted = P.filter(b => b.ig && b.ig.posts7).sort((a, b) => b.ig.posts7 - a.ig.posts7).slice(0, 6);
-  const movers = P.filter(b => b.ig && b.ig.g7).sort((a, b) => Math.abs(b.ig.g7) - Math.abs(a.ig.g7)).slice(0, 6);
-  const moves = (D.priceHistory || []).filter(h => BY[h.id] && age(h.date) != null && age(h.date) <= 30 && h.url).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 6);
-  const reread = P.filter(b => b.pdate && age(b.pdate) <= 7 && Object.keys(b.prices).length).sort((a, b) => a.pdate < b.pdate ? 1 : -1).slice(0, 6);
-  const li = (l, r) => '<li><span>' + l + '</span><b>' + r + '</b></li>';
-  const feed = (t, body) => '<div class="pane w-feed"><header class="wh"><h3>' + t + '</h3></header><ul class="kv">' + body + '</ul></div>';
-  return '<div class="view brief">' + kpis + '<section class="deck">' + price + rad + post + pod +
-    feed('Posted this week', posted.length ? posted.map(b => li(whoFull(b), A(b.ig.posts7 + plural(b.ig.posts7, ' post'), b.ig.url))).join('') : '<li class="none">No new posts seen.</li>') +
-    feed('Follower moves, 7 days', movers.length ? movers.map(b => li(whoFull(b), A('<span class="' + (b.ig.g7 > 0 ? 'up' : 'dn') + '">' + signed(b.ig.g7) + '</span>', b.ig.url))).join('') : '<li class="none">No movement.</li>') +
-    (moves.length ? feed('Price moves, 30 days', moves.map(h => li(whoFull(BY[h.id]) + ' <small>' + esc(SVC[h.service] || '') + '</small>', A(money(h.old) + ' to ' + money(h.new), priceUrl(h.url, h.new)))).join(''))
-      : feed('Prices re-read this week', reread.length ? reread.map(b => { const k = Object.keys(b.prices)[0], p = b.prices[k]; return li(whoFull(b) + ' <small>' + esc(SVC[k]) + '</small>', A('from ' + money(p.low), priceUrl(p.url, p.low))); }).join('') : '<li class="none">No price pages were re-read.</li>')) +
-    '</section></div>';
+const ENGINE_NAMES = ['ChatGPT', 'Gemini'];
+const AI = {};
+ENGINE_NAMES.forEach(e => AI[e] = latestFor(e));
+const ENGS = ENGINE_NAMES.filter(e => {
+  const a = AI[e];
+  return a.date && stat('ai', age(a.date)) === 'ok' && a.rows.length >= ACTIVE.length && a.rows.every(r => r.completed);
+});
+function aiCompute(lane) {
+  const pids = new Set(ACTIVE.filter(p => !lane || lane === 'all' || (p.services || []).indexOf(lane) >= 0).map(p => p.id));
+  const res = { prompts: pids.size, den: {}, ids: {}, off: {}, answered: 0 };
+  ENGS.forEach(e => { res.den[e] = 0; });
+  ENGS.forEach(e => {
+    AI[e].rows.forEach(r => {
+      if (!pids.has(r.prompt_id) || !r.completed) return;
+      res.den[e]++; res.answered++;
+      const seen = new Set();
+      (r.named || []).forEach(n => {
+        const id = matchName(n);
+        if (id) { if (seen.has(id)) return; seen.add(id); const o = res.ids[id] = res.ids[id] || { total: 0 }; ENGS.forEach(x => { if (o[x] == null) o[x] = 0; }); o[e]++; o.total++; }
+        else if (!/[$()\[\];,]/.test(n)) { const k = flat(n); const o = res.off[k] = res.off[k] || { name: clean(n), total: 0 }; ENGS.forEach(x => { if (o[x] == null) o[x] = 0; }); o[e]++; o.total++; }
+      });
+    });
+  });
+  return res;
 }
 
-/* ---------- Pricing ---------- */
-function viewPricing() {
-  const svc = state.svc, pf = priceFacts(svc), P = pool();
-  const tabs = SERVICES.map(s => { const n = P.filter(b => b.prices[s[0]]).length; return '<button class="seg" data-svc="' + s[0] + '" aria-pressed="' + (s[0] === svc) + '"' + (n ? '' : ' disabled') + '>' + s[1] + '<small>' + n + '</small></button>'; }).join('');
-  if (!pf.all.length) return '<div class="view">' + head('Pricing', 'Starting price and top listed price for each business, read from their own pricing page.') + '<div class="segs">' + tabs + '</div>' + empty('No linked prices for this service in this set.') + '</div>';
-  const top = Math.max.apply(null, pf.all.map(b => b.prices[svc].high)), step = top > 6000 ? 2000 : top > 2500 ? 1000 : top > 1000 ? 250 : top > 400 ? 100 : 50;
-  const max = Math.ceil(top / step) * step, x = v => (v / max * 100).toFixed(2);
-  const tstep = step * Math.max(1, Math.ceil(max / step / 5)); let ticks = ''; for (let v = 0; v <= max; v += tstep) ticks += '<span style="left:' + x(v) + '%">' + money(v) + '</span>';
-  const wi = state.whatIf, mineLow = pf.mine;
-  const rows = pf.all.map(b => {
-    const p = b.prices[svc], st = priceStale(p);
-    return '<div class="pr' + (b.me ? ' me' : '') + (st ? ' stale' : '') + '">' + whoFull(b) +
-      '<span class="lane"><i class="rng" style="left:' + x(p.low) + '%;width:' + (p.high > p.low ? x(p.high - p.low) : 0) + '%"></i><i class="pt" style="left:' + x(p.low) + '%"></i>' + (p.high > p.low ? '<i class="pt hi" style="left:' + x(p.high) + '%"></i>' : '') + '</span>' +
-      '<b>' + A(money(p.low), priceUrl(p.url, p.low)) + (p.high > p.low ? '<small> to ' + A(money(p.high), priceUrl(p.url, p.high)) + '</small>' : '') + '</b>' +
-      '<span class="chk">' + (p.checked ? 'read ' + dshort(p.checked) : 'no read date') + '</span></div>';
-  }).join('');
-  const lines = (pf.med != null ? '<i class="vl med" style="left:' + x(pf.med) + '%"><b>Median ' + money(pf.med) + '</b></i>' : '') +
-    (wi != null && mineLow != null && wi !== mineLow ? '<i class="vl wi" style="left:' + x(wi) + '%"><b>' + money(wi) + '</b></i>' : '');
-  const lowsOthers = pf.peers.map(b => b.prices[svc].low).sort((a, b) => a - b);
-  const placeAt = v => lowsOthers.filter(l => l < v).length + 1;
-  const cur = wi != null ? wi : mineLow, n = lowsOthers.length + 1;
-  const stale = pf.all.filter(b => priceStale(b.prices[svc])).length;
-  const side = '<aside class="side">' +
-    '<div class="stat"><span>Lowest</span><b>' + A(money(pf.lo.prices[svc].low), priceUrl(pf.lo.prices[svc].url, pf.lo.prices[svc].low)) + '</b><small>' + esc(pf.lo.name) + '</small></div>' +
-    '<div class="stat"><span>Median of ' + pf.peers.length + ' competitors</span><b>' + (pf.med != null ? money(pf.med) : 'Too few') + '</b><small>' + (pf.med != null ? 'Starting prices, yours left out' : 'Needs 5 or more linked prices') + '</small></div>' +
-    '<div class="stat"><span>Highest start</span><b>' + A(money(pf.hi.prices[svc].low), priceUrl(pf.hi.prices[svc].url, pf.hi.prices[svc].low)) + '</b><small>' + esc(pf.hi.name) + '</small></div>' +
-    histo(pf, svc) +
-    (mineLow != null
-      ? '<div class="whatif"><h3>Try a price</h3><p class="cap">Slide to see where a different starting price would put you.</p>' +
-        '<output id="wi-n">' + money(cur) + '</output><input type="range" id="wi" min="' + Math.max(25, Math.floor(lowsOthers[0] * 0.6 / 25) * 25) + '" max="' + max + '" step="' + (svc === 'wed' || svc === 'wedv' ? 50 : 5) + '" value="' + cur + '" aria-label="Starting price to try">' +
-        '<p id="wi-t">' + whatIfText(cur, placeAt(cur), n, pf.med, mineLow) + '</p><button class="lnk" id="wi-r"' + (wi == null || wi === mineLow ? ' hidden' : '') + '>Back to my real price</button></div>'
-      : '<div class="whatif"><p class="cap">You have no linked ' + esc(SVC[svc].toLowerCase()) + ' price on record.</p></div>') +
-    '</aside>';
-  return '<div class="view">' + head('Pricing', 'Start and top price per business. Click an amount to open its page.') +
-    '<div class="segs">' + tabs + '</div>' +
-    '<div class="split"><div class="pane chart"><div class="plot" data-max="' + max + '"><div class="axis">' + ticks + '</div><div class="over">' + lines + '</div>' + rows + '</div>' +
-    '<p class="foot">' + pf.all.length + ' businesses with a linked price. ' + (stale ? stale + ' shown dimmed: not re-read in the last ' + PRICE_DAYS + ' days. ' : '') + 'Elopement, hourly and add-on prices are left out.</p></div>' + side + '</div></div>';
-}
-function histo(pf, svc) {
-  const lows = pf.all.map(b => b.prices[svc].low), lo = Math.min.apply(null, lows), hi = Math.max.apply(null, lows), n = 8, w = (hi - lo) / n || 1, bins = [];
-  for (let k = 0; k < n; k++) bins.push([k === 0 ? money(lo) : k === n - 1 ? money(hi) : '', 0, false]);
-  pf.all.forEach(b => { const k = Math.min(n - 1, Math.floor((b.prices[svc].low - lo) / w)); bins[k][1]++; if (b.me) bins[k][2] = true; });
-  return '<div class="pane mini"><h3>Spread of starting prices</h3>' + vbars(bins, 'hist') + '<p class="cap">Count of businesses per price band. Yours is lit.</p></div>';
-}
-function whatIfText(v, place, n, med, real) {
-  const d = med != null ? v - med : null;
-  return (v === real ? 'Your real price is ' : 'At ' + money(v) + ' you would be ') + '<strong>' + (place === 1 ? 'the lowest' : place === n ? 'the highest' : ord(place) + ' lowest') + ' of ' + n + '</strong>' +
-    (d != null ? ', ' + (d === 0 ? 'right at the median' : money(Math.abs(d)) + (d < 0 ? ' under' : ' over') + ' the median') : '') + '.';
+/* ---------- web sweep ---------- */
+const SW = D.webSweepHistory.slice().sort((a, b) => a.date < b.date ? -1 : 1);
+function sweepInfo(w) {
+  if (!w) return null;
+  const pages = w.pages || {}, ks = Object.keys(pages);
+  let ch = 0, un = 0; const changed = [];
+  ks.forEach(k => { const s = (pages[k].status || '').toLowerCase(); if (s === 'changed') { ch++; changed.push({ id: k, note: pages[k].note }); } else if (s === 'unreachable') un++; });
+  const of = w.of_total != null ? w.of_total : ks.length;
+  const fetched = w.fetched != null ? w.fetched : ks.length - un;
+  return { date: w.date, label: w.run_label, of, fetched, ch, un, changed };
 }
 
-/* ---------- Posting ---------- */
-function postCharts(tracked) {
-  const dow = [0, 0, 0, 0, 0, 0, 0], wk = [0, 0, 0, 0, 0, 0], names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  tracked.forEach(b => Object.keys(b.ig.days).forEach(d => { const a = age(d); if (a < 0 || a >= STRIP) return; dow[(new Date(dn(d) * DAY).getUTCDay() + 6) % 7] += b.ig.days[d]; wk[5 - Math.floor(a / 7)] += b.ig.days[d]; }));
-  const top = Math.max.apply(null, dow), wl = wk.map((v, k) => [dshort(iso(ASOF - (5 - k) * 7 - 6)), v, k === 5]);
-  return '<div class="charts2"><div class="pane mini"><h3>Posts by weekday</h3>' + vbars(dow.map((v, k) => [names[k], v, v === top && top > 0])) + '<p class="cap">All tracked accounts, last ' + STRIP + ' days. Busiest day is lit.</p></div>' +
-    '<div class="pane mini"><h3>Posts per week</h3>' + vbars(wl) + '<p class="cap">All tracked accounts. Each bar is the week starting on that date.</p></div></div>';
+/* ---------- ui bits ---------- */
+const state = { view: 'standing', q: '', lane: 'all', region: 'all', sort: { k: 'fol', dir: -1 }, kind: 'biz', sel: null, aiLane: 'all', aiOpen: {}, mapTown: null, mapVen: false, briefPrice: 'wed', trendSel: 'all', spotIdx: 0, cmpA: 'jd-meyers-productions', cmpB: 'median', socSort: 'cad30' };
+const stage = $('#stage'), drawer = $('#drawer');
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1800); }
+function copyText(text, msg) {
+  const done = () => toast(msg || 'Copied');
+  const fb = () => { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Copy blocked. Select the text manually.'); } ta.remove(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fb); else fb();
 }
-function viewPosting() {
-  const P = pool(), ig = P.filter(b => b.ig), tracked = ig.filter(b => b.ig.posts30 != null), handles = P.filter(b => b.handle).length;
-  if (!ig.length) return '<div class="view">' + head('Posting', 'How often each competitor posts on Instagram.') + empty('No Instagram accounts are being tracked in this set.') + '</div>';
-  const peers = tracked.filter(b => !b.me), med = peers.length >= 5 ? median(peers.map(b => b.ig.posts30)) : null;
-  const top = tracked.slice().sort((a, b) => b.ig.posts30 - a.ig.posts30)[0], quiet = tracked.filter(b => b.ig.posts30 === 0).length;
-  const sorts = { posts30: b => b.ig.posts30 == null ? -1 : b.ig.posts30, last: b => b.ig.lastPost ? dn(b.ig.lastPost) : 0, eng: b => b.ig.eng == null ? -1 : b.ig.eng, fol: b => b.ig.followers, g30: b => b.ig.g30 == null ? -1e9 : b.ig.g30 };
-  const f = sorts[state.psort] || sorts.posts30, list = ig.slice().sort((a, b) => f(b) - f(a) || a.name.localeCompare(b.name));
-  const th = (k, t) => '<button class="th num" data-psort="' + k + '" aria-pressed="' + (state.psort === k) + '">' + t + '</button>';
-  let wk = ''; for (let i = STRIP - 1; i >= 0; i--) { const n = ASOF - i, d = new Date(n * DAY); wk += '<span>' + (d.getUTCDay() === 1 ? dshort(iso(n)) : '') + '</span>'; }
-  const rows = list.map(b => { const g = b.ig; return '<div class="po' + (b.me ? ' me' : '') + '">' + whoFull(b) + strip(g, STRIP, b.me) +
-    '<b class="num">' + (g.posts30 != null ? A(fmt(g.posts30), g.url) : '<small>tracking</small>') + '</b>' +
-    '<span class="num">' + (g.lastPost ? A(ago(g.lastPost), g.url, 'Latest post ' + dshort(g.lastPost)) : '') + '</span>' +
-    '<span class="num">' + (g.eng != null ? A(g.eng.toFixed(1) + '%', g.url) : '') + '</span>' +
-    '<span class="num">' + A(fmt(g.followers), g.url) + '</span>' +
-    '<span class="num ' + (g.g30 > 0 ? 'up' : g.g30 < 0 ? 'dn' : '') + '">' + (g.g30 != null ? A(signed(g.g30), g.url) : '') + '</span></div>'; }).join('');
-  return '<div class="view">' + head('Posting', 'New Instagram posts per account, last ' + STRIP + ' days.') +
-    '<div class="stats">' +
-      '<div class="stat"><span>Most active</span><b>' + (top ? A(top.ig.posts30 + ' posts', top.ig.url) : '') + '</b><small>' + (top ? esc(top.name) + ', last 30 days' : '') + '</small></div>' +
-      '<div class="stat"><span>Typical competitor</span><b>' + (med != null ? fmt(med) + plural(med, ' post') : 'Too few') + '</b><small>Median over 30 days, ' + peers.length + ' accounts</small></div>' +
-      '<div class="stat me"><span>You</span><b>' + (JD.ig && JD.ig.posts30 != null ? A(JD.ig.posts30 + plural(JD.ig.posts30, ' post'), JD.ig.url) : 'Not tracked') + '</b><small>' + (JD.ig && JD.ig.lastPost ? 'Latest post ' + ago(JD.ig.lastPost) : '') + '</small></div>' +
-      '<div class="stat"><span>Silent for 30 days</span><b>' + quiet + ' of ' + tracked.length + '</b><small>Accounts with no new post</small></div>' +
-    '</div>' +
-    postCharts(tracked) +
-    '<div class="pane chart scroll"><div class="pgrid"><div class="po hd"><span></span><span class="cells wkd" style="--n:' + STRIP + '">' + wk + '</span>' + th('posts30', 'Posts, 30 days') + th('last', 'Latest post') + th('eng', 'Engagement') + th('fol', 'Followers') + th('g30', '30-day change') + '</div>' + rows + '</div>' +
-    '<p class="foot"><span class="key"><i class="c0"></i>none<i class="c1"></i>1<i class="c2"></i>2<i class="c3"></i>3 or more</span>' + ig.length + ' of ' + handles + ' known Instagram accounts in this set are pulled daily. Posts are counted from the change in each profile\'s post total between daily pulls, so a deleted post can hide a new one. Stories are not counted.</p></div></div>';
+function spark(a, w, h) {
+  w = w || 78; h = h || 24;
+  if (!a || a.length < 2) return '<span class="muted">—</span>';
+  const mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const pts = a.map((v, i) => [(i / (a.length - 1)) * (w - 4) + 2, h - 3 - ((v - mn) / r) * (h - 6)]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const l = pts[pts.length - 1];
+  const P = pal();
+  return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '"><path d="' + d + '" fill="none" stroke="' + P.ga + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + l[0].toFixed(1) + '" cy="' + l[1].toFixed(1) + '" r="2.2" fill="' + P.line + '"/></svg>';
 }
-
-/* ---------- Leaders ---------- */
-function viewLeaders() {
-  const bs = boards(), md = medals(bs);
-  if (!bs.length) return '<div class="view">' + head('Leaders', 'Who ranks first in each measure.') + empty('Not enough linked figures to rank anyone in this set.') + '</div>';
-  const table = '<div class="pane"><h3>Medal table</h3><p class="cap">A first, second or third place in any category earns a medal. Sorted the way the Olympics does it: most firsts wins.</p><div class="mtab">' +
-    md.slice(0, 10).concat(md.slice(10).filter(m => m.b.me)).map((m, i) => '<div class="mrow' + (m.b.me ? ' me' : '') + '"><span class="pos">' + (md.indexOf(m) + 1) + '</span>' + whoFull(m.b) + '<span class="mset"><i class="g">' + m.g + '</i><i class="s">' + m.s + '</i><i class="z">' + m.z + '</i></span><span class="mwhere">' + m.in.sort((a, b) => a.p - b.p).map(x => '<span class="tag p' + x.p + '">' + esc(x.t) + '</span>').join('') + '</span></div>').join('') +
-    (md.some(m => m.b.me) ? '' : '<div class="mrow me"><span class="pos"></span>' + whoFull(JD) + '<span class="mset"><i class="g">0</i><i class="s">0</i><i class="z">0</i></span><span class="mwhere"><span class="tag">No top-three finish yet</span></span></div>') + '</div></div>';
-  const cards = bs.map(bd => {
-    const mx = Math.max.apply(null, bd.list.map(x => Math.abs(x.v))) || 1, top = bd.list.slice(0, 5), mine = bd.list.find(x => x.b.me);
-    const row = x => '<div class="lr' + (x.b.me ? ' me' : '') + '"><span class="pos p' + (x.place <= 3 ? x.place : 0) + '">' + x.place + '</span>' + whoFull(x.b) + '<span class="trk"><i data-w="' + Math.max(1.5, Math.abs(x.v) / mx * 100).toFixed(1) + '"></i></span><b>' + x.html + '</b></div>';
-    return '<div class="pane board"><h3>' + esc(bd.title) + '</h3><p class="cap">' + esc(bd.sub) + '</p>' + top.map(row).join('') + (mine && top.indexOf(mine) < 0 ? '<div class="gap">' + (mine.place - top[top.length - 1].place - 1 > 0 ? (bd.list.indexOf(mine) - 5) + ' more between' : '') + '</div>' + row(mine) : mine ? '' : '<div class="gap">You have no linked figure here</div>') + '<p class="foot">' + bd.list.length + ' ranked</p></div>';
-  }).join('');
-  return '<div class="view">' + head('Leaders', 'First place in each measure, and where you stand.') + '<div class="split lead"><div class="pane w-pod"><h3>Podium</h3>' + podium(md) + '</div>' + table + '</div><div class="boards">' + cards + '</div></div>';
+function bigChart(a, dates) {
+  const w = 396, h = 92, pl = 4, pr = 4, pt = 8, pb = 18;
+  const mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const pts = a.map((v, i) => [pl + (i / (a.length - 1)) * (w - pl - pr), pt + (h - pt - pb) - ((v - mn) / r) * (h - pt - pb)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const area = line + 'L' + pts[pts.length - 1][0] + ' ' + (h - pb) + 'L' + pts[0][0] + ' ' + (h - pb) + 'Z';
+  const P = pal();
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Follower history"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + P.ga + '" stop-opacity=".28"/><stop offset="1" stop-color="' + P.ga + '" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#gf)"/><path d="' + line + '" fill="none" stroke="' + P.line + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<text x="' + pl + '" y="' + (h - 3) + '" fill="' + P.t3 + '" font-size="10.5">' + esc(dshort(dates[0])) + ' · ' + fmt(a[0]) + '</text>' +
+    '<text x="' + (w - pr) + '" y="' + (h - 3) + '" text-anchor="end" fill="' + P.t2 + '" font-size="10.5">' + esc(dshort(dates[dates.length - 1])) + ' · ' + fmt(a[a.length - 1]) + '</text></svg>';
 }
-
-/* ---------- Directory ---------- */
-function viewDirectory() {
-  const q = state.q.toLowerCase(), P = pool().filter(b => (!q || (b.name + ' ' + b.town).toLowerCase().indexOf(q) >= 0) && (!state.lane || b.prices[state.lane]));
-  const DS = { full: b => Object.keys(b.prices).length + (b.ig ? 2 : 0) + (b.rev != null ? 1 : 0), wed: b => b.prices.wed ? b.prices.wed.low : -1, portrait: b => b.prices.portrait ? b.prices.portrait.low : -1, family: b => b.prices.family ? b.prices.family.low : -1, fol: b => b.ig ? b.ig.followers : -1, post: b => b.ig && b.ig.posts30 != null ? b.ig.posts30 : -1, rev: b => b.rev != null ? b.rev : -1 };
-  const df = DS[state.dsort] || DS.full; P.sort((a, b) => df(b) - df(a) || a.name.localeCompare(b.name));
-  const dth = (k, t) => '<th class="num"><button class="th" data-dsort="' + k + '" aria-pressed="' + (state.dsort === k) + '">' + t + '</button></th>';
-  const cell = (b, k) => b.prices[k] ? A(money(b.prices[k].low), priceUrl(b.prices[k].url, b.prices[k].low)) : '';
-  const rows = P.map(b => '<tr class="' + (b.me ? 'me' : '') + '"><td>' + whoFull(b) + '<small>' + esc(b.town) + '</small></td><td class="num">' + cell(b, 'wed') + '</td><td class="num">' + cell(b, 'portrait') + '</td><td class="num">' + cell(b, 'family') + '</td><td class="num">' + (b.ig ? A(fmt(b.ig.followers), b.ig.url) : '') + '</td><td class="num">' + (b.ig && b.ig.posts30 != null ? A(fmt(b.ig.posts30), b.ig.url) : '') + '</td><td class="num">' + (b.rev != null ? A(fmt(b.rev) + (b.rating != null ? ' <small>' + b.rating.toFixed(1) + '</small>' : ''), b.rurl) : '') + '</td></tr>').join('');
-  return '<div class="view">' + head('Directory', 'Click a name for its profile. Click a column to sort.',
-    '<div class="tools"><input class="in" id="dq" type="search" placeholder="Search name or town" value="' + esc(state.q) + '" aria-label="Search"><select class="in" id="dl" aria-label="Service"><option value="">Any service</option>' + SERVICES.map(s => '<option value="' + s[0] + '"' + (state.lane === s[0] ? ' selected' : '') + '>Has ' + s[1].toLowerCase() + ' price</option>').join('') + '</select></div>') +
-    '<div class="pane chart scroll"><table class="tb"><thead><tr><th>Business</th>' + dth('wed', 'Wedding from') + dth('portrait', 'Portrait from') + dth('family', 'Family from') + dth('fol', 'Followers') + dth('post', 'Posts, 30 days') + dth('rev', 'Reviews') + '</tr></thead><tbody>' + (rows || '<tr><td colspan="7">' + empty('Nothing matches.') + '</td></tr>') + '</tbody></table><p class="foot">' + P.length + ' businesses</p></div></div>';
+function wideChart(a, dates, label) {
+  const w = 720, h = 150, pl = 6, pr = 6, pt = 10, pb = 20;
+  const mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const pts = a.map((v, i) => [pl + (i / (a.length - 1)) * (w - pl - pr), pt + (h - pt - pb) - ((v - mn) / r) * (h - pt - pb)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const area = line + 'L' + pts[pts.length - 1][0] + ' ' + (h - pb) + 'L' + pts[0][0] + ' ' + (h - pb) + 'Z';
+  const P = pal();
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;display:block" role="img" aria-label="' + esc(label || 'Trend') + '"><defs><linearGradient id="gw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + P.ga + '" stop-opacity=".25"/><stop offset="1" stop-color="' + P.ga + '" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#gw)"/><path d="' + line + '" fill="none" stroke="' + P.line + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<text x="' + pl + '" y="' + (h - 4) + '" fill="' + P.t3 + '" font-size="11">' + esc(dshort(dates[0])) + ' · ' + fmt(a[0]) + '</text>' +
+    '<text x="' + (w - pr) + '" y="' + (h - 4) + '" text-anchor="end" fill="' + P.t2 + '" font-size="11">' + esc(dshort(dates[dates.length - 1])) + ' · ' + fmt(a[a.length - 1]) + '</text></svg>';
 }
-
-/* ---------- Data ---------- */
-function sources() {
-  const mx = a => a.reduce((m, x) => x && (!m || x > m) ? x : m, null);
-  const live = D.igActivity.filter(r => !CARRIED.test(r.activity || ''));
-  const d = { ig: mx(live.map(r => r.date)), pricing: mx(Object.values(PP)), reviews: mx(Object.values(RP)), web: mx(D.webSweepHistory.map(s => s.date)), ai: mx(D.aiChecks.map(a => a.date)), roster: (D.builtAt || '').slice(0, 10) };
-  return (D.freshness.sources || []).filter(s => d[s.id] !== undefined).map(s => { const a = age(d[s.id]); return { s, date: d[s.id], age: a, st: a == null ? 'none' : a >= s.stalled_after_days ? 'stalled' : a > s.late_after_days ? 'late' : 'ok' }; });
-}
-function gaps() {
-  const g = [], withH = B.filter(b => b.handle), pulled = withH.filter(b => b.ig), priced = B.filter(b => Object.keys(b.prices).length);
-  const stale = priced.filter(b => !b.pdate || age(b.pdate) > PRICE_DAYS), noLink = D.competitors.filter(c => c.pricing && !c.pricing_url).length;
-  const revNoLink = D.competitors.filter(c => c.review_count != null && !c.review_url).length, revNoDate = B.filter(b => b.rev != null && !b.rdate).length, ai = D.aiChecks.filter(a => a.url).length;
-  if (withH.length - pulled.length) g.push([withH.length - pulled.length + ' Instagram accounts are not pulled daily', 'Their followers and posting are blank. Names: ' + withH.filter(b => !b.ig).slice(0, 8).map(b => b.name).join(', ') + (withH.length - pulled.length > 8 ? ' and more.' : '.')]);
-  if (stale.length) g.push([stale.length + ' price lists have not been re-read in ' + PRICE_DAYS + ' days', 'They still show, dimmed. Oldest first: ' + stale.sort((a, b) => (a.pdate || '') < (b.pdate || '') ? -1 : 1).slice(0, 6).map(b => b.name + (b.pdate ? ' (' + dshort(b.pdate) + ')' : ' (no date)')).join(', ') + '.']);
-  if (noLink) g.push([noLink + ' price lists have no pricing page link', 'They are left off until the page they came from is recorded.']);
-  if (revNoLink) g.push([revNoLink + ' review counts have no listing link', 'They are left off.']);
-  if (revNoDate) g.push([revNoDate + ' review counts have no read date of their own', 'They show, but nobody can tell how old they are.']);
-  if (D.aiChecks.length && !ai) g.push(['AI assistant answers are not used', 'None of the ' + D.aiChecks.length + ' recorded answers has a share link to the conversation.']);
-  if (!(D.priceHistory || []).length) g.push(['Price changes are not recorded', 'Only the latest price is stored, so the Brief cannot show who raised or cut prices.']);
-  return g;
-}
-function viewData() {
-  const S = sources(), G = gaps();
-  return '<div class="view">' + head('Data', 'How fresh each source is, and what is missing. Built ' + esc((D.builtAt || '').slice(0, 16).replace('T', ' ')) + ' UTC.') +
-    '<div class="split even"><div class="pane"><h3>Freshness</h3><p class="cap">The mark on each bar is the day the source counts as late.</p>' +
-    S.map(x => '<div class="fr st-' + x.st + '"><span>' + esc(x.s.label) + '<small>' + esc(x.s.cadence) + '</small></span><span class="trk"><i data-w="' + Math.max(1.5, Math.min(100, (x.age || 0) / (2 * x.s.late_after_days) * 100)).toFixed(1) + '"></i></span><b>' + (x.date ? esc(dshort(x.date)) + '<small>' + esc(ago(x.date)) + '</small>' : 'No data') + '</b></div>').join('') + '</div>' +
-    '<div class="pane"><h3>Gaps</h3><p class="cap">What would make this page more complete.</p>' + (G.length ? G.map(g => '<div class="gp"><b>' + esc(g[0]) + '</b><p>' + esc(g[1]) + '</p></div>').join('') : empty('Nothing missing today.')) + '</div></div></div>';
-}
-
-/* ---------- profile drawer ---------- */
-function openProfile(id) {
-  const b = BY[id]; if (!b) return;
-  const g = b.ig, pk = Object.keys(b.prices);
-  const links = [['Website', b.site], ['Pricing page', b.purl], ['Instagram', igUrl(b.handle)], ['Reviews', b.rurl]].filter(x => x[1]);
-  const el = document.createElement('div'); el.className = 'drawer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', b.name);
-  el.innerHTML = '<div class="dw"><button class="x" aria-label="Close">Close</button><h2>' + esc(b.name) + '</h2><p class="cap">' + esc(b.town) + (b.me ? ', your business' : '') + '</p>' +
-    '<div class="links">' + (links.length ? links.map(l => '<a href="' + esc(l[1]) + '" target="_blank" rel="noopener">' + l[0] + '</a>').join('') : '<span class="cap">No links on record, so nothing about this business can be shown.</span>') + '</div>' +
-    '<section><h3>Prices</h3>' + (pk.length ? '<ul class="kv">' + pk.map(k => { const p = b.prices[k]; return '<li><span>' + esc(SVC[k]) + '</span><b>' + A(money(p.low), priceUrl(p.url, p.low)) + (p.high > p.low ? ' to ' + A(money(p.high), priceUrl(p.url, p.high)) : '') + '</b></li>'; }).join('') + '</ul>' : '') +
-      (b.ptext ? '<p class="quote">' + esc(clean(b.ptext)) + '</p><p class="cap">' + A('As listed on ' + esc(host(b.purl)), b.purl) + ', ' + (b.pdate ? 'read ' + dshort(b.pdate) : 'no read date') + '</p>' : '<p class="cap">' + esc((D.pricingGaps[b.id] && D.pricingGaps[b.id].reason) || 'No linked price list') + '</p>') + '</section>' +
-    '<section><h3>Instagram</h3>' + (g ? '<div class="dstats"><div><b>' + A(fmt(g.followers), g.url) + '</b><span>followers</span></div><div><b>' + (g.posts30 != null ? A(fmt(g.posts30), g.url) : '') + '</b><span>posts, 30 days</span></div><div><b>' + (g.eng != null ? A(g.eng.toFixed(1) + '%', g.url) : '') + '</b><span>engagement</span></div><div><b class="' + (g.g30 > 0 ? 'up' : g.g30 < 0 ? 'dn' : '') + '">' + (g.g30 != null ? signed(g.g30) : '') + '</b><span>30-day change</span></div></div>' + spark(g.series) + '<p class="cap">Followers since ' + dshort(ROWS[b.handle][0].date) + '</p>' + strip(g, STRIP, b.me) + '<p class="cap">New posts, last ' + STRIP + ' days' + (g.lastPost ? '. Latest post ' + ago(g.lastPost) : '') + '</p>' : '<p class="cap">' + (b.handle ? '@' + esc(b.handle) + ' is on the roster but is not pulled daily.' : 'No Instagram account on record.') + '</p>') + '</section>' +
-    '<section><h3>Reviews</h3>' + (b.rev != null ? '<div class="dstats"><div><b>' + A(fmt(b.rev), b.rurl) + '</b><span>reviews on ' + esc(({ google: 'Google', facebook: 'Facebook', weddingwire: 'WeddingWire', theknot: 'The Knot', zola: 'Zola' })[b.rsrc] || 'their listing') + '</span></div>' + (b.rating != null ? '<div><b>' + A(b.rating.toFixed(1), b.rurl) + '</b><span>average rating</span></div>' : '') + '</div><p class="cap">' + (b.rdate ? 'Read ' + dshort(b.rdate) : 'No read date') + '</p>' : '<p class="cap">No linked review count.</p>') + '</section></div>';
-  document.body.appendChild(el);
-  const prev = document.activeElement, close = () => { el.remove(); document.removeEventListener('keydown', key); if (prev && prev.focus) prev.focus(); };
-  const key = e => { if (e.key === 'Escape') close(); };
-  el.addEventListener('click', e => { if (e.target === el || e.target.closest('.x')) close(); });
-  document.addEventListener('keydown', key); $('.x', el).focus();
-  requestAnimationFrame(() => el.classList.add('on'));
-}
-
-/* ---------- router ---------- */
-const VIEWS = { brief: viewBrief, pricing: viewPricing, posting: viewPosting, leaders: viewLeaders, directory: viewDirectory, data: viewData };
-const stage = $('#stage');
-let first = true;
-function render(keep) {
-  const v = (location.hash || '#brief').slice(1).split('/')[0], name = VIEWS[v] ? v : 'brief', y = stage.scrollTop;
-  stage.innerHTML = VIEWS[name]();
-  $$('#nav a').forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === '#' + name ? 'page' : 'false'));
-  first = false;
-  stage.scrollTop = keep ? y : 0;
-  const view = stage.firstChild;
-  if (!keep && !REDUCED) { view.classList.add('enter'); $$('.kpis>*,.deck>*,.view>.pane,.view>.split>*,.view>.stats>*,.charts2>*,.boards>*,.vh', view).forEach((el, i) => el.style.setProperty('--i', Math.min(i, 14))); }
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    $$('[data-w]', stage).forEach((el, i) => { el.style.transitionDelay = Math.min(i, 24) * 18 + 'ms'; el.style.width = el.dataset.w + '%'; });
-    $$('[data-h]', stage).forEach((el, i) => { el.style.transitionDelay = Math.min(i, 24) * 30 + 'ms'; el.style.height = el.dataset.h + '%'; });
-    $$('[data-off]', stage).forEach(el => { el.style.strokeDashoffset = el.dataset.off; });
-    stage.classList.add('live'); view.classList.add('on');
-  }));
-  if (!keep && !REDUCED) $$('[data-count]', stage).forEach(el => {
-    const to = +el.dataset.count, dec = +el.dataset.dec, t0 = performance.now(), dur = 900;
-    const put = v => { el.textContent = el.dataset.pre + (dec ? v.toFixed(dec) : Math.round(v).toLocaleString('en-US')) + el.dataset.suf; };
-    (function step(t) { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 4); put(to * e); if (p < 1) requestAnimationFrame(step); })(t0);
+const pill = (t, c) => '<span class="pill ' + (c || '') + '">' + esc(t) + '</span>';
+const RSHORT = { slc: 'St. Lawrence', adjacent: 'Adjacent', unconfirmed: 'Unconfirmed' };
+const regPill = (r, long) => pill(long ? (REGION[r] || r) : (RSHORT[r] || r), r === 'slc' ? 'ice' : r === 'adjacent' ? 'tan' : 'gray');
+const empty = (t, s) => '<div class="empty"><b>' + esc(t) + '</b>' + (s ? '<span>' + esc(s) + '</span>' : '') + '</div>';
+function countUp(root) {
+  if (REDUCED) return;
+  $$('[data-count]', root).forEach(el => {
+    const to = +el.dataset.count, t0 = performance.now(), dur = 750;
+    const step = t => { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.firstChild.nodeValue = fmt(Math.round(to * e)); if (p < 1) requestAnimationFrame(step); };
+    el.firstChild.nodeValue = '0'; requestAnimationFrame(step);
   });
 }
-stage.addEventListener('pointermove', e => { const c = e.target.closest('.pane'); if (!c) return; const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
-window.addEventListener('hashchange', () => render());
+const num = n => '<span class="num" data-count="' + n + '">' + fmt(n) + '</span>';
 
-stage.addEventListener('click', e => {
-  const w = e.target.closest('[data-b]'); if (w) { openProfile(w.dataset.b); return; }
-  const s = e.target.closest('[data-svc]'); if (s) { state.svc = s.dataset.svc; state.whatIf = null; render(true); return; }
-  const p = e.target.closest('[data-psort]'); if (p) { state.psort = p.dataset.psort; render(true); return; }
-  const ds = e.target.closest('[data-dsort]'); if (ds) { state.dsort = state.dsort === ds.dataset.dsort ? 'full' : ds.dataset.dsort; render(true); return; }
-  if (e.target.id === 'wi-r') { state.whatIf = null; render(true); }
-});
-stage.addEventListener('input', e => {
-  if (e.target.id === 'wi') {
-    const v = +e.target.value, pf = priceFacts(state.svc), lows = pf.peers.map(b => b.prices[state.svc].low), max = +$('.plot').dataset.max;
-    state.whatIf = v; $('#wi-n').textContent = money(v);
-    $('#wi-t').innerHTML = whatIfText(v, lows.filter(l => l < v).length + 1, lows.length + 1, pf.med, pf.mine); $('#wi-r').hidden = v === pf.mine;
-    let l = $('.vl.wi'); if (!l) { l = document.createElement('i'); l.className = 'vl wi'; l.innerHTML = '<b></b>'; $('.over').appendChild(l); }
-    l.style.left = (v / max * 100) + '%'; l.firstChild.textContent = money(v); l.hidden = v === pf.mine;
-  }
-  if (e.target.id === 'dq') { state.q = e.target.value; const pos = e.target.selectionStart; render(true); const n = $('#dq'); n.focus(); n.setSelectionRange(pos, pos); }
-});
-stage.addEventListener('change', e => { if (e.target.id === 'dl') { state.lane = e.target.value; render(true); } });
-
-/* top bar: scope switch, jump-to search, freshness */
-function chrome() {
-  $$('#scope button').forEach(b => { b.setAttribute('aria-pressed', b.dataset.scope === state.scope); b.onclick = () => { state.scope = b.dataset.scope; try { localStorage.setItem('bp_scope', state.scope); } catch (e) {} chrome(); render(true); }; });
-  const dl = $('#names'); if (dl && !dl.children.length) dl.innerHTML = B.map(b => '<option value="' + esc(b.name) + '">').join('');
-  const j = $('#jump'); if (j) j.onchange = () => { const b = B.find(x => x.name.toLowerCase() === j.value.trim().toLowerCase()); if (b) { j.value = ''; openProfile(b.id); } };
-  const S = sources(), bad = S.filter(x => x.st === 'stalled').length, late = S.filter(x => x.st === 'late').length, h = $('#health');
-  if (h) { h.className = 'health ' + (bad ? 'stalled' : late ? 'late' : 'ok'); h.lastElementChild.textContent = bad || late ? (bad + late) + plural(bad + late, ' source') + ' behind' : 'Data current, ' + dshort(ASOF_S); }
+/* ---------- cells ---------- */
+function cFollowers(b) {
+  return b.ig.state === 'live' ? '<span class="val">' + fmt(b.ig.count) + '</span>' : '<span class="muted">—</span>';
 }
-chrome(); render();
+function cD7(b) {
+  if (b.ig.state !== 'live' || b.d7 == null) return '<span class="muted">—</span>';
+  return '<span class="dchip ' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span>';
+}
+function priceWhy(b, k) {
+  const c = b.c;
+  if (c.pricing) {
+    const t = c.pricing.toLowerCase();
+    if (/booth/.test(t) && !/wedding|portrait|session|family/.test(t)) return 'Booth rental';
+    if (b.price.wed == null && b.price.sess == null && (/\/\s?(hr|hour)|per hour|hourly/.test(t))) return 'Hourly rates';
+    if (b.price.wed == null && b.price.sess == null && c.specialty === 'drone') return 'Drone services';
+    if (k === 'wed' && b.price.wed == null) {
+      const wc = t.split(/[;|]/).filter(x => /wedding|elopement|bridal/.test(x));
+      if (wc.length && wc.every(x => !/\$/.test(x) || /\/\s?(hr|hour)|per hour|hourly/.test(x))) return 'Hourly wedding rate';
+    }
+    return k === 'wed' ? 'No wedding rate' : 'No session rate';
+  }
+  if (b.gap) return b.gap.reason;
+  if (!c.website) return 'No website';
+  return 'Not captured';
+}
+function cPrice(b, k) {
+  if (b.shown) {
+    const v = b.price[k];
+    return v == null ? '<span class="why">' + esc(priceWhy(b, k)) + '</span>' : '<span class="val">' + money(v) + '</span>';
+  }
+  if (b.c.pricing) return '<span class="muted">—</span>';
+  return '<span class="why">' + esc(priceWhy(b, k)) + '</span>';
+}
+function cRev(b) {
+  if (!b.rev.live || b.rev.count == null) return '<span class="muted">—</span>';
+  return '<span class="val">' + fmt(b.rev.count) + (b.rev.rating != null ? ' · <span class="' + (b.rev.rating >= 4.8 ? 'rt-g' : b.rev.rating >= 4.5 ? 'rt-m' : 'rt-l') + '">' + Number(b.rev.rating).toFixed(1) + '</span>' : '') + '</span>';
+}
+
+/* ---------- BRIEF ---------- */
+function fchips() {
+  return '<div class="fresh">' + SS.map(s => {
+    const v = s.date ? ageText(s.age) : 'No data';
+    const a = s.st === 'ok' ? s.cadence : s.st === 'late' ? 'Late. ' + s.cadence : s.st === 'stalled' ? 'Stalled since ' + dshort(s.date) : 'Not recorded';
+    return '<button class="fchip ' + s.st + '" data-go="data" data-tip="' + esc(s.feeds) + '"><span class="l"><i class="dot ' + (s.st === 'ok' ? 'ok' : s.st) + '"></i>' + esc(s.label) + '</span><span class="v">' + esc(v) + '</span><span class="a">' + esc(a) + '</span></button>';
+  }).join('') + '</div>';
+}
+function panel(title, sub, body, link) {
+  return '<section class="panel"><div class="panel-h"><h2>' + esc(title) + '</h2>' + (link ? '<button class="link" data-go="' + link[1] + '">' + esc(link[0]) + '</button>' : '<span class="sub">' + esc(sub || '') + '</span>') + '</div><div class="panel-b">' + body + '</div></section>';
+}
+function liRow(b, rt, sb) {
+  return '<button class="li" data-open="' + esc(b.id) + '"><span><span class="nm">' + esc(b.name) + '</span><br><span class="sb">' + esc(sb || b.town) + '</span></span><span class="rt">' + rt + '</span></button>';
+}
+/* ---------- SPOTLIGHT (Brief hero slideshow) ---------- */
+let spotTimer = null;
+let briefIntro = false;   /* one-shot: the Brief load-in plays on the first render only */
+function spotHist(b) { const hs = (D.igFollowersHistory[b.c.ig_handle] || []).slice(-60); return hs.length >= 2 ? hs : null; }
+function spotFigs(b) {
+  const f = [];
+  if (b.ig.state === 'live') { f.push(['Followers', fmt(b.ig.count)]); if (b.d7 != null) f.push(['7 days', signed(b.d7)]); if (b.d30 != null) f.push(['30 days', signed(b.d30)]); }
+  if (b.wedLive != null) f.push(['Wedding, from', money(b.wedLive)]);
+  if (b.sessLive != null) f.push(['Session, from', money(b.sessLive)]);
+  if (b.rev.live && b.rev.count != null) f.push(['Reviews', fmt(b.rev.count) + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) : '')]);
+  return f.map(x => '<span class="sfig"><small>' + x[0] + '</small><b>' + x[1] + '</b></span>').join('');
+}
+function spotShell(eyebrow, b, num, diagram, note) {
+  return '<article class="spot-slide' + (diagram ? '' : ' noviz') + '">' +
+    '<div class="spot-id"><div class="spot-eye">' + eyebrow + '</div>' +
+    '<h3 class="spot-name">' + esc(b.name) + '</h3><div class="spot-town">' + esc(b.town) + '</div>' +
+    (note ? '<div class="spot-note">' + note + '</div>' : '') + '</div>' +
+    '<div class="spot-big"><div class="spot-num" data-count="' + num.v + '" data-cfmt="' + num.f + '" data-csuffix="' + esc(num.suffix || '') + '">' + num.text + '</div><div class="spot-lab">' + num.label + '</div>' +
+    '<div class="spot-figs">' + spotFigs(b) + '</div></div>' +
+    (diagram ? '<div class="spot-viz">' + diagram + '</div>' : '') + '</article>';
+}
+function spotSpark(b) {
+  const hs = spotHist(b); if (!hs) return '';
+  const a = hs.map(e => e.count), w = 560, h = 72, mn = Math.min.apply(null, a), mx = Math.max.apply(null, a), r = mx - mn || 1;
+  const pts = a.map((v, i) => [(i / (a.length - 1)) * w, 6 + (h - 14) - ((v - mn) / r) * (h - 14)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const P = pal();
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;display:block" aria-hidden="true"><path d="' + line + 'L' + w + ' ' + h + 'L0 ' + h + 'Z" fill="' + P.ga + '" fill-opacity=".14"/><path class="spot-line" d="' + line + '" fill="none" stroke="' + P.line + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '<div class="sp-cap">' + esc(dshort(hs[0].date)) + ' · ' + fmt(a[0]) + ' → ' + esc(dshort(hs[hs.length - 1].date)) + ' · ' + fmt(a[a.length - 1]) + '</div>';
+}
+function spotPriceTrack(b, kind) {
+  const vals = B.map(x => kind === 'wed' ? x.wedLive : x.sessLive).filter(v => v != null).sort((a, c) => a - c);
+  if (vals.length < 3) return '';
+  const mn = vals[0], mx = vals[vals.length - 1], md = median(vals), r = mx - mn || 1, v = kind === 'wed' ? b.wedLive : b.sessLive;
+  const pct = x => ((x - mn) / r * 100).toFixed(1);
+  const dots = vals.map(x => '<i class="pt-dot" style="left:' + pct(x) + '%"></i>').join('');
+  return '<div class="spot-price"><div class="sp-track">' + dots + '<i class="pt-med" style="left:' + pct(md) + '%"></i><i class="pt-me" style="left:' + pct(v) + '%"></i></div>' +
+    '<div class="sp-scale"><span>' + money(mn) + '</span><span>median ' + money(md) + '</span><span>' + money(mx) + '</span></div>' +
+    '<div class="sp-cap">' + vals.length + ' verified ' + (kind === 'wed' ? 'wedding' : 'session') + ' rates · this business in amber</div></div>';
+}
+function spotReviewsViz(b) {
+  const top = B.filter(x => x.rev.live && x.rev.count != null).sort((a, c) => c.rev.count - a.rev.count).slice(0, 5);
+  const mx = top.length ? top[0].rev.count : 1;
+  const rows = top.map(x => '<div class="sp-ai"><span class="sp-rvname">' + esc(x.name) + '</span><span class="sp-aibar"><i class="' + (x.id === b.id ? 'me' : '') + '" style="width:' + Math.max(3, Math.round(x.rev.count / mx * 100)) + '%"></i></span><b>' + fmt(x.rev.count) + (x.rev.rating != null ? ' · ' + Number(x.rev.rating).toFixed(1) : '') + '</b></div>').join('');
+  return '<div class="spot-aibars">' + rows + '</div>';
+}
+function spotlight() {
+  const used = new Set(), slides = [];
+  const take = (b, make) => { if (b && !used.has(b.id) && slides.length < 6) { const s = make(b); if (s) { used.add(b.id); slides.push({ id: b.id, html: s }); } } };
+  const by = (list, f) => list.slice().sort((a, c) => f(c) - f(a))[0];
+  const wFol = by(LIVEIG, b => b.ig.count);
+  take(wFol, b => spotShell('Spotlight · Most followers', b, { v: b.ig.count, f: 'int', text: fmt(b.ig.count), label: 'Instagram followers · live today' }, spotSpark(b), 'The largest live audience in the market.'));
+  const posD7 = LIVEIG.filter(b => b.d7 > 0);
+  const wUp = by(posD7, b => b.d7);
+  take(wUp, b => spotShell('Spotlight · Biggest mover', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The fastest-growing live account this week.'));
+  if (ENGS.length) {
+    const ac = aiCompute('all');
+    const topId = Object.keys(ac.ids).sort((a, c) => ac.ids[c].total - ac.ids[a].total)[0];
+    if (topId && BY[topId]) take(BY[topId], b => {
+      const o = ac.ids[b.id];
+      const bars = ENGS.map(e => '<div class="sp-ai"><span>' + esc(e) + '</span><span class="sp-aibar"><i style="width:' + (ac.den[e] ? Math.round(o[e] / ac.den[e] * 100) : 0) + '%"></i></span><b>' + o[e] + ' of ' + ac.den[e] + '</b></div>').join('');
+      return spotShell('Spotlight · Most named by AI', b, { v: o.total, f: 'int', suffix: ' of ' + ac.answered, text: o.total + ' of ' + ac.answered, label: 'assistant answers named this business' }, '<div class="spot-aibars">' + bars + '</div>', 'Latest audit · ' + esc(dshort(DATES.ai)) + ' · directional.');
+    });
+  }
+  const wHi = by(B.filter(b => b.wedLive != null), b => b.wedLive);
+  take(wHi, b => spotShell('Spotlight · Highest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The top of the verified price ladder.'));
+  const revRanked = B.filter(b => b.rev.live && b.rev.count != null).sort((a, c) => c.rev.count - a.rev.count);
+  const wRev = revRanked.find(b => !used.has(b.id));
+  take(wRev, b => spotShell('Spotlight · Most reviews', b, { v: b.rev.count, f: 'int', text: fmt(b.rev.count), label: 'Google reviews' + (b.rev.rating != null ? ' · ' + Number(b.rev.rating).toFixed(1) + ' average' : '') }, spotReviewsViz(b), 'The deepest review book in the market · top five shown.'));
+  const wLo = by(B.filter(b => b.wedLive != null), b => -b.wedLive);
+  take(wLo, b => spotShell('Spotlight · Lowest verified wedding rate', b, { v: b.wedLive, f: 'money', text: money(b.wedLive), label: 'wedding, from · verified ' + dshort(DATES.pricing) }, spotPriceTrack(b, 'wed'), 'The floor of the verified price ladder.'));
+  const negD7 = LIVEIG.filter(b => b.d7 <= -2);
+  const wDn = by(negD7, b => -b.d7);
+  take(wDn, b => spotShell('Spotlight · Biggest drop', b, { v: b.d7, f: 'signed', text: signed(b.d7), label: 'followers in the last 7 days' }, spotSpark(b), 'The sharpest slide among live accounts this week.'));
+  if (slides.length < 2) return '';
+  const segs = slides.map((s, i) => '<button class="sseg' + (i === 0 ? ' on' : '') + '" data-spot="' + i + '" aria-label="Spotlight ' + (i + 1) + '"><i></i></button>').join('');
+  const html = slides.map((s, i) => i === 0 ? s.html.replace('class="spot-slide"', 'class="spot-slide on"') : s.html).join('');
+  return '<section class="panel spot" id="spot"><div class="spot-stage">' + html + '</div><div class="spot-bar"><div class="spot-segs">' + segs + '</div><div class="spot-nav"><button data-spotnav="-1" aria-label="Previous spotlight">&#8249;</button><button data-spotnav="1" aria-label="Next spotlight">&#8250;</button></div></div></section>';
+}
+function spotCount(slide) {
+  const el = slide && slide.querySelector('.spot-num[data-count]'); if (!el) return;
+  const target = parseFloat(el.dataset.count), kind = el.dataset.cfmt, suf = el.dataset.csuffix || '';
+  const render = v => kind === 'money' ? money(v) : kind === 'signed' ? signed(v) : fmt(v);
+  if (REDUCED || isNaN(target)) { el.textContent = render(target) + suf; return; }
+  const t0 = performance.now(), dur = 950;
+  const step = t => {
+    if (!el.isConnected) return;
+    const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = render(Math.round(target * e)) + suf;
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function spotGo(i) {
+  const root = $('#spot'); if (!root) return;
+  const slides = root.querySelectorAll('.spot-slide'), n = slides.length; if (!n) return;
+  state.spotIdx = ((i % n) + n) % n;
+  slides.forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
+  root.querySelectorAll('.sseg').forEach((s, k) => s.classList.toggle('on', k === state.spotIdx));
+  spotCount(slides[state.spotIdx]);
+}
+function startSpot() {
+  if (spotTimer) { clearInterval(spotTimer); spotTimer = null; }
+  const root = $('#spot'); if (!root) return;
+  spotGo(state.spotIdx || 0);
+  if (REDUCED) return;
+  spotTimer = setInterval(() => { if (document.visibilityState === 'visible') spotGo(state.spotIdx + 1); }, 5000);
+}
+function stopSpot() { if (spotTimer) { clearInterval(spotTimer); spotTimer = null; } }
+
+function moveWidget() {
+  if (!LIVEIG.length) return '';
+  const gain = LIVEIG.filter(b => b.d7 > 0).sort((a, b) => b.d7 - a.d7 || a.name.localeCompare(b.name)).slice(0, 5);
+  const lose = LIVEIG.filter(b => b.d7 < 0).sort((a, b) => a.d7 - b.d7 || a.name.localeCompare(b.name)).slice(0, 5);
+  if (!gain.length && !lose.length) return '';
+  const mx = Math.max.apply(null, LIVEIG.map(b => Math.abs(b.d7 || 0)).concat([1]));
+  const rows = list => list.map(b => {
+    const up = b.d7 > 0, w = Math.max(4, Math.abs(b.d7) / mx * 100);
+    return '<button class="mrow" data-open="' + esc(b.id) + '"><span class="mnm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></span>' +
+      '<span class="mbar"><i class="' + (up ? 'up' : 'down') + '" style="width:' + w.toFixed(1) + '%"></i></span>' +
+      '<span class="mval"><span class="dchip ' + (up ? 'up' : 'down') + '">' + signed(b.d7) + '</span><small>' + fmt(b.ig.count) + ' followers</small></span></button>';
+  }).join('');
+  const col = (list, title, cls) => list.length ? '<div class="mcol"><h4 class="' + cls + '">' + title + '</h4>' + rows(list) + '</div>' : '';
+  return panel('Movement', 'Last 7 days · live accounts', '<div class="mv2 big" style="' + (gain.length && lose.length ? '' : 'grid-template-columns:1fr') + '">' + col(gain, 'Gaining', 'g') + col(lose, 'Losing', 'l') + '</div>', ['Trends', 'trends']);
+}
+function priceWidget() {
+  const k = state.briefPrice;
+  const list = B.filter(b => (k === 'wed' ? b.wedLive : b.sessLive) != null)
+    .map(b => ({ b, v: k === 'wed' ? b.wedLive : b.sessLive }))
+    .sort((a, b) => b.v - a.v || a.b.name.localeCompare(b.b.name));
+  if (list.length < 3) return '';
+  const vals = list.map(x => x.v), md = median(vals), mx = vals[0], mn = vals[vals.length - 1];
+  let lastAbove = true;
+  const rowsHtml = list.map(x => {
+    const w = Math.max(3, x.v / mx * 100);
+    let line = '';
+    if (lastAbove && x.v <= md) { line = '<div class="medline"><span>Median ' + money(md) + '</span></div>'; lastAbove = false; }
+    return line + '<button class="mrow prow" data-open="' + esc(x.b.id) + '"><span class="mnm"><b>' + esc(x.b.name) + '</b><span>' + esc(x.b.town) + '</span></span>' +
+      '<span class="mbar"><i class="price" style="width:' + w.toFixed(1) + '%"></i></span>' +
+      '<span class="mval"><b class="pnum">' + money(x.v) + '</b><small>' + (k === 'wed' ? 'wedding, from' : 'session, from') + '</small></span></button>';
+  }).join('');
+  const head = '<div class="phead"><div class="pmed"><div class="n">' + money(md) + '</div><div class="t">Median ' + (k === 'wed' ? 'wedding' : 'session') + ', from</div><div class="s">' + list.length + ' verified rates · ' + money(mn) + ' to ' + money(mx) + ' · read from their own sites ' + esc(dshort(DATES.pricing)) + '</div></div>' +
+    '<div class="chips"><button class="fc" data-bp="wed" aria-pressed="' + (k === 'wed') + '">Wedding</button><button class="fc" data-bp="sess" aria-pressed="' + (k === 'sess') + '">Session</button></div></div>';
+  return panel('Pricing', 'Verified · every rate on the ladder', head + '<div class="ladder">' + rowsHtml + '</div>', ['All businesses', 'market']);
+}
+function reviewsWidget() {
+  const current = B.filter(b => b.rev.live && b.rev.count != null)
+    .sort((a, b) => b.rev.count - a.rev.count || (b.rev.rating || 0) - (a.rev.rating || 0) || a.name.localeCompare(b.name));
+  const list = current.slice(0, 10);
+  if (list.length < 3) return '';
+  const mx = Math.max.apply(null, list.map(b => b.rev.count).concat([1]));
+  const rows = list.map(b => {
+    const w = Math.max(4, b.rev.count / mx * 100);
+    return '<button class="mrow" data-open="' + esc(b.id) + '"><span class="mnm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></span>' +
+      '<span class="mbar"><i class="price" style="width:' + w.toFixed(1) + '%"></i></span>' +
+      '<span class="mval"><b class="pnum">' + fmt(b.rev.count) + '</b><small>' + (b.rev.rating != null ? Number(b.rev.rating).toFixed(1) + ' average' : 'reviews') + '</small></span></button>';
+  }).join('');
+  return panel('Reviews', 'Top 10 · ' + current.length + ' current books', '<div class="revlist">' + rows + '</div>', ['All businesses', 'market']);
+}
+function viewBrief() {
+  const introCls = briefIntro ? '' : ' intro'; briefIntro = true;
+  const n = B.length;
+  const reg = { slc: 0, adjacent: 0, unconfirmed: 0 }; B.forEach(b => reg[b.region] = (reg[b.region] || 0) + 1);
+  const wed = B.map(b => b.wedLive).filter(x => x != null), ses = B.map(b => b.sessLive).filter(x => x != null);
+  const withHandle = B.filter(b => b.c.ig_handle).length;
+  const net7 = LIVEIG.reduce((a, b) => a + (b.d7 || 0), 0);
+  const tiles = [];
+  tiles.push('<div class="hero"><div class="n">' + num(n) + '</div><div class="t">Businesses tracked</div><div class="s">' + (reg.slc || 0) + ' St. Lawrence · ' + (reg.adjacent || 0) + ' adjacent · ' + (reg.unconfirmed || 0) + ' unconfirmed</div><div class="stack" style="height:5px;margin-top:8px">' + ['slc', 'adjacent', 'unconfirmed'].map(r => '<i style="flex-grow:' + (reg[r] || 0) + ';background:' + RCOL(r) + '"></i>').join('') + '</div></div>');
+  if (LIVEIG.length) tiles.push('<div class="hero"><div class="n">' + num(LIVEIG.length) + '<small>of ' + withHandle + '</small></div><div class="t">Instagram live today</div><div class="s">Net 7 days <span class="' + (net7 > 0 ? 'up' : net7 < 0 ? 'down' : 'flat') + '">' + signed(net7) + '</span> across live accounts</div></div>');
+  if (wed.length) tiles.push('<div class="hero"><div class="n">' + money(median(wed)) + '</div><div class="t">Median wedding, from</div><div class="s">' + wed.length + ' of ' + n + ' publish a verified wedding rate</div></div>');
+  if (ses.length) tiles.push('<div class="hero"><div class="n">' + money(median(ses)) + '</div><div class="t">Median session, from</div><div class="s">' + ses.length + ' of ' + n + ' publish a verified session rate</div></div>');
+  let aiPanel = '';
+  if (ENGS.length) {
+    const ac = aiCompute('all');
+    const topAi = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).sort((a, b) => b.o.total - a.o.total || a.b.name.localeCompare(b.b.name))[0];
+    if (topAi && ac.answered) {
+      tiles.push('<div class="hero"><div class="nm-hero">' + esc(topAi.b.name) + '</div><div class="t">Most named by AI</div><div class="s"><span class="ai-hi">' + topAi.o.total + ' of ' + ac.answered + '</span> answers · audit ' + esc(dshort(DATES.ai)) + '</div></div>');
+      const engTop = e => { const t = Object.keys(ac.ids).map(id => ({ b: BY[id], o: ac.ids[id] })).filter(x => x.o[e] > 0).sort((a, b) => b.o[e] - a.o[e] || a.b.name.localeCompare(b.b.name))[0]; return t ? { name: t.b.name, count: t.o[e], den: ac.den[e] } : null; };
+      const items = ENGS.map(e => { const t = engTop(e); return t ? '<button class="ai-strip-item" data-go="ai"><span>' + esc(e) + '</span><b>' + esc(t.name) + ' · ' + t.count + ' of ' + t.den + '</b></button>' : ''; }).join('');
+      if (items) aiPanel = '<section class="panel ai-strip" aria-label="AI assistants"><div class="ai-strip-main"><div class="ai-strip-title"><h2>AI assistants</h2><span>Latest audit · directional</span></div><div class="ai-strip-items">' + items + '</div><div class="ai-strip-meta">' + ac.answered + ' answers recorded · ' + esc(dshort(DATES.ai)) + '</div><button class="link" data-go="ai">Open</button></div></section>';
+    }
+  }
+  const heroes = '<div class="heroes" style="--hn:' + tiles.length + '">' + tiles.join('') + '</div>';
+
+  const sw = sweepInfo(SW[SW.length - 1]);
+  let watchPanel = '';
+  if (sw && sw.ch > 0) {
+    const list = sw.changed.slice(0, 4).map(x => '<div class="watchchg"><b>' + esc(x.id) + '</b><span>' + esc(clean(x.note || '')) + '</span></div>').join('');
+    watchPanel = panel('Website watch', 'Sweep ' + dshort(sw.date), '<div class="watchline"><span><b>' + sw.ch + '</b> ' + plural(sw.ch, 'page') + ' changed</span><span>' + sw.fetched + ' of ' + sw.of + ' pages checked</span></div>' + (list ? '<div class="watchlist">' + list + '</div>' : ''), ['Details', 'data']);
+  }
+
+  const spot = spotlight();
+  const head = '<div class="brief-head"><div><h1>North Country market</h1><p>' + n + ' photo, video and drone businesses · ' + esc(dlong) + (LIVEIG.length ? ' · ' + LIVEIG.length + ' of ' + withHandle + ' Instagram accounts live' : '') + '</p></div></div>';
+  const cards = [moveWidget(), priceWidget(), reviewsWidget()].filter(Boolean);
+  const cardsRow = cards.length ? '<div class="brow3" style="--cn:' + cards.length + '">' + cards.join('') + '</div>' : '';
+  return '<div class="view brief' + introCls + '">' + head + spot + cardsRow +
+    fchips() + heroes +
+    (watchPanel ? '<div>' + watchPanel + '</div>' : '') + aiPanel + '</div>';
+}
+
+/* ---------- MARKET ---------- */
+const COLS = [
+  { k: 'name', l: 'Business', get: b => b.name.toLowerCase() },
+  { k: 'region', l: 'Region', cls: 'c-reg', get: b => b.region },
+  { k: 'lanes', l: 'Lanes', cls: 'c-lanes', ns: true },
+  { k: 'fol', l: 'Followers', r: 1, get: b => b.ig.state === 'live' ? b.ig.count : null },
+  { k: 'd7', l: '7 days', r: 1, cls: 'c-d7', get: b => b.ig.state === 'live' ? b.d7 : null },
+  { k: 'trend', l: 'Trend', cls: 'c-trend', ns: true },
+  { k: 'wed', l: 'Wedding from', r: 1, get: b => b.wedLive },
+  { k: 'sess', l: 'Session from', r: 1, cls: 'c-sess', get: b => b.sessLive },
+  { k: 'rev', l: 'Reviews', r: 1, cls: 'c-rev', get: b => b.rev.live ? b.rev.count : null }
+];
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  return B.filter(b => (state.lane === 'all' || b.lanes.indexOf(state.lane) >= 0) && (state.region === 'all' || b.region === state.region) &&
+    (!q || (b.name + ' ' + b.town + ' ' + b.county).toLowerCase().indexOf(q) >= 0));
+}
+function sorted(list) {
+  const col = COLS.find(c => c.k === state.sort.k) || COLS[3], d = state.sort.dir;
+  return list.slice().sort((a, b) => {
+    const x = col.get(a), y = col.get(b);
+    if (x == null && y == null) return a.name.localeCompare(b.name);
+    if (x == null) return 1; if (y == null) return -1;
+    if (x < y) return -d; if (x > y) return d;
+    return a.name.localeCompare(b.name);
+  });
+}
+function spreadStrip(list) {
+  const dir = state.sort.k === 'wed' ? state.sort.dir : -1;
+  const pts = list.filter(b => b.wedLive != null);
+  const left = '<span class="t"><b>Wedding, from</b><br>' + (pts.length >= 3 ? pts.length + ' verified prices · ' + (dir < 0 ? 'highest first' : 'lowest first') + ' ⇅' : '') + '</span>';
+  if (pts.length < 3) return '<div class="spread">' + left + '<span class="track"></span><span class="t r"></span></div>';
+  const vals = pts.map(b => b.wedLive), mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), r = mx - mn || 1, md = median(vals);
+  const pct = v => ((dir < 0 ? mx - v : v - mn) / r * 100).toFixed(2);
+  const dots = pts.map(b => '<i class="sd" data-open="' + esc(b.id) + '" data-tip="' + esc(b.name) + ' · ' + money(b.wedLive) + '" style="left:' + pct(b.wedLive) + '%"></i>').join('');
+  return '<div class="spread" data-spread="1" data-tip="Click to reverse the wedding price order">' + left +
+    '<span class="track"><i class="smed" style="left:' + pct(md) + '%"></i>' + dots + '</span>' +
+    '<span class="t r"><b>median ' + money(md) + '</b><br>' + (dir < 0 ? money(mx) + ' → ' + money(mn) : money(mn) + ' → ' + money(mx)) + '</span></div>';
+}
+
+function tableBiz(list) {
+  const head = COLS.map(c => '<th class="' + (c.cls || '') + (c.r ? ' r' : '') + (c.ns ? '' : ' s') + (state.sort.k === c.k ? ' on' : '') + '"' + (c.ns ? '' : ' data-sort="' + c.k + '"') + '>' + esc(c.l) + (state.sort.k === c.k ? '<span class="ar">' + (state.sort.dir < 0 ? '↓' : '↑') + '</span>' : '<span class="ar"></span>') + '</th>').join('');
+  const rowOf = b => '<tr data-open="' + esc(b.id) + '" class="' + (b.id === JDID ? 'jdrow' : '') + '" aria-selected="' + (state.sel === b.id) + '"><td class="nm"><b>' + esc(b.name) + '</b>' + (b.id === JDID ? ' <span class="youpill">You</span>' : '') + '<span>' + esc(b.town) + '</span></td><td class="c-reg">' + regPill(b.region) + '</td><td class="c-lanes"><div class="lanes">' + b.lanes.slice(0, 3).map(l => '<span class="lane l-' + l + '">' + LANE_NAME[l] + '</span>').join('') + (b.lanes.length > 3 ? '<span class="lane">+' + (b.lanes.length - 3) + '</span>' : '') + '</div></td><td class="r">' + cFollowers(b) + '</td><td class="r c-d7">' + cD7(b) + '</td><td class="c-trend">' + (b.ig.state === 'live' ? spark(b.spark) : '<span class="muted">—</span>') + '</td><td class="r">' + cPrice(b, 'wed') + '</td><td class="r">' + cPrice(b, 'sess') + '</td><td class="r">' + cRev(b) + '</td></tr>';
+  const jdRow = list.find(b => b.id === JDID);
+  const rest = jdRow ? list.filter(b => b.id !== JDID) : list;
+  const pin = jdRow ? '<tr class="pinlab"><td colspan="' + COLS.length + '">Your business — pinned</td></tr>' + rowOf(jdRow) : '';
+  return '<table class="tbl"><thead><tr>' + head + '</tr></thead><tbody>' + pin + rest.map(rowOf).join('') + '</tbody></table>';
+}
+function tableVen() {
+  const q = state.q.trim().toLowerCase();
+  let list = V.filter(x => (state.region === 'all' || x.region === state.region) && (!q || (x.name + ' ' + x.town).toLowerCase().indexOf(q) >= 0));
+  list = list.sort((a, b) => (b.v.capacity_num || 0) - (a.v.capacity_num || 0) || a.name.localeCompare(b.name));
+  const body = list.map(x => '<tr data-open="' + esc(x.id) + '" aria-selected="' + (state.sel === x.id) + '"><td class="nm"><b>' + esc(x.name) + '</b><span>' + esc(x.town) + '</span></td><td>' + regPill(x.region) + '</td><td class="r">' + (x.v.capacity_num ? fmt(x.v.capacity_num) : '<span class="muted">—</span>') + '</td><td class="r">' + (x.ig.state === 'live' ? '<span class="val">' + fmt(x.ig.count) + '</span>' : '<span class="muted">—</span>') + '</td><td style="white-space:normal;max-width:420px;color:var(--fg-2);font-size:12.5px">' + esc(clean(x.v.price_note || '').slice(0, 130)) + '</td></tr>').join('');
+  return { n: list.length, html: '<table class="tbl"><thead><tr><th>Venue</th><th>Region</th><th class="r">Capacity</th><th class="r">Followers</th><th>Price note</th></tr></thead><tbody>' + body + '</tbody></table>' };
+}
+function viewMarket() {
+  const lanes = [['all', 'All lanes']].concat(LANES);
+  return '<div class="view market"><div class="toolbar">' +
+    '<div class="seg sm" id="kindseg" role="tablist"><i class="thumb"></i><button data-kind="biz" aria-selected="' + (state.kind === 'biz') + '">Businesses</button><button data-kind="ven" aria-selected="' + (state.kind === 'ven') + '">Venues</button></div>' +
+    '<div class="search"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg><input id="q" type="search" placeholder="Search name or town" value="' + esc(state.q) + '" autocomplete="off"><kbd>/</kbd></div>' +
+    '<div class="chips" id="lanechips" ' + (state.kind === 'ven' ? 'hidden' : '') + '>' + lanes.map(l => '<button class="fc" data-lane="' + l[0] + '" aria-pressed="' + (state.lane === l[0]) + '">' + l[1] + '</button>').join('') + '</div>' +
+    '<div class="chips">' + [['all', 'All regions'], ['slc', 'St. Lawrence'], ['adjacent', 'Adjacent'], ['unconfirmed', 'Unconfirmed']].map(r => '<button class="fc" data-reg="' + r[0] + '" aria-pressed="' + (state.region === r[0]) + '">' + r[1] + '</button>').join('') + '</div>' +
+    '<span class="spacer"></span><span class="count" id="cnt"></span><button class="btn" id="csv">Copy CSV</button></div>' +
+    '<div id="spreadwrap"></div><div class="tblwrap" id="tw"></div></div>';
+}
+function fillMarket() {
+  const tw = $('#tw'); if (!tw) return;
+  const keep = tw.scrollTop;
+  if (state.kind === 'ven') {
+    const t = tableVen(); tw.innerHTML = t.html; $('#cnt').textContent = t.n + ' of ' + V.length + ' venues'; $('#spreadwrap').innerHTML = '';
+  } else {
+    const list = filtered(); tw.innerHTML = tableBiz(sorted(list)); $('#cnt').textContent = list.length + ' of ' + B.length + ' businesses'; $('#spreadwrap').innerHTML = spreadStrip(list);
+  }
+  tw.scrollTop = keep;
+}
+function csvBiz() {
+  const rows = [['name', 'town', 'county', 'region', 'lanes', 'instagram_followers_live', 'followers_7d', 'wedding_from_verified', 'session_from_verified', 'reviews_current', 'rating_current', 'website']];
+  sorted(filtered()).forEach(b => rows.push([b.name, b.town, b.county, b.region, b.lanes.map(l => LANE_NAME[l]).join('/'), b.ig.state === 'live' ? b.ig.count : '', b.d7 == null ? '' : b.d7, b.wedLive == null ? '' : b.wedLive, b.sessLive == null ? '' : b.sessLive, b.rev.live ? b.rev.count : '', b.rev.live && b.rev.rating != null ? b.rev.rating : '', b.c.website || '']));
+  return rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(',')).join('\n');
+}
+
+/* ---------- DRAWER ---------- */
+function fig(v, k) { return '<div class="fig"><div class="v">' + v + '</div><div class="k">' + k + '</div></div>'; }
+function openBiz(id) {
+  const b = BY[id]; if (!b) return;
+  const c = b.c, det = DET[id] || {}, wi = WI[id] || {};
+  const links = [];
+  if (c.website) links.push('<a href="' + esc(/^https?:/.test(c.website) ? c.website : 'https://' + c.website) + '" target="_blank" rel="noopener">Website</a>');
+  if (c.ig_handle) links.push('<a href="https://instagram.com/' + esc(c.ig_handle) + '" target="_blank" rel="noopener">Instagram</a>');
+  if (c.review_url) links.push('<a href="' + esc(c.review_url) + '" target="_blank" rel="noopener">Reviews</a>');
+  if (c.pricing_url && b.shown) links.push('<a href="' + esc(c.pricing_url) + '" target="_blank" rel="noopener">Pricing page</a>');
+  const figs = '<div class="figs">' +
+    fig(b.ig.state === 'live' ? fmt(b.ig.count) : '—', 'Instagram followers') +
+    fig(b.ig.state === 'live' && b.d7 != null ? '<span class="' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + '</span>' : '—', 'Followers, 7 days') +
+    fig(b.rev.live && c.review_count != null ? fmt(c.review_count) + (c.review_rating != null ? ' · ' + Number(c.review_rating).toFixed(1) : '') : '—', 'Reviews') +
+    fig(b.shown && b.price.wed != null ? money(b.price.wed) : '—', 'Wedding, from') +
+    fig(b.shown && b.price.sess != null ? money(b.price.sess) : '—', 'Session, from') + '</div>';
+  const hs = D.igFollowersHistory[c.ig_handle];
+  const chart = b.ig.state === 'live' && hs && hs.length > 2 ? '<div class="dr-sec dr-chart"><h3>Followers</h3>' + bigChart(hs.slice(-30).map(e => e.count), hs.slice(-30).map(e => e.date)) + '</div>' : '';
+  const about = clean(det.blurb || c.biography || '');
+  const svc = (det.services && det.services.length ? det.services : c.services || []).map(clean).filter(s => s && !/^events?$/i.test(s));
+  const cov = (det.coverage ? [].concat(det.coverage) : wi.coverage || []).map(clean).filter(Boolean);
+  const pr = b.shown && c.pricing ? '<div class="dr-sec"><h3>Published pricing · verified ' + esc(dshort(b.pdate)) + '</h3><p class="dr-text">' + esc(clean(c.pricing)) + '</p></div>' : '';
+  let aiSec = '';
+  if (ENGS.length) {
+    const ac = aiCompute('all'), o = ac.ids[id] || { total: 0 };
+    if (ac.answered) aiSec = '<div class="dr-sec"><h3>In AI assistant answers · ' + esc(dshort(DATES.ai)) + ', directional</h3><div class="ailine">' + ENGS.map(e => '<span>' + esc(e) + '</span><span>' + (o[e] || 0) + ' of ' + ac.den[e] + '</span>').join('') + '</div></div>';
+  }
+  const pm = POST[id];
+  let postSec = '';
+  if (pm && (pm.media != null || pm.eng || lastPostApi(b))) {
+    const lp = lastPostApi(b), la = age(lp);
+    const pfigs = '<div class="figs">' +
+      fig(pm.media != null ? fmt(pm.media) : '—', 'Posts, all time') +
+      fig(pm.p30 != null ? pm.p30 : '—', 'Posts, last 30 days') +
+      fig(pm.p7 != null ? pm.p7 : '—', 'Posts, last 7 days') +
+      fig(lp ? dshort(lp) : '—', 'Last post (API)' + (la != null ? ' · ' + ageText(la) : '')) + '</div>';
+    let engHtml = '';
+    if (pm.eng) {
+      const bars = (pm.eng.bars || []).map(v => '<i style="height:' + Math.max(8, Math.min(100, v * 3)) + '%"></i>').join('');
+      engHtml = '<div class="engrow"><div class="engnums"><span><b>' + (pm.eng.avg_likes != null ? pm.eng.avg_likes : '—') + '</b> avg likes</span><span><b>' + (pm.eng.avg_comments != null ? pm.eng.avg_comments : '—') + '</b> avg comments</span><span><b>' + (pm.eng.rate_pct != null ? pm.eng.rate_pct + '%' : '—') + '</b> engagement rate</span></div>' +
+        (bars ? '<div class="engbars" title="Engagement rate of the last ' + (pm.eng.posts || (pm.eng.bars || []).length) + ' posts">' + bars + '</div>' : '') +
+        '<div class="engcap">Across the last ' + (pm.eng.posts || '—') + ' posts · Instagram API, pulled ' + esc(dshort(pm.engDate)) + '</div></div>';
+    }
+    postSec = '<div class="dr-sec"><h3>Posting pulse</h3>' + pfigs + engHtml + '</div>';
+  }
+  const cf = (D.confidence || {})[id];
+  const confSec = cf && cf.score != null ? '<div class="dr-sec"><h3>Data coverage · assessed Oct 2026</h3><div class="confl"><span class="confscore">' + cf.score + '</span><span class="confparts">' + Object.keys(cf.parts || {}).map(k => esc(k) + ' ' + cf.parts[k]).join(' · ') + (cf.conflict ? '<br>Conflict on file: ' + esc(cf.conflict) : '') + '</span></div></div>' : '';
+  const conn = D.connections.filter(x => flat(x.a) === flat(b.name) || flat(x.b) === flat(b.name));
+  const connSec = conn.length ? '<div class="dr-sec"><h3>Worked with</h3><div class="tags">' + conn.map(x => pill((flat(x.a) === flat(b.name) ? x.b : x.a) + (x.type ? ' · ' + x.type : ''), 'gray')).join('') + '</div></div>' : '';
+  const gaps = []; if (!c.website) gaps.push('No website'); if (!c.pricing) gaps.push(b.gap ? 'Pricing: ' + b.gap.reason.toLowerCase() + ' (checked ' + dshort(b.gap.checked) + ')' : 'No published pricing'); if (!c.ig_handle) gaps.push('No Instagram handle');
+  const gapSec = gaps.length ? '<div class="dr-sec"><h3>Not available</h3><div class="gaps">' + gaps.map(g => pill(g, 'gray')).join('') + '</div></div>' : '';
+  drawer.innerHTML = '<div class="dr-head"><button class="dr-x" data-close aria-label="Close">×</button><h2>' + esc(b.name) + '</h2><div class="where">' + esc(b.town) + (b.county && b.region !== 'slc' ? ' · ' + esc(b.county) + ' County' : '') + '</div><div class="dr-links">' + regPill(b.region) + links.join('') + '</div></div>' +
+    '<div class="dr-body">' + figs + chart + (about ? '<div class="dr-sec"><h3>About</h3><p class="dr-text">' + esc(about) + '</p></div>' : '') +
+    (svc.length ? '<div class="dr-sec"><h3>Services</h3><div class="tags">' + svc.map(s => pill(s, '')).join('') + '</div></div>' : '') +
+    (cov.length ? '<div class="dr-sec"><h3>Coverage area</h3><div class="tags">' + cov.map(s => pill(s, 'tan')).join('') + '</div></div>' : '') + pr + postSec + aiSec + connSec + confSec + gapSec + '</div>';
+  showDrawer(id);
+}
+function openVen(id) {
+  const x = VBY[id]; if (!x) return; const v = x.v;
+  const links = [];
+  if (v.website) links.push('<a href="' + esc(v.website) + '" target="_blank" rel="noopener">Website</a>');
+  if (v.ig_handle) links.push('<a href="https://instagram.com/' + esc(v.ig_handle) + '" target="_blank" rel="noopener">Instagram</a>');
+  const figs = '<div class="figs">' + fig(v.capacity_num ? fmt(v.capacity_num) : '—', 'Guest capacity') + fig(x.ig.state === 'live' ? fmt(x.ig.count) : '—', 'Instagram followers') + '</div>';
+  const list = (t, a) => a && a.length ? '<div class="dr-sec"><h3>' + t + '</h3><div class="tags">' + a.map(s => pill(clean(s), '')).join('') + '</div></div>' : '';
+  drawer.innerHTML = '<div class="dr-head"><button class="dr-x" data-close aria-label="Close">×</button><h2>' + esc(x.name) + '</h2><div class="where">' + esc(v.address || x.town) + '</div><div class="dr-links">' + regPill(x.region) + links.join('') + '</div></div>' +
+    '<div class="dr-body">' + figs + (v.price_note ? '<div class="dr-sec"><h3>Price note</h3><p class="dr-text">' + esc(clean(v.price_note)) + '</p></div>' : '') +
+    (v.setting ? '<div class="dr-sec"><h3>Setting</h3><p class="dr-text">' + esc(clean(v.setting)) + (v.season ? ' · ' + esc(clean(v.season)) : '') + '</p></div>' : '') + list('Spaces', v.spaces) + list('Services', (v.services || []).filter(s => !/^events?$/i.test(s))) + '</div>';
+  showDrawer(id);
+}
+function showDrawer(id) {
+  state.sel = id; drawer.classList.add('open'); drawer.setAttribute('aria-hidden', 'false'); stage.classList.add('has-drawer');
+  $$('tr[data-open]').forEach(tr => tr.setAttribute('aria-selected', String(tr.dataset.open === id)));
+  $$('.bub').forEach(g => g.classList.toggle('sel', g.dataset.open === id));
+  const body = $('.dr-body', drawer); if (body) body.scrollTop = 0;
+}
+function closeDrawer() {
+  state.sel = null; drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true'); stage.classList.remove('has-drawer');
+  $$('tr[data-open]').forEach(tr => tr.setAttribute('aria-selected', 'false')); $$('.bub.sel').forEach(g => g.classList.remove('sel'));
+}
+function openAny(id) { if (id.indexOf('v:') === 0) openVen(id); else openBiz(id); }
+
+/* ---------- MAP (tile-free, schematic) ---------- */
+const MK = 423.2, MC = 0.716, MX0 = -76.5, MY0 = 45.1;
+const proj = (lat, lng) => [(lng - MX0) * MC * MK, (MY0 - lat) * MK];
+const poly = pts => pts.map((p, i) => { const q = proj(p[1], p[0]); return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join('');
+const RIVER = [[-76.33, 44.13], [-76.08, 44.24], [-75.92, 44.34], [-75.7, 44.52], [-75.5, 44.70], [-75.2, 44.86], [-74.9, 44.99], [-74.7, 45.0]];
+const tname = t => String(t || '').replace(/,\s*NY.*$/, '').replace(/\s*[—(].*$/, '').trim() || 'Unknown';
+let MAPPTS = [], MAPMISS = 0, curBox = [0, 0, 1000, 677];
+function mapPoints() {
+  const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {}, cnt = {};
+  MAPPTS = []; MAPMISS = 0;
+  const place = (id, name, town, region, kind, ll, ig) => {
+    if (!ll) { if (kind === 'b') MAPMISS++; return; }
+    const i = cnt[town] = (cnt[town] || 0) + 1, p = proj(ll[0], ll[1]);
+    const ang = i * 2.4, rr = i > 1 ? 9 * Math.sqrt(i - 1) : 0;
+    MAPPTS.push({ id, name, town, tn: tname(town), region, kind, x: p[0] + Math.cos(ang) * rr, y: p[1] + Math.sin(ang) * rr, ig });
+  };
+  B.forEach(b => { const c = coords[al[b.town] || b.town]; place(b.id, b.name, b.town, b.region, 'b', c ? [c.lat, c.lng] : null, b.ig); });
+  if (state.mapVen) V.forEach(x => place(x.id, x.name, x.town, x.region, 'v', x.v.lat != null ? [x.v.lat, x.v.lng] : null, x.ig));
+}
+function boxFor(which) {
+  if (which === 'all') return [0, 0, 1000, 677];
+  const pts = MAPPTS.filter(p => p.region === 'slc'); if (!pts.length) return [0, 0, 1000, 677];
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y), x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  let w = Math.max(x1 - x0 + 120, (y1 - y0 + 120) * 1000 / 677, 300), h = w * 677 / 1000;
+  return [(x0 + x1) / 2 - w / 2, (y0 + y1) / 2 - h / 2, w, h];
+}
+function applyBox(b) { const s = $('#mapsvg'); if (!s) return; curBox = b; s.setAttribute('viewBox', b.map(v => v.toFixed(1)).join(' ')); s.style.setProperty('--k', (b[2] / 1000).toFixed(4)); }
+function animBox(to) {
+  const from = curBox.slice(), t0 = performance.now(), dur = REDUCED ? 1 : 620;
+  const step = t => { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 4); applyBox(from.map((v, i) => v + (to[i] - v) * e)); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function mapSvg() {
+  const P = pal();
+  let g = '';
+  for (let la = 43.5; la <= 45.01; la += 0.5) { const y = proj(la, MX0)[1]; g += '<line x1="0" x2="1000" y1="' + y + '" y2="' + y + '" stroke="' + P.grid + '" vector-effect="non-scaling-stroke"/>'; }
+  for (let ln = -76; ln <= -73.5; ln += 1) { const x = proj(45, ln)[0]; g += '<line y1="0" y2="677" x1="' + x + '" x2="' + x + '" stroke="' + P.grid + '" vector-effect="non-scaling-stroke"/>'; }
+  const canada = poly([[-76.5, 44.05]].concat(RIVER, [[-73.34, 45.0], [-73.3, 45.1], [-76.5, 45.1]])) + 'Z';
+  const lake = poly([[-76.5, 44.05], [-76.33, 44.13], [-76.28, 43.85], [-76.35, 43.5], [-76.5, 43.5]]) + 'Z';
+  const champ = poly([[-73.35, 45.0], [-73.4, 44.5], [-73.42, 44.0], [-73.4, 43.6]]);
+  g += '<path d="' + canada + '" fill="' + P.land2 + '"/><path d="' + lake + '" fill="' + P.land + '"/>' +
+    '<path d="' + poly([[-76.5, 44.05]].concat(RIVER, [[-73.34, 45.0]])) + '" fill="none" stroke="' + P.river + '" stroke-width="1.2" vector-effect="non-scaling-stroke"/>' +
+    '<path d="' + champ + '" fill="none" stroke="' + P.champ + '" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
+  const lbl = (t, lat, lng) => { const p = proj(lat, lng); return '<text x="' + p[0] + '" y="' + p[1] + '" fill="' + P.lblMute + '" font-style="italic" style="font-size:calc(13px*var(--k))">' + t + '</text>'; };
+  g += lbl('Canada', 45.06, -75.6) + lbl('St. Lawrence River', 44.83, -75.95) + lbl('Lake Ontario', 43.8, -76.45) + lbl('Lake Champlain', 44.2, -73.7);
+  const byTown = {}; MAPPTS.forEach(p => { if (p.kind === 'b') byTown[p.tn] = (byTown[p.tn] || 0) + 1; });
+  const rawOf = {}; MAPPTS.forEach(p => { if (!rawOf[p.tn]) rawOf[p.tn] = p.town; });
+  const dim = t => state.mapTown && state.mapTown !== t;
+  const pts = MAPPTS.slice().sort((a, b) => (b.ig && b.ig.state === 'live' ? b.ig.count : 0) - (a.ig && a.ig.state === 'live' ? a.ig.count : 0)).map(p => {
+    const col = RCOL(p.region), live = p.ig && p.ig.state === 'live';
+    const r = live ? Math.max(5, Math.min(16, 3.2 + Math.sqrt(p.ig.count) / 5)) : 4.5;
+    const shape = p.kind === 'v' ? '<rect class="core" x="' + (-r * .8) + '" y="' + (-r * .8) + '" width="' + (r * 1.6) + '" height="' + (r * 1.6) + '" transform="rotate(45)" fill="none" stroke="' + pal().venue + '" stroke-width="1.6"/>' :
+      '<circle class="core" r="' + r.toFixed(1) + '" fill="' + col + '" fill-opacity="' + (live ? .62 : .28) + '" stroke="' + col + '" stroke-width="1.3"' + (live ? '' : ' stroke-dasharray="2 2"') + '/>';
+    return '<g class="bub ' + (dim(p.tn) ? 'dim' : '') + (state.sel === p.id ? ' sel' : '') + '" data-open="' + esc(p.id) + '" data-tip="' + esc(p.name) + (p.kind === 'v' ? ' · venue' : live ? ' · ' + fmt(p.ig.count) + ' followers' : '') + '" style="transform:translate(' + p.x.toFixed(1) + 'px,' + p.y.toFixed(1) + 'px) scale(var(--k))">' + shape + '</g>';
+  }).join('');
+  const coords = D.townCoords.coords || {};
+  const names = Object.keys(byTown).filter(t => !/county|upstate|adirondacks/i.test(t)).sort((a, b) => byTown[b] - byTown[a]).slice(0, 7).map(t => {
+    const c = coords[(D.townCoords.aliases || {})[rawOf[t]] || rawOf[t]]; if (!c) return ''; const p = proj(c.lat, c.lng);
+    return '<text style="transform:translate(' + p[0].toFixed(1) + 'px,' + (p[1] + 24).toFixed(1) + 'px) scale(var(--k))" text-anchor="middle" fill="' + pal().townName + '" font-size="12" font-weight="500" pointer-events="none">' + esc(t) + '</text>';
+  }).join('');
+  return '<svg id="mapsvg" viewBox="' + curBox.join(' ') + '" style="--k:' + (curBox[2] / 1000) + '" preserveAspectRatio="xMidYMid meet">' + g + names + pts + '</svg>';
+}
+function viewMap() {
+  mapPoints();
+  const towns = {}; MAPPTS.filter(p => p.kind === 'b').forEach(p => towns[p.tn] = (towns[p.tn] || 0) + 1);
+  const list = Object.keys(towns).sort((a, b) => towns[b] - towns[a] || a.localeCompare(b)).map(t => '<button class="li" data-town="' + esc(t) + '" style="' + (state.mapTown === t ? 'background:var(--ice-bg)' : '') + '"><span class="nm">' + esc(t) + '</span><span class="rt">' + towns[t] + '</span></button>').join('');
+  return '<div class="view mapv"><div class="mapcard"><div class="mapctl"><div class="seg sm" id="boxseg"><i class="thumb"></i><button data-box="all" aria-selected="true">North Country</button><button data-box="slc" aria-selected="false">St. Lawrence County</button></div><button class="fc" id="venToggle" aria-pressed="' + state.mapVen + '">Venues</button></div><div id="mapid"></div>' +
+    '<div class="mapnote">Drag to pan, scroll to zoom. Solid circles are live Instagram accounts sized by followers; hollow circles are not refreshed. ' + (MAPMISS ? MAPMISS + ' without a mapped town.' : '') + '</div></div>' +
+    '<section class="panel maplist"><div class="panel-h"><h2>Towns</h2><span class="sub">' + MAPPTS.filter(p => p.kind === 'b').length + ' businesses</span></div><div class="panel-b list">' + list + '</div></section></div>';
+}
+let bpMap = null, bpBounds = { all: null, slc: null }, bpVenLayer = null;
+function initMap() {
+  const el = document.getElementById('mapid'); if (!el) return;
+  if (!window.L) { el.innerHTML = mapSvg(); const s = $('#mapsvg'); if (s) applyBox(curBox); return; }
+  if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
+  bpMap = L.map(el, { zoomControl: false, scrollWheelZoom: true });
+  L.control.zoom({ position: 'bottomright' }).addTo(bpMap);
+  /* Basemap follows the theme mode: Esri World Light Gray in light
+     mode, World Dark Gray in dark mode (never CARTO — watermarked). */
+  const darkTiles = themeState().mode === 'dark';
+  const tileBase = darkTiles ? 'Canvas/World_Dark_Gray_Base' : 'Canvas/World_Light_Gray_Base';
+  const tileRef = darkTiles ? 'Canvas/World_Dark_Gray_Reference' : 'Canvas/World_Light_Gray_Reference';
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + tileBase + '/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Esri, USGS, NOAA &copy; OpenStreetMap contributors' }).addTo(bpMap);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' + tileRef + '/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(bpMap);
+  const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {}, cnt = {};
+  const all = [], slcPts = [];
+  const placeLL = (id, name, town, region, kind, ll, ig) => {
+    if (!ll) return;
+    const i = cnt[town] = (cnt[town] || 0) + 1;
+    const ang = i * 2.4, rr = i > 1 ? 0.014 * Math.sqrt(i - 1) : 0;
+    const lat = ll[0] + Math.sin(ang) * rr, lng = ll[1] + Math.cos(ang) * rr * 1.4;
+    all.push([lat, lng]); if (region === 'slc') slcPts.push([lat, lng]);
+    const live = ig && ig.state === 'live';
+    const col = kind === 'v' ? pal().venue : RCOL(region);
+    const m = L.circleMarker([lat, lng], { radius: live ? Math.max(6, Math.min(17, 3.2 + Math.sqrt(ig.count) / 5)) : 5, color: col, weight: 1.4, dashArray: live ? null : '2 3', fillColor: col, fillOpacity: live ? .6 : .22 }).addTo(bpMap);
+    m.bindTooltip(name + (kind === 'v' ? ' · venue' : live ? ' · ' + fmt(ig.count) + ' followers' : ''), { direction: 'top', offset: [0, -6] });
+    m.on('click', () => openAny(id));
+  };
+  B.forEach(b => { const c = coords[al[b.town] || b.town]; placeLL(b.id, b.name, b.town, b.region, 'b', c ? [c.lat, c.lng] : null, b.ig); });
+  bpVenLayer = L.layerGroup();
+  const venCol = pal().venue;
+  V.forEach(x => { if (x.v.lat == null) return; const m = L.circleMarker([x.v.lat, x.v.lng], { radius: 6, color: venCol, weight: 1.4, fillColor: venCol, fillOpacity: .5 }); m.bindTooltip(x.name + ' · venue', { direction: 'top', offset: [0, -6] }); m.on('click', () => openAny(x.id)); bpVenLayer.addLayer(m); });
+  if (state.mapVen) bpVenLayer.addTo(bpMap);
+  bpBounds = { all: all.length ? all : null, slc: slcPts.length ? slcPts : null };
+  if (state.mapTown) flyTown(state.mapTown);
+  else if (all.length) bpMap.fitBounds(all, { padding: [28, 28] });
+  else bpMap.setView([44.55, -75.35], 8);
+  setTimeout(() => { if (bpMap) bpMap.invalidateSize(); }, 60);
+}
+function flyTown(t) {
+  if (!bpMap) return;
+  const coords = D.townCoords.coords || {}, al = D.townCoords.aliases || {};
+  const b = B.find(x => tname(x.town) === t);
+  const c = b && coords[al[b.town] || b.town];
+  if (c) bpMap.flyTo([c.lat, c.lng], 11, { duration: REDUCED ? 0 : 0.7 });
+}
+
+/* ---------- TRENDS ---------- */
+function trendSeries() {
+  const handles = LIVEIG.map(b => b.c.ig_handle).filter(h => h && D.igFollowersHistory[h] && D.igFollowersHistory[h].length > 1);
+  if (!handles.length) return null;
+  const allDates = new Set();
+  handles.forEach(h => D.igFollowersHistory[h].forEach(e => allDates.add(e.date)));
+  const dates = Array.from(allDates).sort();
+  const lastD = dn(dates[dates.length - 1]);
+  const cohort = handles.filter(h => D.igFollowersHistory[h].some(e => dn(e.date) <= lastD - 30));
+  if (cohort.length < 3) return null;
+  const use = dates.filter(d => dn(d) >= lastD - 45);
+  if (use.length < 5) return null;
+  const vals = use.map(d => {
+    let sum = 0;
+    cohort.forEach(h => {
+      const hs = D.igFollowersHistory[h]; let v = null;
+      hs.forEach(e => { if (e.date <= d) v = e.count; });
+      if (v != null) sum += v;
+    });
+    return sum;
+  });
+  const at = days => { const t = lastD - days; let v = null; use.forEach((d, i) => { if (dn(d) <= t) v = vals[i]; }); return v; };
+  const now = vals[vals.length - 1], v7 = at(7), v30 = at(30);
+  return { dates: use, vals, n: cohort.length, now, d7: v7 == null ? null : now - v7, d30: v30 == null ? null : now - v30 };
+}
+function trendSelData() {
+  if (state.trendSel === 'all') {
+    const ts = trendSeries();
+    return ts ? { title: 'All live accounts', dates: ts.dates, vals: ts.vals, now: ts.now, d7: ts.d7, d30: ts.d30, sub: ts.n + ' accounts with 30+ days of history' } : null;
+  }
+  const b = BY[state.trendSel];
+  if (!b || b.ig.state !== 'live') return trendSelDataAll();
+  const hs = (D.igFollowersHistory[b.c.ig_handle] || []).slice(-60);
+  if (hs.length < 2) return trendSelDataAll();
+  return { title: b.name, dates: hs.map(e => e.date), vals: hs.map(e => e.count), now: b.ig.count, d7: b.d7, d30: b.d30, sub: b.town };
+}
+function trendSelDataAll() { state.trendSel = 'all'; const ts = trendSeries(); return ts ? { title: 'All live accounts', dates: ts.dates, vals: ts.vals, now: ts.now, d7: ts.d7, d30: ts.d30, sub: ts.n + ' accounts with 30+ days of history' } : null; }
+function viewTrends() {
+  const parts = [];
+  const sel = trendSelData();
+  if (sel) {
+    const top = LIVEIG.slice().sort((a, b) => b.ig.count - a.ig.count).slice(0, 8);
+    const chips = '<div class="chips" style="margin-bottom:12px"><button class="fc" data-tsel="all" aria-pressed="' + (state.trendSel === 'all') + '">All live accounts</button>' +
+      top.map(b => '<button class="fc" data-tsel="' + esc(b.id) + '" aria-pressed="' + (state.trendSel === b.id) + '">' + esc(b.name) + '</button>').join('') + '</div>';
+    const stat3 = '<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">' +
+      '<div class="tile"><div class="n">' + fmt(sel.now) + '</div><div class="t">Followers · ' + esc(sel.sub) + '</div></div>' +
+      '<div class="tile"><div class="n ' + (sel.d7 > 0 ? 'up' : sel.d7 < 0 ? 'down' : '') + '">' + (sel.d7 == null ? '—' : signed(sel.d7)) + '</div><div class="t">Last 7 days</div></div>' +
+      '<div class="tile"><div class="n ' + (sel.d30 > 0 ? 'up' : sel.d30 < 0 ? 'down' : '') + '">' + (sel.d30 == null ? '—' : signed(sel.d30)) + '</div><div class="t">Last 30 days</div></div></div>';
+    parts.push(panel('Followers · ' + sel.title, 'Daily pulls', chips + stat3 + '<div style="padding:10px 2px 2px">' + wideChart(sel.vals, sel.dates, 'Followers') + '</div>'));
+    const rows = LIVEIG.slice().sort((a, b) => b.ig.count - a.ig.count).map(b =>
+      '<button class="mrow tsel' + (state.trendSel === b.id ? ' on' : '') + '" data-tsel="' + esc(b.id) + '"><span class="mnm"><b>' + esc(b.name) + '</b><span>' + esc(b.town) + '</span></span>' +
+      '<span class="tspark">' + spark(b.spark) + '</span>' +
+      '<span class="mval"><b>' + fmt(b.ig.count) + '</b><small>' +
+      (b.d7 != null ? '<span class="' + (b.d7 > 0 ? 'up' : b.d7 < 0 ? 'down' : 'flat') + '">' + signed(b.d7) + ' / 7d</span>' : '') +
+      (b.d30 != null ? ' · <span class="' + (b.d30 > 0 ? 'up' : b.d30 < 0 ? 'down' : 'flat') + '">' + signed(b.d30) + ' / 30d</span>' : '') + '</small></span></button>').join('');
+    parts.push(panel('Accounts', 'Select one to chart it', '<div class="acctlist">' + rows + '</div>'));
+  }
+  const groups = {};
+  AIROWS.forEach(r => { const k = r.date + '|' + r.engine; (groups[k] = groups[k] || { date: r.date, engine: r.engine, rows: [] }).rows.push(r); });
+  const audits = Object.keys(groups).map(k => groups[k]).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.engine.localeCompare(b.engine));
+  if (audits.length) {
+    const rows = audits.map(g => {
+      const counts = {};
+      let jd = 0, done = 0;
+      g.rows.forEach(r => {
+        if (!r.completed) return; done++;
+        const seen = new Set();
+        (r.named || []).forEach(n => { const id = matchName(n); if (id && !seen.has(id)) { seen.add(id); counts[id] = (counts[id] || 0) + 1; if (id === 'jd-meyers-productions') jd++; } });
+      });
+      const top = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || BY[a].name.localeCompare(BY[b].name))[0];
+      return '<tr><td>' + esc(dshort(g.date)) + '</td><td>' + esc(g.engine) + '</td><td class="r">' + done + ' of ' + ACTIVE.length + '</td><td class="r"><b class="' + (jd ? 'ai-hi' : '') + '">' + jd + '</b></td><td>' + (top ? esc(BY[top].name) + ' · ' + counts[top] : '—') + '</td></tr>';
+    }).join('');
+    parts.push(panel('AI audits, history', 'JD Meyers Productions named, of answers recorded', '<table class="mini"><thead><tr><th>Date</th><th>Assistant</th><th class="r">Answers</th><th class="r">JD named</th><th>Most named</th></tr></thead><tbody>' + rows + '</tbody></table>'));
+  }
+  const TP = (D.trendPoints || []).slice().sort((a, b) => a.date < b.date ? -1 : 1);
+  if (TP.length >= 2) {
+    const rows = TP.map(p => '<tr><td>' + esc(dshort(p.date)) + '</td><td class="r">' + (p.medWed == null ? '—' : money(p.medWed)) + '</td><td class="r">' + (p.nWed || 0) + '</td><td class="r">' + (p.medSess == null ? '—' : money(p.medSess)) + '</td><td class="r">' + (p.nSess || 0) + '</td><td class="r">' + (p.revTotal == null ? '—' : fmt(p.revTotal)) + '</td></tr>').join('');
+    parts.push(panel('Market levels, by build date', 'Medians from verified pricing only', '<table class="mini"><thead><tr><th>Date</th><th class="r">Median wedding</th><th class="r">Rates</th><th class="r">Median session</th><th class="r">Rates</th><th class="r">Reviews, total</th></tr></thead><tbody>' + rows + '</tbody></table>'));
+  }
+  return '<div class="view scroll"><div class="trends"><div class="page-h"><div><h1>Trends</h1><p>Movement over time, drawn only from series that were actually recorded. Pick an account and the chart follows it.</p></div></div>' +
+    (parts.length ? '<div style="display:grid;gap:14px">' + parts.join('') + '</div>' : empty('No series has enough recorded points yet')) + '</div></div>';
+}
+
+/* ---------- AI VISIBILITY ---------- */
+const AI_LANES = [['all', 'All prompts'], ['wed', 'Wedding photo'], ['vid', 'Wedding video'], ['port', 'Portrait and family'], ['re', 'Real estate'], ['dr', 'Drone'], ['com', 'Commercial']];
+function traitRows(inIds) {
+  const T = [
+    ['Has a website', b => !!b.c.website],
+    ['Publishes pricing, verified current', b => b.shown],
+    ['Located in St. Lawrence County', b => b.region === 'slc'],
+    ['Has 10 or more reviews', b => b.rev.live ? b.rev.count >= 10 : null],
+    ['Instagram live today', b => b.ig.state === 'live'],
+    ['Offers three or more lanes', b => b.lanes.length >= 3]
+  ];
+  const A = B.filter(b => inIds.has(b.id)), N = B.filter(b => !inIds.has(b.id));
+  const cnt = (g, f) => { let k = 0, t = 0; g.forEach(b => { const v = f(b); if (v == null) return; t++; if (v) k++; }); return [k, t]; };
+  return { A: A.length, N: N.length, rows: T.map(t => ({ l: t[0], a: cnt(A, t[1]), n: cnt(N, t[1]) })) };
+}
+function viewAI() {
+  const lane = state.aiLane, ac = aiCompute(lane);
+  const entries = B.map(b => ({ b, o: ac.ids[b.id] || { total: 0 } })).sort((x, y) => y.o.total - x.o.total || x.b.name.localeCompare(y.b.name));
+  const named = entries.filter(e => e.o.total > 0);
+  const max = named.length ? named[0].o.total : 1;
+  const offList = Object.keys(ac.off).map(k => ac.off[k]).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const cols = '28px minmax(0,1fr)' + ENGS.map(() => ' 92px').join('') + ' 118px';
+  const row = (e, i) => '<button class="lb-r' + (e.b.id === JDID ? ' me' : '') + '" data-open="' + esc(e.b.id) + '" style="grid-template-columns:' + cols + '"><span class="rk">' + (i + 1) + '</span><span class="nm"><b>' + esc(e.b.name) + (e.b.id === JDID ? ' <span class="youpill">You</span>' : '') + '</b><span class="bar2"><i style="width:' + (e.o.total / max * 100).toFixed(1) + '%"></i></span></span>' +
+    ENGS.map(en => '<span class="c">' + (e.o[en] || 0) + ' of ' + ac.den[en] + '</span>').join('') +
+    '<span class="t ' + (e.o.total / ac.answered >= 0.75 ? 'ai-hi' : e.o.total / ac.answered >= 0.4 ? 'ai-mid' : 'ai-lo') + '">' + e.o.total + ' of ' + ac.answered + ' answers</span></button>';
+  const lb = '<div class="lb"><div class="lb-h" style="grid-template-columns:' + cols + '"><span></span><span>Business</span>' + ENGS.map(en => '<span>' + esc(en) + '</span>').join('') + '<span>All shown</span></div>' +
+    (named.length ? named.map(row).join('') : empty('Nobody was named for these prompts')) + '</div>';
+  const prompts = ACTIVE.filter(p => lane === 'all' || (p.services || []).indexOf(lane) >= 0);
+  const byP = {}; ENGS.forEach(e => AI[e].rows.forEach(r => { (byP[r.prompt_id] = byP[r.prompt_id] || {})[e] = r; }));
+  const mxCols = 'minmax(0,1fr)' + ENGS.map(() => ' 58px').join('');
+  const mx = '<div class="mx"><div class="mx-r h" style="grid-template-columns:' + mxCols + '"><span>Prompt asked</span>' + ENGS.map(en => '<span style="text-align:right">' + esc(en) + '</span>').join('') + '</div>' + prompts.map(p => {
+    const r = byP[p.id] || {}, cell = e => !r[e] || !r[e].completed ? '<span class="muted">—</span>' : (r[e].named || []).length;
+    const open = state.aiOpen[p.id];
+    const names = e => !r[e] || !r[e].completed ? '' : (r[e].named || []).map(n => { const id = matchName(n); return id ? '<button class="pill ice" data-open="' + esc(id) + '" style="border:0;cursor:pointer">' + esc(clean(n)) + '</button>' : pill(clean(n), 'gray'); }).join('') || '<span class="muted" style="font-size:12px">No businesses named</span>';
+    return '<button class="mx-r" data-mx="' + esc(p.id) + '" style="grid-template-columns:' + mxCols + '"><span class="p">' + esc(p.text) + '<small>' + (open ? 'Hide' : 'Show') + ' who was named</small></span>' + ENGS.map(en => '<span class="c">' + cell(en) + '</span>').join('') + '</button>' +
+      (open ? '<div class="mx-open">' + ENGS.map(en => '<b style="font-size:11.5px;color:var(--fg-3);font-weight:500">' + esc(en) + '</b><div class="tags">' + names(en) + '</div>').join('') + '</div>' : '');
+  }).join('') + '</div>';
+  const tr = traitRows(new Set(named.map(e => e.b.id)));
+  const traits = '<div class="share"><div class="sh-h"><span></span><span>Named by an assistant (' + tr.A + ')</span><span>Rest of roster (' + tr.N + ')</span></div>' + tr.rows.map(r => '<div class="sh-r"><span class="k">' + esc(r.l) + '</span><span class="b"><i style="width:' + (r.a[1] ? r.a[0] / r.a[1] * 100 : 0).toFixed(1) + '%"></i><span>' + r.a[0] + ' of ' + r.a[1] + '</span></span><span class="b"><i class="o" style="width:' + (r.n[1] ? r.n[0] / r.n[1] * 100 : 0).toFixed(1) + '%"></i><span>' + r.n[0] + ' of ' + r.n[1] + '</span></span></div>').join('') + '</div>';
+  const stats = '<div class="stats" style="grid-template-columns:repeat(' + (3 + ENGS.length) + ',minmax(0,1fr))">' +
+    '<div class="tile"><div class="n">' + ac.answered + '<small>of ' + (ac.prompts * ENGS.length) + '</small></div><div class="t">Answers recorded</div></div>' +
+    '<div class="tile"><div class="n">' + named.length + '<small>of ' + B.length + '</small></div><div class="t">Roster businesses named</div></div>' +
+    '<div class="tile"><div class="n">' + offList.length + '</div><div class="t">Names not on the roster</div></div>' +
+    ENGS.map(e => '<div class="tile"><div class="n" style="font-size:26px;padding-top:8px">' + esc(dshort(AI[e].date) || '—') + '</div><div class="t">' + esc(e) + ' audit, ' + ageText(age(AI[e].date)) + '</div></div>').join('') + '</div>';
+  const method = '<div class="method"><div><b>What is asked</b>' + ACTIVE.length + ' fixed prompts a local customer might type, repeated every audit.</div><div><b>Who answers</b>' + ENGS.join(' and ') + ', in signed-out sessions. An assistant is shown only while its latest audit is complete and current.</div><div><b>How it is counted</b>Each cell is answers that named the business, out of answers recorded.</div><div><b>What it cannot tell you</b>Directional only. No percentages, no average positions, no ranking beyond these answers.</div></div>';
+  return '<div class="view scroll"><div class="ai"><div class="page-h"><div><h1>AI visibility</h1><p>Which businesses ' + ENGS.join(' and ') + ' name when asked about local photo, video and drone work. Every business is measured the same way.</p></div><button class="btn" data-copy="ledger">Copy audit data</button></div>' +
+    '<div class="chips">' + AI_LANES.map(l => '<button class="fc" data-ailane="' + l[0] + '" aria-pressed="' + (lane === l[0]) + '">' + l[1] + '</button>').join('') + '</div>' + stats +
+    '<div class="ai-grid"><section class="panel"><div class="panel-h"><h2>Named in answers</h2><span class="sub">Audit ' + esc(dshort(DATES.ai)) + '</span></div><div class="lbscroll">' + lb + '</div></section>' +
+    '<div style="display:grid;gap:14px"><section class="panel"><div class="panel-h"><h2>Prompt by prompt</h2><span class="sub">Names per answer</span></div>' + mx + '</section>' +
+    '<section class="panel"><div class="panel-h"><h2>What named businesses share</h2><span class="sub">Directional</span></div>' + traits + '</section></div></div>' +
+    (offList.length ? '<section class="panel"><div class="panel-h"><h2>Named but not on the roster</h2><span class="sub">' + offList.length + ' names</span></div><div class="panel-b"><div class="tags">' + offList.map(o => pill(o.name + ' · ' + o.total, 'gray')).join('') + '</div></div></section>' : '') +
+    '<section class="panel">' + method + '</section></div></div>';
+}
+
+/* ---------- DATA ---------- */
+function viewData() {
+  const srcs = SS.map(s => '<div class="src"><i class="dot ' + (s.st === 'ok' ? 'ok' : s.st) + '"></i><div class="l"><b>' + esc(s.label) + '</b><span>' + esc(s.feeds) + ' · ' + esc(s.cadence) + '</span></div><div class="num">' + (s.date ? esc(dshort(s.date)) : '—') + '</div><div>' + pill(STTXT[s.st] + (s.age != null ? ' · ' + s.age + 'd' : ''), s.st === 'ok' ? 'ice' : s.st === 'late' ? 'amber' : s.st === 'stalled' ? 'red' : 'gray') + '</div><div class="f ' + (s.st === 'ok' ? '' : 'fix') + '">' + (s.st === 'ok' ? 'Nothing to do.' : esc(s.fix)) + '</div></div>').join('');
+  const cnt = k => { const m = {}; B.forEach(b => { const v = b[k] || 'Unknown'; m[v] = (m[v] || 0) + 1; }); return Object.keys(m).map(x => [x, m[x]]).sort((a, b) => b[1] - a[1]); };
+  const tbl = (rows, h) => '<table class="mini"><thead><tr><th>' + h + '</th><th class="r">Businesses</th></tr></thead><tbody>' + rows.map(r => '<tr><td>' + esc(r[0]) + '</td><td class="r">' + r[1] + '</td></tr>').join('') + '</tbody></table>';
+  const laneRows = LANES.map(l => [l[1], B.filter(b => b.lanes.indexOf(l[0]) >= 0).length]);
+  const n = B.length, wh = B.filter(b => b.c.ig_handle).length;
+  const mapped = B.filter(b => (D.townCoords.coords || {})[(D.townCoords.aliases || {})[b.town] || b.town]).length;
+  const cov = [['Website listed', B.filter(b => b.c.website).length], ['Instagram handle', wh], ['Instagram live today', LIVEIG.length], ['Pricing verified current', B.filter(b => b.shown).length], ['Reviews current', B.filter(b => b.rev.live && b.rev.count != null).length], ['Mapped to a town', mapped]].map(r => [r[0] + ' (of ' + n + ')', r[1]]);
+  const regRows = ['slc', 'adjacent', 'unconfirmed'].map(r => [REGION[r], B.filter(b => b.region === r).length]);
+  const noText = B.filter(b => !b.c.pricing);
+  const gapN = r => noText.filter(b => b.gap && b.gap.reason === r).length;
+  const missRows = [['Not published, verified', gapN('Not published')], ['Website unreachable at last check', gapN('Site unreachable')], ['No website', noText.filter(b => !b.c.website && !b.gap).length], ['Pricing text, no standard rate', B.filter(b => b.shown && b.price.wed == null && b.price.sess == null).length], ['Pricing on file, awaiting verification', B.filter(b => b.c.pricing && !b.shown).length], ['Not captured yet', noText.filter(b => b.c.website && !b.gap).length]];
+  const rules = [
+    'A figure is shown only while it is current: Instagram within ' + (SRC.ig ? SRC.ig.late_after_days : 2) + ' days of a pull, pricing within ' + (SRC.pricing ? SRC.pricing.late_after_days : 45) + ' days of verification, reviews within ' + (SRC.reviews ? SRC.reviews.late_after_days : 35) + ' days of collection, an AI audit within ' + (SRC.ai ? SRC.ai.late_after_days : 9) + ' days.',
+    'Pricing is displayed only when verified on the business\'s own website. Directory listings (The Knot, WeddingWire, Zola) are leads for the next verification pass, never displayed figures.',
+    'A missing price says why while the check behind the reason is itself fresh: not published, unreachable, no website, or no standard rate in the published text.',
+    '"From" prices are read from the verified text. Hourly rates, deposits, add-ons and minis are not used.',
+    'AI figures are counts of answers out of answers recorded, from signed-out sessions. An assistant appears only while its latest audit is complete and current. Directional only.',
+    'What is not current is not shown, and its absence is not announced. Panels, tiles and whole views exist only when there is current data for them.',
+    'A business added to the roster is discovery, not market growth.',
+    'Region is St. Lawrence County, Adjacent or Unconfirmed. Nothing is guessed.'];
+  const exc = D.excluded.map(x => '<tr><td style="white-space:nowrap;font-weight:500">' + esc(clean(x.name)) + '</td><td class="muted">' + esc(clean(x.reason)) + '</td></tr>').join('');
+  return '<div class="view scroll"><div class="data"><div class="page-h"><div><h1>Data</h1><p>Which sources feed this site, when each was last collected, what the roster covers and how figures are counted. Built ' + esc(dshort(DATES.roster)) + ' · viewing as of ' + esc(ASOF_S) + '.</p></div><div class="chips"><button class="btn" data-copy="csv">Copy businesses CSV</button><button class="btn" data-copy="report">Copy freshness report</button></div></div>' +
+    '<section class="panel"><div class="panel-h"><h2>Source freshness</h2><span class="sub">Windows come from config/freshness.json</span></div>' + srcs + '</section>' +
+    '<div class="cols2"><section class="panel"><div class="panel-h"><h2>Roster coverage</h2><span class="sub">' + n + ' businesses</span></div>' + tbl(cov, 'Field') + '<div class="panel-h"><h2>Why a price is missing</h2></div>' + tbl(missRows, 'Reason') + '</section><section class="panel"><div class="panel-h"><h2>By region</h2></div>' + tbl(regRows, 'Region') + '<div class="panel-h"><h2>By lane</h2></div>' + tbl(laneRows, 'Lane') + '</section></div>' +
+    '<div class="cols2"><section class="panel"><div class="panel-h"><h2>By county</h2></div><div class="scrollbox">' + tbl(cnt('county').slice(0, 20), 'County') + '</div></section><section class="panel"><div class="panel-h"><h2>Counting rules</h2></div><ol class="rules">' + rules.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol></section></div>' +
+    '<section class="panel"><div class="panel-h"><h2>Reviewed and excluded</h2><span class="sub">' + D.excluded.length + ' names kept off the roster</span></div><div class="scrollbox"><table class="mini"><tbody>' + exc + '</tbody></table></div></section></div></div>';
+}
+function freshnessReport() {
+  return 'Business Pulse freshness, as of ' + ASOF_S + '\n' + SS.map(s => (s.st === 'ok' ? 'OK     ' : s.st === 'late' ? 'LATE   ' : s.st === 'stalled' ? 'STALLED' : 'NO DATA') + ' ' + s.label + ': ' + (s.date || 'none') + (s.age != null ? ' (' + s.age + ' days)' : '') + (s.st === 'ok' ? '' : '\n         Do this: ' + s.fix)).join('\n');
+}
+
+/* ---------- shared bits for the JD-centered views ---------- */
+const vhead = (t, s) => '<div class="brief-head"><div><h1>' + esc(t) + '</h1><p>' + esc(s) + '</p></div></div>';
+const stile = (n, t) => '<div class="tile"><div class="n">' + n + '</div><div class="t">' + esc(t) + '</div></div>';
+const DASHM = '<span class="muted">—</span>';
+const isoOf = n => new Date(n * DAY).toISOString().slice(0, 10);
+let _AIC = null;
+const aiAll = () => _AIC || (_AIC = aiCompute('all'));
+const aiAnswers = () => ENGS.reduce((a, e) => a + (aiAll().den[e] || 0), 0);
+const aiOf = b => { const o = aiAll().ids[b.id]; return o ? { total: o.total, answered: aiAnswers() } : null; };
+const revNote = b => b.rev.live ? '' : b.rev.count == null ? 'No Google book on file' : b.rev.st === 'none' ? 'No verified reading on file' : 'Outside the 35-day window · last verified ' + dshort(b.rev.date);
+const igNote = b => b.ig.state === 'live' ? '' : b.ig.state === 'carried' ? 'Not readable — last known ' + fmt(b.ig.count) : b.ig.state === 'late' ? 'Last live count ' + dshort(b.ig.date) : 'No Instagram data';
+
+/* ---------- STANDING: the JD home view ----------
+   Where JD Meyers Productions stands, answered first: rank per category, the
+   gap to whoever leads it, who is closing in, and his posting pulse. Every
+   figure goes through the same gates as everyone else's. */
+function gapRow(label, main, sub) { return '<div class="gaprow"><span class="gap-l">' + esc(label) + '</span><span class="gap-m">' + main + '</span><span class="gap-s">' + esc(sub) + '</span></div>'; }
+function viewStanding() {
+  if (!JD) return '<section class="view standing"><div class="empty"><b>JD Meyers Productions is not on the roster.</b></div></section>';
+  const live = LIVEIG;
+  const weds = B.map(b => b.wedLive).filter(x => x != null);
+  const jdWed = JD.wedLive, wedMed = weds.length ? median(weds) : null;
+  const folR = JD.ig.state === 'live' ? rankAmong(live, JD.ig.count, b => b.ig.count) : null;
+  const wedR = jdWed != null ? rankAmong(B, jdWed, b => b.wedLive) : null;
+  const revB = B.filter(b => b.rev.live);
+  const revR = JD.rev.live ? rankAmong(revB, JD.rev.count, b => b.rev.count) : null;
+  const oJD = aiOf(JD);
+  const aiR = oJD ? rankAmong(B.filter(b => aiOf(b)), oJD.total, b => aiOf(b).total) : null;
+  const jp = POST[JDID] || {};
+  const cadR = jp.p30 != null ? rankAmong(TRACKED, jp.p30, b => (POST[b.id] || {}).p30) : null;
+  const rk = r => r ? ' <span class="rksub">#' + r.r + ' of ' + r.n + '</span>' : '';
+  const tiles = '<div class="stats">' +
+    stile(JD.ig.state === 'live' ? fmt(JD.ig.count) + rk(folR) : '—', 'Instagram followers' + (JD.c.ig_handle ? ' · @' + JD.c.ig_handle : '') + (JD.ig.state === 'live' ? ' · live count' : ' · ' + igNote(JD))) +
+    stile(jdWed != null ? money(jdWed) + rk(wedR) : '—', 'Wedding from-rate' + (jdWed != null ? ' · verified ' + dshort(JD.pdate) + (wedMed != null ? ' · median ' + money(wedMed) : '') : ' · no verified reading inside 45 days')) +
+    stile(JD.rev.live ? fmt(JD.rev.count) + rk(revR) : '—', 'Google reviews' + (JD.rev.live ? ' · ' + Number(JD.rev.rating).toFixed(1) + ' average · current book' : ' · ' + revNote(JD))) +
+    stile(oJD ? String(oJD.total) + rk(aiR) : '—', 'AI answers naming you' + (oJD ? ' · of ' + oJD.answered + ' given · audited ' + dshort(DATES.ai) : ' · not named in the latest audit')) +
+    stile(jp.p30 != null ? String(jp.p30) + rk(cadR) : '—', 'Posts, last 30 days' + (lastPostApi(JD) ? ' · last post ' + dshort(lastPostApi(JD)) : '')) +
+    '</div>';
+  const lead = (list, f) => list.reduce((m, b) => (f(b) != null && (m == null || f(b) > f(m)) ? b : m), null);
+  const folLead = lead(live, b => b.ig.count);
+  const revLead = lead(revB, b => b.rev.count);
+  const aiLead = lead(B.filter(b => aiOf(b)), b => aiOf(b).total);
+  const cadLead = lead(TRACKED, b => (POST[b.id] || {}).p30);
+  let gaps = '';
+  if (folLead) gaps += gapRow('Followers', folLead.id === JDID ? 'You hold the largest live count in the market.' : '<b>' + esc(folLead.name) + '</b> leads at ' + fmt(folLead.ig.count) + ' — you trail by ' + fmt(folLead.ig.count - JD.ig.count) + '.', 'Live Instagram counts, pulled ' + dshort(DATES.ig));
+  if (jdWed != null && wedMed != null) gaps += gapRow('Wedding price', 'Your from-rate is ' + money(jdWed) + ' against a ' + money(wedMed) + ' median across ' + weds.length + ' verified rates' + (jdWed >= wedMed ? ' — ' + money(jdWed - wedMed) + ' above the middle.' : ' — ' + money(wedMed - jdWed) + ' under the middle.'), 'Own-site rates verified within 45 days');
+  if (revLead) gaps += gapRow('Reviews', revLead.id === JDID ? 'Your book is the largest current one in the market.' : '<b>' + esc(revLead.name) + '</b> holds ' + fmt(revLead.rev.count) + ' reviews — you trail by ' + fmt(revLead.rev.count - JD.rev.count) + '.', 'Google counts verified within 35 days');
+  if (aiLead && oJD) gaps += gapRow('AI visibility', aiLead.id === JDID ? 'AI names you more than anyone in the market.' : '<b>' + esc(aiLead.name) + '</b> is named ' + aiOf(aiLead).total + ' times across the engines — you are named ' + oJD.total + '.', 'Latest audit ' + dshort(DATES.ai) + ' · directional, counts only');
+  if (cadLead && jp.p30 != null) gaps += gapRow('Posting', cadLead.id === JDID ? 'You out-post the whole tracked field this month.' : '<b>' + esc(cadLead.name) + '</b> posted ' + (POST[cadLead.id] || {}).p30 + ' times in 30 days — you posted ' + jp.p30 + '.', 'Cadence counted from the daily API pulls, through ' + dshort(DATES.ig));
+  let rel = '';
+  if (JD.ig.state === 'live') {
+    const behind = live.filter(b => b.id !== JDID && b.ig.count < JD.ig.count && b.d7 > 0).sort((a, c) => c.d7 - a.d7).slice(0, 5);
+    const ahead = live.filter(b => b.id !== JDID && b.ig.count > JD.ig.count).sort((a, c) => (a.ig.count - JD.ig.count) - (c.ig.count - JD.ig.count)).slice(0, 5);
+    const relRow = (b, gapTxt) => liRow(b, '<span class="muted">' + gapTxt + '</span>' + cD7(b), b.town + ' · ' + fmt(b.ig.count) + ' followers');
+    rel = '<div class="cols2">' + panel('Closing in on you', 'Behind you and gaining this week', behind.length ? behind.map(b => relRow(b, fmt(JD.ig.count - b.ig.count) + ' behind')).join('') : '<p class="p-note">Nobody behind you gained followers this week.</p>') +
+      panel('In front of you', 'Nearest accounts above you', ahead.length ? ahead.map(b => relRow(b, fmt(b.ig.count - JD.ig.count) + ' ahead')).join('') : '<p class="p-note">No live account sits above you.</p>') + '</div>';
+  }
+  const med30 = cadMedian(TRACKED.map(b => (POST[b.id] || {}).p30));
+  const lpJD = lastPostApi(JD), laJD = age(lpJD);
+  const pulse = panel('Your posting pulse', '', '<div class="figs">' + fig(jp.p7 != null ? jp.p7 : '—', 'Posts, 7 days') + fig(jp.p30 != null ? jp.p30 : '—', 'Posts, 30 days') + fig(med30 != null ? med30 : '—', 'Field median, 30 days') + fig(lpJD ? dshort(lpJD) : '—', 'Last post' + (laJD != null ? ' · ' + ageText(laJD) : '')) + (jp.eng ? fig(jp.eng.rate_pct != null ? jp.eng.rate_pct + '%' : '—', 'Engagement, last ' + (jp.eng.posts || 10) + ' posts') : '') + '</div>' +
+    '<p class="p-note">Counted from the daily Instagram API pulls — total post count read at each pull, through ' + esc(dshort(DATES.ig)) + '. The full pulse — who out-posts you, who has gone quiet, cadence by week — is in Social.</p>', ['Full Social view', 'social']);
+  const swi = SW.length ? sweepInfo(SW[SW.length - 1]) : null;
+  const watch = swi && swi.changed.length ? panel('Latest sweep — what changed', dshort(swi.date), swi.changed.slice(0, 6).map(c => '<div class="mrow"><span class="mn">' + esc((BY[c.id] || {}).name || c.id) + '</span><span class="md2">Page changed<span>' + esc(c.note || '') + '</span></span></div>').join('')) : '';
+  return '<section class="view standing">' + vhead('Your standing', 'JD Meyers Productions · ' + JD.town + ' · ' + JD.lanes.map(l => LANE_NAME[l]).join(', ') + '. Every figure below passes the same gates as everyone else\u2019s — the framing is yours, the numbers are not.') +
+    tiles + panel('Gap to the leader', 'Per category, with the date each figure was verified', gaps || '<p class="p-note">Not enough gated data yet to call a gap.</p>') +
+    rel + pulse + watch + moveWidget() + fchips() + '</section>';
+}
+
+/* ---------- COMPARE: head-to-head + category standings ---------- */
+function cmpSide(id) {
+  if (id === 'median') {
+    return { name: 'Market median', sub: 'Median across the gated, current figures — not a business', fol: median(LIVEIG.map(b => b.ig.count)), d7: cadMedian(LIVEIG.map(b => b.d7)), d30: cadMedian(LIVEIG.map(b => b.d30)), wed: cadMedian(B.map(b => b.wedLive)), sess: cadMedian(B.map(b => b.sessLive)), rev: cadMedian(B.filter(b => b.rev.live).map(b => b.rev.count)), rating: null, ai: null, aiNa: true, p30: cadMedian(TRACKED.map(b => POST[b.id].p30)), p7: cadMedian(TRACKED.map(b => POST[b.id].p7)), lp: null, eng: null, lanes: [], est: null, folNote: '', revNote: '' };
+  }
+  const b = BY[id]; if (!b) return null;
+  const p = POST[id] || {};
+  const o = aiOf(b);
+  return { name: b.name, sub: b.town + ' · ' + (REGION[b.region] || b.region), fol: b.ig.state === 'live' ? b.ig.count : null, folNote: igNote(b), folRank: b.ig.state === 'live' ? rankAmong(LIVEIG, b.ig.count, x => x.ig.count) : null,
+    d7: b.d7, d30: b.d30,
+    wed: b.wedLive, wedD: b.pdate, sess: b.sessLive, sessD: b.pdate,
+    rev: b.rev.live ? b.rev.count : null, revNote: revNote(b), rating: b.rev.live ? b.rev.rating : null,
+    ai: o, aiD: DATES.ai, p30: p.p30, p7: p.p7, lp: lastPostApi(b), eng: p.eng, lanes: b.lanes, est: b.c.est_year, handle: b.c.ig_handle, id: b.id };
+}
+function cmpOpts(sel) {
+  const sorted = B.slice().sort((a, c) => (a.id === JDID ? -1 : c.id === JDID ? 1 : a.name.localeCompare(c.name)));
+  return '<option value="median"' + (sel === 'median' ? ' selected' : '') + '>Market median</option>' + sorted.map(b => '<option value="' + esc(b.id) + '"' + (sel === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('');
+}
+function viewCompare() {
+  const A = cmpSide(state.cmpA), C = cmpSide(state.cmpB);
+  const controls = '<div class="cmpctl"><label>Compare <select data-cmp="a">' + cmpOpts(state.cmpA) + '</select></label><span class="vs">vs</span><label><select data-cmp="b">' + cmpOpts(state.cmpB) + '</select></label></div>';
+  const head3 = '<div class="cmph"><div class="cmpside' + (state.cmpA === JDID ? ' me' : '') + '"><b>' + esc(A.name) + '</b><span>' + esc(A.sub) + '</span></div><span class="vs2">VS</span><div class="cmpside r' + (state.cmpB === JDID ? ' me' : '') + '"><b>' + esc(C.name) + '</b><span>' + esc(C.sub) + '</span></div></div>';
+  const num = (x, f) => x == null ? '<span class="faint">—</span>' : f(x);
+  const rows = [
+    ['Instagram followers', s => num(s.fol, v => fmt(v) + (s.folRank ? ' <span class="rksub">#' + s.folRank.r + ' of ' + s.folRank.n + '</span>' : '') + (s.folNote ? ' <span class="stale">' + esc(s.folNote) + '</span>' : '')), s => s.fol, 'high'],
+    ['Followers, 7 days', s => num(s.d7, v => signed(v)), s => s.d7, 'high'],
+    ['Followers, 30 days', s => num(s.d30, v => signed(v)), s => s.d30, 'high'],
+    ['Wedding from-rate', s => s.wed == null ? '<span class="faint">no verified rate</span>' : money(s.wed) + ' <span class="muted">' + (s.wedD ? 'verified ' + esc(dshort(s.wedD)) : 'market median') + '</span>', s => s.wed, null],
+    ['Session from-rate', s => s.sess == null ? '<span class="faint">no verified rate</span>' : money(s.sess) + ' <span class="muted">' + (s.sessD ? 'verified ' + esc(dshort(s.sessD)) : 'market median') + '</span>', s => s.sess, null],
+    ['Google reviews', s => s.rev == null ? '<span class="faint">' + esc(s.revNote || 'unverified') + '</span>' : fmt(s.rev) + (s.rating != null ? ' · ' + Number(s.rating).toFixed(1) + ' average' : ''), s => s.rev, 'high'],
+    ['Named by AI', s => s.ai == null ? (s.aiNa ? '<span class="faint">—</span>' : '<span class="faint">not named in the latest audit</span>') : String(s.ai.total) + ' <span class="muted">of ' + s.ai.answered + ' answers · ' + esc(dshort(s.aiD)) + '</span>', s => s.ai ? s.ai.total : null, 'high'],
+    ['Posts, 30 days', s => num(s.p30, v => String(v)), s => s.p30, 'high'],
+    ['Last post', s => s.lp ? esc(dshort(s.lp)) + ' <span class="muted">' + esc(ageText(age(s.lp))) + '</span>' : '<span class="faint">—</span>', s => s.lp ? -age(s.lp) : null, 'high'],
+    ['Engagement rate', s => s.eng && s.eng.rate_pct != null ? s.eng.rate_pct + '% <span class="muted">last ' + (s.eng.posts || 10) + ' posts</span>' : '<span class="faint">—</span>', s => s.eng ? s.eng.rate_pct : null, 'high'],
+    ['Avg likes per post', s => s.eng && s.eng.avg_likes != null ? String(s.eng.avg_likes) : '<span class="faint">—</span>', s => s.eng ? s.eng.avg_likes : null, 'high'],
+    ['Established', s => s.est ? String(s.est) : '<span class="faint">—</span>', s => s.est, null],
+    ['Services', s => s.lanes.length ? s.lanes.map(l => LANE_NAME[l]).join(', ') : '<span class="faint">—</span>', null, null]
+  ];
+  const tbl = '<table class="cmp-tbl"><tbody>' + rows.map(r => {
+    const va = r[2] ? r[2](A) : null, vb = r[2] ? r[2](C) : null;
+    let ca = '', cb = '';
+    if (r[3] && va != null && vb != null && va !== vb) { if (va > vb) ca = ' class="win"'; else cb = ' class="win"'; }
+    return '<tr><td' + ca + '>' + r[1](A) + '</td><th>' + esc(r[0]) + '</th><td' + cb + '>' + r[1](C) + '</td></tr>';
+  }).join('') + '</tbody></table>';
+  const catPanel = (title, entries, fmtv, note) => {
+    const sorted = entries.filter(e => e.v != null).sort((a, c) => c.v - a.v);
+    const top = sorted.slice(0, 6);
+    const jdIdx = sorted.findIndex(e => e.b.id === JDID);
+    let body = top.map((e, i) => '<div class="mrow' + (e.b.id === JDID ? ' me' : '') + '"><span class="mn">' + esc(e.b.name) + (e.b.id === JDID ? ' (you)' : '') + '</span><span class="md2">' + fmtv(e.v) + '<span>#' + (i + 1) + ' of ' + sorted.length + '</span></span></div>').join('');
+    if (JD && jdIdx >= 6) body += '<div class="mrow me"><span class="mn">' + esc(JD.name) + ' (you)</span><span class="md2">' + fmtv(sorted[jdIdx].v) + '<span>#' + (jdIdx + 1) + ' of ' + sorted.length + '</span></span></div>';
+    if (JD && jdIdx === -1) body += '<div class="mrow me"><span class="mn">' + esc(JD.name) + ' (you)</span><span class="md2"><span class="faint">not counted</span><span>no gated figure</span></span></div>';
+    return panel(title, note, body || '<p class="p-note">No gated figures in this category.</p>');
+  };
+  const cats = '<div class="cols2">' +
+    catPanel('Followers', LIVEIG.map(b => ({ b, v: b.ig.count })), v => fmt(v) + ' followers', 'Live Instagram counts') +
+    catPanel('Wedding from-rate', B.map(b => ({ b, v: b.wedLive })), v => money(v), 'Verified within 45 days, highest first') +
+    catPanel('Reviews', B.filter(b => b.rev.live).map(b => ({ b, v: b.rev.count })), v => fmt(v) + ' reviews', 'Current Google books') +
+    catPanel('Named by AI', B.map(b => ({ b, v: aiOf(b) ? aiOf(b).total : null })), v => v + ' answers', 'Latest audit, ' + dshort(DATES.ai)) +
+    catPanel('Posts, last 30 days', TRACKED.map(b => ({ b, v: POST[b.id].p30 })), v => v + ' posts', 'From the daily API pulls') +
+    catPanel('Engagement rate', B.map(b => ({ b, v: (POST[b.id] || {}).eng ? POST[b.id].eng.rate_pct : null })), v => v + '%', 'Recent posts, Instagram API') +
+    '</div>';
+  return '<section class="view compare">' + vhead('Compare', 'Head-to-head on the gated figures, then the category tables with your position marked. A dash means the figure is not verified or not tracked — not zero.') + controls + panel('', '', head3 + tbl) + cats + '</section>';
+}
+
+/* ---------- SOCIAL: the Instagram posting pulse ----------
+   Cadence is counted from media_count deltas between the daily Graph API
+   pulls (igActivity), never estimated. Accounts the API cannot read show as
+   Not readable — never as zero posts. */
+function viewSocial() {
+  const med30 = cadMedian(TRACKED.map(b => POST[b.id].p30));
+  const jp = POST[JDID] || {};
+  const statusOf = {}; let nActive = 0, nQuiet = 0, nUnread = 0;
+  B.forEach(b => { if (!b.c.ig_handle) return; const s = postStatus(b); statusOf[b.id] = s; if (s[0] === 'active') nActive++; if (s[0] === 'quiet') nQuiet++; if (s[0] === 'unread') nUnread++; });
+  const tiles = '<div class="stats">' +
+    stile(String(TRACKED.length), 'With a readable posting history · of ' + B.filter(b => b.c.ig_handle).length + ' roster handles') +
+    stile(String(nActive), 'Posted within the last 7 days') +
+    stile(String(nQuiet), 'Gone quiet — no post in 30+ days') +
+    stile(String(nUnread), 'API cannot read — shown as unreadable, never as zero') +
+    stile(jp.p30 != null ? String(jp.p30) : '—', 'Your posts, last 30 days · field median ' + (med30 != null ? med30 : '—')) +
+    '</div>';
+  let jdPanel = '';
+  if (JD) {
+    const eng = jp.eng ? '<div class="engrow"><div class="engnums"><span><b>' + (jp.eng.avg_likes != null ? jp.eng.avg_likes : '—') + '</b> avg likes</span><span><b>' + (jp.eng.avg_comments != null ? jp.eng.avg_comments : '—') + '</b> avg comments</span><span><b>' + (jp.eng.rate_pct != null ? jp.eng.rate_pct + '%' : '—') + '</b> engagement rate</span></div>' + ((jp.eng.bars || []).length ? '<div class="engbars">' + jp.eng.bars.map(v => '<i style="height:' + Math.max(8, Math.min(100, v * 3)) + '%"></i>').join('') + '</div><div class="engcap">Engagement rate of your last ' + (jp.eng.posts || jp.eng.bars.length) + ' posts</div>' : '') + '</div>' : '';
+    const out = TRACKED.filter(b => b.id !== JDID && jp.p30 != null && POST[b.id].p30 > jp.p30).sort((a, c) => POST[c.id].p30 - POST[a.id].p30).slice(0, 5);
+    jdPanel = panel('Your pulse — @' + (JD.c.ig_handle || ''), 'Same counting as everyone below',
+      '<div class="figs">' + fig(JD.ig.state === 'live' ? fmt(JD.ig.count) : '—', 'Followers') + fig(jp.p7 != null ? jp.p7 : '—', 'Posts, 7 days') + fig(jp.p30 != null ? jp.p30 : '—', 'Posts, 30 days') + fig(jp.p30 != null ? (jp.p30 / 4.345).toFixed(1) : '—', 'Posts per week') + fig(lastPostApi(JD) ? dshort(lastPostApi(JD)) : '—', 'Last post' + (age(lastPostApi(JD)) != null ? ' · ' + ageText(age(lastPostApi(JD))) : '')) + fig(jp.media != null ? fmt(jp.media) : '—', 'Posts, all time') + '</div>' + eng +
+      (out.length ? '<div class="panel-h sub"><h2>Out-posting you, last 30 days</h2></div>' + out.map(b => liRow(b, '<span class="muted">' + POST[b.id].p30 + ' posts</span>', '@' + b.c.ig_handle + ' · last post ' + dshort(lastPostApi(b)))).join('') : '<p class="p-note">Nobody tracked out-posted you in the last 30 days.</p>'));
+  }
+  const wk = [];
+  for (let w = 7; w >= 0; w--) {
+    const end = ASOF - w * 7; let sum = 0, n = 0;
+    TRACKED.forEach(b => { const p = POST[b.id]; const a = p.mediaAt(end), c = p.mediaAt(end - 7); if (a != null && c != null && a >= c) { sum += a - c; n++; } });
+    wk.push({ end: isoOf(end), sum, n });
+  }
+  const wmax = Math.max(1, Math.max.apply(null, wk.map(x => x.sum)));
+  const wkPanel = panel('Market posting rhythm', 'Posts per week across the tracked field', '<div class="wkchart">' +
+    wk.map(x => '<div class="wk"><span class="wkn">' + x.sum + '</span><i style="height:' + Math.max(3, x.sum / wmax * 100) + '%"></i><span class="wkd">' + esc(dshort(x.end)) + '</span></div>').join('') + '</div>' +
+    '<p class="p-note">Counted account by account from total-post readings at each pull; a week covers the accounts readable at both ends of it.</p>');
+  const withH = B.filter(b => b.c.ig_handle);
+  const keyF = { cad30: b => (POST[b.id] || {}).p30, p7: b => (POST[b.id] || {}).p7, fol: b => b.ig.state === 'live' ? b.ig.count : null, recent: b => { const a = age(lastPostApi(b)); return a == null ? null : -a; } };
+  let list = withH.slice();
+  if (state.socSort === 'name') list.sort((a, c) => a.name.localeCompare(c.name));
+  else list.sort((a, c) => { const f = keyF[state.socSort]; const va = f(a), vb = f(c); if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1; return vb - va; });
+  const socRow = b => {
+    const p = POST[b.id] || {}; const st = statusOf[b.id] || ['nodata', 'No data'];
+    const lp = lastPostApi(b), la = age(lp);
+    return '<tr data-open="' + esc(b.id) + '" class="' + (b.id === JDID ? 'jdrow' : '') + '"><td class="nm"><b>' + esc(b.name) + '</b>' + (b.id === JDID ? ' <span class="youpill">You</span>' : '') + '<span>@' + esc(b.c.ig_handle) + '</span></td>' +
+      '<td class="r">' + cFollowers(b) + '</td><td class="r">' + (p.p7 != null ? p.p7 : DASHM) + '</td><td class="r">' + (p.p30 != null ? p.p30 : DASHM) + '</td><td class="r">' + (p.p30 != null ? (p.p30 / 4.345).toFixed(1) : DASHM) + '</td>' +
+      '<td>' + (lp ? esc(dshort(lp)) + ' <span class="muted">' + esc(ageText(la)) + '</span>' : DASHM) + '</td>' +
+      '<td>' + (p.eng ? (p.eng.avg_likes != null ? p.eng.avg_likes : '—') + ' likes · ' + (p.eng.rate_pct != null ? p.eng.rate_pct + '%' : '—') : DASHM) + '</td>' +
+      '<td><span class="stchip st-' + st[0] + '">' + st[1] + '</span></td></tr>';
+  };
+  const jdB = list.find(b => b.id === JDID);
+  const rest = jdB ? list.filter(b => b.id !== JDID) : list;
+  const socTbl = '<div class="tblwrap"><table class="tbl soc"><thead><tr><th>Business</th><th class="r">Followers</th><th class="r">Posts 7d</th><th class="r">Posts 30d</th><th class="r">Per week</th><th>Last post</th><th>Engagement</th><th>Status</th></tr></thead><tbody>' +
+    (jdB ? '<tr class="pinlab"><td colspan="8">Your business — pinned</td></tr>' + socRow(jdB) : '') + rest.map(socRow).join('') + '</tbody></table></div>';
+  const sortCtl = '<div class="row wrap socctl"><span class="muted">Sort</span><select data-socsel aria-label="Sort the posting table"><option value="cad30"' + (state.socSort === 'cad30' ? ' selected' : '') + '>Posts, 30 days</option><option value="p7"' + (state.socSort === 'p7' ? ' selected' : '') + '>Posts, 7 days</option><option value="fol"' + (state.socSort === 'fol' ? ' selected' : '') + '>Followers</option><option value="recent"' + (state.socSort === 'recent' ? ' selected' : '') + '>Most recent post</option><option value="name"' + (state.socSort === 'name' ? ' selected' : '') + '>Name</option></select><span class="muted">Instagram data through ' + esc(dshort(DATES.ig)) + '</span></div>';
+  const fieldPanel = panel('The field', withH.length + ' handles', sortCtl + socTbl);
+  const actives = withH.filter(b => statusOf[b.id][0] === 'active').sort((a, c) => (age(lastPostApi(a)) || 0) - (age(lastPostApi(c)) || 0)).slice(0, 8);
+  const quiets = withH.filter(b => statusOf[b.id][0] === 'quiet').sort((a, c) => (age(lastPostApi(c)) || 0) - (age(lastPostApi(a)) || 0)).slice(0, 8);
+  const stRow = b => liRow(b, '<span class="muted">' + (lastPostApi(b) ? esc(ageText(age(lastPostApi(b)))) + ' since last post' : 'no dated post') + '</span>', '@' + b.c.ig_handle + (b.id === JDID ? ' · you' : ''));
+  const aq = '<div class="cols2">' + panel('Active now', 'Posted in the last 7 days', actives.length ? actives.map(stRow).join('') : '<p class="p-note">No tracked account posted this week.</p>') +
+    panel('Gone quiet', 'Longest silence first', quiets.length ? quiets.map(stRow).join('') : '<p class="p-note">No tracked account has been silent for 30+ days.</p>') + '</div>';
+  const feed = [];
+  B.forEach(b => { const p = POST[b.id]; if (p) p.evts.forEach(e => feed.push({ b, date: e.date, text: e.text })); });
+  feed.sort((a, c) => c.date.localeCompare(a.date));
+  const feedPanel = feed.length ? panel('Recent posts', 'From the daily pulls\u2019 own log', feed.slice(0, 12).map(f => '<div class="mrow"><span class="mn">' + esc(dshort(f.date)) + ' · ' + esc(f.b.name) + '</span><span class="md2">' + esc(f.text.length > 150 ? f.text.slice(0, 150) + '…' : f.text) + '</span></div>').join('')) : '';
+  const ownBy = {};
+  (D.ownAccounts || []).forEach(r => { (ownBy[r.account] = ownBy[r.account] || []).push(r); });
+  const ownRows = Object.keys(ownBy).sort().map(a => {
+    const rs = ownBy[a].slice().sort((x, y) => x.date.localeCompare(y.date));
+    const first = rs[0], last = rs[rs.length - 1];
+    return '<div class="mrow"><span class="mn">@' + esc(a) + '</span><span class="md2"><b>' + fmt(last.follower_count) + '</b> followers<span>' + (rs.length > 1 ? signed(last.follower_count - first.follower_count) + ' since ' + esc(dshort(first.date)) : 'first snapshot ' + esc(dshort(first.date))) + '</span></span></div>';
+  }).join('');
+  const ownPanel = ownRows ? panel('Your accounts', 'Follower snapshots from the daily check', ownRows + '<p class="p-note">The daily check keeps only a short window of its own snapshots, so these counts cover the last few days, not the full history. Your business account\u2019s posting pulse above is counted from the same API pulls as the field.</p>') : '';
+  return '<section class="view social">' + vhead('Social — the posting pulse', 'Who is posting, how often, and who has gone quiet — counted from the daily Instagram API pulls, through ' + dshort(DATES.ig) + '. Cadence comes from each account\u2019s total post count read at every pull; engagement is the API\u2019s summary of recent posts. Handles the API cannot read are marked unreadable, never zero.') +
+    tiles + jdPanel + wkPanel + fieldPanel + aq + feedPanel + ownPanel + '</section>';
+}
+
+/* ---------- NETWORK: follow graph (history) + connections ----------
+   The follow-graph sweep is off by standing order; the last capture
+   (Sep 27 – Oct 6, 2026) is shown as history, labeled, never as current. */
+function viewNetwork() {
+  const banner = '<div class="netbanner">The follow graph was captured <b>September 27 – October 6, 2026</b> and covers the following lists of JD\u2019s own accounts — the only lists the Instagram API exposes. The follow-graph sweep is off, so nothing here is newer than October 6, 2026. Direct connections are dated individually and stay current.</div>';
+  let body;
+  if (ADM) {
+    body = admPanelFollow() + admPanelConnections();
+  } else {
+    const rows = D.connections.map(c => '<div class="mrow"><span class="mn">' + esc(c.a) + ' — ' + esc(c.b) + '</span><span class="md2">' + pill(c.type, 'tan') + '<span>' + esc(c.date || '') + '</span></span></div>').join('');
+    body = panel('Direct connections', D.connections.length + ' on file', rows || '<p class="p-note">No connections on file.</p>') +
+      panel('Follow graph — in Admin', '', '<p class="p-note">The captured follow graph (282 follows from your accounts, Oct 6, 2026) and the evidence behind each connection sit in the encrypted bundle.</p><p><button class="mini" data-go="admin">Open Admin to unlock</button></p>');
+  }
+  return '<section class="view network">' + vhead('Network', 'Who follows whom, and which businesses are directly connected — restored from the pre-redesign app, with its dates on it.') + banner + body + '</section>';
+}
+
+/* ---------- ADMIN ----------
+   The JD-specific layer, behind a password wall. The published site only
+   ever holds ciphertext (data/admin.enc.json: AES-256-GCM; key derived
+   from the password with PBKDF2-HMAC-SHA256, 200,000 rounds — see
+   scripts/build_admin.py). Unlocking fetches the ciphertext, derives the
+   key in this browser and decrypts in memory. The plaintext is never
+   written anywhere; sessionStorage keeps the password for this tab
+   session only, so moving between views does not re-prompt. Lock clears
+   both. A wrong password fails the GCM check and renders nothing. */
+let ADM = null;
+const admState = { err: '', busy: false };
+function admStoredPw() { try { return sessionStorage.getItem('bp_admin_pw') || ''; } catch (e) { return ''; } }
+function admStorePw(pw) {
+  try {
+    if (pw) { sessionStorage.setItem('bp_admin_pw', pw); sessionStorage.setItem('bp_admin_ok', '1'); }
+    else { sessionStorage.removeItem('bp_admin_pw'); sessionStorage.removeItem('bp_admin_ok'); }
+  } catch (e) { }
+}
+async function admDecrypt(pw) {
+  let res;
+  try { res = await fetch('data/admin.enc.json', { cache: 'no-store' }); } catch (e) { throw new Error('Could not load the admin bundle.'); }
+  if (!res.ok) throw new Error('This build has no admin bundle. It is produced only when the build runs with the admin password set.');
+  const pkg = await res.json();
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(pkg.salt), iterations: pkg.iterations || 200000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  let pt;
+  try { pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(pkg.iv) }, key, b64(pkg.ct)); }
+  catch (e) { throw new Error('That password did not unlock the admin data.'); }
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function admUnlock(pw) {
+  if (admState.busy || !pw) return;
+  admState.busy = true; admState.err = '';
+  if (state.view === 'admin') render();
+  try { ADM = await admDecrypt(pw); admStorePw(pw); }
+  catch (e) { ADM = null; admStorePw(''); admState.err = e.message || 'Could not unlock.'; }
+  admState.busy = false;
+  if (state.view === 'admin') render();
+}
+function admLock() { ADM = null; admStorePw(''); admState.err = ''; if (state.view === 'admin') render(); }
+function adminMount() {
+  if (ADM || admState.busy) return;
+  const pw = admStoredPw();
+  if (pw) { admUnlock(pw); return; }
+  const i = $('#admin-pw'); if (i) i.focus();
+}
+const PROMPT_TXT = {}; (D.aiPrompts.prompts || []).forEach(p => PROMPT_TXT[p.id] = p.text);
+const admMini = (head, rows, sub) => '<section class="panel"><div class="panel-h"><h2>' + head + '</h2>' + (sub ? '<span class="sub">' + esc(sub) + '</span>' : '') + '</div><div class="scrollbox"><table class="mini"><thead><tr>' + rows[0] + '</tr></thead><tbody>' + rows[1] + '</tbody></table></div></section>';
+function admPanelAI() {
+  const rows = ADM.aiVisibility || []; if (!rows.length) return '';
+  const runs = {};
+  rows.forEach(r => { const k = r.date + '|' + r.engine + '|' + (r.run || ''); (runs[k] = runs[k] || []).push(r); });
+  const keys = Object.keys(runs).sort().reverse();
+  const latestDate = rows.reduce((mx, r) => r.date > mx ? r.date : mx, '');
+  const latest = rows.filter(r => r.date === latestDate).slice().sort((a, b) => (a.engine + a.prompt).localeCompare(b.engine + b.prompt));
+  const namedCt = rs => rs.filter(r => r.jd_named === 'yes' || r.jd_named === 'partial').length;
+  const jdPill = v => v === 'yes' ? pill('Named', 'ice') : v === 'partial' ? pill('Partial', 'amber') : v === 'unreachable' ? pill('Unreachable', 'red') : pill('Not named', 'gray');
+  const det = latest.map(r => '<tr><td>' + esc(r.prompt) + '</td><td>' + esc(r.engine) + '</td><td>' + jdPill(r.jd_named) + '</td><td class="r">' + (r.jd_rank != null ? '#' + r.jd_rank + ' of ' + (r.of_total || '—') : '—') + '</td><td class="adm-note">' + (r.rivals || []).map(x => esc(x)).join(', ') + '</td></tr>').join('');
+  const hist = keys.slice(0, 30).map(k => { const rs = runs[k], f = rs[0]; return '<tr><td>' + esc(dshort(f.date)) + '</td><td>' + esc(f.engine) + '</td><td>' + esc(f.run || '') + '</td><td class="r">' + namedCt(rs) + ' of ' + rs.length + '</td></tr>'; }).join('');
+  return '<section class="panel"><div class="panel-h"><h2>AI visibility — JD detail, latest day</h2><span class="sub">' + esc(dshort(latestDate)) + ' · per-prompt results from the JD log</span></div><div class="scrollbox"><table class="mini"><thead><tr><th>Prompt</th><th>Engine</th><th>JD Meyers Productions</th><th class="r">Position</th><th>Others named</th></tr></thead><tbody>' + det + '</tbody></table></div>' +
+    '<div class="panel-h"><h2>Run history</h2><span class="sub">' + keys.length + ' runs · ' + rows.length + ' checks</span></div><div class="scrollbox"><table class="mini"><thead><tr><th>Date</th><th>Engine</th><th>Run</th><th class="r">JD named</th></tr></thead><tbody>' + hist + '</tbody></table></div></section>';
+}
+function admPanelChecks() {
+  const rows = (ADM.aiChecks || []).slice().sort((a, b) => (b.date + b.engine + (PROMPT_TXT[b.prompt_id] || b.prompt_id)).localeCompare(a.date + a.engine + (PROMPT_TXT[a.prompt_id] || a.prompt_id)));
+  if (!rows.length) return '';
+  const body = rows.map(r => '<tr><td>' + esc(dshort(r.date)) + '</td><td>' + esc(r.engine) + '</td><td>' + esc(PROMPT_TXT[r.prompt_id] || r.prompt_id) + '</td><td>' + ((r.named || []).indexOf('JD Meyers Productions') >= 0 ? pill('Named', 'ice') : r.completed ? pill('Not named', 'gray') : pill('No answer', 'red')) + '</td><td class="adm-note">' + (r.named || []).map(x => esc(x)).join(', ') + '</td></tr>').join('');
+  return admMini('AI checks ledger — full detail', ['<th>Date</th><th>Engine</th><th>Prompt</th><th>JD</th><th>Named</th>', body], rows.length + ' checks');
+}
+function admPanelIntel() {
+  const rows = ADM.competitors || []; if (!rows.length) return '';
+  const body = rows.map(c => '<tr><td style="white-space:nowrap"><b>' + esc(c.name) + '</b><br><span class="muted">' + esc(c.town || '') + '</span></td><td>' + (c.ig_handle ? '@' + esc(c.ig_handle) : '—') + '</td><td>' + (c.flags || []).map(f => pill(f, 'amber')).join(' ') + '</td><td class="adm-note">' + esc(c.notes || '') + '</td></tr>').join('');
+  return admMini('Competitor intel — full roster', ['<th>Business</th><th>Instagram</th><th>Flags</th><th>Notes (private)</th>', body], rows.filter(c => c.notes).length + ' of ' + rows.length + ' with notes');
+}
+function admPanelConnections() {
+  const rows = ADM.connections || []; if (!rows.length) return '';
+  const body = rows.map(c => '<tr><td>' + esc(c.a) + '</td><td>' + esc(c.b) + '</td><td>' + pill(c.type || '', 'gray') + '</td><td>' + esc(dshort(c.date) || '—') + '</td><td class="adm-note">' + esc(c.evidence || '') + '</td></tr>').join('');
+  return admMini('Connections', ['<th>Business A</th><th>Business B</th><th>Type</th><th>Date</th><th>Evidence</th>', body], rows.length + ' links');
+}
+function admPanelFollow() {
+  const g = ADM.followGraph || {}, edges = g.edges || [];
+  if (!edges.length && !(ADM.followGraphHistory || []).length) return '';
+  const byFrom = {}; edges.forEach(e => { (byFrom[e.from] = byFrom[e.from] || []).push(e.to); });
+  const targets = {}; edges.forEach(e => { targets[e.to] = (targets[e.to] || 0) + 1; });
+  const multi = Object.keys(targets).filter(t => targets[t] > 1).sort((a, b) => targets[b] - targets[a] || a.localeCompare(b));
+  const acct = Object.keys(byFrom).sort().map(f => '<tr><td>@' + esc(f) + '</td><td class="r">' + byFrom[f].length + '</td><td class="adm-note">' + byFrom[f].slice().sort().map(t => '@' + esc(t)).join(', ') + '</td></tr>').join('');
+  const hist = (ADM.followGraphHistory || []).slice().reverse().slice(0, 25).map(h => '<tr><td>' + esc(dshort(h.date)) + '</td><td>' + esc(h.run || '') + '</td><td class="r">+' + (h.new_count || 0) + '</td><td class="adm-note">' + esc(h.note || '') + ((h.new_edges && h.new_edges.length) ? '<br>' + h.new_edges.map(e => '@' + esc(e.from) + ' → @' + esc(e.to)).join(', ') : '') + '</td></tr>').join('');
+  return '<section class="panel"><div class="panel-h"><h2>Follow graph</h2><span class="sub">Generated ' + esc(dshort(g.generated) || '—') + ' · ' + edges.length + ' edges</span></div>' +
+    (g.note ? '<div class="panel-b"><p class="adm-note" style="margin:4px 0 0">' + esc(g.note) + '</p></div>' : '') +
+    '<div class="scrollbox"><table class="mini"><thead><tr><th>Account</th><th class="r">Follows in graph</th><th>Targets</th></tr></thead><tbody>' + acct + '</tbody></table></div>' +
+    (multi.length ? '<div class="panel-h"><h2>Followed by more than one own account</h2></div><div class="panel-b"><div class="tags">' + multi.map(t => pill('@' + t + ' · ' + targets[t], 'ice')).join('') + '</div></div>' : '') +
+    '<div class="panel-h"><h2>History</h2></div><div class="scrollbox"><table class="mini"><thead><tr><th>Date</th><th>Run</th><th class="r">New</th><th>Note</th></tr></thead><tbody>' + hist + '</tbody></table></div></section>';
+}
+function admPanelFollowers() {
+  const h = ADM.igFollowersHistory || {};
+  const rows = Object.keys(h).map(k => { const s = h[k] || []; if (!s.length) return null; const f = s[0], l = s[s.length - 1]; return { k, f, l, d: l.count - f.count }; }).filter(Boolean).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+  if (!rows.length) return '';
+  const body = rows.map(r => '<tr><td>@' + esc(r.k) + '</td><td class="r">' + fmt(r.f.count) + '</td><td class="r">' + fmt(r.l.count) + '</td><td class="r">' + signed(r.d) + '</td><td>' + esc(dshort(r.f.date)) + ' → ' + esc(dshort(r.l.date)) + '</td><td class="r">' + r.l.length + '</td></tr>').join('');
+  return admMini('Follower history — biggest movers', ['<th>Handle</th><th class="r">First</th><th class="r">Latest</th><th class="r">Change</th><th>Window</th><th class="r">Pulls</th>', body], rows.length + ' handles tracked');
+}
+function admPanelActivity() {
+  const all = ADM.igActivity || []; if (!all.length) return '';
+  const byH = {}; all.forEach(r => { if (!byH[r.handle] || r.date > byH[r.handle].date) byH[r.handle] = r; });
+  const rows = Object.keys(byH).map(k => byH[k]).sort((a, b) => (b.followers || 0) - (a.followers || 0));
+  const body = rows.map(r => '<tr><td>@' + esc(r.handle) + '</td><td>' + esc(dshort(r.date)) + '</td><td class="r">' + fmt(r.followers) + '</td><td class="r">' + signed(r.delta) + '</td><td>' + esc(dshort(r.last_media_date) || '—') + '</td><td class="adm-note">' + esc(clean(r.activity || '')) + '</td></tr>').join('');
+  return admMini('Instagram activity — latest pull per handle', ['<th>Handle</th><th>Date</th><th class="r">Followers</th><th class="r">Δ</th><th>Last post</th><th>Activity</th>', body], all.length + ' pulls on file');
+}
+function admPanelOwn() {
+  const all = ADM.ownAccounts || []; if (!all.length) return '';
+  const byA = {}; all.forEach(r => { (byA[r.account] = byA[r.account] || []).push(r); });
+  const body = Object.keys(byA).sort().map(a => { const s = byA[a], f = s[0], l = s[s.length - 1]; return '<tr><td>@' + esc(a) + '</td><td class="r">' + fmt(f.follower_count) + '</td><td class="r">' + fmt(l.follower_count) + '</td><td class="r">' + signed(l.follower_count - f.follower_count) + '</td><td>' + esc(dshort(f.date)) + ' → ' + esc(dshort(l.date)) + '</td><td class="r">' + s.length + '</td></tr>'; }).join('');
+  return admMini('Own accounts', ['<th>Account</th><th class="r">First</th><th class="r">Latest</th><th class="r">Change</th><th>Window</th><th class="r">Days</th>', body], Object.keys(byA).length + ' accounts');
+}
+function admPanelDeepDive() {
+  const dd = ADM.deepDiveBatches || {}, bs = dd.batches || []; if (!bs.length) return '';
+  const nm = id => (BY[id] ? BY[id].name : id);
+  const body = bs.map(b => '<tr><td><b>' + esc(b.day) + '</b></td><td class="adm-note">' + (b.businesses || []).map(nm).map(x => esc(x)).join(', ') + '</td><td class="adm-note">' + (b.venues || []).map(x => esc(x)).join(', ') + '</td></tr>').join('');
+  return admMini('Deep-dive batches', ['<th>Day</th><th>Businesses</th><th>Venues</th>', body], 'Generated ' + esc(dshort(dd.generated) || '—'));
+}
+function admPanelSweeps() {
+  const all = (ADM.webSweepHistory || []).slice().reverse(); if (!all.length) return '';
+  const body = all.map(w => {
+    const pages = w.pages || {};
+    const notable = Object.keys(pages).filter(k => pages[k].status !== 'unchanged').map(k => (BY[k] ? BY[k].name : k) + ' — ' + pages[k].status + (pages[k].note ? ': ' + pages[k].note : '')).join('<br>');
+    const extra = [w.summary, (w.new_entrants && w.new_entrants.length) ? 'New: ' + w.new_entrants.join(', ') : '', (w.roster_corrections && w.roster_corrections.length) ? 'Corrections: ' + (Array.isArray(w.roster_corrections) ? w.roster_corrections.join('; ') : w.roster_corrections) : ''].filter(Boolean).join('<br>');
+    return '<tr><td>' + esc(dshort(w.date)) + '</td><td>' + esc(w.run_label || '') + '</td><td class="r">' + (w.fetched != null ? w.fetched + ' of ' + w.of_total : '—') + '</td><td class="adm-note">' + notable + (notable && extra ? '<br>' : '') + esc(extra).replace(/\n/g, '<br>') + '</td></tr>';
+  }).join('');
+  return admMini('Website sweep history', ['<th>Date</th><th>Sweep</th><th class="r">Fetched</th><th>Changes and notes</th>', body], all.length + ' sweeps');
+}
+function viewAdmin() {
+  if (!ADM) {
+    return '<div class="view scroll"><div class="admin"><div class="page-h"><div><h1>Admin</h1><p>The JD-specific layer: full AI-visibility results, competitor intel and notes, the follow graph, own accounts and routine history. It ships only as ciphertext and decrypts in this browser.</p></div></div>' +
+      '<section class="panel adm-gate"><div class="panel-b">' +
+      (admState.busy ? '<p class="adm-msg" style="margin-top:12px">Unlocking…</p>' :
+        '<form id="admin-form" class="adm-form"><label for="admin-pw">Password</label><div class="adm-row"><input type="password" id="admin-pw" autocomplete="current-password" placeholder="Admin password"><button class="btn" type="submit">Unlock</button></div>' +
+        (admState.err ? '<p class="adm-err">' + esc(admState.err) + '</p>' : '<p class="adm-msg">Nothing is fetched or rendered until a password decrypts the bundle here. The password is kept only for this tab session.</p>') + '</form>') +
+      '</div></section></div></div>';
+  }
+  const A = ADM;
+  const tile = (n, t) => '<div class="tile"><div class="n">' + n + '</div><div class="t">' + t + '</div></div>';
+  const stats = '<div class="stats" style="grid-template-columns:repeat(5,minmax(0,1fr))">' +
+    tile(fmt((A.aiVisibility || []).length), 'AI visibility checks (JD log)') +
+    tile(fmt((A.competitors || []).filter(c => c.notes).length) + '<small>of ' + (A.competitors || []).length + '</small>', 'Roster entries with intel notes') +
+    tile(fmt(((A.followGraph || {}).edges || []).length), 'Follow edges') +
+    tile(fmt((A.igActivity || []).length), 'IG activity pulls') +
+    tile(fmt((A.webSweepHistory || []).length), 'Website sweeps') + '</div>';
+  return '<div class="view scroll"><div class="admin"><div class="page-h"><div><h1>Admin</h1><p>JD-specific detail, decrypted in this browser only. Bundle built ' + esc(dshort((A.meta || {}).built) || '—') + '. Nothing on this page is in the public data bundles.</p></div><button class="btn" data-admin-lock type="button">Lock</button></div>' +
+    stats +
+    admPanelAI() + admPanelChecks() + admPanelIntel() + admPanelConnections() + admPanelFollow() + admPanelFollowers() + admPanelActivity() + admPanelOwn() + admPanelDeepDive() + admPanelSweeps() +
+    '</div></div>';
+}
+
+/* ---------- shell ---------- */
+const VIEWS = ['standing', 'brief', 'market', 'compare', 'social', 'map', 'trends', 'ai', 'network', 'data', 'admin'];
+const RENDER = { standing: viewStanding, brief: viewBrief, market: viewMarket, compare: viewCompare, social: viewSocial, map: viewMap, trends: viewTrends, ai: viewAI, network: viewNetwork, data: viewData, admin: viewAdmin };
+function thumb(seg) {
+  if (!seg) return; const t = $('.thumb', seg), b = $('[aria-selected="true"]', seg); if (!t || !b) return;
+  t.style.width = b.offsetWidth + 'px'; t.style.transform = 'translateX(' + b.offsetLeft + 'px)';
+}
+function health() {
+  const bad = SS.filter(s => s.st === 'stalled').length, late = SS.filter(s => s.st === 'late').length, none = SS.filter(s => s.st === 'none').length;
+  const chip = $('#health'), dot = $('.dot', chip), t = $('#health-t');
+  if (bad) { dot.className = 'dot stalled'; t.textContent = bad + ' ' + plural(bad, 'source') + ' stalled'; }
+  else if (late) { dot.className = 'dot late'; t.textContent = late + ' ' + plural(late, 'source') + ' late'; }
+  else if (none) { dot.className = 'dot'; t.textContent = 'Some data missing'; }
+  else { dot.className = 'dot ok'; t.textContent = 'All sources current'; }
+  const aiBtn = $('#nav [data-v="ai"]'); if (aiBtn) aiBtn.style.display = ENGS.length ? '' : 'none';
+}
+function render() {
+  stopSpot();
+  const v = state.view;
+  $$('#nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === v)));
+  thumb($('#nav'));
+  closeDrawer();
+  stage.innerHTML = RENDER[v]();
+  stage.scrollTop = 0;
+  if (v === 'market') fillMarket();
+  $$('.seg.sm').forEach(thumb);
+  if (v === 'brief') startSpot();
+  if (v === 'admin') adminMount();
+  if (v === 'map') initMap();
+  else if (bpMap) { try { bpMap.remove(); } catch (e) { } bpMap = null; }
+}
+function show(v) { if (VIEWS.indexOf(v) < 0 || (v === 'ai' && !ENGS.length)) v = 'standing'; state.view = v; try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) { } render(); }
+function route() { let h = (location.hash || '').replace('#', ''); if (VIEWS.indexOf(h) < 0 || (h === 'ai' && !ENGS.length)) h = 'standing'; if (h !== state.view || !stage.firstChild) { state.view = h; render(); } }
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const t = e.target, q = s => t.closest(s);
+  let el;
+  if ((el = q('#nav button'))) return show(el.dataset.v);
+  if (q('.brand')) { e.preventDefault(); return show('standing'); }
+  if (q('#health')) return show('data');
+  if (q('[data-admin-lock]')) return admLock();
+  if (q('[data-close]')) return closeDrawer();
+  if ((el = q('[data-go]'))) return show(el.dataset.go);
+  if ((el = q('[data-open]'))) { e.stopPropagation(); return openAny(el.dataset.open); }
+  if ((el = q('[data-spot]'))) { spotGo(+el.dataset.spot); startSpot(); return; }
+  if ((el = q('[data-spotnav]'))) { spotGo(state.spotIdx + (+el.dataset.spotnav)); startSpot(); return; }
+  if ((el = q('[data-bp]'))) { state.briefPrice = el.dataset.bp; const y = stage.firstChild ? stage.firstChild.scrollTop : 0; render(); if (stage.firstChild) stage.firstChild.scrollTop = y; return; }
+  if ((el = q('[data-tsel]'))) { state.trendSel = el.dataset.tsel; render(); const vs = stage.firstChild; if (vs) vs.scrollTop = 0; return; }
+  if (q('[data-spread]')) { const cur = state.sort.k === 'wed' ? state.sort.dir : -1; state.sort = { k: 'wed', dir: -cur }; return fillMarket(); }
+  if ((el = q('[data-sort]'))) {
+    const k = el.dataset.sort; state.sort = state.sort.k === k ? { k, dir: -state.sort.dir } : { k, dir: k === 'name' || k === 'region' ? 1 : -1 }; return fillMarket();
+  }
+  if ((el = q('[data-kind]'))) { state.kind = el.dataset.kind; state.sel = null; render(); return; }
+  if ((el = q('[data-lane]'))) { state.lane = el.dataset.lane; $$('[data-lane]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); return fillMarket(); }
+  if ((el = q('[data-reg]'))) { state.region = el.dataset.reg; $$('[data-reg]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); return fillMarket(); }
+  if (q('#csv')) return copyText(state.kind === 'biz' ? csvBiz() : '', 'Copied ' + filtered().length + ' rows');
+  if ((el = q('[data-ailane]'))) { state.aiLane = el.dataset.ailane; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
+  if ((el = q('[data-mx]'))) { const id = el.dataset.mx; state.aiOpen[id] = !state.aiOpen[id]; const y = stage.firstChild.scrollTop; render(); stage.firstChild.scrollTop = y; return; }
+  if ((el = q('[data-town]'))) { const t = el.dataset.town; const on = state.mapTown !== t; state.mapTown = on ? t : null; if (bpMap) { $$('[data-town]').forEach(x => x.style.background = on && x.dataset.town === t ? 'var(--ice-bg)' : ''); if (on) flyTown(t); return; } const keep = curBox.slice(); render(); applyBox(keep); return; }
+  if ((el = q('[data-box]'))) { $$('[data-box]').forEach(b => b.setAttribute('aria-selected', String(b === el))); thumb($('#boxseg')); if (bpMap && bpBounds[el.dataset.box]) { bpMap.flyToBounds(bpBounds[el.dataset.box], { padding: [28, 28], duration: REDUCED ? 0 : 0.7 }); return; } return animBox(boxFor(el.dataset.box)); }
+  if (q('#venToggle')) { state.mapVen = !state.mapVen; const tg = $('#venToggle'); if (tg) tg.setAttribute('aria-pressed', String(state.mapVen)); if (bpMap && bpVenLayer) { if (state.mapVen) bpVenLayer.addTo(bpMap); else bpMap.removeLayer(bpVenLayer); return; } const keep = curBox.slice(); render(); applyBox(keep); return; }
+  if ((el = q('[data-copy]'))) {
+    const k = el.dataset.copy;
+    if (k === 'csv') return copyText(csvBiz(), 'Copied businesses CSV');
+    if (k === 'report') return copyText(freshnessReport(), 'Copied freshness report');
+    if (k === 'ledger') return copyText(JSON.stringify(AIROWS, null, 1), 'Copied audit data');
+  }
+});
+document.addEventListener('input', e => { if (e.target.id === 'q') { state.q = e.target.value; fillMarket(); } });
+document.addEventListener('submit', e => {
+  if (e.target.id === 'admin-form') { e.preventDefault(); const i = $('#admin-pw'); if (i && i.value) admUnlock(i.value); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (drawer.classList.contains('open')) closeDrawer(); else if (document.activeElement && document.activeElement.id === 'q') document.activeElement.blur(); }
+  if (e.key === '/' && !/input|textarea/i.test((document.activeElement || {}).tagName || '')) {
+    if (state.view !== 'market') show('market');
+    const i = $('#q'); if (i) { e.preventDefault(); i.focus(); i.select(); }
+  }
+});
+const tip = $('#tip');
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest && e.target.closest('[data-tip]'); if (!el) return;
+  tip.textContent = el.dataset.tip; tip.classList.add('on');
+});
+document.addEventListener('mousemove', e => {
+  if (!tip.classList.contains('on')) return;
+  const w = tip.offsetWidth; tip.style.left = Math.min(innerWidth - w - 12, e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 16) + 'px';
+});
+document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (el) tip.classList.remove('on'); });
+window.addEventListener('hashchange', route);
+window.addEventListener('resize', () => { thumb($('#nav')); $$('.seg.sm').forEach(thumb); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { thumb($('#nav')); $$('.seg.sm').forEach(thumb); });
+
+/* ---------- Depth: parallax planes ----------
+   Builds the mid plane (#plxmid: two glow blobs + two rings) and
+   drifts scene + mid against the active view's scroll — damped,
+   transform-only, rAF-throttled, passive; distances asymptote at
+   -58px (scene) / -108px (mid). Under prefers-reduced-motion
+   nothing is set and the CSS flattens both layers. */
+(function () {
+  const mid = document.createElement('div');
+  mid.id = 'plxmid'; mid.setAttribute('aria-hidden', 'true');
+  mid.innerHTML = '<div class="plx-blob plx-b1"></div><div class="plx-blob plx-b2"></div>' +
+    '<div class="plx-ring plx-r1"></div><div class="plx-ring plx-r2"></div>';
+  document.body.appendChild(mid);
+  if (REDUCED) return;
+  let ticking = false, lastY = 0;
+  function upd() {
+    ticking = false;
+    const S = Math.max(lastY, window.scrollY || 0);
+    const k = 1 - Math.exp(-S / 850);
+    const r = document.documentElement.style;
+    r.setProperty('--plx-bg', (-58 * k).toFixed(1) + 'px');
+    r.setProperty('--plx-mid', (-108 * k).toFixed(1) + 'px');
+  }
+  function onScroll(e) {
+    const t = e && e.target;
+    if (t && t !== document && t.classList && t.classList.contains('view')) lastY = t.scrollTop;
+    if (!ticking) { ticking = true; requestAnimationFrame(upd); }
+  }
+  document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+  window.addEventListener('scroll', onScroll, { passive: true });
+  upd();
+})();
+
+paintTheme();
+health();
+route();
+window.__pulse = { B, V, AI, ENGS, aiCompute, SS, ASOF_S };
 })();
