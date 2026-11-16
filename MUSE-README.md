@@ -2,10 +2,14 @@
 
 Claude owns the design. Muse owns the data. Keep those separate.
 
+**This has been overwritten by stale syncs multiple times.** Every sync that pushes `index.html`, `styles.css`, or `app.js` from anywhere other than the current `main` branch erases the live design. Fix the sync step, not the files — see below.
+
 ## Before every sync
-1. Pull `index.html`, `styles.css`, `app.js` and the `fonts/` folder from the repo's `main` branch into your workspace `site/` folder. Do not sync older copies of these over the repo. That is what erased the last redesign.
-2. In `index.html`, change only the `<meta name="build">` line and the `?v=` tags.
-3. Write data to `data/data.js` (`window.PULSE_DATA`) as before.
+1. Delete whatever copy of `index.html`, `styles.css`, `app.js`, and `fonts/` is sitting in your workspace `site/` folder. Re-pull those four from the repo's `main` branch, fresh, every time. Never carry them forward in your own workspace between runs.
+2. Confirm the four files you just pulled match `main` exactly (diff them) before writing anything else. If they don't match, stop and re-pull — don't sync on top of a mismatch.
+3. In `index.html`, change only the `<meta name="build">` line and the `?v=` tags.
+4. Write data to `data/data.js` (`window.PULSE_DATA`) as before.
+5. `git add` only files under `data/`, plus the `<meta name="build">` / `?v=` lines in `index.html`. Never stage `styles.css` or `app.js`.
 
 ## What the page needs from the data
 The full field-by-field rules are in the comment block at the top of `app.js`. Short version:
