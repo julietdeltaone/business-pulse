@@ -469,7 +469,79 @@ function openProfile(id) {
 }
 
 /* ---------- router ---------- */
-const VIEWS = { brief: viewBrief, pricing: viewPricing, posting: viewPosting, leaders: viewLeaders, directory: viewDirectory, data: viewData };
+/* ---------- Activity (added by Muse 2026-11-16, muse-pages branch) ----------
+   New view only: no existing function, rule or markup is modified. Assembled
+   from the existing helpers (head, empty, barRow, bl, vbars, cnt, A, ago, fmt)
+   and classes (.view, .stats, .stat, .pane, .charts2, .cap, .foot).
+   Data: D.fbActivity rows {date, id, name, kind, fb_url, followers,
+   followers_kind, delta, last_post_date, recent_posts_90d, rating, status}
+   plus D.igActivity for the combined pane. Every figure is wrapped in A()
+   with the page it was read from. */
+function fbLatest() {
+  const byId = {};
+  (D.fbActivity || []).forEach(r => { if (!byId[r.id] || r.date > byId[r.id].date) byId[r.id] = r; });
+  return Object.values(byId);
+}
+function viewActivity() {
+  const fb = fbLatest();
+  if (!fb.length) return '<div class="view">' + head('Activity', 'Posting and audience across Instagram and Facebook.') + empty('No Facebook pages are being tracked yet.') + '</div>';
+  const read = fb.filter(r => r.status === 'ok' && r.followers != null);
+  const asOf = fb.map(r => r.date).sort().pop();
+  const byPosts = read.filter(r => r.recent_posts_90d != null).slice().sort((a, b) => b.recent_posts_90d - a.recent_posts_90d);
+  const byFol = read.slice().sort((a, b) => b.followers - a.followers);
+  const maxPosts = byPosts.length ? byPosts[0].recent_posts_90d || 1 : 1;
+  const maxFol = byFol.length ? byFol[0].followers || 1 : 1;
+  const mine = fb.find(r => r.id === JD_ID);
+  const quiet = read.filter(r => r.recent_posts_90d === 0 || (r.last_post_date && age(r.last_post_date) > 60));
+  const obj = r => ({ id: r.id, name: r.name || r.id, me: r.id === JD_ID });
+  const postRows = byPosts.map(r => barRow(obj(r), r.recent_posts_90d / maxPosts * 100,
+    A(fmt(r.recent_posts_90d) + plural(r.recent_posts_90d, ' post'), r.fb_url, 'Facebook page'),
+    '<span class="num">' + (r.last_post_date ? 'last ' + ago(r.last_post_date) : 'no posts seen') + '</span>')).join('');
+  const folRows = byFol.map(r => barRow(obj(r), r.followers / maxFol * 100,
+    A(fmt(r.followers), r.fb_url, 'Facebook page'),
+    r.delta != null ? '<span class="num ' + (r.delta > 0 ? 'up' : r.delta < 0 ? 'dn' : '') + '">' + signed(r.delta) + '</span>' : '')).join('');
+  const igByHandle = {};
+  (D.igActivity || []).forEach(r => { if (!igByHandle[r.handle] || r.date > igByHandle[r.handle].date) igByHandle[r.handle] = r; });
+  const igPosts = D.competitors.map(c => igByHandle[c.ig_handle]).filter(r => r && r.media_count != null);
+  const fbMed = byPosts.length >= 5 ? median(byPosts.map(r => r.recent_posts_90d)) : null;
+  const both = [
+    ['Facebook pages tracked', fmt(fb.length)],
+    ['Pages read on ' + dshort(asOf), fmt(read.length) + ' of ' + fmt(fb.length)],
+    ['Typical Facebook pace', fbMed != null ? fmt(fbMed) + plural(fbMed, ' post') + ' in 90 days' : 'Too few'],
+    ['Instagram accounts tracked', fmt(igPosts.length)],
+    ['Quiet on Facebook 60+ days', fmt(quiet.length) + ' of ' + fmt(read.length)],
+  ];
+  return '<div class="view">' + head('Activity', 'How often each business posts, and how big each audience is, across Instagram and Facebook.') +
+    '<div class="stats">' +
+      '<div class="stat"><span>Facebook pages tracked</span><b>' + cnt(fb.length) + '</b><small>Businesses and venues with a confirmed page</small></div>' +
+      '<div class="stat"><span>Most active on Facebook</span><b>' + (byPosts.length ? A(fmt(byPosts[0].recent_posts_90d) + plural(byPosts[0].recent_posts_90d, ' post'), byPosts[0].fb_url) : '') + '</b><small>' + (byPosts.length ? esc(byPosts[0].name || '') + ', last 90 days' : '') + '</small></div>' +
+      '<div class="stat"><span>Largest Facebook audience</span><b>' + (byFol.length ? A(fmt(byFol[0].followers), byFol[0].fb_url) : '') + '</b><small>' + (byFol.length ? esc(byFol[0].name || '') : '') + '</small></div>' +
+      '<div class="stat me"><span>You</span><b>' + (mine && mine.followers != null ? A(fmt(mine.followers), mine.fb_url) : 'Not tracked') + '</b><small>' + (mine && mine.last_post_date ? 'Latest Facebook post ' + ago(mine.last_post_date) : 'No Facebook page in the tracked set') + '</small></div>' +
+    '</div>' +
+    '<div class="charts2">' +
+      '<div class="pane chart"><h3>Facebook posting, last 90 days</h3>' + (postRows || empty('No posting figures read yet.')) + '<p class="cap">Posts counted from each page on ' + dshort(asOf) + '. Click a figure to open the page.</p></div>' +
+      '<div class="pane chart"><h3>Facebook audience</h3>' + (folRows || empty('No audience figures read yet.')) + '<p class="cap">Followers as read on ' + dshort(asOf) + '. Change is against the previous read.</p></div>' +
+    '</div>' +
+    '<div class="pane"><h3>Both platforms</h3>' + bl(both) +
+    '<p class="foot">Facebook figures are read from each business\'s own page; a page that could not be read shows no figure, never a carried-forward one. Instagram posting lives on the Posting page.</p></div></div>';
+}
+
+/* ---------- Recommendations (added by Muse 2026-11-16, muse-pages branch) ----------
+   New view only. Data: D.recommendations {generated, items:[{kind, title, body,
+   evidence:[{label, value, url}]}]} — computed by scripts/build_recommendations.py
+   from the Facebook, Instagram, review and roster feeds. Every figure is wrapped
+   in A() with the page it can be checked on. */
+function viewRecommendations() {
+  const R = D.recommendations || {}, items = R.items || [];
+  if (!items.length) return '<div class="view">' + head('Recommendations', 'Problems in this market the data says you can solve.') + empty('No findings yet — the feeds have not produced a recommendation.') + '</div>';
+  const panes = items.map(it => '<div class="pane"><h3>' + esc(it.title) + '</h3><p>' + esc(it.body) + '</p>' +
+    bl((it.evidence || []).map(e => [esc(e.label), A(esc(e.value), e.url)])) + '</div>').join('');
+  return '<div class="view">' + head('Recommendations', 'Problems in this market the data says you can solve.') +
+    '<p class="cap">Generated ' + esc(R.generated || '') + ' from the Facebook, Instagram, review and roster feeds. Every figure links to the page it was read from.</p>' +
+    panes + '</div>';
+}
+
+const VIEWS = { brief: viewBrief, pricing: viewPricing, posting: viewPosting, activity: viewActivity, leaders: viewLeaders, recommendations: viewRecommendations, directory: viewDirectory, data: viewData };
 const stage = $('#stage');
 let first = true;
 function render(keep) {
