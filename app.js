@@ -175,7 +175,7 @@ const B = D.competitors.map(c => {
 }).sort((a, b) => a.name.localeCompare(b.name));
 const BY = {}; B.forEach(b => BY[b.id] = b);
 const JD = BY[JD_ID] || B[0];
-const state = { scope: 'all', svc: 'wed', whatIf: null, psort: 'posts30', q: '', lane: '', dsort: 'full' };
+const state = { scope: 'all', svc: 'wed', whatIf: null, psort: 'posts30', q: '', lane: '', dsort: 'full', asort: 'last' };
 try { const s = localStorage.getItem('bp_scope'); if (s === 'slc' || s === 'all') state.scope = s; } catch (e) {}
 const pool = () => B.filter(b => state.scope === 'all' || b.slc || b.me);
 const priceStale = p => !p.checked || age(p.checked) > PRICE_DAYS;
@@ -304,6 +304,7 @@ function viewBrief() {
     feed('Follower moves, 7 days', movers.length ? movers.map(b => li(whoFull(b), A('<span class="' + (b.ig.g7 > 0 ? 'up' : 'dn') + '">' + signed(b.ig.g7) + '</span>', b.ig.url))).join('') : '<li class="none">No movement.</li>') +
     (moves.length ? feed('Price moves, 30 days', moves.map(h => li(whoFull(BY[h.id]) + ' <small>' + esc(SVC[h.service] || '') + '</small>', A(money(h.old) + ' to ' + money(h.new), priceUrl(h.url, h.new)))).join(''))
       : feed('Prices re-read this week', reread.length ? reread.map(b => { const k = Object.keys(b.prices)[0], p = b.prices[k]; return li(whoFull(b) + ' <small>' + esc(SVC[k]) + '</small>', A('from ' + money(p.low), priceUrl(p.url, p.low))); }).join('') : '<li class="none">No price pages were re-read.</li>')) +
+    presBriefPane() +
     '</section></div>';
 }
 
@@ -410,14 +411,14 @@ function viewLeaders() {
 /* ---------- Directory ---------- */
 function viewDirectory() {
   const q = state.q.toLowerCase(), P = pool().filter(b => (!q || (b.name + ' ' + b.town).toLowerCase().indexOf(q) >= 0) && (!state.lane || b.prices[state.lane]));
-  const DS = { full: b => Object.keys(b.prices).length + (b.ig ? 2 : 0) + (b.rev != null ? 1 : 0), wed: b => b.prices.wed ? b.prices.wed.low : -1, portrait: b => b.prices.portrait ? b.prices.portrait.low : -1, family: b => b.prices.family ? b.prices.family.low : -1, fol: b => b.ig ? b.ig.followers : -1, post: b => b.ig && b.ig.posts30 != null ? b.ig.posts30 : -1, rev: b => b.rev != null ? b.rev : -1 };
+  const DS = { full: b => Object.keys(b.prices).length + (b.ig ? 2 : 0) + (b.rev != null ? 1 : 0), wed: b => b.prices.wed ? b.prices.wed.low : -1, portrait: b => b.prices.portrait ? b.prices.portrait.low : -1, family: b => b.prices.family ? b.prices.family.low : -1, fol: b => b.ig ? b.ig.followers : -1, post: b => b.ig && b.ig.posts30 != null ? b.ig.posts30 : -1, rev: b => b.rev != null ? b.rev : -1, act: b => { const p = presOf(b.id); return p && p.last_activity ? dn(p.last_activity) : -1; } };
   const df = DS[state.dsort] || DS.full; P.sort((a, b) => df(b) - df(a) || a.name.localeCompare(b.name));
   const dth = (k, t) => '<th class="num"><button class="th" data-dsort="' + k + '" aria-pressed="' + (state.dsort === k) + '">' + t + '</button></th>';
   const cell = (b, k) => b.prices[k] ? A(money(b.prices[k].low), priceUrl(b.prices[k].url, b.prices[k].low)) : '';
-  const rows = P.map(b => '<tr class="' + (b.me ? 'me' : '') + '"><td>' + whoFull(b) + '<small>' + esc(b.town) + '</small></td><td class="num">' + cell(b, 'wed') + '</td><td class="num">' + cell(b, 'portrait') + '</td><td class="num">' + cell(b, 'family') + '</td><td class="num">' + (b.ig ? A(fmt(b.ig.followers), b.ig.url) : '') + '</td><td class="num">' + (b.ig && b.ig.posts30 != null ? A(fmt(b.ig.posts30), b.ig.url) : '') + '</td><td class="num">' + (b.rev != null ? A(fmt(b.rev) + (b.rating != null ? ' <small>' + b.rating.toFixed(1) + '</small>' : ''), b.rurl) : '') + '</td></tr>').join('');
+  const rows = P.map(b => '<tr class="' + (b.me ? 'me' : '') + '"><td>' + whoFull(b) + '<small>' + esc(b.town) + '</small></td><td>' + presChips(b) + '</td><td class="num">' + cell(b, 'wed') + '</td><td class="num">' + cell(b, 'portrait') + '</td><td class="num">' + cell(b, 'family') + '</td><td class="num">' + (b.ig ? A(fmt(b.ig.followers), b.ig.url) : '') + '</td><td class="num">' + (b.ig && b.ig.posts30 != null ? A(fmt(b.ig.posts30), b.ig.url) : '') + '</td><td class="num">' + (b.rev != null ? A(fmt(b.rev) + (b.rating != null ? ' <small>' + b.rating.toFixed(1) + '</small>' : ''), b.rurl) : '') + '</td></tr>').join('');
   return '<div class="view">' + head('Directory', 'Click a name for its profile. Click a column to sort.',
     '<div class="tools"><input class="in" id="dq" type="search" placeholder="Search name or town" value="' + esc(state.q) + '" aria-label="Search"><select class="in" id="dl" aria-label="Service"><option value="">Any service</option>' + SERVICES.map(s => '<option value="' + s[0] + '"' + (state.lane === s[0] ? ' selected' : '') + '>Has ' + s[1].toLowerCase() + ' price</option>').join('') + '</select></div>') +
-    '<div class="pane chart scroll"><table class="tb"><thead><tr><th>Business</th>' + dth('wed', 'Wedding from') + dth('portrait', 'Portrait from') + dth('family', 'Family from') + dth('fol', 'Followers') + dth('post', 'Posts, 30 days') + dth('rev', 'Reviews') + '</tr></thead><tbody>' + (rows || '<tr><td colspan="7">' + empty('Nothing matches.') + '</td></tr>') + '</tbody></table><p class="foot">' + P.length + ' businesses</p></div></div>';
+    '<div class="pane chart scroll"><table class="tb"><thead><tr><th>Business</th><th><button class="th" data-dsort="act" aria-pressed="' + (state.dsort === 'act') + '">Presence</button></th>' + dth('wed', 'Wedding from') + dth('portrait', 'Portrait from') + dth('family', 'Family from') + dth('fol', 'Followers') + dth('post', 'Posts, 30 days') + dth('rev', 'Reviews') + '</tr></thead><tbody>' + (rows || '<tr><td colspan="8">' + empty('Nothing matches.') + '</td></tr>') + '</tbody></table><p class="foot">' + P.length + ' businesses. Presence: W website, F Facebook, I Instagram — lit means active in the last 30 days.</p></div></div>';
 }
 
 /* ---------- Data ---------- */
@@ -452,13 +453,14 @@ function viewData() {
 function openProfile(id) {
   const b = BY[id]; if (!b) return;
   const g = b.ig, pk = Object.keys(b.prices);
-  const links = [['Website', b.site], ['Pricing page', b.purl], ['Instagram', igUrl(b.handle)], ['Reviews', b.rurl]].filter(x => x[1]);
+  const links = [['Website', b.site], ['Pricing page', b.purl], ['Instagram', igUrl(b.handle)], ['Facebook', (fbOf(b.id) || {}).fb_url], ['Reviews', b.rurl]].filter(x => x[1]);
   const el = document.createElement('div'); el.className = 'drawer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', b.name);
   el.innerHTML = '<div class="dw"><button class="x" aria-label="Close">Close</button><h2>' + esc(b.name) + '</h2><p class="cap">' + esc(b.town) + (b.me ? ', your business' : '') + '</p>' +
     '<div class="links">' + (links.length ? links.map(l => '<a href="' + esc(l[1]) + '" target="_blank" rel="noopener">' + l[0] + '</a>').join('') : '<span class="cap">No links on record, so nothing about this business can be shown.</span>') + '</div>' +
     '<section><h3>Prices</h3>' + (pk.length ? '<ul class="kv">' + pk.map(k => { const p = b.prices[k]; return '<li><span>' + esc(SVC[k]) + '</span><b>' + A(money(p.low), priceUrl(p.url, p.low)) + (p.high > p.low ? ' to ' + A(money(p.high), priceUrl(p.url, p.high)) : '') + '</b></li>'; }).join('') + '</ul>' : '') +
       (b.ptext ? '<p class="quote">' + esc(clean(b.ptext)) + '</p><p class="cap">' + A('As listed on ' + esc(host(b.purl)), b.purl) + ', ' + (b.pdate ? 'read ' + dshort(b.pdate) : 'no read date') + '</p>' : '<p class="cap">' + esc((D.pricingGaps[b.id] && D.pricingGaps[b.id].reason) || 'No linked price list') + '</p>') + '</section>' +
     '<section><h3>Instagram</h3>' + (g ? '<div class="dstats"><div><b>' + A(fmt(g.followers), g.url) + '</b><span>followers</span></div><div><b>' + (g.posts30 != null ? A(fmt(g.posts30), g.url) : '') + '</b><span>posts, 30 days</span></div><div><b>' + (g.eng != null ? A(g.eng.toFixed(1) + '%', g.url) : '') + '</b><span>engagement</span></div><div><b class="' + (g.g30 > 0 ? 'up' : g.g30 < 0 ? 'dn' : '') + '">' + (g.g30 != null ? signed(g.g30) : '') + '</b><span>30-day change</span></div></div>' + spark(g.series) + '<p class="cap">Followers since ' + dshort(ROWS[b.handle][0].date) + '</p>' + strip(g, STRIP, b.me) + '<p class="cap">New posts, last ' + STRIP + ' days' + (g.lastPost ? '. Latest post ' + ago(g.lastPost) : '') + '</p>' : '<p class="cap">' + (b.handle ? '@' + esc(b.handle) + ' is on the roster but is not pulled daily.' : 'No Instagram account on record.') + '</p>') + '</section>' +
+    '<section><h3>Facebook</h3>' + (() => { const f = fbOf(b.id), pr = presOf(b.id); if (!f) return '<p class="cap">No Facebook page found.</p>'; if (f.status !== 'ok' || f.followers == null) return '<p class="cap">The page on file could not be read on ' + dshort(f.date) + '.</p>'; return '<div class="dstats"><div><b>' + A(fmt(f.followers), f.fb_url) + '</b><span>followers</span></div><div><b>' + A(fmt(f.recent_posts_90d), f.fb_url) + '</b><span>posts, 90 days</span></div><div><b>' + (f.last_post_date ? A(ago(f.last_post_date), f.fb_url) : '') + '</b><span>latest post</span></div></div>' + (f.rating ? '<p class="cap">' + esc(f.rating) + ' on Facebook.</p>' : '') + (pr && pr.facebook_first ? '<p class="cap">Facebook-first: no website or Instagram on file — this page is the business.</p>' : '') + '<p class="cap">Read ' + dshort(f.date) + '</p>'; })() + '</section>' +
     '<section><h3>Reviews</h3>' + (b.rev != null ? '<div class="dstats"><div><b>' + A(fmt(b.rev), b.rurl) + '</b><span>reviews on ' + esc(({ google: 'Google', facebook: 'Facebook', weddingwire: 'WeddingWire', theknot: 'The Knot', zola: 'Zola' })[b.rsrc] || 'their listing') + '</span></div>' + (b.rating != null ? '<div><b>' + A(b.rating.toFixed(1), b.rurl) + '</b><span>average rating</span></div>' : '') + '</div><p class="cap">' + (b.rdate ? 'Read ' + dshort(b.rdate) : 'No read date') + '</p>' : '<p class="cap">No linked review count.</p>') + '</section></div>';
   document.body.appendChild(el);
   const prev = document.activeElement, close = () => { el.remove(); document.removeEventListener('keydown', key); if (prev && prev.focus) prev.focus(); };
@@ -482,48 +484,92 @@ function fbLatest() {
   (D.fbActivity || []).forEach(r => { if (!byId[r.id] || r.date > byId[r.id].date) byId[r.id] = r; });
   return Object.values(byId);
 }
+let FB_BY = null;
+function fbOf(id) { if (!FB_BY) { FB_BY = {}; fbLatest().forEach(r => FB_BY[r.id] = r); } return FB_BY[id] || null; }
+function presOf(id) { return ((D.presence || {}).businesses || {})[id] || null; }
+/* Presence chips: W website, F Facebook, I Instagram. on = active in the
+   last 30 days (or, for a website, on file), stale = exists but quiet or
+   untracked, off = not found. Detail rides in data-tip. */
+function presChips(b) {
+  const p = presOf(b.id), chip = (L, st, tip) => '<i class="' + st + '" data-tip="' + esc(tip) + '">' + L + '</i>';
+  let w, f, i;
+  w = b.site ? chip('W', 'on', 'Website: ' + host(b.site)) : chip('W', 'off', 'No website on file');
+  const fb = p && p.facebook;
+  f = !fb ? chip('F', 'off', 'No Facebook page found')
+    : fb.status !== 'ok' ? chip('F', 'stale', 'Facebook page could not be read')
+    : (fb.last_post && age(fb.last_post) != null && age(fb.last_post) <= 30) ? chip('F', 'on', 'Facebook: last post ' + ago(fb.last_post))
+    : chip('F', 'stale', 'Facebook: last post ' + (fb.last_post ? ago(fb.last_post) : 'never seen'));
+  i = !b.handle ? chip('I', 'off', 'No Instagram account on record')
+    : !b.ig ? chip('I', 'stale', 'Instagram: @' + b.handle + ' is not pulled daily')
+    : (b.ig.lastPost && age(b.ig.lastPost) != null && age(b.ig.lastPost) <= 30) ? chip('I', 'on', 'Instagram: last post ' + ago(b.ig.lastPost))
+    : chip('I', 'stale', 'Instagram: last post ' + (b.ig.lastPost ? ago(b.ig.lastPost) : 'never seen'));
+  return '<span class="pres">' + w + f + i + '</span>';
+}
+function presBriefPane() {
+  const p = presOf(JD_ID); if (!p) return '';
+  const rows = [];
+  if (p.website) rows.push(['Website', A(host(p.website.url), p.website.url) + (p.website.sweep_status ? ' <small>sweep: ' + esc(p.website.sweep_status) + '</small>' : '')]);
+  if (p.instagram) rows.push(['Instagram', A(fmt(p.instagram.followers) + ' followers · ' + fmt(p.instagram.posts30) + plural(p.instagram.posts30, ' post') + ' in 30 days · last ' + (p.instagram.last_post ? ago(p.instagram.last_post) : 'unknown'), p.instagram.url)]);
+  if (p.facebook) rows.push(['Facebook', A(fmt(p.facebook.followers) + ' followers · ' + fmt(p.facebook.posts90) + plural(p.facebook.posts90, ' post') + ' in 90 days · last ' + (p.facebook.last_post ? ago(p.facebook.last_post) : 'unknown'), p.facebook.url)]);
+  const all = Object.values((D.presence || {}).businesses || {});
+  rows.push(['Facebook-first competitors', fmt(all.filter(x => x.facebook_first).length) + ' post there with no website or Instagram']);
+  rows.push(['Quiet everywhere, 90+ days', fmt(all.filter(x => x.dormant).length) + ' of ' + fmt(all.length)]);
+  rows.push(['No channel at all', fmt(all.filter(x => x.dark).length)]);
+  return '<div class="pane"><h3>Your presence</h3>' + bl(rows) + '<p class="cap">Every channel read as one picture. Detail on the Activity page.</p></div>';
+}
 function viewActivity() {
-  const fb = fbLatest();
-  if (!fb.length) return '<div class="view">' + head('Activity', 'Posting and audience across Instagram and Facebook.') + empty('No Facebook pages are being tracked yet.') + '</div>';
-  const read = fb.filter(r => r.status === 'ok' && r.followers != null);
-  const asOf = fb.map(r => r.date).sort().pop();
-  const byPosts = read.filter(r => r.recent_posts_90d != null).slice().sort((a, b) => b.recent_posts_90d - a.recent_posts_90d);
-  const byFol = read.slice().sort((a, b) => b.followers - a.followers);
-  const maxPosts = byPosts.length ? byPosts[0].recent_posts_90d || 1 : 1;
-  const maxFol = byFol.length ? byFol[0].followers || 1 : 1;
-  const mine = fb.find(r => r.id === JD_ID);
-  const quiet = read.filter(r => r.recent_posts_90d === 0 || (r.last_post_date && age(r.last_post_date) > 60));
-  const obj = r => ({ id: r.id, name: r.name || r.id, me: r.id === JD_ID });
-  const postRows = byPosts.map(r => barRow(obj(r), r.recent_posts_90d / maxPosts * 100,
-    A(fmt(r.recent_posts_90d) + plural(r.recent_posts_90d, ' post'), r.fb_url, 'Facebook page'),
-    '<span class="num">' + (r.last_post_date ? 'last ' + ago(r.last_post_date) : 'no posts seen') + '</span>')).join('');
-  const folRows = byFol.map(r => barRow(obj(r), r.followers / maxFol * 100,
-    A(fmt(r.followers), r.fb_url, 'Facebook page'),
-    r.delta != null ? '<span class="num ' + (r.delta > 0 ? 'up' : r.delta < 0 ? 'dn' : '') + '">' + signed(r.delta) + '</span>' : '')).join('');
-  const igByHandle = {};
-  (D.igActivity || []).forEach(r => { if (!igByHandle[r.handle] || r.date > igByHandle[r.handle].date) igByHandle[r.handle] = r; });
-  const igPosts = D.competitors.map(c => igByHandle[c.ig_handle]).filter(r => r && r.media_count != null);
-  const fbMed = byPosts.length >= 5 ? median(byPosts.map(r => r.recent_posts_90d)) : null;
-  const both = [
-    ['Facebook pages tracked', fmt(fb.length)],
-    ['Pages read on ' + dshort(asOf), fmt(read.length) + ' of ' + fmt(fb.length)],
-    ['Typical Facebook pace', fbMed != null ? fmt(fbMed) + plural(fbMed, ' post') + ' in 90 days' : 'Too few'],
-    ['Instagram accounts tracked', fmt(igPosts.length)],
-    ['Quiet on Facebook 60+ days', fmt(quiet.length) + ' of ' + fmt(read.length)],
-  ];
-  return '<div class="view">' + head('Activity', 'How often each business posts, and how big each audience is, across Instagram and Facebook.') +
+  const P = pool(), PRES = (D.presence || {}).businesses || {}, all = Object.values(PRES);
+  if (!all.length) return '<div class="view">' + head('Activity', 'Every business, every channel, one table.') + empty('No presence data yet.') + '</div>';
+  const fbRows = fbLatest(), asOf = fbRows.map(r => r.date).sort().pop();
+  const active30 = all.filter(p => p.last_activity && age(p.last_activity) != null && age(p.last_activity) <= 30).length;
+  const ff = all.filter(p => p.facebook_first), dark = all.filter(p => p.dark), dorm = all.filter(p => p.dormant);
+  const mine = PRES[JD_ID];
+  const S = {
+    name: (a, b) => a.name.localeCompare(b.name),
+    last: (a, b) => { const x = presOf(a.id), y = presOf(b.id); return (y && y.last_activity ? dn(y.last_activity) : -1) - (x && x.last_activity ? dn(x.last_activity) : -1) || a.name.localeCompare(b.name); }
+  };
+  const sorters = {
+    name: S.name,
+    fbp: (a, b) => (((presOf(b.id) || {}).facebook || {}).posts90 || -1) - (((presOf(a.id) || {}).facebook || {}).posts90 || -1) || a.name.localeCompare(b.name),
+    fbf: (a, b) => (((presOf(b.id) || {}).facebook || {}).followers || -1) - (((presOf(a.id) || {}).facebook || {}).followers || -1) || a.name.localeCompare(b.name),
+    igp: (a, b) => ((b.ig && b.ig.posts30 != null ? b.ig.posts30 : -1) - (a.ig && a.ig.posts30 != null ? a.ig.posts30 : -1)) || a.name.localeCompare(b.name),
+    igf: (a, b) => ((b.ig ? b.ig.followers : -1) - (a.ig ? a.ig.followers : -1)) || a.name.localeCompare(b.name),
+    last: S.last
+  };
+  const sf = sorters[state.asort] || S.last;
+  const list = P.slice().sort(sf);
+  const th = (k, t) => '<th class="num"><button class="th" data-asort="' + k + '" aria-pressed="' + (state.asort === k) + '">' + t + '</button></th>';
+  const dim = t => '<span class="dim">' + t + '</span>';
+  const rows = list.map(b => {
+    const p = presOf(b.id), fb = p && p.facebook;
+    const fbPosts = !fb ? dim('—') : fb.status !== 'ok' ? dim('Unreadable') : A(fmt(fb.posts90), fb.url);
+    const fbFol = fb && fb.followers != null ? A(fmt(fb.followers), fb.url) : dim('—');
+    const igPosts = b.ig ? (b.ig.posts30 != null ? A(fmt(b.ig.posts30), b.ig.url) : dim('—')) : (b.handle ? dim('Not tracked') : dim('—'));
+    const igFol = b.ig ? A(fmt(b.ig.followers), b.ig.url) : dim('—');
+    const last = p && p.last_activity ? A(ago(p.last_activity) + ' <small>' + (p.last_channel === 'facebook' ? 'Facebook' : 'Instagram') + '</small>', p.last_channel === 'facebook' ? (fb && fb.url) : igUrl(b.handle)) : dim('No activity on record');
+    return '<tr class="' + (b.me ? 'me' : '') + '"><td>' + whoFull(b) + '<small>' + esc(b.town) + '</small></td>' +
+      '<td>' + presChips(b) + '</td>' +
+      '<td>' + (b.site ? A(host(b.site), b.site) : dim('None')) + '</td>' +
+      '<td class="num">' + fbPosts + '</td><td class="num">' + fbFol + '</td>' +
+      '<td class="num">' + igPosts + '</td><td class="num">' + igFol + '</td>' +
+      '<td class="num">' + last + '</td></tr>';
+  }).join('');
+  const venues = fbRows.filter(r => r.kind === 'venue' && r.status === 'ok' && r.followers != null).sort((a, b) => b.followers - a.followers).slice(0, 8);
+  return '<div class="view">' + head('Activity', 'Every business on every channel, joined into one picture. Click a column to sort.') +
     '<div class="stats">' +
-      '<div class="stat"><span>Facebook pages tracked</span><b>' + cnt(fb.length) + '</b><small>Businesses and venues with a confirmed page</small></div>' +
-      '<div class="stat"><span>Most active on Facebook</span><b>' + (byPosts.length ? A(fmt(byPosts[0].recent_posts_90d) + plural(byPosts[0].recent_posts_90d, ' post'), byPosts[0].fb_url) : '') + '</b><small>' + (byPosts.length ? esc(byPosts[0].name || '') + ', last 90 days' : '') + '</small></div>' +
-      '<div class="stat"><span>Largest Facebook audience</span><b>' + (byFol.length ? A(fmt(byFol[0].followers), byFol[0].fb_url) : '') + '</b><small>' + (byFol.length ? esc(byFol[0].name || '') : '') + '</small></div>' +
-      '<div class="stat me"><span>You</span><b>' + (mine && mine.followers != null ? A(fmt(mine.followers), mine.fb_url) : 'Not tracked') + '</b><small>' + (mine && mine.last_post_date ? 'Latest Facebook post ' + ago(mine.last_post_date) : 'No Facebook page in the tracked set') + '</small></div>' +
+      '<div class="stat"><span>Active in the last 30 days</span><b>' + cnt(active30) + ' of ' + fmt(all.length) + '</b><small>Posted on Instagram or Facebook</small></div>' +
+      '<div class="stat"><span>Facebook-first</span><b>' + cnt(ff.length) + '</b><small>No website, no Instagram — Facebook is the business</small></div>' +
+      '<div class="stat"><span>No channel at all</span><b>' + cnt(dark.length) + '</b><small>No website, Instagram or Facebook found</small></div>' +
+      '<div class="stat me"><span>You</span><b>' + (mine && mine.last_activity ? ago(mine.last_activity) : '—') + '</b><small>' + (mine ? 'Last activity anywhere, on ' + (mine.last_channel || 'no channel') : '') + '</small></div>' +
     '</div>' +
+    '<div class="pane chart scroll"><table class="tb"><thead><tr><th><button class="th" data-asort="name" aria-pressed="' + (state.asort === 'name') + '">Business</button></th><th>Presence</th><th>Website</th>' + th('fbp', 'FB posts, 90d') + th('fbf', 'FB followers') + th('igp', 'IG posts, 30d') + th('igf', 'IG followers') + th('last', 'Last activity') + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<p class="foot">' + P.length + ' businesses. Presence chips: W website, F Facebook, I Instagram — lit means active in the last 30 days. Facebook read ' + dshort(asOf) + '; a page that could not be read shows no figure, never a carried-forward one.</p></div>' +
     '<div class="charts2">' +
-      '<div class="pane chart"><h3>Facebook posting, last 90 days</h3>' + (postRows || empty('No posting figures read yet.')) + '<p class="cap">Posts counted from each page on ' + dshort(asOf) + '. Click a figure to open the page.</p></div>' +
-      '<div class="pane chart"><h3>Facebook audience</h3>' + (folRows || empty('No audience figures read yet.')) + '<p class="cap">Followers as read on ' + dshort(asOf) + '. Change is against the previous read.</p></div>' +
+      '<div class="pane mini"><h3>Facebook-first</h3>' + (ff.length ? bl(ff.map(p => [esc(p.name), A(fmt(p.facebook.posts90) + plural(p.facebook.posts90, ' post') + ' in 90 days · ' + fmt(p.facebook.followers) + ' followers', p.facebook.url)])) : empty('None.')) + '<p class="cap">A website-first sweep reads these as unreachable. They are not.</p></div>' +
+      '<div class="pane mini"><h3>Quiet everywhere</h3>' + (dorm.length ? bl(dorm.slice().sort((a, b) => (a.last_activity || '') < (b.last_activity || '') ? -1 : 1).map(p => [esc(p.name), 'last activity ' + (p.last_activity ? ago(p.last_activity) : 'unknown')])) : empty('None.')) + '<p class="cap">No post on any tracked channel in 90+ days, with a known last date. Untracked channels never count as silence.</p></div>' +
     '</div>' +
-    '<div class="pane"><h3>Both platforms</h3>' + bl(both) +
-    '<p class="foot">Facebook figures are read from each business\'s own page; a page that could not be read shows no figure, never a carried-forward one. Instagram posting lives on the Posting page.</p></div></div>';
+    (venues.length ? '<div class="pane"><h3>Venues on Facebook</h3>' + bl(venues.map(r => [esc(r.name || r.id), A(fmt(r.followers) + ' followers · last post ' + (r.last_post_date ? ago(r.last_post_date) : 'unknown'), r.fb_url)])) + '</div>' : '') +
+    '</div>';
 }
 
 /* ---------- Recommendations (added by Muse 2026-11-16, muse-pages branch) ----------
@@ -534,10 +580,11 @@ function viewActivity() {
 function viewRecommendations() {
   const R = D.recommendations || {}, items = R.items || [];
   if (!items.length) return '<div class="view">' + head('Recommendations', 'Problems in this market the data says you can solve.') + empty('No findings yet — the feeds have not produced a recommendation.') + '</div>';
-  const panes = items.map(it => '<div class="pane"><h3>' + esc(it.title) + '</h3><p>' + esc(it.body) + '</p>' +
+  const KIND = { channel_mismatch: 'Channel mismatch', dormant_audience: 'Dormant audience', fb_reputation: 'Reputation', channel_gap: 'Channel gap', cadence: 'The pace', jd_standing: 'Your standing', review_gap: 'Reviews', dark_set: 'No channel', venue_outreach: 'Venues' };
+  const panes = items.map((it, i) => '<div class="pane rec"><p class="cap">' + esc(KIND[it.kind] || 'Finding') + '</p><h3>' + (i + 1) + '. ' + esc(it.title) + '</h3><p>' + esc(it.body) + '</p>' +
     bl((it.evidence || []).map(e => [esc(e.label), A(esc(e.value), e.url)])) + '</div>').join('');
   return '<div class="view">' + head('Recommendations', 'Problems in this market the data says you can solve.') +
-    '<p class="cap">Generated ' + esc(R.generated || '') + ' from the Facebook, Instagram, review and roster feeds. Every figure links to the page it was read from.</p>' +
+    '<p class="cap">' + items.length + ' findings, generated ' + esc(R.generated || '') + ' from the website, Instagram, Facebook, review and roster feeds, joined per business. Every figure links to the page it was read from.</p>' +
     panes + '</div>';
 }
 
@@ -571,6 +618,7 @@ stage.addEventListener('click', e => {
   const w = e.target.closest('[data-b]'); if (w) { openProfile(w.dataset.b); return; }
   const s = e.target.closest('[data-svc]'); if (s) { state.svc = s.dataset.svc; state.whatIf = null; render(true); return; }
   const p = e.target.closest('[data-psort]'); if (p) { state.psort = p.dataset.psort; render(true); return; }
+  const as = e.target.closest('[data-asort]'); if (as) { state.asort = as.dataset.asort; render(true); return; }
   const ds = e.target.closest('[data-dsort]'); if (ds) { state.dsort = state.dsort === ds.dataset.dsort ? 'full' : ds.dataset.dsort; render(true); return; }
   if (e.target.id === 'wi-r') { state.whatIf = null; render(true); }
 });
