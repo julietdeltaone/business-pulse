@@ -4,54 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#e9eff4">
-<meta name="build" content="build 20da9800 &middot; Nov 16 14:59 UTC">
-<title>Business Pulse — Competitor Desk</title>
-<script>try{var m=localStorage.getItem('bp_theme_mode'),s=localStorage.getItem('bp_theme_scheme');document.documentElement.setAttribute('data-mode',m==='dark'?'dark':'light');document.documentElement.setAttribute('data-scheme',['bluegreen','blueviolet','tealsky','violetpink','amberrose','slate'].indexOf(s)>=0?s:'bluegreen');}catch(e){document.documentElement.setAttribute('data-mode','light');document.documentElement.setAttribute('data-scheme','bluegreen');}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="styles.css?v=307e5339">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0c14">
+<meta name="build" content="build 19f3a4d5 &middot; Nov 16 14:59 UTC">
+<title>Business Pulse</title>
+<!-- MUSE: this file is part of the design. On each sync change only the build line above and the ?v= tags below. See the notes at the top of app.js. -->
+<link rel="stylesheet" href="styles.css?v=735d916a">
 </head>
 <body>
 <div id="app">
-  <header class="bar" id="bar">
-    <a class="brand" href="#brief" aria-label="Business Pulse, home">
-      <svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="8" class="mark-bg"/><path d="M4.5 15h4.4l2.3-6 3.6 11 2.6-8.2 1.5 3.2h4.6" class="mark-line"/></svg>
-      <span class="brand-t"><b>Business Pulse</b><small>Competitor desk · JD Meyers Productions</small></span>
-    </a>
-    <nav class="seg" id="nav" role="tablist" aria-label="Sections">
-      <i class="thumb" aria-hidden="true"></i>
-      <button role="tab" data-v="standing">Standing</button>
-      <button role="tab" data-v="brief">Brief</button>
-      <button role="tab" data-v="market">Market</button>
-      <button role="tab" data-v="compare">Compare</button>
-      <button role="tab" data-v="social">Social</button>
-      <button role="tab" data-v="map">Map</button>
-      <button role="tab" data-v="trends">Trends</button>
-      <button role="tab" data-v="ai">AI Visibility</button>
-      <button role="tab" data-v="network">Network</button>
-      <button role="tab" data-v="data">Data</button>
-      <button role="tab" data-v="admin">Admin</button>
+  <header class="top">
+    <a class="brand" href="#brief" aria-label="Business Pulse, brief"><i aria-hidden="true"></i>Pulse</a>
+    <nav id="nav" aria-label="Sections">
+      <a href="#brief">Brief</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#posting">Posting</a>
+      <a href="#leaders">Leaders</a>
+      <a href="#directory">Directory</a>
+      <a href="#data">Data</a>
     </nav>
-    <div class="bar-r">
-      <button class="chip" id="health" type="button" aria-label="Data freshness"><span class="dot"></span><span id="health-t">Checking</span></button>
-      <button type="button" class="topen" data-topen aria-haspopup="dialog" aria-expanded="false" title="Theme: mode and gradient"><span class="tpdot" data-s="bluegreen"></span>Theme</button>
+    <div class="tools-top">
+      <div class="scope" id="scope" role="group" aria-label="Which competitors to include">
+        <button type="button" data-scope="slc">St. Lawrence County</button>
+        <button type="button" data-scope="all">Whole region</button>
+      </div>
+      <input class="in jump" id="jump" list="names" type="search" placeholder="Find a business" aria-label="Find a business">
+      <datalist id="names"></datalist>
+      <a class="health" id="health" href="#data"><i aria-hidden="true"></i><span>Checking</span></a>
     </div>
   </header>
-  <main id="stage" aria-live="polite"></main>
-  <aside id="drawer" aria-label="Details" aria-hidden="true"></aside>
+  <main id="stage"></main>
 </div>
-<div id="tip" role="tooltip"></div>
-<div id="toast" role="status"></div>
-<noscript><p style="padding:24px;color:#a6b1c3">Business Pulse needs JavaScript to draw its pages.</p></noscript>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="data/data.js?v=0b15a1eb"></script>
 <script src="data/website-intel.js?v=e8925ef3"></script>
 <script src="data/venues.js?v=59735fc8"></script>
 <script src="data/details-enrichment.js?v=9cff909a"></script>
-<script src="app.js?v=20da9800"></script>
+<script src="app.js?v=19f3a4d5"></script>
 </body>
 </html>
