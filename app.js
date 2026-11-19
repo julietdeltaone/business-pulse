@@ -588,7 +588,69 @@ function viewRecommendations() {
     panes + '</div>';
 }
 
-const VIEWS = { brief: viewBrief, pricing: viewPricing, posting: viewPosting, activity: viewActivity, leaders: viewLeaders, recommendations: viewRecommendations, directory: viewDirectory, data: viewData };
+/* ---------- Correlations (added by Muse 2026-11-19) ----------
+   New view only. Data: D.correlations {generated, analyses:[{id, title, finding,
+   x_label, y_label, x_fmt, y_fmt, n, pearson, spearman, strength, trend,
+   points:[{id, name, x, y}], jd:{x, y}}]} — computed by
+   scripts/build_correlations.py from the Instagram, Facebook and review
+   feeds. One scatter per analysis; JD's business is the lit dot. */
+const corrFmt = (v, f) => f === 'pct' ? (v > 0 ? '+' : '') + (+v).toFixed(1) + '%' : f === 'rate' ? (+v).toFixed(1) + '%' : fmt(Math.round(v));
+function scatter(a) {
+  const pts = a.points || [];
+  if (pts.length < 3) return empty('Not enough businesses with both numbers read yet.');
+  const W = 640, H = 400, L = 68, R = 14, T = 26, B = 46, iw = W - L - R, ih = H - T - B;
+  let x0 = Math.min(0, Math.min.apply(null, pts.map(p => p.x))), x1 = Math.max.apply(null, pts.map(p => p.x));
+  let y0 = Math.min(0, Math.min.apply(null, pts.map(p => p.y))), y1 = Math.max.apply(null, pts.map(p => p.y));
+  if (x1 <= x0) x1 = x0 + 1; if (y1 <= y0) y1 = y0 + 1;
+  const yp = (y1 - y0) * 0.08; y1 += yp; if (y0 < 0) y0 -= yp;
+  const X = v => L + (v - x0) / (x1 - x0) * iw, Y = v => T + ih - (v - y0) / (y1 - y0) * ih;
+  let s = '<svg class="scat" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(a.title) + '">';
+  for (let i = 0; i <= 4; i++) {
+    const yv = y0 + (y1 - y0) * i / 4, yy = Y(yv);
+    s += '<line class="sc-g" x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (L + iw) + '" y2="' + yy.toFixed(1) + '"/><text class="sc-t" x="' + (L - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end">' + corrFmt(yv, a.y_fmt) + '</text>';
+    const xv = x0 + (x1 - x0) * i / 4, xx = X(xv);
+    s += '<line class="sc-g" x1="' + xx.toFixed(1) + '" y1="' + T + '" x2="' + xx.toFixed(1) + '" y2="' + (T + ih) + '"/><text class="sc-t" x="' + xx.toFixed(1) + '" y="' + (T + ih + 20) + '" text-anchor="middle">' + corrFmt(xv, a.x_fmt) + '</text>';
+  }
+  if (y0 < 0 && y1 > 0) s += '<line class="sc-zero" x1="' + L + '" y1="' + Y(0).toFixed(1) + '" x2="' + (L + iw) + '" y2="' + Y(0).toFixed(1) + '"/>';
+  if (a.trend) {
+    const clamp = v => Math.max(y0, Math.min(y1, v));
+    s += '<line class="sc-trend" x1="' + X(x0).toFixed(1) + '" y1="' + Y(clamp(a.trend.slope * x0 + a.trend.intercept)).toFixed(1) + '" x2="' + X(x1).toFixed(1) + '" y2="' + Y(clamp(a.trend.slope * x1 + a.trend.intercept)).toFixed(1) + '"/>';
+  }
+  s += '<text class="sc-ax" x="' + L + '" y="16">' + esc(a.y_label) + '</text>';
+  s += '<text class="sc-ax" x="' + (L + iw / 2) + '" y="' + (H - 2) + '" text-anchor="middle">' + esc(a.x_label) + '</text>';
+  pts.filter(p => p.id !== JD_ID).forEach(p => {
+    s += '<circle class="sc-p" cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="5"><title>' + esc(p.name) + ': ' + corrFmt(p.x, a.x_fmt) + ', ' + corrFmt(p.y, a.y_fmt) + '</title></circle>';
+  });
+  const me = pts.find(p => p.id === JD_ID);
+  if (me) {
+    s += '<circle class="sc-me" cx="' + X(me.x).toFixed(1) + '" cy="' + Y(me.y).toFixed(1) + '" r="7.5"><title>You: ' + corrFmt(me.x, a.x_fmt) + ', ' + corrFmt(me.y, a.y_fmt) + '</title></circle>' +
+      '<text class="sc-you" x="' + (X(me.x) + 11).toFixed(1) + '" y="' + (Y(me.y) + 4).toFixed(1) + '">You</text>';
+  }
+  return s + '</svg>';
+}
+function corrPane(a) {
+  let you = '';
+  if (a.jd) {
+    const xr = a.points.filter(p => p.x > a.jd.x).length + 1, yr = a.points.filter(p => p.y > a.jd.y).length + 1;
+    you = '<p class="cap">You: ' + esc(a.x_label.toLowerCase()) + ' ' + corrFmt(a.jd.x, a.x_fmt) + ' · ' + esc(a.y_label.toLowerCase()) + ' ' + corrFmt(a.jd.y, a.y_fmt) +
+      ' — ' + ord(xr) + ' of ' + a.n + ' across, ' + ord(yr) + ' of ' + a.n + ' up.</p>';
+  }
+  return '<div class="pane corr"><h3>' + esc(a.finding) + '</h3>' +
+    '<p class="cap">' + esc(a.title) + ' · ' + a.n + ' businesses with both numbers read · r = ' + (a.pearson_disp || '—') + ' · rho = ' + (a.spearman_disp || '—') + '</p>' +
+    scatter(a) + you + '</div>';
+}
+function viewCorrelations() {
+  const C = D.correlations || {}, list = (C.analyses || []).filter(a => a.n >= 3);
+  if (!list.length) return '<div class="view">' + head('Correlations', 'How activity and audience size move together across the market.') + empty('No correlations yet — the feeds have not produced enough paired numbers.') + '</div>';
+  let panes = '';
+  for (let i = 0; i + 1 < list.length; i += 2) panes += '<div class="charts2">' + corrPane(list[i]) + corrPane(list[i + 1]) + '</div>';
+  if (list.length % 2) panes += '<div class="charts2">' + corrPane(list[list.length - 1]) + '<div></div></div>';
+  return '<div class="view">' + head('Correlations', 'How activity and audience size move together across the market, measured from the same Instagram, Facebook and review feeds as the rest of Pulse. The lit dot is you.') +
+    panes +
+    '<p class="foot">Each dot is one business, placed by the two numbers in the graph title; the dashed line is the overall drift. r runs from -1 to 1: near 1 the two numbers rise together, near -1 one rises as the other falls, near 0 there is no clear link. rho measures the same link by rank instead of size, so one very large business cannot swing it. A business appears only when both of its numbers were really read; computed ' + esc(C.generated || '') + '.</p></div>';
+}
+
+const VIEWS = { brief: viewBrief, pricing: viewPricing, posting: viewPosting, activity: viewActivity, leaders: viewLeaders, recommendations: viewRecommendations, correlations: viewCorrelations, directory: viewDirectory, data: viewData };
 const stage = $('#stage');
 let first = true;
 function render(keep) {
