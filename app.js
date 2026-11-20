@@ -279,7 +279,7 @@ function viewBrief() {
   const bs = boards(), md = medals(bs), mine = md.find(m => m.b.me), pJ = JD.prices.wed, g = JD.ig;
   const place = id => { const bd = bs.find(x => x.id === id), m = bd && bd.list.find(x => x.b.me); return m ? ord(m.place) + ' of ' + bd.list.length : null; };
   const higher = pJ ? pf.peers.filter(b => b.prices.wed.low > pJ.low).length : 0, pct = pf.peers.length ? Math.round(higher / pf.peers.length * 100) : 0;
-  const kpi = (k, big, list, extra) => '<div class="kpi pane"><span class="kk">' + k + '</span><div class="kn">' + big + '</div>' + bl(list) + (extra || '') + '</div>';
+  const kpi = (k, big, list, extra) => '<div class="kpi pane"><span class="kk">' + k + '</span><div class="kn big">' + big + '</div>' + bl(list) + (extra || '') + '</div>';
   const kpis = '<section class="kpis">' +
     kpi('Your wedding start', pJ ? A(cnt(pJ.low, '$'), priceUrl(pJ.url, pJ.low)) : 'None', [pf.med != null ? ['Market median', money(pf.med)] : null, pf.pos ? ['Your place', (pf.pos === 1 ? 'Lowest' : ord(pf.pos) + ' lowest') + ' of ' + pf.all.length] : null]) +
     kpi('Your posts, 30 days', g && g.posts30 != null ? A(cnt(g.posts30), g.url) : 'Not tracked', [medPost != null ? ['Typical competitor', fmt(medPost)] : null, g && g.lastPost ? ['Latest post', ago(g.lastPost)] : null]) +
@@ -702,7 +702,7 @@ function chrome() {
   const dl = $('#names'); if (dl && !dl.children.length) dl.innerHTML = B.map(b => '<option value="' + esc(b.name) + '">').join('');
   const j = $('#jump'); if (j) j.onchange = () => { const b = B.find(x => x.name.toLowerCase() === j.value.trim().toLowerCase()); if (b) { j.value = ''; openProfile(b.id); } };
   const S = sources(), bad = S.filter(x => x.st === 'stalled').length, late = S.filter(x => x.st === 'late').length, h = $('#health');
-  if (h) { h.className = 'health ' + (bad ? 'stalled' : late ? 'late' : 'ok'); h.lastElementChild.textContent = bad || late ? (bad + late) + plural(bad + late, ' source') + ' behind' : 'Data current, ' + dshort(ASOF_S); }
+  if (h) { h.className = 'health dot ' + (bad ? 'stalled fail' : late ? 'late' : 'ok'); h.lastElementChild.textContent = bad || late ? (bad + late) + plural(bad + late, ' source') + ' behind' : 'Data current, ' + dshort(ASOF_S); }
 }
 chrome(); render();
 })();
