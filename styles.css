@@ -422,3 +422,13 @@ body:before{opacity:.26}
 .sc-t{fill:var(--tx3);font-size:11.5px}
 .sc-ax{fill:var(--tx2);font-size:12.5px;font-weight:700}
 .sc-you{fill:var(--you);font-size:12.5px;font-weight:700}
+
+/* ---------- Command Center shared-design bridge (Nov 20, 2026) ----------
+   The shared sheet (cc-design.css) loads after this file. These rules alias
+   its tokens to the Pulse palette, give .pane the shared frosted card
+   treatment, and keep the hub's side-rail offset off this page (Pulse has
+   no rail; its #app grid fills the window). New rules only. */
+:root{--accent:#7aa7ff;--amber:var(--warn);--red:var(--bad);--panel:var(--s2);--panel2:var(--s3);--muted:var(--tx2);--text:var(--tx);--mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
+@media (min-width:1100px){html body{padding-left:0}}
+.pane{background:var(--surf-1,linear-gradient(180deg,rgba(34,36,58,.72),rgba(17,18,29,.78)));box-shadow:var(--edge),var(--shadow-1);-webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);transition:transform .35s var(--ease),box-shadow .35s var(--ease),border-color .25s}
+.pane:hover{transform:translateY(-3px);border-color:rgba(122,167,255,.5);box-shadow:var(--edge),var(--shadow-2),0 0 40px -14px rgba(122,167,255,.5)}
