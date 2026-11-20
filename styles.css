@@ -432,3 +432,38 @@ body:before{opacity:.26}
 @media (min-width:1100px){html body{padding-left:0}}
 .pane{background:var(--surf-1,linear-gradient(180deg,rgba(34,36,58,.72),rgba(17,18,29,.78)));box-shadow:var(--edge),var(--shadow-1);-webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);transition:transform .35s var(--ease),box-shadow .35s var(--ease),border-color .25s}
 .pane:hover{transform:translateY(-3px);border-color:rgba(122,167,255,.5);box-shadow:var(--edge),var(--shadow-2),0 0 40px -14px rgba(122,167,255,.5)}
+
+/* ---------- Full Command Center skin adoption (Nov 20, 2026; JD-directed) ----------
+   cc-skin.css now loads after cc-design.css in index.html. The skin owns the
+   palette tokens (--bg, --card, --panel, --panel2, --line, --text, --muted,
+   --green, --amber, --red, --inset), the aurora background (--bgfx) and the
+   Manrope body font. This block points Pulse's own tokens at the skin so the
+   whole page follows the theme (dark default, light via ?theme=light), keeps
+   the Pulse accent blue, and neutralizes the few hub rules whose class names
+   collide with Pulse components. html:root / body prefixes are deliberate:
+   they outrank the skin's :root and single-class rules even though this file
+   loads first. New rules only; nothing above is edited. */
+html:root{
+  --accent:#7aa7ff;
+  --s1:var(--card); --s2:var(--panel); --s3:var(--panel2);
+  --tx:var(--text); --tx2:var(--muted);
+  --tx3:color-mix(in srgb,var(--muted) 68%,var(--bg) 32%);
+  --line2:color-mix(in srgb,var(--muted) 55%,transparent);
+  --good:var(--green); --warn:var(--amber); --bad:var(--red);
+}
+body .brand{flex-direction:row}
+body .top{text-align:left}
+body .mrow{justify-content:stretch}
+body .cells i{background:var(--s3)}
+@media (min-width:1100px){html body{padding-bottom:0}}
+/* Light theme: Pulse rules that pair a hard-coded dark ink with var(--tx)
+   (near-white in the dark theme) would go dark-on-dark once --tx flips. */
+:root[data-theme="light"] .kn{background:linear-gradient(180deg,#1b1e2e 20%,#5b4dff);-webkit-background-clip:text;background-clip:text}
+:root[data-theme="light"] .top{background:rgba(238,241,255,.78)}
+:root[data-theme="light"] .stats .stat{background:var(--card)}
+:root[data-theme="light"] .seg[aria-pressed="true"]{color:#eef1ff}
+:root[data-theme="light"] .seg[aria-pressed="true"] small{color:#a3abc2}
+:root[data-theme="light"] .vl b{color:#eef1ff}
+:root[data-theme="light"] .links a:hover{color:#eef1ff}
+:root[data-theme="light"] .cells [data-tip]:hover:after,:root[data-theme="light"] .dd:hover:after{color:#eef1ff}
+:root[data-theme="light"] .cells .c3{background:#7c6cf5}
