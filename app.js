@@ -515,7 +515,7 @@ function presBriefPane() {
   rows.push(['Facebook-first competitors', fmt(all.filter(x => x.facebook_first).length) + ' post there with no website or Instagram']);
   rows.push(['Quiet everywhere, 90+ days', fmt(all.filter(x => x.dormant).length) + ' of ' + fmt(all.length)]);
   rows.push(['No channel at all', fmt(all.filter(x => x.dark).length)]);
-  return '<div class="pane"><h3>Your presence</h3>' + bl(rows) + '<p class="cap">Every channel read as one picture. Detail on the Activity page.</p></div>';
+  return '<div class="pane w-feed"><h3>Your presence</h3>' + bl(rows) + '<p class="cap">Every channel read as one picture. Detail on the Activity page.</p></div>';
 }
 function viewActivity() {
   const P = pool(), PRES = (D.presence || {}).businesses || {}, all = Object.values(PRES);
