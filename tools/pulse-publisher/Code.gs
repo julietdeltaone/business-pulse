@@ -190,13 +190,15 @@ function ppShorten_(v, width) {
     if (Array.from(next).length + 1 > width) break;
     out = next;
   }
-  return out + '\u2026';
+  return out.replace(/[\s,;:]+$/, '') + '\u2026';
 }
 function ppPersonal_(v) { return typeof v === 'string' && PP_PERSONAL.test(v) ? null : v; }
 
 function ppScrub_(built) {
   var b = ppDeepClean_(built);
   // Free-text observation fields: a note about someone's personal life is dropped, not reworded.
+  // The old build joined Instagram bio lines that end in a space ("text \nmore" -> "text more").
+  b.competitors.forEach(function (c) { if (typeof c.biography === 'string') c.biography = c.biography.replace(/ +\n/g, ' '); });
   b.igActivity.forEach(function (r) { r.activity = ppShorten_(ppPersonal_(r.activity), PP.ACTIVITY_WIDTH); });
   b.webSweepHistory.forEach(function (w) { for (var p in w.pages) w.pages[p].note = ppShorten_(ppPersonal_(w.pages[p].note), PP.NOTE_WIDTH); });
   return b;
