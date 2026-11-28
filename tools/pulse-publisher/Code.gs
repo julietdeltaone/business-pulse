@@ -413,7 +413,15 @@ function compareWithBase() {
       var shown = 0;
       base[k].forEach(function (row, idx) {
         var x = JSON.stringify(row), y = JSON.stringify(res.data[k][idx]);
-        if (x !== y && shown++ < 8) console.log(k + '[' + idx + ']\n  base:  ' + x.slice(0, 400) + '\n  sheet: ' + (y || '').slice(0, 400));
+        if (x === y || shown++ >= 12) return;
+        var other = res.data[k][idx] || {}, parts = [];
+        if (row && typeof row === 'object') {
+          Object.keys(row).forEach(function (f) {
+            var bv = JSON.stringify(row[f]), sv = JSON.stringify(other[f]);
+            if (bv !== sv) parts.push(f + ' | base=' + String(bv).slice(0, 160) + ' | sheet=' + String(sv).slice(0, 160));
+          });
+        }
+        console.log(k + '[' + idx + '] ' + (row && row.id || row && row.handle || '') + ' :: ' + parts.join(' ;; '));
       });
     }
     var i = 0; while (i < a.length && a[i] === b[i]) i++;
