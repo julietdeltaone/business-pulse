@@ -160,6 +160,39 @@ function ppWebSweep_(rows) {
   return runs;
 }
 
+/* ---- Privacy scrub: the published site carries no emails, phone numbers or personal-life notes ---- */
+var PP_EMAIL = /\s*(?:mailto:)?[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+var PP_PHONE = /\s*(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b/g;
+var PP_PERSONAL = /pregnan|maternity leave|paternity leave|newborn of her own|medical|surgery|hospital|illness|\bsick\b|cancer|injur|passed away|\bdeath\b|\bdied\b|funeral|bereave|divorce|family emergency|personal reasons|mental health/i;
+
+function ppClean_(v) {
+  if (typeof v !== 'string' || /^https?:\/\//.test(v)) return v;
+  var out = v.replace(PP_EMAIL, '').replace(PP_PHONE, '').replace(/[ \t]+$/gm, '');
+  return out === '' && v !== '' ? null : out;
+}
+function ppDeepClean_(x) {
+  if (Array.isArray(x)) return x.map(ppDeepClean_);
+  if (x && typeof x === 'object') { var o = {}; for (var k in x) o[k] = ppDeepClean_(x[k]); return o; }
+  return ppClean_(x);
+}
+function ppPersonal_(v) { return typeof v === 'string' && PP_PERSONAL.test(v) ? null : v; }
+
+function ppScrub_(built) {
+  var b = ppDeepClean_(built);
+  // Free-text observation fields: a note about someone's personal life is dropped, not reworded.
+  b.igActivity.forEach(function (r) { r.activity = ppPersonal_(r.activity); });
+  b.webSweepHistory.forEach(function (w) { for (var p in w.pages) w.pages[p].note = ppPersonal_(w.pages[p].note); });
+  return b;
+}
+
+/** Runs the base has that the sheet lacks (e.g. a run with no page rows) are kept, in date order. */
+function ppMergeRuns_(sheetRuns, baseRuns) {
+  var have = {};
+  sheetRuns.forEach(function (r) { have[r.date + '\u0000' + r.run_label] = 1; });
+  var extra = (baseRuns || []).filter(function (r) { return !have[r.date + '\u0000' + r.run_label]; });
+  return ppByDate_(sheetRuns.concat(extra));
+}
+
 /**
  * tabs: { tabName: [[header...], [row...]] } as display strings.
  * base: the last full PULSE_DATA (blocks the sheet does not hold yet are carried from it).
@@ -179,6 +212,8 @@ function ppBuild(tabs, base, nowIso) {
     presence: ppPresence_(ppRows_(tabs['Presence']), (base.presence && base.presence.generated) || nowIso.slice(0, 10)),
     webSweepHistory: ppWebSweep_(ppRows_(tabs['Web Sweep']))
   };
+  built.webSweepHistory = ppMergeRuns_(built.webSweepHistory, base.webSweepHistory);
+  built = ppScrub_(built);
 
   // Guard rails
   if (built.competitors.length < PP.MIN_COMPETITORS) problems.push('Only ' + built.competitors.length + ' competitors (need ' + PP.MIN_COMPETITORS + ').');
