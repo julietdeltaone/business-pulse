@@ -467,3 +467,51 @@ body .cells i{background:var(--s3)}
 :root[data-theme="light"] .links a:hover{color:#eef1ff}
 :root[data-theme="light"] .cells [data-tip]:hover:after,:root[data-theme="light"] .dd:hover:after{color:#eef1ff}
 :root[data-theme="light"] .cells .c3{background:#7c6cf5}
+
+/* ---------- Readability and layout pass (Nov 28, 2026; JD-directed) ----------
+   cc-skin.css styles every <header> with zero side padding, paints any .dot.late
+   element solid amber, and gives .seg a 10px-tall full-width bar shape. Those
+   rules leaked into the Pulse top bar, the source badge and the pricing pills.
+   This block undoes the leaks, tightens page headers and caps content width. */
+html body header.top{padding:10px clamp(20px,2.2vw,36px);gap:24px}
+body header.top .brand{padding-left:2px}
+.tools-top{gap:10px;min-width:0}
+/* source badge: dark pill with colored dot and readable text */
+body .health,body .health.dot{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:99px;
+  background:var(--s1);border:1px solid var(--line2);box-shadow:none;font-size:13.5px;font-weight:700;color:var(--tx);flex:none}
+body .health i{width:9px;height:9px;flex:none}
+body .health.late,body .health.late.dot{border-color:color-mix(in srgb,var(--warn) 60%,transparent);background:color-mix(in srgb,var(--warn) 12%,var(--s1));color:var(--warn)}
+body .health.late i{box-shadow:0 0 8px var(--warn)}
+body .health.stalled,body .health.stalled.dot{border-color:color-mix(in srgb,var(--bad) 60%,transparent);background:color-mix(in srgb,var(--bad) 12%,var(--s1));color:var(--bad)}
+body .health.ok i{box-shadow:0 0 8px var(--good)}
+body .health:hover{filter:brightness(1.15)}
+/* pricing service pills: restore pill shape */
+body .segs .seg{display:inline-flex;width:auto;height:auto;gap:8px;align-items:baseline}
+body .segs{margin-bottom:14px}
+/* tighter page headers, capped width */
+.view{padding-top:clamp(16px,1.5vw,26px);max-width:1680px;margin:0 auto}
+.vh{margin-bottom:18px}
+.vh p{margin-top:4px}
+.plot{padding-top:58px}
+.axis span:after{top:50px}
+.vl,.vl.wi b{top:20px}
+.vl.wi b{top:20px}
+/* recommendations: space between cards, readable line length */
+.rec+.rec{margin-top:14px}
+.rec>p:not(.cap){max-width:95ch;margin:6px 0 4px}
+.view>.cap{margin-bottom:12px}
+/* laptop widths: keep all nine nav tabs and the tools on one row */
+@media(max-width:1600px){
+  html body header.top{gap:16px}
+  #nav{gap:2px}#nav a{padding:7px 10px;font-size:13.5px}
+  .jump{width:150px;font-size:13px;padding:0 12px}
+  .scope button{padding:5px 10px;font-size:12.5px}
+}
+@media(max-width:1440px){
+  .brand{font-size:20px}
+  #nav a{padding:6px 8px;font-size:13px}
+  .jump{width:150px;font-size:13px;padding:0 12px}
+  .scope button{padding:5px 8px}
+  body .health,body .health.dot{padding:0 11px;font-size:13px}
+}
+@media(max-width:1420px){html body header.top{grid-template-columns:auto 1fr;row-gap:8px}.tools-top{grid-column:1/-1;justify-content:flex-end}}
