@@ -515,3 +515,15 @@ body .segs{margin-bottom:14px}
   body .health,body .health.dot{padding:0 11px;font-size:13px}
 }
 @media(max-width:1420px){html body header.top{grid-template-columns:auto 1fr;row-gap:8px}.tools-top{grid-column:1/-1;justify-content:flex-end}}
+
+/* Muse design pass (2026-11-28, Luna): slim scrollbars, nav accent, table hover polish */
+/* slim dark scrollbars in WebKit/Blink, matching the thin Firefox rule above */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--you2)}
+/* current page tab: iris accent text with a soft ring */
+body #nav a[aria-current=page]{color:var(--you);box-shadow:inset 0 0 0 1px var(--line2),inset 0 1px 0 rgba(255,255,255,.1)}
+/* table rows: warmer hover wash with an iris tick on the first cell */
+body tbody tr:hover td{background:rgba(163,156,255,.07)}
+body tbody tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--you2)}
