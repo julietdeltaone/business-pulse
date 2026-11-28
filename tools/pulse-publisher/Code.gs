@@ -345,3 +345,19 @@ function installTrigger() {
   ScriptApp.newTrigger('publishPulse').timeBased().everyDays(1).atHour(8).nearMinute(30).inTimezone('America/New_York').create();
   console.log('Daily trigger set for about 08:30 ET.');
 }
+
+/** Diagnostic: builds from the sheet and logs, block by block, where it differs from pulse-base.json. Writes nothing. */
+function compareWithBase() {
+  var base = JSON.parse(ppReadFile_(PP.BASE_FILE));
+  var res = ppBuild(ppReadTabs_(), base, new Date().toISOString());
+  console.log('ok=' + res.ok + ' problems=' + JSON.stringify(res.problems));
+  if (!res.data) return;
+  Object.keys(base).forEach(function (k) {
+    if (k === 'meta' || k === 'builtAt') return;
+    var a = JSON.stringify(base[k]), b = JSON.stringify(res.data[k]);
+    if (a === b) { console.log(k + ': same'); return; }
+    var n = Array.isArray(base[k]) ? ' base ' + base[k].length + ' vs sheet ' + res.data[k].length : '';
+    var i = 0; while (i < a.length && a[i] === b[i]) i++;
+    console.log(k + ': DIFF' + n + ' at char ' + i + '\n  base:  ' + a.slice(Math.max(0, i - 80), i + 160) + '\n  sheet: ' + b.slice(Math.max(0, i - 80), i + 160));
+  });
+}
