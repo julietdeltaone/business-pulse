@@ -685,3 +685,71 @@ function chrome() {
 }
 chrome(); render();
 })();
+
+/* Source mode (Atlas, 2026-11-28, JD's ask; same as the Command Center): hold Option+Shift, every card
+   glows; click one to open the Business Pulse sheet tab its numbers come from. Rules: page + card title. */
+(function () {
+  'use strict';
+  const ID = '1qoVocRUbWy10aXwubXrS6YI6NZaQk_QaDA_QKv523nk';
+  const T = {ig: ['566511582', 'IG Followers'], act: ['570304817', 'IG Activity'], fb: ['882333486', 'FB Activity'], comp: ['1047117654', 'Competitors'],
+    master: ['1006042862', 'Master Table'], pres: ['1188439247', 'Presence'], web: ['1032727285', 'Web Sweep'], ai: ['727881344', 'AI Visibility'],
+    rec: ['2087483743', 'Recommendations'], moves: ['1641812027', 'Moves'], roster: ['664165850', 'Roster']};
+  const RULES = [
+    [/recommend/i, 'rec'], [/\bai\b|chatgpt|gemini|assistant/i, 'ai'], [/website|sweep|site/i, 'web'], [/facebook|\bfb\b/i, 'fb'],
+    [/follower|following|growth|projected|scenario|keep the current|post like|^[abc]\.\s/i, 'ig'],
+    [/post|active|silent|weekday|per week|latest|cadence|^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i, 'act'],
+    [/price|pricing|wedding start|try a price|spread/i, 'comp'], [/medal|podium|engagement|review|rated|against the field|radar/i, 'master'],
+    [/presence|channel/i, 'pres'], [/move/i, 'moves']];
+  const PAGE = {overview: 'act', position: 'comp', leaders: 'master', recommendations: 'rec', trends: 'ig', directory: 'comp', data: 'master'};
+  const url = k => 'https://docs.google.com/spreadsheets/d/' + ID + '/edit#gid=' + T[k][0];
+  const page = () => (location.hash.replace(/^#\/?/, '') || 'overview').split(/[/?]/)[0];
+  const first = el => ((el.innerText || '').trim().split('\n')[0] || '').slice(0, 80);
+  function resolve(el) {
+    const t = first(el);
+    for (const [re, k] of RULES) if (re.test(t)) return {url: url(k), label: 'Business Pulse › ' + T[k][1]};
+    return null;
+  }
+  function fallback() { const k = PAGE[page()]; return k ? {url: url(k), label: 'Business Pulse › ' + T[k][1] + ' (page source)'} : {url: 'https://docs.google.com/spreadsheets/d/' + ID + '/edit', label: 'Business Pulse (whole sheet)'}; }
+  function isCard(e) {
+    if (e.closest('header, nav, .src-tip')) return false;
+    const r = e.getBoundingClientRect();
+    if (r.width < 110 || r.height < 54 || (r.width > innerWidth * .98 && r.height > innerHeight * .9)) return false;
+    const cs = getComputedStyle(e);
+    return parseFloat(cs.borderTopLeftRadius) >= 6 && cs.borderTopStyle !== 'none' && parseFloat(cs.borderTopWidth) > 0;
+  }
+  let ON = false, cards = [], tip = null, hot = null;
+  function scan() {
+    cards = [];
+    document.querySelectorAll('section, article, div, li, button, a').forEach(e => { if (cards.length < 400 && e.offsetParent && isCard(e)) cards.push(e); });
+    cards.forEach(e => { e.__src = resolve(e); e.classList.add(e.__src ? 'src-on' : 'src-none'); });
+  }
+  function clear() { cards.forEach(e => { e.classList.remove('src-on', 'src-none', 'src-hot'); delete e.__src; }); cards = []; if (tip) tip.style.display = 'none'; hot = null; }
+  function cardFor(t) { let e = t, fb = null; while (e && e !== document.body) { if (e.__src !== undefined) { if (e.__src) return {el: e, src: e.__src}; fb = fb || e; } e = e.parentElement; } return fb ? {el: fb, src: null} : null; }
+  const on = () => { if (!ON) { ON = true; document.documentElement.classList.add('src-mode'); scan(); } };
+  const off = () => { if (ON) { ON = false; document.documentElement.classList.remove('src-mode'); clear(); } };
+  const typing = e => e.target && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
+  addEventListener('keydown', e => { if (e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey && !typing(e)) on(); }, true);
+  addEventListener('keyup', e => { if (!e.altKey || !e.shiftKey) off(); }, true);
+  addEventListener('blur', off);
+  addEventListener('hashchange', () => { if (ON) { clear(); setTimeout(scan, 400); } });
+  document.addEventListener('mousemove', e => {
+    if (!ON) return; if (!e.altKey || !e.shiftKey) return off();
+    const c = cardFor(e.target); if (!c) { if (tip) tip.style.display = 'none'; return; }
+    if (hot !== c.el) { if (hot) hot.classList.remove('src-hot'); hot = c.el; hot.classList.add('src-hot'); }
+    if (!tip) { tip = document.createElement('div'); tip.className = 'src-tip'; document.body.appendChild(tip); }
+    const s = c.src || fallback(); tip.textContent = 'Open source · ' + s.label; tip.classList.toggle('muted', !c.src);
+    const r = c.el.getBoundingClientRect(); tip.style.left = Math.max(8, Math.min(innerWidth - 360, r.left)) + 'px'; tip.style.top = Math.max(8, r.top - 30) + 'px'; tip.style.display = 'block';
+  }, true);
+  const block = e => { if (ON) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } };
+  document.addEventListener('mousedown', block, true); document.addEventListener('mouseup', block, true);
+  document.addEventListener('click', e => { if (!ON) return; block(e); const c = cardFor(e.target); const s = (c && c.src) || fallback(); window.open(s.url, '_blank', 'noopener'); }, true);
+  const st = document.createElement('style');
+  st.textContent = 'html.src-mode,html.src-mode *{cursor:pointer!important}' +
+    '.src-on{outline:1.5px solid color-mix(in srgb,var(--you,#a89cff) 75%,transparent)!important;outline-offset:2px;box-shadow:0 0 18px color-mix(in srgb,var(--you,#a89cff) 30%,transparent)!important}' +
+    '.src-on.src-hot{outline:2px solid var(--you,#a89cff)!important;box-shadow:0 0 0 1px var(--you,#a89cff),0 0 28px color-mix(in srgb,var(--you,#a89cff) 55%,transparent)!important}' +
+    '.src-none{outline:1px dashed color-mix(in srgb,var(--tx2,#8a8fa3) 55%,transparent)!important;outline-offset:2px}' +
+    '.src-tip{position:fixed;z-index:2147483000;display:none;pointer-events:none;max-width:360px;padding:5px 9px;border-radius:7px;font:600 11.5px/1.3 inherit;color:#fff;background:var(--you2,#8a79ff);box-shadow:0 4px 18px rgba(0,0,0,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.src-tip.muted{background:#2a2d38;color:var(--tx2,#aab)}';
+  document.head.appendChild(st);
+  window.PulseSource = {on, off, resolve};
+})();
