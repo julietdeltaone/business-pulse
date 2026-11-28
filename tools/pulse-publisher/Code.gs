@@ -34,6 +34,8 @@ var PP = {
   WRITER: 'atlas',
   MIN_COMPETITORS: 80,
   MAX_SHRINK: 0.30,
+  ACTIVITY_WIDTH: 90, // the old build cut activity text to about 90 characters
+  NOTE_WIDTH: 140,    // and web sweep notes to about 140
   // Blocks the sheet holds. Everything else in PULSE_DATA comes from pulse-base.json.
   SHEET_TABS: ['Competitors', 'IG Followers', 'IG Activity', 'FB Activity', 'Presence', 'Web Sweep']
 };
@@ -167,21 +169,36 @@ var PP_PERSONAL = /pregnan|maternity leave|paternity leave|newborn of her own|me
 
 function ppClean_(v) {
   if (typeof v !== 'string' || /^https?:\/\//.test(v)) return v;
-  var out = v.replace(PP_EMAIL, '').replace(PP_PHONE, '').replace(/[ \t]+$/gm, '');
-  return out === '' && v !== '' ? null : out;
+  var out = v.replace(PP_EMAIL, '').replace(PP_PHONE, '');
+  if (out === v) return v;
+  out = out.replace(/[ \t]+$/gm, '');
+  return out === '' ? null : out;
 }
 function ppDeepClean_(x) {
   if (Array.isArray(x)) return x.map(ppDeepClean_);
   if (x && typeof x === 'object') { var o = {}; for (var k in x) o[k] = ppDeepClean_(x[k]); return o; }
   return ppClean_(x);
 }
+/** Same as the old build: whitespace collapsed, long text cut at a word boundary with an ellipsis. */
+function ppShorten_(v, width) {
+  if (typeof v !== 'string') return v;
+  var t = v.replace(/\s+/g, ' ').trim();
+  if (Array.from(t).length <= width) return t;
+  var words = t.split(' '), out = '';
+  for (var i = 0; i < words.length; i++) {
+    var next = out ? out + ' ' + words[i] : words[i];
+    if (Array.from(next).length + 1 > width) break;
+    out = next;
+  }
+  return out + '\u2026';
+}
 function ppPersonal_(v) { return typeof v === 'string' && PP_PERSONAL.test(v) ? null : v; }
 
 function ppScrub_(built) {
   var b = ppDeepClean_(built);
   // Free-text observation fields: a note about someone's personal life is dropped, not reworded.
-  b.igActivity.forEach(function (r) { r.activity = ppPersonal_(r.activity); });
-  b.webSweepHistory.forEach(function (w) { for (var p in w.pages) w.pages[p].note = ppPersonal_(w.pages[p].note); });
+  b.igActivity.forEach(function (r) { r.activity = ppShorten_(ppPersonal_(r.activity), PP.ACTIVITY_WIDTH); });
+  b.webSweepHistory.forEach(function (w) { for (var p in w.pages) w.pages[p].note = ppShorten_(ppPersonal_(w.pages[p].note), PP.NOTE_WIDTH); });
   return b;
 }
 
@@ -394,5 +411,18 @@ function compareWithBase() {
     var n = Array.isArray(base[k]) ? ' base ' + base[k].length + ' vs sheet ' + res.data[k].length : '';
     var i = 0; while (i < a.length && a[i] === b[i]) i++;
     console.log(k + ': DIFF' + n + ' at char ' + i + '\n  base:  ' + a.slice(Math.max(0, i - 80), i + 160) + '\n  sheet: ' + b.slice(Math.max(0, i - 80), i + 160));
+  });
+}
+
+/** Diagnostic: how many activity/note texts match the live site at each cut-off width. Writes nothing. */
+function checkWidths() {
+  var base = JSON.parse(ppReadFile_(PP.BASE_FILE)), tabs = ppReadTabs_();
+  [[86, 136], [88, 138], [89, 139], [90, 140], [92, 142], [100, 150]].forEach(function (w) {
+    PP.ACTIVITY_WIDTH = w[0]; PP.NOTE_WIDTH = w[1];
+    var d = ppBuild(tabs, base, new Date().toISOString()).data, a = 0, n = 0;
+    d.igActivity.forEach(function (r, i) { if (base.igActivity[i] && r.activity !== base.igActivity[i].activity) a++; });
+    d.webSweepHistory.forEach(function (x, i) { var bx = base.webSweepHistory[i] || { pages: {} };
+      for (var p in x.pages) if (!bx.pages[p] || x.pages[p].note !== bx.pages[p].note) n++; });
+    console.log('activity width ' + w[0] + ': ' + a + ' differ; note width ' + w[1] + ': ' + n + ' differ');
   });
 }
