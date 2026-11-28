@@ -742,7 +742,7 @@ chrome(); render();
   }, true);
   const block = e => { if (ON) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } };
   document.addEventListener('mousedown', block, true); document.addEventListener('mouseup', block, true);
-  document.addEventListener('click', e => { if (!ON) return; block(e); const c = cardFor(e.target); const s = (c && c.src) || fallback(); window.open(s.url, '_blank', 'noopener'); }, true);
+  document.addEventListener('click', e => { if (!ON) return; block(e); const c = cardFor(e.target); const s = (c && c.src) || fallback(); const w = window.open(s.url, '_blank'); if (w) { try { w.opener = null; } catch (x) {} } }, true);
   const st = document.createElement('style');
   st.textContent = 'html.src-mode,html.src-mode *{cursor:pointer!important}' +
     '.src-on{outline:1.5px solid color-mix(in srgb,var(--you,#a89cff) 75%,transparent)!important;outline-offset:2px;box-shadow:0 0 18px color-mix(in srgb,var(--you,#a89cff) 30%,transparent)!important}' +
