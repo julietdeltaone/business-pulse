@@ -34,8 +34,8 @@ var PP = {
   WRITER: 'atlas',
   MIN_COMPETITORS: 80,
   MAX_SHRINK: 0.30,
-  ACTIVITY_WIDTH: 90, // the old build cut activity text to about 90 characters
-  NOTE_WIDTH: 140,    // and web sweep notes to about 140
+  ACTIVITY_WIDTH: 89, // the old build cut activity text to 89 characters (checked against the live site)
+  NOTE_WIDTH: 140,    // and web sweep notes to 138-142 (all match)
   // Blocks the sheet holds. Everything else in PULSE_DATA comes from pulse-base.json.
   SHEET_TABS: ['Competitors', 'IG Followers', 'IG Activity', 'FB Activity', 'Presence', 'Web Sweep']
 };
@@ -409,6 +409,13 @@ function compareWithBase() {
     var a = JSON.stringify(base[k]), b = JSON.stringify(res.data[k]);
     if (a === b) { console.log(k + ': same'); return; }
     var n = Array.isArray(base[k]) ? ' base ' + base[k].length + ' vs sheet ' + res.data[k].length : '';
+    if (Array.isArray(base[k])) {
+      var shown = 0;
+      base[k].forEach(function (row, idx) {
+        var x = JSON.stringify(row), y = JSON.stringify(res.data[k][idx]);
+        if (x !== y && shown++ < 8) console.log(k + '[' + idx + ']\n  base:  ' + x.slice(0, 400) + '\n  sheet: ' + (y || '').slice(0, 400));
+      });
+    }
     var i = 0; while (i < a.length && a[i] === b[i]) i++;
     console.log(k + ': DIFF' + n + ' at char ' + i + '\n  base:  ' + a.slice(Math.max(0, i - 80), i + 160) + '\n  sheet: ' + b.slice(Math.max(0, i - 80), i + 160));
   });
