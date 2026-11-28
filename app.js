@@ -227,6 +227,7 @@ function tiers(vals) {
   return v => v == null ? '' : v >= q3 && v > q2 ? 'h3' : v >= q2 && v > q1 ? 'h2' : v > q1 ? 'h1' : 'h0';
 }
 const hv = (cls, html) => '<span class="hv ' + cls + '">' + html + '</span>';
+const placeCls = (p, n) => p <= Math.ceil(n / 3) ? 'f-ok' : p <= Math.ceil(n * 2 / 3) ? 'f-late' : 'f-old';
 const freshCls = d => { const a = age(d); return a == null ? '' : a <= 7 ? 'f-ok' : a <= 30 ? 'f-late' : 'f-old'; };
 function spark(vals) {
   if (!vals || vals.length < 3) return '';
@@ -301,7 +302,7 @@ function viewOverview() {
     '<div class="stats">' +
       '<div class="stat"><span>Most active</span><b>' + (top ? A(top.ig.posts30 + ' posts', top.ig.url) : '') + '</b><small>' + (top ? esc(top.name) + ', last 30 days' : '') + '</small></div>' +
       '<div class="stat"><span>Typical competitor</span><b>' + (med != null ? fmt(med) + plural(med, ' post') : 'Too few') + '</b><small>Median over 30 days, ' + peers.length + ' accounts</small></div>' +
-      '<div class="stat me"><span>You</span><b>' + (JD.ig && JD.ig.posts30 != null ? A(JD.ig.posts30 + plural(JD.ig.posts30, ' post'), JD.ig.url) : 'Not tracked') + '</b><small>' + (JD.ig && JD.ig.lastPost ? 'Latest post ' + ago(JD.ig.lastPost) : '') + '</small></div>' +
+      '<div class="stat me"><span>You</span><b>' + (JD.ig && JD.ig.posts30 != null ? A(JD.ig.posts30 + plural(JD.ig.posts30, ' post'), JD.ig.url) : 'Not tracked') + '</b><small>' + (JD.ig && JD.ig.lastPost ? 'Latest post ' + hv(freshCls(JD.ig.lastPost), ago(JD.ig.lastPost)) : '') + '</small></div>' +
       '<div class="stat"><span>Silent for 30 days</span><b>' + quiet + ' of ' + tracked.length + '</b><small>Accounts with no new post</small></div>' +
     '</div>' +
     '<div class="pane chart scroll hero-grid"><div class="pgrid"><div class="po hd"><span></span><span class="hmap wkd" style="--n:' + STRIP + '">' + wk + '</span>' + th('posts30', 'Posts, 30 days') + th('last', 'Latest post') + th('eng', 'Engagement') + th('fol', 'Followers') + th('g30', '30-day change') + '</div>' + rows + '</div>' +
@@ -315,14 +316,14 @@ function viewPosition() {
   const pf = priceFacts('wed'), P = pool(), ig = P.filter(b => b.ig && b.ig.posts30 != null);
   const peersIg = ig.filter(b => !b.me), medPost = peersIg.length >= 5 ? median(peersIg.map(b => b.ig.posts30)) : null;
   const bs = boards(), md = medals(bs), mine = md.find(m => m.b.me), pJ = JD.prices.wed, g = JD.ig;
-  const place = id => { const bd = bs.find(x => x.id === id), m = bd && bd.list.find(x => x.b.me); return m ? ord(m.place) + ' of ' + bd.list.length : null; };
+  const place = id => { const bd = bs.find(x => x.id === id), m = bd && bd.list.find(x => x.b.me); return m ? hv(placeCls(m.place, bd.list.length), ord(m.place) + ' of ' + bd.list.length) : null; };
   const higher = pJ ? pf.peers.filter(b => b.prices.wed.low > pJ.low).length : 0, pct = pf.peers.length ? Math.round(higher / pf.peers.length * 100) : 0;
   const kpi = (k, big, list, extra) => '<div class="kpi pane"><span class="kk">' + k + '</span><div class="kn big">' + big + '</div>' + bl(list) + (extra || '') + '</div>';
   const kpis = '<section class="kpis">' +
     kpi('Your wedding start', pJ ? A(cnt(pJ.low, '$'), priceUrl(pJ.url, pJ.low)) : 'None', [pf.med != null ? ['Market median', money(pf.med)] : null, pf.pos ? ['Your place', (pf.pos === 1 ? 'Lowest' : ord(pf.pos) + ' lowest') + ' of ' + pf.all.length] : null]) +
-    kpi('Your posts, 30 days', g && g.posts30 != null ? A(cnt(g.posts30), g.url) : 'Not tracked', [medPost != null ? ['Typical competitor', fmt(medPost)] : null, g && g.lastPost ? ['Latest post', ago(g.lastPost)] : null]) +
-    kpi('Your followers', g ? A(cnt(g.followers), g.url) : 'Not tracked', [g && g.g30 != null ? ['30-day change', '<span class="' + (g.g30 > 0 ? 'up' : g.g30 < 0 ? 'dn' : '') + '">' + signed(g.g30) + '</span>'] : null, place('fol') ? ['Your place', place('fol')] : null], g ? spark(g.series) : '') +
-    kpi('Your medals', '<span class="mset big"><i class="g">' + (mine ? mine.g : 0) + '</i><i class="s">' + (mine ? mine.s : 0) + '</i><i class="z">' + (mine ? mine.z : 0) + '</i></span>', [['Medal table', mine ? ord(md.indexOf(mine) + 1) + ' of ' + md.length : 'Not placed'], mine && mine.in[0] ? ['Best finish', ord(mine.in.slice().sort((a, b) => a.p - b.p)[0].p) + ', ' + mine.in.slice().sort((a, b) => a.p - b.p)[0].t.toLowerCase()] : null]) +
+    kpi('Your posts, 30 days', g && g.posts30 != null ? A(cnt(g.posts30), g.url) : 'Not tracked', [medPost != null ? ['Typical competitor', fmt(medPost)] : null, g && g.posts30 != null && medPost != null ? ['Against typical', hv(g.posts30 >= medPost ? 'f-ok' : g.posts30 > 0 ? 'f-late' : 'f-old', g.posts30 >= medPost ? 'At or above' : 'Below')] : null, g && g.lastPost ? ['Latest post', hv(freshCls(g.lastPost), ago(g.lastPost))] : null]) +
+    kpi('Your followers', g ? A(cnt(g.followers), g.url) : 'Not tracked', [g && g.g30 != null ? ['30-day change', hv(g.g30 > 0 ? 'f-ok' : g.g30 < 0 ? 'f-old' : 'h0', signed(g.g30))] : null, place('fol') ? ['Your place', place('fol')] : null], g ? spark(g.series) : '') +
+    kpi('Your medals', '<span class="mset big"><i class="g">' + (mine ? mine.g : 0) + '</i><i class="s">' + (mine ? mine.s : 0) + '</i><i class="z">' + (mine ? mine.z : 0) + '</i></span>', [['Medal table', mine ? hv(placeCls(md.indexOf(mine) + 1, md.length), ord(md.indexOf(mine) + 1) + ' of ' + md.length) : 'Not placed'], mine && mine.in[0] ? ['Best finish', ord(mine.in.slice().sort((a, b) => a.p - b.p)[0].p) + ', ' + mine.in.slice().sort((a, b) => a.p - b.p)[0].t.toLowerCase()] : null]) +
     '</section>';
   const price = '<div class="pane w-price"><header class="wh"><h3>Wedding pricing</h3></header>' +
     (pf.all.length && pJ ? '<div class="pw"><div class="dialw">' + dial(pct) + '<div class="dialt"><b>' + cnt(pct, '', '%') + '</b><span>of competitors start higher than you</span></div></div>' +
@@ -555,70 +556,79 @@ function openRec(i) {
   requestAnimationFrame(() => el.classList.add('on'));
 }
 
-/* ---------- Correlations (added by Muse 2026-11-19) ----------
-   New view only. Data: D.correlations {generated, analyses:[{id, title, finding,
-   x_label, y_label, x_fmt, y_fmt, n, pearson, spearman, strength, trend,
-   points:[{id, name, x, y}], jd:{x, y}}]} — computed by
-   scripts/build_correlations.py from the Instagram, Facebook and review
-   feeds. One scatter per analysis; JD's business is the lit dot. */
-const corrFmt = (v, f) => f === 'pct' ? (v > 0 ? '+' : '') + (+v).toFixed(1) + '%' : f === 'rate' ? (+v).toFixed(1) + '%' : fmt(Math.round(v));
-function scatter(a) {
-  const pts = a.points || [];
-  if (pts.length < 3) return empty('Not enough businesses with both numbers read yet.');
-  const W = 640, H = 400, L = 68, R = 14, T = 26, B = 46, iw = W - L - R, ih = H - T - B;
-  let x0 = Math.min(0, Math.min.apply(null, pts.map(p => p.x))), x1 = Math.max.apply(null, pts.map(p => p.x));
-  let y0 = Math.min(0, Math.min.apply(null, pts.map(p => p.y))), y1 = Math.max.apply(null, pts.map(p => p.y));
-  if (x1 <= x0) x1 = x0 + 1; if (y1 <= y0) y1 = y0 + 1;
-  const yp = (y1 - y0) * 0.08; y1 += yp; if (y0 < 0) y0 -= yp;
-  const X = v => L + (v - x0) / (x1 - x0) * iw, Y = v => T + ih - (v - y0) / (y1 - y0) * ih;
-  let s = '<svg class="scat" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(a.title) + '">';
-  for (let i = 0; i <= 4; i++) {
-    const yv = y0 + (y1 - y0) * i / 4, yy = Y(yv);
-    s += '<line class="sc-g" x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (L + iw) + '" y2="' + yy.toFixed(1) + '"/><text class="sc-t" x="' + (L - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end">' + corrFmt(yv, a.y_fmt) + '</text>';
-    const xv = x0 + (x1 - x0) * i / 4, xx = X(xv);
-    s += '<line class="sc-g" x1="' + xx.toFixed(1) + '" y1="' + T + '" x2="' + xx.toFixed(1) + '" y2="' + (T + ih) + '"/><text class="sc-t" x="' + xx.toFixed(1) + '" y="' + (T + ih + 20) + '" text-anchor="middle">' + corrFmt(xv, a.x_fmt) + '</text>';
-  }
-  if (y0 < 0 && y1 > 0) s += '<line class="sc-zero" x1="' + L + '" y1="' + Y(0).toFixed(1) + '" x2="' + (L + iw) + '" y2="' + Y(0).toFixed(1) + '"/>';
-  if (a.trend) {
-    const clamp = v => Math.max(y0, Math.min(y1, v));
-    s += '<line class="sc-trend" x1="' + X(x0).toFixed(1) + '" y1="' + Y(clamp(a.trend.slope * x0 + a.trend.intercept)).toFixed(1) + '" x2="' + X(x1).toFixed(1) + '" y2="' + Y(clamp(a.trend.slope * x1 + a.trend.intercept)).toFixed(1) + '"/>';
-  }
-  s += '<text class="sc-ax" x="' + L + '" y="16">' + esc(a.y_label) + '</text>';
-  s += '<text class="sc-ax" x="' + (L + iw / 2) + '" y="' + (H - 2) + '" text-anchor="middle">' + esc(a.x_label) + '</text>';
-  pts.filter(p => p.id !== JD_ID).forEach(p => {
-    s += '<circle class="sc-p" cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="5"><title>' + esc(p.name) + ': ' + corrFmt(p.x, a.x_fmt) + ', ' + corrFmt(p.y, a.y_fmt) + '</title></circle>';
-  });
-  const me = pts.find(p => p.id === JD_ID);
-  if (me) {
-    s += '<circle class="sc-me" cx="' + X(me.x).toFixed(1) + '" cy="' + Y(me.y).toFixed(1) + '" r="7.5"><title>You: ' + corrFmt(me.x, a.x_fmt) + ', ' + corrFmt(me.y, a.y_fmt) + '</title></circle>' +
-      '<text class="sc-you" x="' + (X(me.x) + 11).toFixed(1) + '" y="' + (Y(me.y) + 4).toFixed(1) + '">You</text>';
-  }
-  return s + '</svg>';
+/* ---------- Trends: your trajectory, three scenarios, and how much the data can bear (Nov 28) ---------- */
+function trendSeries() {
+  const rows = (JD.handle && ROWS[JD.handle] || []).filter(r => !CARRIED.test(r.activity || '') && r.followers != null);
+  return rows.map(r => ({ d: dn(r.date), v: r.followers, date: r.date }));
 }
-function corrPane(a) {
-  let you = '';
-  if (a.jd) {
-    const xr = a.points.filter(p => p.x > a.jd.x).length + 1, yr = a.points.filter(p => p.y > a.jd.y).length + 1;
-    you = '<p class="cap">You: ' + esc(a.x_label.toLowerCase()) + ' ' + corrFmt(a.jd.x, a.x_fmt) + ' · ' + esc(a.y_label.toLowerCase()) + ' ' + corrFmt(a.jd.y, a.y_fmt) +
-      ' — ' + ord(xr) + ' of ' + a.n + ' across, ' + ord(yr) + ' of ' + a.n + ' up.</p>';
-  }
-  return '<div class="pane corr"><h3>' + esc(a.finding) + '</h3>' +
-    '<p class="cap">' + esc(a.title) + ' · ' + a.n + ' businesses with both numbers read · r = ' + (a.pearson_disp || '—') + ' · rho = ' + (a.spearman_disp || '—') + '</p>' +
-    scatter(a) + you + '</div>';
+function marketGrowth() {
+  const tp = (D.trendPoints || []).filter(t => t.igTotal), med = median(tp.map(t => t.igTotal)) || 0;
+  const ok = tp.filter(t => t.igTotal > med * 0.9); /* drop days where a pull failed and the total collapsed */
+  if (ok.length < 2) return null;
+  const last = ok[ok.length - 1], back = ok.filter(t => dn(last.date) - dn(t.date) >= 30)[0] || ok[0], days = dn(last.date) - dn(back.date);
+  return days >= 14 ? { pct: (last.igTotal - back.igTotal) / back.igTotal * 100 * 30 / days, total: last.igTotal, since: back.date } : null;
 }
-function viewCorrelations() {
-  const C = D.correlations || {}, list = (C.analyses || []).filter(a => a.n >= 3 && a.strength !== 'mixed');
-  if (!list.length) return '<div class="view">' + head('Correlations', 'How activity and audience size move together across the market.') + empty('No correlations yet — the feeds have not produced enough paired numbers.') + '</div>';
-  let panes = '';
-  for (let i = 0; i + 1 < list.length; i += 2) panes += '<div class="charts2">' + corrPane(list[i]) + corrPane(list[i + 1]) + '</div>';
-  if (list.length % 2) panes += '<div class="charts2">' + corrPane(list[list.length - 1]) + '<div></div></div>';
-  return '<div class="view">' + head('Correlations', 'How activity and audience move together across the market. The lit dot is you.') +
-    panes +
-    '<p class="foot">Each dot is one business, placed by the two numbers in the graph title; the dashed line is the overall drift. r runs from -1 to 1: near 1 the two numbers rise together, near -1 one rises as the other falls, near 0 there is no clear link. rho measures the same link by rank instead of size, so one very large business cannot swing it. A business appears only when both of its numbers were really read; computed ' + esc(C.generated || '') + '.</p></div>';
+function viewTrends() {
+  const S = trendSeries(), g = JD.ig;
+  if (S.length < 14 || !g) return '<div class="view">' + head('Trends') + empty('Not enough of your own history yet.') + '</div>';
+  const last = S[S.length - 1], back = S.filter(p => last.d - p.d >= 30)[0] || S[0], span = last.d - back.d;
+  const myPct = (last.v - back.v) / back.v * 100 * 30 / span;
+  const corr = ((D.correlations || {}).analyses || []).find(a => a.id === 'ig-posting-growth');
+  const slope = corr && corr.trend ? corr.trend.slope : 0.1, r = corr ? corr.pearson_disp : null, nCorr = corr ? corr.n : null;
+  const P = pool(), tracked = P.filter(b => b.ig && b.ig.posts30 != null && !b.me), medPost = tracked.length >= 5 ? median(tracked.map(b => b.ig.posts30)) : 3;
+  const topPost = tracked.length ? Math.max.apply(null, tracked.map(b => b.ig.posts30)) : 14, myPosts = g.posts30 || 0;
+  const H = 90, rate = p => myPct + slope * (p - myPosts);
+  const sc = [
+    { k: 'a', name: 'Keep the current pace', posts: myPosts, cls: 'sa' },
+    { k: 'b', name: 'Post like the typical competitor', posts: medPost, cls: 'sb' },
+    { k: 'c', name: 'Post like the most active account', posts: topPost, cls: 'sc' }
+  ].map(s => { s.rate = rate(s.posts); s.end = Math.round(last.v * Math.pow(1 + s.rate / 100, H / 30)); return s; });
+  /* chart */
+  const W = 1500, Ht = 400, L = 60, R = 130, T = 20, Bm = 34, iw = W - L - R, ih = Ht - T - Bm;
+  const x0 = S[0].d, x1 = last.d + H, vals = S.map(p => p.v).concat(sc.map(s => s.end));
+  let y0 = Math.min.apply(null, vals), y1 = Math.max.apply(null, vals); const pad = Math.max(3, (y1 - y0) * 0.12); y0 = Math.floor(y0 - pad); y1 = Math.ceil(y1 + pad);
+  const X = d => L + (d - x0) / (x1 - x0) * iw, Y = v => T + ih - (v - y0) / (y1 - y0) * ih;
+  let svg = '<svg class="tchart" viewBox="0 0 ' + W + ' ' + Ht + '" role="img" aria-label="Your Instagram followers, actual and projected">';
+  for (let i = 0; i <= 4; i++) { const v = y0 + (y1 - y0) * i / 4, yy = Y(v); svg += '<line class="sc-g" x1="' + L + '" x2="' + (L + iw) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '"/><text class="sc-t" x="' + (L - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end">' + fmt(Math.round(v)) + '</text>'; }
+  for (let d = x0; d <= x1; d++) { const dt = new Date(d * DAY); if (dt.getUTCDate() === 1) svg += '<text class="sc-t" x="' + X(d).toFixed(1) + '" y="' + (Ht - 10) + '" text-anchor="middle">' + MON[dt.getUTCMonth()] + '</text><line class="sc-g" x1="' + X(d).toFixed(1) + '" x2="' + X(d).toFixed(1) + '" y1="' + T + '" y2="' + (T + ih) + '"/>'; }
+  svg += '<line class="t-now" x1="' + X(last.d).toFixed(1) + '" x2="' + X(last.d).toFixed(1) + '" y1="' + T + '" y2="' + (T + ih) + '"/><text class="sc-t" x="' + (X(last.d) + 6).toFixed(1) + '" y="' + (T + 12) + '">today</text>';
+  sc.forEach(s => { const pts = []; for (let k = 0; k <= H; k += 5) pts.push(X(last.d + k).toFixed(1) + ',' + Y(last.v * Math.pow(1 + s.rate / 100, k / 30)).toFixed(1));
+    svg += '<polyline class="t-proj ' + s.cls + '" points="' + pts.join(' ') + '"/><text class="t-lab ' + s.cls + '" x="' + (X(x1) + 8).toFixed(1) + '" y="' + (Y(s.end) + 4).toFixed(1) + '">' + fmt(s.end) + ' · ' + s.k.toUpperCase() + '</text>'; });
+  svg += '<polyline class="t-act" points="' + S.map(p => X(p.d).toFixed(1) + ',' + Y(p.v).toFixed(1)).join(' ') + '"/><circle class="sc-me" cx="' + X(last.d).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) + '" r="5"/></svg>';
+  /* labels separated when ends collide */
+  const mk = marketGrowth();
+  const pctTxt = v => (v > 0 ? '+' : '') + v.toFixed(1) + '%';
+  const stats = '<div class="stats">' +
+    '<div class="stat me"><span>Your followers</span><b>' + A(fmt(last.v), g.url) + '</b><small>' + signed(last.v - S[0].v) + ' since ' + dshort(S[0].date) + '</small></div>' +
+    '<div class="stat"><span>Your growth, per 30 days</span><b>' + hv(myPct > (mk ? mk.pct : 0) ? 'f-ok' : 'f-late', pctTxt(myPct)) + '</b><small>' + (mk ? 'Market: ' + pctTxt(mk.pct) + ' across all tracked accounts' : 'Market figure not available') + '</small></div>' +
+    '<div class="stat"><span>Your posts, 30 days</span><b>' + hv(myPosts >= medPost ? 'f-ok' : myPosts > 0 ? 'f-late' : 'f-old', fmt(myPosts)) + '</b><small>Typical competitor: ' + fmt(medPost) + '</small></div>' +
+    '<div class="stat"><span>Latest post</span><b>' + (g.lastPost ? hv(freshCls(g.lastPost), ago(g.lastPost)) : 'Unknown') + '</b><small>' + (g.lastPost ? dshort(g.lastPost) : '') + '</small></div></div>';
+  const cards = '<div class="scen">' + sc.map(s => '<div class="pane scn ' + s.cls + '"><span class="kk">' + s.k.toUpperCase() + '. ' + esc(s.name) + '</span><b class="big">' + fmt(s.end) + '</b><small>followers in 90 days, ' + signed(s.end - last.v) + '</small>' +
+    bl([['Posts per 30 days', fmt(s.posts)], ['Posts over 90 days', fmt(s.posts * 3)], ['Growth per 30 days', pctTxt(s.rate)]]) + '</div>').join('') + '</div>';
+  /* data depth: what can be trended today */
+  const igDays = new Set(D.igActivity.map(r => r.date)).size, fbDays = new Set((D.fbActivity || []).map(r => r.date)).size;
+  const aiRuns = new Set(D.aiChecks.map(a => a.date)).size, webRuns = D.webSweepHistory.length, priceMoves = (D.priceHistory || []).length;
+  const V = { ok: ['f-ok', 'Enough'], thin: ['f-late', 'Thin'], no: ['f-old', 'Not yet'] };
+  const depth = [
+    ['Instagram followers', igDays + ' daily readings, ' + fmt(B.filter(b => b.ig).length) + ' accounts', igDays >= 45 ? 'ok' : 'thin', 'Good for trends and 90-day projections, with a margin.'],
+    ['Instagram posting', igDays + ' days of post counts', igDays >= 45 ? 'ok' : 'thin', 'Good for pace and streaks.'],
+    ['Posting vs growth link', nCorr ? nCorr + ' accounts, r = ' + r : 'Not computed', 'thin', 'A weak link. Scenarios show direction, not a promise.'],
+    ['AI assistant answers', aiRuns + ' weekly runs, 2 assistants', aiRuns >= 12 ? 'ok' : 'thin', 'About 12 weekly runs are needed before a trend means much.'],
+    ['Facebook', fbDays + ' days of readings', fbDays >= 45 ? 'ok' : 'no', 'Needs about 60 days.'],
+    ['Reviews', 'One count per business, read monthly', 'no', 'Needs several monthly reads per business.'],
+    ['Prices', priceMoves ? priceMoves + ' recorded changes' : 'Only the latest price is kept', priceMoves >= 10 ? 'thin' : 'no', 'Price trends start once each change is recorded with its date.'],
+    ['Website watch', webRuns + ' weekly sweeps', 'thin', 'Shows changes, too few points for a trend.']
+  ];
+  const table = '<div class="pane"><h3>Is there enough data?</h3><p class="cap">Yes for your Instagram trends and these projections. Not yet for prices, reviews or Facebook.</p><table class="tb depth"><thead><tr><th>Source</th><th>What we have</th><th>Verdict</th><th>What it means</th></tr></thead><tbody>' +
+    depth.map(d => '<tr><td><b>' + esc(d[0]) + '</b></td><td>' + esc(d[1]) + '</td><td>' + hv(V[d[2]][0], V[d[2]][1]) + '</td><td class="dim">' + esc(d[3]) + '</td></tr>').join('') + '</tbody></table></div>';
+  return '<div class="view">' + head('Trends', 'Your Instagram trajectory and three ways the next 90 days could go.') + stats +
+    '<div class="pane"><h3>Followers, actual and projected</h3><p class="cap">Solid line: daily readings since ' + dshort(S[0].date) + '. Dashed lines: the three scenarios below.</p>' + svg + '</div>' +
+    cards + '<p class="foot">How the scenarios work: your own growth rate over the last ' + span + ' days, adjusted by how much faster accounts grow per extra post in this market (' + (nCorr ? nCorr + ' accounts, r = ' + r : 'market average') + '). The link is weak, so read the gap between A and C as a direction, not a forecast.</p>' +
+    table + '</div>';
 }
 
-const VIEWS = { overview: viewOverview, position: viewPosition, leaders: viewLeaders, recommendations: viewRecommendations, correlations: viewCorrelations, directory: viewDirectory, data: viewData };
-const ALIAS = { brief: 'overview', posting: 'overview', pricing: 'position', activity: 'directory' };
+const VIEWS = { overview: viewOverview, position: viewPosition, trends: viewTrends, leaders: viewLeaders, recommendations: viewRecommendations, directory: viewDirectory, data: viewData };
+const ALIAS = { brief: 'overview', posting: 'overview', pricing: 'position', activity: 'directory', correlations: 'trends' };
 const stage = $('#stage');
 let first = true;
 function render(keep) {
@@ -642,6 +652,7 @@ function render(keep) {
   });
 }
 stage.addEventListener('pointermove', e => { const c = e.target.closest('.pane'); if (!c) return; const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
+if (!REDUCED) stage.addEventListener('scroll', () => document.body.style.setProperty('--sy', stage.scrollTop), { passive: true });
 window.addEventListener('hashchange', () => { $$('.drawer').forEach(d => d.parentNode.removeChild(d)); render(); });
 
 stage.addEventListener('click', e => {

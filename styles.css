@@ -605,3 +605,54 @@ body tbody tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--you2)}
   .po{grid-template-columns:200px minmax(300px,1fr) 92px 112px 92px 84px 96px;gap:12px}
   .hmap i,.hmap a{height:16px;border-radius:3px}.hmap{gap:2px}
 }
+
+/* ---------- Round 3 (Nov 28, 2026; JD-directed) ---------- */
+/* solid profile drawer: the shared skin made --card see-through */
+.dw{background:linear-gradient(180deg,#1a1c2b,#11121c);box-shadow:-30px 0 60px rgba(0,0,0,.55)}
+:root[data-theme="light"] .dw{background:#f6f7ff}
+.drawer.on{background:rgba(5,6,12,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.dw .kv li,.dw .kv li>span,.dw .kv b{font-size:15px;line-height:1.45;font-family:inherit;font-weight:400}
+.dw .kv b{font-weight:700}
+/* wider: use the sides */
+.view{max-width:1880px;padding-left:clamp(16px,2vw,40px);padding-right:clamp(16px,2vw,40px)}
+/* larger text */
+body{font-size:16px}
+.cap,.foot,.kk,.stat>span,.th,.tb th,.wh .go,.chk,.axis span,.src-t small,.gap-t summary span,.hlegend{font-size:14px}
+.stat>small,.kv li,.bl li{font-size:14.5px}
+.vh p{font-size:16.5px}
+.po .who,.tb td,.pr .who{font-size:15.5px}
+.hv{font-size:14.5px}
+.rec-p h3{font-size:17.5px}
+.rec-p .kk{font-size:12px}
+#nav a{font-size:15px}
+@media(max-width:1600px){#nav a{font-size:14px}}
+@media(max-width:1440px){#nav a{font-size:13.5px}.rec-p h3{font-size:16px}}
+/* subtle parallax: the background light drifts slower than the page */
+body:before{translate:0 calc(var(--sy,0) * -.12px)}
+body:after{translate:0 calc(var(--sy,0) * -.06px)}
+#stage{background-position:0 calc(var(--sy,0) * .18px)}
+.vh{transform:translateY(calc(min(var(--sy,0), 200) * .08px));opacity:calc(1 - min(var(--sy,0), 200) / 500)}
+@media(prefers-reduced-motion:reduce){body:before,body:after{translate:none}.vh{transform:none;opacity:1}}
+/* Trends */
+.tchart{width:100%;height:auto;display:block;margin-top:12px;overflow:visible}
+.t-act{fill:none;stroke:var(--you);stroke-width:2.5;stroke-linejoin:round}
+.t-proj{fill:none;stroke-width:2;stroke-dasharray:6 6}
+.t-proj.sa{stroke:var(--tx3)}.t-proj.sb{stroke:#8b66ff}.t-proj.sc{stroke:#ffb454}
+.t-lab{font-size:13px;font-weight:700}.t-lab.sa{fill:var(--tx2)}.t-lab.sb{fill:#b9a4ff}.t-lab.sc{fill:#ffc77a}
+.t-now{stroke:var(--line2);stroke-dasharray:2 4}
+.scen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0 0}
+.scn{display:flex;flex-direction:column;gap:4px}
+.scn .big{font-family:var(--disp);font-weight:700;font-size:40px;letter-spacing:-.03em;line-height:1.1}
+.scn.sa .big{color:var(--tx2)}.scn.sb .big{color:#b9a4ff}.scn.sc .big{color:#ffc77a}
+.scn.sb{border-color:rgba(139,102,255,.35)}.scn.sc{border-color:rgba(255,180,84,.35)}
+.scn .bl{margin-top:10px}
+.view>.pane+.pane,.view>.pane+.scen,.view>.stats+.pane{margin-top:16px}
+.depth td{vertical-align:middle}
+@media(max-width:1180px){.scen{grid-template-columns:1fr}}
+/* the shared skin's .kpi/.kn rules shrank the big numbers to 11.5px green; restore Pulse's */
+body .kpi{display:block;text-align:left}
+body .kpi .kn{font-size:clamp(40px,3.6vw,60px);margin:6px 0 14px;color:transparent;background:linear-gradient(180deg,#fff 20%,#b9b1ff);-webkit-background-clip:text;background-clip:text}
+:root[data-theme="light"] body .kpi .kn{background:linear-gradient(180deg,#1b1e2e 20%,#5b4dff);-webkit-background-clip:text;background-clip:text}
+body .kpi .kn .mset{display:inline-flex}
+.stat>b .hv,.stat>small .hv{font-size:inherit;background:none;padding:0}
+.tb.depth{margin-top:16px;min-width:0}.view>.foot+.pane{margin-top:22px}
